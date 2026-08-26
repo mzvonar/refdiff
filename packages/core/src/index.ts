@@ -79,6 +79,7 @@ export {
   launchBrowser,
   serveDir,
   waitForFonts,
+  type ServeDirOptions,
   type StaticServer,
 } from "./adapters/browser.js";
 export { extractElementTree } from "./adapters/extract.js";

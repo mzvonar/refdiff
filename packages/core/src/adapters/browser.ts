@@ -32,8 +32,16 @@ export interface StaticServer {
   close: () => Promise<void>;
 }
 
-/** Serve `rootDir` on an ephemeral localhost port, with path containment. */
-export function serveDir(rootDir: string): Promise<StaticServer> {
+export interface ServeDirOptions {
+  /** TCP port; 0 (default) = ephemeral. */
+  port?: number;
+  /** Bind address; default 127.0.0.1 (0.0.0.0 to reach it from another device). */
+  host?: string;
+}
+
+/** Serve `rootDir` (default: ephemeral localhost port), with path containment. */
+export function serveDir(rootDir: string, options: ServeDirOptions = {}): Promise<StaticServer> {
+  const { port: wantedPort = 0, host = "127.0.0.1" } = options;
   const rootResolved = resolve(rootDir);
   const server = http.createServer(async (req, res) => {
     try {
@@ -59,10 +67,10 @@ export function serveDir(rootDir: string): Promise<StaticServer> {
     }
   });
   return new Promise((resolveServer) => {
-    server.listen(0, "127.0.0.1", () => {
+    server.listen(wantedPort, host, () => {
       const { port } = server.address() as AddressInfo;
       resolveServer({
-        origin: `http://127.0.0.1:${port}`,
+        origin: `http://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}`,
         close: () => new Promise((r) => server.close(() => r())),
       });
     });
