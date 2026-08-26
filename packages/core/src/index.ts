@@ -27,6 +27,9 @@ export type {
 export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js";
 export {
   parseManifest,
+  type DesignSpec,
+  type ImplSpec,
+  type LiveSpec,
   type ManifestError,
   type ManifestParse,
   type PairSpec,
@@ -55,7 +58,11 @@ export {
   type Capture,
   type CaptureError,
   type DcHtmlSource,
+  type DesignQuality,
   type ElementMatch,
+  type FigmaSource,
+  type LiveAuth,
+  type LiveUrlSource,
   type MatchResult,
   type NormalizedPair,
   type Pair,
@@ -77,6 +84,38 @@ export {
 export { extractElementTree } from "./adapters/extract.js";
 export { captureDcHtml, frameSelectors, type DcHtmlCaptureOptions } from "./adapters/dc-html.js";
 export { captureStorybook, type StorybookCaptureOptions } from "./adapters/storybook.js";
+export {
+  captureLiveUrl,
+  classifyPage,
+  LOGIN_PATH_RE,
+  type LiveUrlCaptureOptions,
+  type PageSignals,
+  type PageVerdict,
+} from "./adapters/live-url.js";
+export { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js";
+export {
+  FigmaClient,
+  chunk,
+  cooldownFromHeaders,
+  isCoolingDown,
+  normalizeNodeId,
+  parseFigmaRef,
+  readToken,
+  type CooldownRecord,
+  type FigmaApiError,
+  type FigmaClientOptions,
+  type FigmaNode,
+  type FigmaNodesResponse,
+  type FigmaPaint,
+  type FigmaVariablesResponse,
+} from "./adapters/figma-api.js";
+export {
+  figmaTreeToElements,
+  indexVariables,
+  paintToCss,
+  type FigmaMapping,
+  type VariableIndex,
+} from "./adapters/figma-tree.js";
 export {
   ensureStorybook,
   type StorybookServer,

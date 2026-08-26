@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "error": false,
+  "meta": {
+    "variableCollections": { "VariableCollectionId:1:1": { "id": "VariableCollectionId:1:1", "name": "Colors" } },
+    "variables": {
+      "VariableID:1:100": { "id": "VariableID:1:100", "name": "color/primary/bg", "resolvedType": "COLOR" },
+      "VariableID:1:101": { "id": "VariableID:1:101", "name": "color/primary/fg", "resolvedType": "COLOR" }
+    }
+  }
+}

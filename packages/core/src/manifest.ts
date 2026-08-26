@@ -2,18 +2,35 @@
  * Manifest support (pure): the uctoinak `manifest.mjs` shape plus an
  * optional `ignore` policy per pair, turned into typed pair specs the CLI
  * can run. Loading the file is the CLI's effect; validating it is here.
+ *
+ * Design entries: `{ file, frame, scope? }` (dc-html) or
+ * `{ kind: "figma", fileKey, nodeId, scale?, version?, minQuality? }`.
+ * App entries: `{ source: "storybook", storyId, overlay?, viewport? }` or
+ * `{ source: "live", route | url, role?, viewport?, selector?, waitFor? }`.
  */
 
-import type { DcHtmlSource, StorybookSource, Viewport } from "./pipeline.js";
+import type { DcHtmlSource, FigmaSource, LiveUrlSource, StorybookSource, Viewport } from "./pipeline.js";
 import { err, ok, type Result } from "./result.js";
 import type { IgnorePolicy } from "./types.js";
 
-/** One runnable pair: a design frame against a storybook story. */
+export type DesignSpec = Omit<DcHtmlSource, "dir"> | FigmaSource;
+
+/** Live entries carry a route; the CLI supplies the origin (and auth). */
+export interface LiveSpec extends Omit<LiveUrlSource, "url" | "auth"> {
+  /** Absolute URL, or a path to prefix with the CLI's `--app-url`. */
+  route: string;
+  /** Auth role hint (the CLI's auth hook decides what it means). */
+  role?: string;
+}
+
+export type ImplSpec = Omit<StorybookSource, "url"> | LiveSpec;
+
+/** One runnable pair: a design frame against an implementation. */
 export interface PairSpec {
   id: string;
   title?: string;
-  design: Omit<DcHtmlSource, "dir">;
-  impl: Omit<StorybookSource, "url">;
+  design: DesignSpec;
+  impl: ImplSpec;
   ignore?: IgnorePolicy;
 }
 
@@ -23,7 +40,7 @@ export type ManifestError =
 
 export interface ManifestParse {
   pairs: PairSpec[];
-  /** Entries this tool can't run yet (live app captures), with the reason. */
+  /** Entries this tool can't run, with the reason. */
   skipped: { id: string; reason: string }[];
 }
 
@@ -57,10 +74,67 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
   return out;
 }
 
+function readDesign(
+  design: unknown,
+  scope: string | undefined,
+  viewport: Viewport | undefined,
+): Result<DesignSpec, string> {
+  if (!isRecord(design)) return err("design must be an object");
+  if (design["kind"] === "figma") {
+    if (typeof design["fileKey"] !== "string" || typeof design["nodeId"] !== "string") {
+      return err('figma design needs { kind: "figma", fileKey, nodeId }');
+    }
+    return ok({
+      kind: "figma",
+      fileKey: design["fileKey"],
+      nodeId: design["nodeId"].replace("-", ":"),
+      ...(typeof design["scale"] === "number" ? { scale: design["scale"] } : {}),
+      ...(typeof design["version"] === "string" ? { version: design["version"] } : {}),
+      ...(typeof design["minQuality"] === "number" ? { minQuality: design["minQuality"] } : {}),
+    });
+  }
+  if (typeof design["file"] !== "string" || typeof design["frame"] !== "string") {
+    return err('design needs { file, frame } or { kind: "figma", fileKey, nodeId }');
+  }
+  return ok({
+    kind: "dc-html",
+    file: design["file"],
+    frame: design["frame"],
+    ...(scope !== undefined ? { scope } : {}),
+    ...(viewport ? { viewport } : {}),
+  });
+}
+
+function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec, string> {
+  if (!isRecord(app) || typeof app["source"] !== "string") return err("app needs { source }");
+  if (app["source"] === "storybook") {
+    if (typeof app["storyId"] !== "string") return err("storybook app needs storyId");
+    return ok({
+      kind: "storybook",
+      storyId: app["storyId"],
+      ...(viewport ? { viewport } : {}),
+      ...(app["overlay"] === true ? { overlay: true } : {}),
+    });
+  }
+  if (app["source"] === "live" || app["source"] === "live-url") {
+    const route = app["route"] ?? app["url"];
+    if (typeof route !== "string") return err("live app needs route (or url)");
+    return ok({
+      kind: "live-url",
+      route,
+      ...(typeof app["role"] === "string" ? { role: app["role"] } : {}),
+      ...(viewport ? { viewport } : {}),
+      ...(typeof app["selector"] === "string" ? { selector: app["selector"] } : {}),
+      ...(typeof app["waitFor"] === "string" ? { waitFor: app["waitFor"] } : {}),
+      ...(app["fullPage"] === true ? { fullPage: true } : {}),
+    });
+  }
+  return err(`app.source "${String(app["source"])}" not supported (storybook | live)`);
+}
+
 /**
  * Validate a loaded manifest value (the module's `manifest` or default
- * export). Storybook pairs become specs; live-app pairs are listed as
- * skipped rather than dropped.
+ * export). Unsupported app sources are listed as skipped rather than dropped.
  */
 export function parseManifest(raw: unknown): Result<ManifestParse, ManifestError> {
   if (!Array.isArray(raw)) {
@@ -73,40 +147,30 @@ export function parseManifest(raw: unknown): Result<ManifestParse, ManifestError
       return err({ kind: "invalid-entry", index, detail: "entry needs a string `id`" });
     }
     const id = entry["id"];
-    const design = entry["design"];
     const app = entry["app"];
-    if (!isRecord(design) || typeof design["file"] !== "string" || typeof design["frame"] !== "string") {
-      return err({ kind: "invalid-entry", index, detail: `${id}: design needs { file, frame }` });
-    }
+    const viewport = isRecord(app) ? readViewport(app["viewport"]) : undefined;
+    const ignore = readPolicy(entry["ignore"]);
+    const design = entry["design"];
+    const scope =
+      ignore?.scope ?? (isRecord(design) && typeof design["scope"] === "string" ? design["scope"] : undefined);
+
+    const d = readDesign(design, scope, viewport);
+    if (!d.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${d.error}` });
     if (!isRecord(app) || typeof app["source"] !== "string") {
       return err({ kind: "invalid-entry", index, detail: `${id}: app needs { source }` });
     }
-    if (app["source"] !== "storybook") {
-      skipped.push({ id, reason: `app.source "${app["source"]}" not supported yet (storybook only)` });
+    if (app["source"] !== "storybook" && app["source"] !== "live" && app["source"] !== "live-url") {
+      skipped.push({ id, reason: `app.source "${String(app["source"])}" not supported (storybook | live)` });
       continue;
     }
-    if (typeof app["storyId"] !== "string") {
-      return err({ kind: "invalid-entry", index, detail: `${id}: storybook app needs storyId` });
-    }
-    const viewport = readViewport(app["viewport"]);
-    const ignore = readPolicy(entry["ignore"]);
-    const scope = ignore?.scope ?? (typeof design["scope"] === "string" ? design["scope"] : undefined);
+    const i = readImpl(app, viewport);
+    if (!i.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${i.error}` });
+
     pairs.push({
       id,
       ...(typeof entry["title"] === "string" ? { title: entry["title"] } : {}),
-      design: {
-        kind: "dc-html",
-        file: design["file"],
-        frame: design["frame"],
-        ...(scope !== undefined ? { scope } : {}),
-        ...(viewport ? { viewport } : {}),
-      },
-      impl: {
-        kind: "storybook",
-        storyId: app["storyId"],
-        ...(viewport ? { viewport } : {}),
-        ...(app["overlay"] === true ? { overlay: true } : {}),
-      },
+      design: d.value,
+      impl: i.value,
       ...(ignore ? { ignore } : {}),
     });
   }

@@ -146,7 +146,15 @@ export interface Alignment {
 export interface ComparisonReport {
   pair: string;
   createdAt: string;
-  design: { source: string; ref: string; width: number; height: number; scope?: CaptureScope };
+  design: {
+    source: string;
+    ref: string;
+    width: number;
+    height: number;
+    scope?: CaptureScope;
+    /** Figma GIGO score (always echoed, even when the gate passed). */
+    quality?: { score: number; leaves: number; bound: number; instances: number; detached: number };
+  };
   impl: { source: string; ref: string; width: number; height: number };
   alignment: Alignment;
   findings: Finding[];

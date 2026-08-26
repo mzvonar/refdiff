@@ -46,7 +46,63 @@ export interface StorybookSource {
   overlay?: boolean;
 }
 
-export type SourceConfig = DcHtmlSource | StorybookSource;
+/**
+ * A Figma node rendered and read through the REST API. Figma units are CSS
+ * px at scale 1; the PNG is rendered at `scale`× → `Capture.dpr = scale`.
+ */
+export interface FigmaSource {
+  kind: "figma";
+  fileKey: string;
+  /** Node id as the API spells it ("123:456"; URLs use "123-456"). */
+  nodeId: string;
+  /** Render scale (1–4). Default 2. */
+  scale?: number;
+  /** Pin a file version id; default = current. */
+  version?: string;
+  /**
+   * GIGO gate: minimum design-quality score (share of leaves whose color /
+   * typography is bound to a variable or shared style). Default 0.3.
+   */
+  minQuality?: number;
+}
+
+/** How a live-URL capture authenticates before navigating. */
+export type LiveAuth =
+  /** Playwright storage state JSON (cookies + localStorage) saved earlier. */
+  | { kind: "storage-state"; path: string }
+  /**
+   * POST a JSON body to a session endpoint inside the browser context (the
+   * uctoinak `/api/test/session` pattern). Non-2xx → `auth-failed`.
+   */
+  | { kind: "post"; url: string; headers?: Record<string, string>; body?: Record<string, unknown> };
+
+/** A page of the running application. */
+export interface LiveUrlSource {
+  kind: "live-url";
+  url: string;
+  viewport?: Viewport;
+  /** CSS selector to capture instead of the viewport; must exist. */
+  selector?: string;
+  /** Wait for this selector before capturing (content that streams in). */
+  waitFor?: string;
+  auth?: LiveAuth;
+  /** Full-page screenshot (document height) instead of the viewport. */
+  fullPage?: boolean;
+}
+
+export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource;
+
+/** Design-quality score of a design capture (Figma GIGO gate). */
+export interface DesignQuality {
+  /** 0..1 — share of leaves bound to variables/styles, penalized for detached instances. */
+  score: number;
+  leaves: number;
+  /** Leaves whose color or typography comes from a variable or shared style. */
+  bound: number;
+  instances: number;
+  /** INSTANCE nodes without a component id (detached from their library). */
+  detached: number;
+}
 
 /** One concrete thing to capture, with provenance. */
 export interface RefDescriptor {
@@ -75,6 +131,8 @@ export interface Capture {
   elements: ElementNode[];
   /** Design side only: which node inside the frame was captured, and why. */
   scope?: CaptureScope;
+  /** Figma only: the GIGO quality score, echoed even when the gate passed. */
+  quality?: DesignQuality;
 }
 
 /** Typed capture failures — data, not exceptions. */
@@ -88,7 +146,30 @@ export type CaptureError =
   | { kind: "blank-render"; ref: string; detail: string }
   /** The host was still preparing the render (Storybook/Vite compiling the story) when we gave up. */
   | { kind: "still-loading"; ref: string; detail: string }
-  | { kind: "capture-failed"; ref: string; detail: string };
+  | { kind: "capture-failed"; ref: string; detail: string }
+  // Figma
+  /** No token, or the API rejected it (401/403). */
+  | { kind: "figma-auth"; ref: string; detail: string }
+  /** 429, or a recorded cooldown from an earlier 429 that has not passed. */
+  | { kind: "figma-rate-limited"; ref: string; until: string; detail: string }
+  | { kind: "figma-node-not-found"; ref: string; fileKey: string; nodeId: string }
+  /** The images endpoint returned no URL, the download failed or the PNG is not what the node says. */
+  | { kind: "figma-render-failed"; ref: string; detail: string }
+  /** GIGO gate: quality score below the threshold. */
+  | { kind: "figma-low-quality"; ref: string; quality: DesignQuality; minQuality: number; detail: string }
+  /** Any other API failure (network, 5xx, malformed body). */
+  | { kind: "figma-api"; ref: string; detail: string }
+  // Live URL
+  /** The auth hook did not establish a session. */
+  | { kind: "auth-failed"; ref: string; detail: string }
+  /** Final response status ≥ 400. */
+  | { kind: "http-error"; ref: string; url: string; status: number }
+  /** Navigation ended on a login/sign-in page. */
+  | { kind: "login-redirect"; ref: string; url: string; finalUrl: string }
+  /** The page rendered an error/not-found page with a 2xx status. */
+  | { kind: "error-page"; ref: string; url: string; detail: string }
+  /** `selector` / `waitFor` never appeared. */
+  | { kind: "selector-not-found"; ref: string; selector: string };
 
 /** Both sides captured, nothing derived yet. */
 export interface Pair {

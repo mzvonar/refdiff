@@ -18,11 +18,14 @@ import type { Browser } from "playwright";
 
 import { launchBrowser } from "./adapters/browser.js";
 import { captureDcHtml } from "./adapters/dc-html.js";
+import { captureFigma, FIGMA_DEFAULTS } from "./adapters/figma.js";
+import { parseFigmaRef } from "./adapters/figma-api.js";
+import { captureLiveUrl } from "./adapters/live-url.js";
 import { captureStorybook } from "./adapters/storybook.js";
 import { ensureStorybook } from "./adapters/storybook-server.js";
-import { parseManifest, type PairSpec } from "./manifest.js";
+import { parseManifest, type LiveSpec, type PairSpec } from "./manifest.js";
 import { normalize, pairRefs } from "./pipeline.js";
-import type { CaptureError } from "./pipeline.js";
+import type { Capture, CaptureError, LiveAuth } from "./pipeline.js";
 import { applyPolicy, mergePolicies } from "./policy.js";
 import { err, ok, type Result } from "./result.js";
 import { aggregate } from "./structural/aggregate.js";
@@ -36,21 +39,45 @@ import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js";
 
 const USAGE = `Usage: visual-compare compare [options]
 
-Compare Claude Design (.dc.html) frames against Storybook stories.
+Compare a design frame (Claude Design .dc.html or Figma) against an
+implementation (Storybook story or live URL).
 
-One pair:
+One pair — design side (one of):
   --design-dir <dir>      directory containing the .dc.html comps
   --design-file <file>    comp file name, e.g. doc-detail-modal.dc.html
   --design-frame <frame>  frame id or data-screen-label inside the comp
+  --figma <ref>           <fileKey>:<nodeId> or a Figma URL with node-id=;
+                          token from $FIGMA_TOKEN or a .figma-token file
+  --figma-scale <n>       render scale (default ${FIGMA_DEFAULTS.scale}) → design dpr
+  --min-design-quality <0..1>
+                          GIGO gate: share of leaves bound to variables/styles
+                          below which the run stops with figma-low-quality
+                          (default ${FIGMA_DEFAULTS.minQuality}; score always echoed in the report)
+One pair — impl side (one of):
   --story <storyId>       storybook story id
-  --pair <id>             pair identity (default: derived from frame+story)
-  --viewport <WxH>        impl viewport, e.g. 760x740 (default 1200x900)
   --overlay               story portals to <body> (dialog/sheet) — shoot viewport
+  --url <url>             live page (absolute, or a path under --app-url)
+  --selector <css>        live: capture this node instead of the viewport
+  --wait-for <css>        live: wait for this selector before capturing
+  --full-page             live: full-page shot instead of the viewport
+Common to one pair:
+  --pair <id>             pair identity (default: derived from design+impl)
+  --viewport <WxH>        impl viewport, e.g. 760x740 (default 1200x900)
 
-Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair):
-  --manifest <file>       run every storybook pair of the manifest
+Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
+design { file, frame } or { kind: "figma", fileKey, nodeId }; app
+{ source: "storybook", storyId } or { source: "live", route, role? }):
+  --manifest <file>       run every pair of the manifest
   --design-dir <dir>      directory the manifest's design.file names live in
   --pair <id[,id…]>       run only these manifest ids
+
+Live app (both modes):
+  --app-url <origin>      origin for relative live routes (default $VC_APP_URL)
+  --auth-state <file>     Playwright storageState JSON for the browser context
+  --auth-post <url>       POST a JSON session request before navigating
+                          (body { role, email: "__test__<role>@example.com",
+                          name }; relative to --app-url)
+  --auth-header <k: v>    header for --auth-post (repeatable)
 
 Ignore policy (both modes):
   --scope <selector>      design node to compare instead of the artboard frame
@@ -95,9 +122,19 @@ function parseViewport(raw: string | undefined): { width: number; height: number
   return { width: Number(m[1]), height: Number(m[2]) };
 }
 
+interface LiveOptions {
+  appUrl?: string;
+  authState?: string;
+  authPost?: string;
+  authHeaders: Record<string, string>;
+}
+
 interface RunOptions {
-  designDir: string;
+  designDir?: string;
   storybookUrl: string;
+  live: LiveOptions;
+  figmaScale?: number;
+  minDesignQuality?: number;
   outDir: string;
   failThreshold: Severity;
   maxGamma?: number;
@@ -133,6 +170,75 @@ async function readPreviousReport(outDir: string): Promise<ComparisonReport | un
   return undefined;
 }
 
+/** Absolute URL for a live route: absolute as-is, else under --app-url. */
+function resolveLiveUrl(route: string, appUrl: string | undefined): Result<string, string> {
+  if (/^https?:\/\//i.test(route)) return ok(route);
+  if (!appUrl) return err(`live route "${route}" is relative — pass --app-url <origin> (or $VC_APP_URL)`);
+  return ok(`${appUrl.replace(/\/$/, "")}${route.startsWith("/") ? "" : "/"}${route}`);
+}
+
+/** The auth hook for a live spec, from the CLI's auth flags. */
+function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undefined {
+  if (o.authState) return { kind: "storage-state", path: o.authState };
+  if (o.authPost) {
+    const role = spec.role ?? "user";
+    const postUrl = /^https?:\/\//i.test(o.authPost) ? o.authPost : new URL(o.authPost, url).href;
+    return {
+      kind: "post",
+      url: postUrl,
+      headers: o.authHeaders,
+      body: { role, email: `__test__${role}@example.com`, name: `visual-compare ${role}` },
+    };
+  }
+  return undefined;
+}
+
+async function captureDesign(
+  browser: Browser,
+  spec: PairSpec,
+  scope: string | undefined,
+  o: RunOptions,
+): Promise<Result<Capture, CaptureError>> {
+  const pngPath = join(o.outDir, "design.png");
+  if (spec.design.kind === "figma") {
+    console.log(`capturing design: figma ${spec.design.fileKey}#${spec.design.nodeId}`);
+    return captureFigma(
+      {
+        ...spec.design,
+        ...(o.figmaScale !== undefined && spec.design.scale === undefined ? { scale: o.figmaScale } : {}),
+        ...(o.minDesignQuality !== undefined && spec.design.minQuality === undefined
+          ? { minQuality: o.minDesignQuality }
+          : {}),
+      },
+      { pngPath },
+    );
+  }
+  if (o.designDir === undefined) {
+    return err({ kind: "capture-failed", ref: `${spec.design.file}#${spec.design.frame}`, detail: "--design-dir is required for .dc.html designs" });
+  }
+  console.log(`capturing design: ${spec.design.file}#${spec.design.frame}`);
+  return captureDcHtml(
+    browser,
+    { ...spec.design, dir: resolve(o.designDir), ...(scope !== undefined ? { scope } : {}) },
+    { pngPath },
+  );
+}
+
+async function captureImpl(browser: Browser, spec: PairSpec, o: RunOptions): Promise<Result<Capture, CaptureError>> {
+  const pngPath = join(o.outDir, "impl.png");
+  if (spec.impl.kind === "live-url") {
+    const { route, role, ...rest } = spec.impl;
+    void role;
+    const url = resolveLiveUrl(route, o.live.appUrl);
+    if (!url.ok) return err({ kind: "capture-failed", ref: `live:${route}`, detail: url.error });
+    console.log(`capturing impl: ${url.value}`);
+    const auth = liveAuth(spec.impl, o.live, url.value);
+    return captureLiveUrl(browser, { ...rest, url: url.value, ...(auth ? { auth } : {}) }, { pngPath });
+  }
+  console.log(`capturing impl: ${spec.impl.storyId}`);
+  return captureStorybook(browser, { ...spec.impl, url: o.storybookUrl }, { pngPath });
+}
+
 /** One pair through the whole pipeline. Capture errors are data. */
 async function runPair(
   browser: Browser,
@@ -141,28 +247,17 @@ async function runPair(
 ): Promise<Result<ComparisonReport, PairError>> {
   const previous = await readPreviousReport(o.outDir);
   const policy = mergePolicies(spec.ignore, o.policy);
-  const designSource = {
-    ...spec.design,
-    dir: resolve(o.designDir),
-    ...(policy.scope !== undefined ? { scope: policy.scope } : {}),
-  };
 
-  console.log(`capturing design: ${spec.design.file}#${spec.design.frame}`);
-  const design = await captureDcHtml(browser, designSource, {
-    pngPath: join(o.outDir, "design.png"),
-  });
+  const design = await captureDesign(browser, spec, policy.scope, o);
   if (!design.ok) return err({ side: "design", error: design.error });
   const d = design.value;
   console.log(
-    `  ${d.width}x${d.height} css px, ${d.elements.length} leaf elements, scope ${d.scope?.mode ?? "frame"} (${d.scope?.selector ?? "-"})`,
+    `  ${d.width}x${d.height} css px @${d.dpr}x, ${d.elements.length} leaf elements, scope ${d.scope?.mode ?? "frame"} (${d.scope?.selector ?? "-"})${
+      d.quality ? `, design quality ${d.quality.score} (${d.quality.bound}/${d.quality.leaves} bound)` : ""
+    }`,
   );
 
-  console.log(`capturing impl: ${spec.impl.storyId}`);
-  const impl = await captureStorybook(
-    browser,
-    { ...spec.impl, url: o.storybookUrl },
-    { pngPath: join(o.outDir, "impl.png") },
-  );
+  const impl = await captureImpl(browser, spec, o);
   if (!impl.ok) return err({ side: "impl", error: impl.error });
   const i = impl.value;
   console.log(`  ${i.width}x${i.height} css px, ${i.elements.length} leaf elements`);
@@ -269,6 +364,17 @@ async function compare(argv: string[]): Promise<void> {
       "design-dir": { type: "string" },
       "design-file": { type: "string" },
       "design-frame": { type: "string" },
+      figma: { type: "string" },
+      "figma-scale": { type: "string" },
+      "min-design-quality": { type: "string" },
+      url: { type: "string" },
+      selector: { type: "string" },
+      "wait-for": { type: "string" },
+      "full-page": { type: "boolean" },
+      "app-url": { type: "string" },
+      "auth-state": { type: "string" },
+      "auth-post": { type: "string" },
+      "auth-header": { type: "string", multiple: true },
       "storybook-url": { type: "string" },
       "storybook-dir": { type: "string" },
       "storybook-open": { type: "boolean" },
@@ -292,7 +398,27 @@ async function compare(argv: string[]): Promise<void> {
     return;
   }
 
-  const designDir = values["design-dir"] ?? fail(USAGE);
+  const designDir = values["design-dir"];
+  const figmaScale = values["figma-scale"] !== undefined ? Number(values["figma-scale"]) : undefined;
+  if (figmaScale !== undefined && !(figmaScale >= 0.5 && figmaScale <= 4)) fail(`--figma-scale must be 0.5..4`);
+  const minDesignQuality =
+    values["min-design-quality"] !== undefined ? Number(values["min-design-quality"]) : undefined;
+  if (minDesignQuality !== undefined && !(minDesignQuality >= 0 && minDesignQuality <= 1)) {
+    fail(`--min-design-quality must be 0..1`);
+  }
+  const authHeaders: Record<string, string> = {};
+  for (const h of values["auth-header"] ?? []) {
+    const m = /^([^:=]+)[:=]\s*(.*)$/.exec(h);
+    if (!m?.[1]) fail(`--auth-header must look like "Name: value", got "${h}"`);
+    authHeaders[m[1].trim()] = m[2] ?? "";
+  }
+  const appUrl = values["app-url"] ?? process.env["VC_APP_URL"];
+  const live: LiveOptions = {
+    authHeaders,
+    ...(appUrl !== undefined ? { appUrl } : {}),
+    ...(values["auth-state"] !== undefined ? { authState: resolve(values["auth-state"]) } : {}),
+    ...(values["auth-post"] !== undefined ? { authPost: values["auth-post"] } : {}),
+  };
   const storybookUrl =
     values["storybook-url"] ?? process.env["VC_STORYBOOK_URL"] ?? "http://localhost:6006";
   const failThreshold = (values["fail-threshold"] ?? "major") as Severity;
@@ -321,22 +447,44 @@ async function compare(argv: string[]): Promise<void> {
     specs = only ? all.filter((p) => only.includes(p.id)) : all;
     if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`);
   } else {
-    const designFile = values["design-file"] ?? fail(USAGE);
-    const designFrame = values["design-frame"] ?? fail(USAGE);
-    const storyId = values.story ?? fail(USAGE);
     const viewport = parseViewport(values.viewport);
-    specs = [
-      {
-        id: values.pair ?? `${designFrame}--${storyId}`,
-        design: { kind: "dc-html", file: designFile, frame: designFrame, ...(viewport ? { viewport } : {}) },
-        impl: {
-          kind: "storybook",
-          storyId,
-          ...(viewport ? { viewport } : {}),
-          ...(values.overlay ? { overlay: true } : {}),
-        },
-      },
-    ];
+    let design: PairSpec["design"];
+    let designId: string;
+    if (values.figma !== undefined) {
+      const parsed = parseFigmaRef(values.figma);
+      if (!parsed.ok) fail(`--figma: ${parsed.error}`);
+      design = { kind: "figma", ...parsed.value };
+      designId = `figma-${parsed.value.nodeId.replace(":", "-")}`;
+    } else {
+      const designFile = values["design-file"] ?? fail(USAGE);
+      const designFrame = values["design-frame"] ?? fail(USAGE);
+      if (designDir === undefined) fail(USAGE);
+      design = { kind: "dc-html", file: designFile, frame: designFrame, ...(viewport ? { viewport } : {}) };
+      designId = designFrame;
+    }
+    let impl: PairSpec["impl"];
+    let implId: string;
+    if (values.url !== undefined) {
+      impl = {
+        kind: "live-url",
+        route: values.url,
+        ...(viewport ? { viewport } : {}),
+        ...(values.selector !== undefined ? { selector: values.selector } : {}),
+        ...(values["wait-for"] !== undefined ? { waitFor: values["wait-for"] } : {}),
+        ...(values["full-page"] ? { fullPage: true } : {}),
+      };
+      implId = values.url.replace(/^https?:\/\//, "").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-|-$/g, "");
+    } else {
+      const storyId = values.story ?? fail(USAGE);
+      impl = {
+        kind: "storybook",
+        storyId,
+        ...(viewport ? { viewport } : {}),
+        ...(values.overlay ? { overlay: true } : {}),
+      };
+      implId = storyId;
+    }
+    specs = [{ id: values.pair ?? `${designId}--${implId}`, design, impl }];
   }
 
   const outRoot = values.out;
@@ -344,8 +492,9 @@ async function compare(argv: string[]): Promise<void> {
   // Storybook: reuse a running one; otherwise start our own (no browser tab
   // unless --storybook-open) when a project dir is known.
   const storybookDir = values["storybook-dir"] ?? process.env["VC_STORYBOOK_DIR"];
+  const needsStorybook = specs.some((s) => s.impl.kind === "storybook");
   let stopStorybook = async (): Promise<void> => {};
-  if (storybookDir !== undefined) {
+  if (storybookDir !== undefined && needsStorybook) {
     const sb = await ensureStorybook({
       url: storybookUrl,
       dir: resolve(storybookDir),
@@ -366,8 +515,11 @@ async function compare(argv: string[]): Promise<void> {
       );
       console.log(`\n=== ${spec.id}${spec.title ? ` — ${spec.title}` : ""} ===`);
       const result = await runPair(browser, spec, {
-        designDir,
+        ...(designDir !== undefined ? { designDir } : {}),
         storybookUrl,
+        live,
+        ...(figmaScale !== undefined ? { figmaScale } : {}),
+        ...(minDesignQuality !== undefined ? { minDesignQuality } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

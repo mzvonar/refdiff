@@ -41,12 +41,36 @@ describe("parseManifest", () => {
     });
   });
 
-  it("lists live-app entries as skipped instead of dropping them", () => {
+  it("turns live-app entries into live-url specs with route and role", () => {
     const parsed = parseManifest([
-      { id: "docs-owner-desktop", design: { file: "d.dc.html", frame: "8a" }, app: { source: "live" } },
+      {
+        id: "docs-owner-desktop",
+        design: { file: "d.dc.html", frame: "8a" },
+        app: { source: "live", role: "owner", route: "/sk/app/docs", viewport: { width: 1280, height: 900 }, waitFor: "table" },
+      },
     ]);
-    expect(parsed.ok && parsed.value.pairs).toEqual([]);
-    expect(parsed.ok && parsed.value.skipped[0]?.id).toBe("docs-owner-desktop");
+    expect(parsed.ok && parsed.value.pairs[0]).toEqual({
+      id: "docs-owner-desktop",
+      design: { kind: "dc-html", file: "d.dc.html", frame: "8a", viewport: { width: 1280, height: 900 } },
+      impl: { kind: "live-url", route: "/sk/app/docs", role: "owner", viewport: { width: 1280, height: 900 }, waitFor: "table" },
+    });
+  });
+
+  it("reads figma designs and lists unknown app sources as skipped", () => {
+    const parsed = parseManifest([
+      {
+        id: "button-fill",
+        design: { kind: "figma", fileKey: "M0hn", nodeId: "8226-4244", scale: 3 },
+        app: { source: "storybook", storyId: "ds-button--fill" },
+      },
+      { id: "weird", design: { file: "d.dc.html", frame: "1" }, app: { source: "screenshot" } },
+    ]);
+    expect(parsed.ok && parsed.value.pairs[0]?.design).toEqual({ kind: "figma", fileKey: "M0hn", nodeId: "8226:4244", scale: 3 });
+    expect(parsed.ok && parsed.value.skipped[0]?.id).toBe("weird");
+    expect(parseManifest([{ id: "x", design: { kind: "figma" }, app: { source: "storybook", storyId: "s" } }])).toMatchObject({
+      ok: false,
+      error: { kind: "invalid-entry", index: 0 },
+    });
   });
 
   it("rejects malformed input with a typed error", () => {

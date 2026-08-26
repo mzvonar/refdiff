@@ -177,6 +177,7 @@ export async function packageForModel(
       width: design.width,
       height: design.height,
       ...(design.scope ? { scope: design.scope } : {}),
+      ...(design.quality ? { quality: design.quality } : {}),
     },
     impl: { source: impl.source, ref: impl.ref, width: impl.width, height: impl.height },
     alignment,
