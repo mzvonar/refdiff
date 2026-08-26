@@ -16,6 +16,7 @@ import sharp from "sharp";
 
 import { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "../geometry.js";
 import type { AlignedPair } from "../pipeline.js";
+import { diffReports } from "./delta.js";
 import type {
   Box,
   ComparisonReport,
@@ -38,6 +39,8 @@ export interface PackageOptions {
   policy?: IgnorePolicy;
   /** Absolute path of the pixel channel's diff mask PNG, when it ran. */
   diffMaskPath?: string;
+  /** The previous run's report of this pair, when one exists → `delta`. */
+  previous?: ComparisonReport;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 };
@@ -118,6 +121,7 @@ export async function packageForModel(
     suppressed = [],
     policy = {},
     diffMaskPath,
+    previous,
   }: PackageOptions,
 ): Promise<ComparisonReport> {
   await mkdir(join(outDir, "crops"), { recursive: true });
@@ -183,6 +187,7 @@ export async function packageForModel(
       pass: !withCrops.some((f) => atOrAbove(f.severity, failThreshold)),
       failThreshold,
     },
+    ...(previous !== undefined ? { delta: diffReports(previous, { findings: withCrops }) } : {}),
     artifacts: {
       overlay: rel(overlayPath),
       designPng: rel(design.pngPath),

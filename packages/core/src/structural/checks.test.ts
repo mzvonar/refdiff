@@ -94,6 +94,185 @@ describe("runTypedChecks", () => {
     expect(typo.actual).toEqual({ fontSize: 28, fontWeight: 400 });
   });
 
+  describe("border", () => {
+    it("is quiet for sub-pixel width and imperceptible color differences", () => {
+      const findings = runTypedChecks(
+        matched(
+          el("d", { style: { borderWidth: 1, borderColor: "rgb(200, 200, 200)" } }),
+          el("i", { style: { borderWidth: 1.33, borderColor: "rgb(201, 200, 200)" } }),
+        ),
+      );
+      expect(findings).toEqual([]);
+    });
+
+    it("reports a border the design does not have as major", () => {
+      const findings = runTypedChecks(
+        matched(el("d", {}), el("i", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)" } })),
+      );
+      expect(findings).toHaveLength(1);
+      expect(findings[0]!.type).toBe("border");
+      expect(findings[0]!.severity).toBe("major");
+      expect(findings[0]!.expected).toEqual({ borderWidth: 0 });
+      expect(findings[0]!.actual).toEqual({ borderWidth: 1, borderColor: "rgb(0, 0, 0)" });
+    });
+
+    it("treats a transparent border as no border", () => {
+      const findings = runTypedChecks(
+        matched(el("d", {}), el("i", { style: { borderWidth: 1, borderColor: "rgba(0, 0, 0, 0)" } })),
+      );
+      expect(findings).toEqual([]);
+    });
+
+    it("reports a missing border with a message that says so", () => {
+      const findings = runTypedChecks(
+        matched(el("d", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)" } }), el("i", {})),
+      );
+      expect(findings[0]!.severity).toBe("major");
+      expect(findings[0]!.message).toContain("no border, design has one");
+    });
+
+    it("does not compare decoration of non-text boxes whose size already differs", () => {
+      const findings = runTypedChecks(
+        matched(
+          el("d", { role: "box", box: { x: 10, y: 10, w: 8, h: 8 }, style: { borderRadius: 4, backgroundColor: "rgb(0, 0, 0)" } }),
+          el("i", { role: "box", box: { x: 10, y: 10, w: 18, h: 18 }, style: { borderRadius: 9, borderWidth: 1, borderColor: "rgb(0, 0, 0)", backgroundColor: "rgb(0, 0, 0)" } }),
+        ),
+      );
+      expect(findings.map((f) => f.type)).toEqual(["size"]);
+    });
+
+    it("scores border color with CIEDE2000 and width by tolerance", () => {
+      const minor = runTypedChecks(
+        matched(
+          el("d", { style: { borderWidth: 1, borderColor: "rgb(220, 220, 220)" } }),
+          el("i", { style: { borderWidth: 2, borderColor: "rgb(205, 205, 205)" } }),
+        ),
+      );
+      expect(minor).toHaveLength(1);
+      expect(minor[0]!.type).toBe("border");
+      expect(minor[0]!.severity).toBe("minor");
+      expect(minor[0]!.message).toContain("width 2px vs 1px");
+      expect(minor[0]!.message).toContain("ΔE2000");
+
+      const major = runTypedChecks(
+        matched(
+          el("d", { style: { borderWidth: 1, borderColor: "rgb(37, 99, 235)" } }),
+          el("i", { style: { borderWidth: 1, borderColor: "rgb(220, 38, 38)" } }),
+        ),
+      );
+      expect(major[0]!.severity).toBe("major");
+      expect(major[0]!.expected).toEqual({ borderWidth: 1, borderColor: "rgb(37, 99, 235)" });
+    });
+  });
+
+  describe("spacing", () => {
+    const stack = (implShift: number, rightShift = 0): MatchResult => ({
+      matches: [
+        {
+          design: el("d1", { text: "Label", box: { x: 10, y: 10, w: 100, h: 20 } }),
+          impl: el("i1", { text: "Label", box: { x: 10, y: 10, w: 100, h: 20 } }),
+          gamma: 0,
+          via: "text",
+        },
+        {
+          design: el("d2", { text: "Value", box: { x: 10, y: 38, w: 100, h: 20 } }),
+          impl: el("i2", { text: "Value", box: { x: 10, y: 38 + implShift, w: 100, h: 20 } }),
+          gamma: 0,
+          via: "text",
+        },
+        {
+          design: el("d3", { text: "Side", box: { x: 130, y: 10, w: 40, h: 20 } }),
+          impl: el("i3", { text: "Side", box: { x: 130 + rightShift, y: 10, w: 40, h: 20 } }),
+          gamma: 0,
+          via: "text",
+        },
+      ],
+      designOnly: [],
+      implOnly: [],
+    });
+
+    it("is quiet when gaps agree within 2px", () => {
+      expect(runTypedChecks(stack(2)).filter((f) => f.type === "spacing")).toEqual([]);
+    });
+
+    it("reports a grown vertical gap as ONE finding spanning both elements", () => {
+      const findings = runTypedChecks(stack(4));
+      const spacing = findings.filter((f) => f.type === "spacing");
+      expect(spacing).toHaveLength(1);
+      expect(spacing[0]!.severity).toBe("minor");
+      expect(spacing[0]!.expected).toEqual({ gap: 8, axis: "vertical" });
+      expect(spacing[0]!.actual).toEqual({ gap: 12, axis: "vertical" });
+      expect(spacing[0]!.designBox).toEqual({ x: 10, y: 10, w: 100, h: 48 });
+      expect(spacing[0]!.implBox).toEqual({ x: 10, y: 10, w: 100, h: 52 });
+      expect(spacing[0]!.message).toContain('between "Label" and "Value"');
+      // Only a 4px shift: the moved element itself stays within position tolerance.
+      expect(findings.filter((f) => f.type === "position")).toEqual([]);
+    });
+
+    it("is major beyond 8px and reports horizontal gaps too", () => {
+      const findings = runTypedChecks(stack(24, 12)).filter((f) => f.type === "spacing");
+      expect(findings.map((f) => [f.expected!["axis"], f.severity])).toEqual([
+        ["vertical", "major"],
+        ["horizontal", "major"],
+      ]);
+      expect(findings[1]!.expected).toEqual({ gap: 20, axis: "horizontal" });
+      expect(findings[1]!.actual).toEqual({ gap: 32, axis: "horizontal" });
+    });
+
+    it("ignores wide layout distances and negative (overlapping) gaps", () => {
+      const far: MatchResult = {
+        matches: [
+          {
+            design: el("d1", { text: "Header", box: { x: 10, y: 10, w: 100, h: 20 } }),
+            impl: el("i1", { text: "Header", box: { x: 10, y: 10, w: 100, h: 20 } }),
+            gamma: 0,
+            via: "text",
+          },
+          {
+            design: el("d2", { text: "Footer", box: { x: 10, y: 400, w: 100, h: 20 } }),
+            impl: el("i2", { text: "Footer", box: { x: 10, y: 380, w: 100, h: 20 } }),
+            gamma: 0,
+            via: "text",
+          },
+        ],
+        designOnly: [],
+        implOnly: [],
+      };
+      expect(runTypedChecks(far).filter((f) => f.type === "spacing")).toEqual([]);
+
+      // Impl swapped the order: overlap on the impl side is a position matter.
+      const swapped = stack(-40);
+      expect(runTypedChecks(swapped).filter((f) => f.type === "spacing")).toEqual([]);
+    });
+
+    it("only measures gaps between elements adjacent on BOTH sides", () => {
+      // A design-only row sits between Label and Value: that is a missing
+      // element, and the Label→Value distance is not a sibling gap.
+      const withMissing = stack(24);
+      withMissing.designOnly = [el("gone", { text: "Popis", box: { x: 10, y: 34, w: 100, h: 20 } })];
+      withMissing.matches[1] = {
+        ...withMissing.matches[1]!,
+        design: el("d2", { text: "Value", box: { x: 10, y: 62, w: 100, h: 20 } }),
+      };
+      expect(runTypedChecks(withMissing).filter((f) => f.type === "spacing")).toEqual([]);
+
+      // An impl-only element wedged between them on the impl side, likewise.
+      const withExtra = stack(24);
+      withExtra.implOnly = [el("extra", { text: "Zdroj", box: { x: 10, y: 34, w: 100, h: 20 } })];
+      expect(runTypedChecks(withExtra).filter((f) => f.type === "spacing")).toEqual([]);
+    });
+
+    it("skips horizontal gaps next to data slots (width is content)", () => {
+      const m = stack(0, 12);
+      m.matches[2] = {
+        ...m.matches[2]!,
+        impl: el("i3", { text: "Different", box: { x: 142, y: 10, w: 40, h: 20 } }),
+      };
+      const spacing = runTypedChecks(m).filter((f) => f.type === "spacing");
+      expect(spacing).toEqual([]);
+    });
+  });
+
   it("keeps text-content findings minor", () => {
     const findings = runTypedChecks(
       matched(el("d", { text: "Uložiť" }), el("i", { text: "Save" })),

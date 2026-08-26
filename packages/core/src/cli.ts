@@ -9,6 +9,7 @@
  * Planned (docs/architecture.md): inspect, explore, report.
  */
 
+import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -76,7 +77,9 @@ Common:
   --max-gamma <px>        element-match cutoff (default 100)
 
 Suppressed findings are never dropped: findings.json lists them under
-\`suppressed\` with the rule that hit each one.
+\`suppressed\` with the rule that hit each one. When --out already holds a
+findings.json from a previous run, the new report carries \`delta\`
+{ previousRun, resolved, introduced } (identity by content + place, not id).
 
 Exit codes: 0 pass, 1 findings at/above threshold, 2 capture or usage error.`;
 
@@ -108,12 +111,35 @@ interface RunOptions {
 
 type PairError = { side: "design" | "impl"; error: CaptureError };
 
+/**
+ * The previous run's report in `outDir`, if a well-formed one is there. Read
+ * BEFORE the run writes anything, so the relative verdict compares against
+ * what the last run actually said. Unreadable/foreign JSON → no delta.
+ */
+async function readPreviousReport(outDir: string): Promise<ComparisonReport | undefined> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(join(outDir, "findings.json"), "utf8"));
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      Array.isArray((parsed as { findings?: unknown }).findings) &&
+      typeof (parsed as { createdAt?: unknown }).createdAt === "string"
+    ) {
+      return parsed as ComparisonReport;
+    }
+  } catch {
+    // ENOENT or malformed: first run of this pair.
+  }
+  return undefined;
+}
+
 /** One pair through the whole pipeline. Capture errors are data. */
 async function runPair(
   browser: Browser,
   spec: PairSpec,
   o: RunOptions,
 ): Promise<Result<ComparisonReport, PairError>> {
+  const previous = await readPreviousReport(o.outDir);
   const policy = mergePolicies(spec.ignore, o.policy);
   const designSource = {
     ...spec.design,
@@ -190,6 +216,7 @@ async function runPair(
     suppressed,
     policy,
     ...(diffMaskPath !== undefined ? { diffMaskPath } : {}),
+    ...(previous !== undefined ? { previous } : {}),
   });
   return ok(report);
 }
@@ -212,6 +239,14 @@ function printReport(report: ComparisonReport): void {
     for (const s of report.suppressed) byRule.set(s.suppressedBy, (byRule.get(s.suppressedBy) ?? 0) + 1);
     console.log(
       `  suppressed: ${[...byRule].map(([rule, n]) => `${n} ${rule}`).join(", ")} (see findings.json)`,
+    );
+  }
+  if (report.delta) {
+    const { introduced, resolved, previousRun } = report.delta;
+    console.log(
+      `delta vs ${previousRun}: +${introduced.length} introduced / −${resolved.length} resolved${
+        introduced.length > 0 ? ` (introduced: ${introduced.join(", ")})` : ""
+      }`,
     );
   }
   console.log(`verdict: ${report.verdict.pass ? "PASS" : "FAIL"} (threshold: ${report.verdict.failThreshold})`);

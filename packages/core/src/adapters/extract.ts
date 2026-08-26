@@ -104,6 +104,41 @@ export async function extractElementTree(
 
     const rootArea = rootRect.width * rootRect.height;
 
+    const paintsDecoration = (s: CSSStyleDeclaration, rect: DOMRect): boolean => {
+      const bw = parseFloat(s.borderTopWidth);
+      const hasBorder = Number.isFinite(bw) && bw > 0 && s.borderTopStyle !== "none" && hasAlpha(s.borderTopColor);
+      const r = radiusPx(s.borderTopLeftRadius, rect);
+      return hasAlpha(s.backgroundColor) || hasBorder || (r !== undefined && r > 0);
+    };
+
+    /**
+     * The element whose background/border/radius visually belong to `el`:
+     * `el` itself when it paints any, else the nearest ancestor (below the
+     * root) reached through a chain of single-child, textless wrappers that
+     * paints some. Otherwise `el` (undecorated).
+     */
+    const decorationSource = (
+      el: Element,
+      rect: DOMRect,
+      cs: CSSStyleDeclaration,
+    ): { cs: CSSStyleDeclaration; rect: DOMRect } => {
+      if (paintsDecoration(cs, rect)) return { cs, rect };
+      let node: Element = el;
+      for (;;) {
+        const parent = node.parentElement;
+        if (!parent || parent === root || parent.children.length !== 1) break;
+        const ownText = Array.from(parent.childNodes).some(
+          (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "",
+        );
+        if (ownText) break;
+        const pcs = getComputedStyle(parent);
+        const pRect = parent.getBoundingClientRect();
+        if (paintsDecoration(pcs, pRect)) return { cs: pcs, rect: pRect };
+        node = parent;
+      }
+      return { cs, rect };
+    };
+
     const emit = (el: Element, elRect: DOMRect, cs: CSSStyleDeclaration, ownText: string) => {
       const tag = el.tagName.toLowerCase();
       const isImage = tag === "img" || tag === "picture" || tag === "video";
@@ -125,13 +160,20 @@ export async function extractElementTree(
         const fw = parseInt(cs.fontWeight, 10);
         if (Number.isFinite(fw)) style["fontWeight"] = fw;
       }
-      if (hasAlpha(cs.backgroundColor)) style["backgroundColor"] = cs.backgroundColor;
-      const radius = radiusPx(cs.borderTopLeftRadius, elRect);
+      // Decoration (background, border, radius) comes from the leaf itself
+      // or, when the leaf paints none, from the nearest ancestor of which it
+      // is the ONLY child: a <button><span>⋯</span></button> and a bordered
+      // <div>⋯</div> are the same bordered pill, and one side's markup must
+      // not decide whether the border is "missing".
+      const { cs: dcs, rect: dRect } = decorationSource(el, elRect, cs);
+      if (hasAlpha(dcs.backgroundColor)) style["backgroundColor"] = dcs.backgroundColor;
+      const radius = radiusPx(dcs.borderTopLeftRadius, dRect);
       if (radius !== undefined && radius > 0) style["borderRadius"] = radius;
-      const bw = pxOrUndef(cs.borderTopWidth);
-      if (bw !== undefined && bw > 0 && cs.borderTopStyle !== "none") {
+      const bw = pxOrUndef(dcs.borderTopWidth);
+      // A transparent border (Tailwind `border border-transparent`) paints nothing.
+      if (bw !== undefined && bw > 0 && dcs.borderTopStyle !== "none" && hasAlpha(dcs.borderTopColor)) {
         style["borderWidth"] = bw;
-        style["borderColor"] = cs.borderTopColor;
+        style["borderColor"] = dcs.borderTopColor;
       }
 
       const node: Record<string, unknown> = {

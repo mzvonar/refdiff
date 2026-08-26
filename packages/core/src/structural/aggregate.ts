@@ -40,25 +40,33 @@ const num = (v: string | number | undefined): number => (typeof v === "number" ?
 function metricDelta(f: Finding): readonly [number, number] {
   const e = f.expected ?? {};
   const a = f.actual ?? {};
-  return f.type === "position"
-    ? [num(a["x"]) - num(e["x"]), num(a["y"]) - num(e["y"])]
-    : [num(a["w"]) - num(e["w"]), num(a["h"]) - num(e["h"])];
+  switch (f.type) {
+    case "position":
+      return [num(a["x"]) - num(e["x"]), num(a["y"]) - num(e["y"])];
+    case "spacing":
+      // One gap that grew by N px, wherever it occurs, is one cause.
+      return [num(a["gap"]) - num(e["gap"]), 0];
+    default:
+      return [num(a["w"]) - num(e["w"]), num(a["h"]) - num(e["h"])];
+  }
 }
 
 /**
- * Exact grouping key for the categorical types. Position/size get a coarse
- * key (type only) and are clustered by distance afterwards.
+ * Exact grouping key for the categorical types. Position/size/spacing get a
+ * coarse key (type, plus axis for spacing) and are clustered by delta
+ * afterwards.
  */
 function groupKey(f: Finding): string {
   switch (f.type) {
     case "position":
     case "size":
       return f.type;
+    case "spacing":
+      return `${f.type}|${String(f.expected?.["axis"] ?? "")}`;
     case "color":
     case "typography":
     case "border-radius":
     case "border":
-    case "spacing":
     case "pixel-region": {
       const canon = (r: Record<string, string | number> | undefined): string =>
         JSON.stringify(Object.entries(r ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
@@ -71,7 +79,8 @@ function groupKey(f: Finding): string {
   }
 }
 
-const isMetric = (t: FindingType): boolean => t === "position" || t === "size";
+const isMetric = (t: FindingType): boolean =>
+  t === "position" || t === "size" || t === "spacing";
 
 /**
  * Split one coarse group into clusters of "the same shift". A delta joins a

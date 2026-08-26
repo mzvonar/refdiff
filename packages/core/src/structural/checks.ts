@@ -9,7 +9,7 @@
 
 import { differenceCiede2000, parse } from "culori";
 
-import type { MatchResult } from "../pipeline.js";
+import type { ElementMatch, MatchResult } from "../pipeline.js";
 import type { Box, ElementNode, Finding, FindingType, Severity } from "../types.js";
 
 export interface CheckOptions {
@@ -22,6 +22,13 @@ export interface CheckOptions {
   fontSizeTolerance?: number;
   lineHeightTolerance?: number;
   radiusTolerance?: number;
+  /** Border width deltas up to this many px count as equal (sub-pixel rendering). */
+  borderWidthTolerance?: number;
+  /** Sibling-gap deltas up to this many px count as equal; > `spacingMajor` is major. */
+  spacingTolerance?: number;
+  spacingMajor?: number;
+  /** Design-side gaps wider than this are layout distance, not sibling spacing — not checked. */
+  spacingMaxGap?: number;
   /** Elements smaller than this (either dimension) never report alone. */
   minElementSize?: number;
 }
@@ -34,6 +41,10 @@ const DEFAULTS: Required<CheckOptions> = {
   fontSizeTolerance: 0.6,
   lineHeightTolerance: 1.5,
   radiusTolerance: 1.5,
+  borderWidthTolerance: 0.5,
+  spacingTolerance: 2,
+  spacingMajor: 8,
+  spacingMaxGap: 64,
   minElementSize: 4,
 };
 
@@ -59,6 +70,14 @@ const elementLabel = (el: ElementNode): string =>
     : `${el.role ?? "element"} at (${Math.round(el.box.x)}, ${Math.round(el.box.y)})`;
 
 const isSubstantial = (box: Box): boolean => box.w * box.h >= 64 * 64;
+
+/** A border with a fully transparent color (or none) paints nothing. */
+const isVisibleBorder = (s: NonNullable<ElementNode["style"]>): boolean => {
+  if (s.borderWidth === undefined || s.borderWidth <= 0) return false;
+  if (s.borderColor === undefined) return true;
+  const c = parse(s.borderColor);
+  return c === undefined || (c.alpha ?? 1) > 0;
+};
 
 const roleOf = (el: ElementNode): { role?: string } =>
   el.role !== undefined ? { role: el.role } : {};
@@ -213,10 +232,23 @@ function pairFindings(
     });
   }
 
+  // Decoration (radius, border) is compared only between comparable boxes:
+  // text pairs always (their box is the glyph ink, decoration comes from the
+  // surrounding pill), other pairs when the size check passed — an 8px dot
+  // matched to an 18px circle is a size finding, and its radius/border say
+  // nothing about the design's radius/border.
+  const isTextPair = design.text !== undefined && impl.text !== undefined;
+  const decorationComparable =
+    isTextPair || (Math.abs(dw) <= o.sizeTolerance && Math.abs(dh) <= o.sizeTolerance);
+
   // Border radius.
   const dr = ds.borderRadius ?? 0;
   const ir = is.borderRadius ?? 0;
-  if ((ds.borderRadius !== undefined || is.borderRadius !== undefined) && Math.abs(dr - ir) > o.radiusTolerance) {
+  if (
+    decorationComparable &&
+    (ds.borderRadius !== undefined || is.borderRadius !== undefined) &&
+    Math.abs(dr - ir) > o.radiusTolerance
+  ) {
     out.push({
       type: "border-radius",
       severity: Math.abs(dr - ir) >= 8 ? "major" : "minor",
@@ -224,6 +256,38 @@ function pairFindings(
       expected: { borderRadius: dr },
       actual: { borderRadius: ir },
       message: `${label} border-radius is ${ir}px, design says ${dr}px`,
+    });
+  }
+
+  // Border (top side, as extracted): width and color. A border appearing or
+  // vanishing is a structural change (major); a hairline off by a fraction of
+  // a px or a slightly different stroke color is minor.
+  const dbw = isVisibleBorder(ds) ? (ds.borderWidth ?? 0) : 0;
+  const ibw = isVisibleBorder(is) ? (is.borderWidth ?? 0) : 0;
+  const widthDiffers = Math.abs(dbw - ibw) > o.borderWidthTolerance;
+  const borderDe =
+    dbw > 0 && ibw > 0 && ds.borderColor !== undefined && is.borderColor !== undefined
+      ? colorDelta(ds.borderColor, is.borderColor)
+      : undefined;
+  const colorDiffers = borderDe !== undefined && borderDe >= o.colorDeltaEMinor;
+  if (decorationComparable && (widthDiffers || colorDiffers)) {
+    const presenceFlip = (dbw === 0) !== (ibw === 0);
+    const notes: string[] = [];
+    if (widthDiffers) notes.push(presenceFlip ? (ibw === 0 ? "no border, design has one" : "border the design does not have") : `width ${ibw}px vs ${dbw}px`);
+    if (colorDiffers) notes.push(`color ${is.borderColor} vs ${ds.borderColor} (ΔE2000 ${round1(borderDe)})`);
+    out.push({
+      type: "border",
+      severity: presenceFlip || (borderDe !== undefined && borderDe >= o.colorDeltaEMajor) ? "major" : "minor",
+      ...boxes,
+      expected: {
+        borderWidth: dbw,
+        ...(dbw > 0 && ds.borderColor !== undefined ? { borderColor: ds.borderColor } : {}),
+      },
+      actual: {
+        borderWidth: ibw,
+        ...(ibw > 0 && is.borderColor !== undefined ? { borderColor: is.borderColor } : {}),
+      },
+      message: `${label} border differs: ${notes.join(", ")}`,
     });
   }
 
@@ -247,13 +311,120 @@ function pairFindings(
   return out;
 }
 
+/** How much two intervals [a0,a1] and [b0,b1] overlap, in px (≤ 0 = disjoint). */
+const overlap = (a0: number, a1: number, b0: number, b1: number): number =>
+  Math.min(a1, b1) - Math.max(a0, b0);
+
+const textOf = (el: ElementNode): string | undefined =>
+  el.text !== undefined ? normText(el.text) : undefined;
+
+const unionBox = (a: Box, b: Box): Box => {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    w: Math.max(a.x + a.w, b.x + b.w) - x,
+    h: Math.max(a.y + a.h, b.y + b.h) - y,
+  };
+};
+
+/**
+ * Sibling-gap spacing: for every matched pair, the nearest matched neighbour
+ * below (overlapping horizontally) and to the right (overlapping vertically)
+ * on the design side defines a gap; the same two elements' impl boxes give
+ * the impl gap. A gap that grew or shrank is ONE spacing defect, whereas the
+ * position channel reports every element it pushed. No container extraction
+ * is needed — only data both sides already have. Horizontal gaps next to a
+ * data slot (differing text) are content-dependent and skipped, as are gaps
+ * wider than `spacingMaxGap` on the design side and negative gaps.
+ */
+function spacingFindings(match: MatchResult, o: Required<CheckOptions>): RawFinding[] {
+  const out: RawFinding[] = [];
+  const pairs = match.matches;
+  const dataSlot = (m: ElementMatch): boolean => {
+    const dt = textOf(m.design);
+    const it = textOf(m.impl);
+    return dt !== undefined && it !== undefined && dt !== it;
+  };
+  const minOverlap = 4;
+
+  // Nearest element below / to the right of `A` among ALL of one side's
+  // elements — unmatched ones included. A gap is a sibling gap only when
+  // nothing sits between the two elements; a design-only row in between
+  // is a missing-element finding, not a spacing one.
+  type Axis = "vertical" | "horizontal";
+  const nearest = (A: Box, all: readonly ElementNode[], self: ElementNode, axis: Axis): ElementNode | undefined => {
+    let best: ElementNode | undefined;
+    for (const el of all) {
+      if (el === self) continue;
+      const B = el.box;
+      const adjacent =
+        axis === "vertical"
+          ? B.y >= A.y + A.h - 0.5 && overlap(A.x, A.x + A.w, B.x, B.x + B.w) >= minOverlap
+          : B.x >= A.x + A.w - 0.5 && overlap(A.y, A.y + A.h, B.y, B.y + B.h) >= minOverlap;
+      if (!adjacent) continue;
+      const closer = best === undefined || (axis === "vertical" ? B.y < best.box.y : B.x < best.box.x);
+      if (closer) best = el;
+    }
+    return best;
+  };
+  const designAll = [...pairs.map((m) => m.design), ...match.designOnly];
+  const implAll = [...pairs.map((m) => m.impl), ...match.implOnly];
+  const byDesign = new Map(pairs.map((m) => [m.design, m]));
+
+  /** The matched neighbour of `a` on `axis`, when it is adjacent on BOTH sides. */
+  const neighbour = (a: ElementMatch, axis: Axis): ElementMatch | undefined => {
+    const d = nearest(a.design.box, designAll, a.design, axis);
+    const b = d !== undefined ? byDesign.get(d) : undefined;
+    if (b === undefined) return undefined;
+    return nearest(a.impl.box, implAll, a.impl, axis) === b.impl ? b : undefined;
+  };
+
+  for (const a of pairs) {
+    const A = a.design.box;
+    const below = neighbour(a, "vertical");
+    const right = neighbour(a, "horizontal");
+
+    const report = (b: ElementMatch, axis: Axis): void => {
+      const dGap =
+        axis === "vertical" ? b.design.box.y - (A.y + A.h) : b.design.box.x - (A.x + A.w);
+      const iGap =
+        axis === "vertical"
+          ? b.impl.box.y - (a.impl.box.y + a.impl.box.h)
+          : b.impl.box.x - (a.impl.box.x + a.impl.box.w);
+      // Wide gaps are layout distance (header → footer), not a spacing token;
+      // a negative gap means the elements overlap or swapped order, which
+      // the position check owns.
+      if (dGap > o.spacingMaxGap || dGap < 0 || iGap < 0) return;
+      const delta = iGap - dGap;
+      if (Math.abs(delta) <= o.spacingTolerance) return;
+      out.push({
+        type: "spacing",
+        severity: Math.abs(delta) > o.spacingMajor ? "major" : "minor",
+        designBox: unionBox(A, b.design.box),
+        implBox: unionBox(a.impl.box, b.impl.box),
+        ...roleOf(a.design),
+        expected: { gap: round1(dGap), axis },
+        actual: { gap: round1(iGap), axis },
+        message: `${axis} gap between ${elementLabel(a.design)} and ${elementLabel(b.design)} is ${round1(iGap)}px, design says ${round1(dGap)}px`,
+      });
+    };
+    if (below) report(below, "vertical");
+    if (right && !dataSlot(a) && !dataSlot(right)) report(right, "horizontal");
+  }
+  return out;
+}
+
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, major: 1, minor: 2 };
 const TYPE_ORDER: Partial<Record<FindingType, number>> = {
   "missing-element": 0,
   "extra-element": 1,
   position: 2,
-  size: 3,
-  color: 4,
+  spacing: 3,
+  size: 4,
+  color: 5,
+  border: 6,
 };
 
 /**
@@ -283,6 +454,7 @@ export function runTypedChecks(match: MatchResult, options: CheckOptions = {}): 
   const raw: RawFinding[] = [
     ...presenceFindings(match, o.minElementSize),
     ...match.matches.flatMap((m) => pairFindings(m.design, m.impl, o)),
+    ...spacingFindings(match, o),
   ];
   return finalize(raw);
 }

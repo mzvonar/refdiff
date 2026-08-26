@@ -120,3 +120,11 @@ export {
 export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js";
 
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js";
+export {
+  boxDistance,
+  diffFindings,
+  diffReports,
+  identityKey,
+  type DeltaOptions,
+  type ReportDelta,
+} from "./package/delta.js";
