@@ -119,7 +119,27 @@ NCC pixel alignment (~100 lines) lands here. Findings type
 `pixel-region`, crops as usual. Do NOT start before item 1 — it would
 only add noise to an untrustworthy list.
 
-## 3. Hygiene / small checks ← DO NEXT (steps in handoff "What REMAINS" §3)
+## 3. Hygiene / small checks — DONE except `inspect` (2026-08-26, session 6)
+
+Landed: `border` check (width > 0.5px or ΔE2000 ≥ 2.5; major when a border
+appears/vanishes or ΔE ≥ 8), `spacing` check as sibling gaps over
+`MatchResult` (decision recorded in architecture.md "Open decisions":
+nearest neighbour below/right adjacent on BOTH sides, design gap ≤ 64px,
+tolerance 2px / major > 8px, aggregation clusters on Δgap per axis), pure
+`package/delta.ts` `diffReports` → `report.delta` (identity by content +
+nearest box, CLI reads the previous `findings.json` first and prints
+"+N introduced / −M resolved"). Two extraction fixes the corpus forced:
+decoration hoisting (border/radius/background from a single-child ancestor
+chain — the `⋯` button's border lives on `<button>`, the design's on the
+`<div>`) and transparent borders ignored; border/radius compared only between
+comparable boxes. `inspect` deliberately NOT built — nothing consumes reports
+yet. doc-detail: 57/100 → **60 findings / 122 instances** (+5 spacing: label→
+value gap ×3, header→tabs 3px ×14, subtitle→amount ×3, two action-row
+separators; +1 minor border color; +1 badge background made visible by the
+hoist; −3 radius false positives on pills both sides draw), re-run delta
+empty. Original spec below.
+
+### 3 (original spec, for reference)
 
 In this order — border first (data already extracted), spacing second
 (decide sibling-gap vs container extraction; recommend sibling-gap),

@@ -131,9 +131,14 @@ What the model receives — every item evidence-backed (research §4):
   images (never concatenated).
 - **Element trees of both sides** so the model can compare data first and
   confirm visually second.
-- **Relative verdict** vs the previous run (resolved/introduced findings).
+- **Relative verdict** vs the previous run (`package/delta.ts`, pure
+  `diffReports(prev, next)` → `report.delta { previousRun, resolved,
+  introduced }`). Identity is by CONTENT — type, role, canonical
+  expected/actual, nearest box within 5px — never by `id`/`mark`, which
+  renumber every run. The CLI reads the run dir's previous `findings.json`
+  before anything is written and prints "+N introduced / −M resolved".
 - `inspect` CLI subcommand (crop/zoom/sample-pixel) for model-driven
-  closer looks.
+  closer looks (not built yet — waits for the model loop to consume reports).
 
 The **skill** (thin, per consuming repo) enforces loop discipline: run →
 read findings → fix → re-run; bounded iterations (default 5) with a
@@ -211,6 +216,32 @@ model-facing output.
     `pixel-region` findings into color vs shape change.
   - `jest`/`vitest`/`bun`/`matcher` (VRT matchers), `react`/`ui`
     (viewer), `object` (JSON diff), `codec-*`, `cli`: out of scope.
+- **Spacing granularity — decided 2026-08-26: sibling gaps over
+  `MatchResult`, no container extraction.** Extraction emits leaves (+
+  text-bearing containers) only, so there is no `gap`/`padding` to compare;
+  `ElementNode.style.gap/padding` stay unused. `structural/checks.ts`
+  `spacingFindings` instead measures, for every matched pair, the distance
+  to its nearest neighbour below / to the right — where "nearest" is taken
+  over ALL elements of a side (unmatched included) and the neighbour must be
+  adjacent on BOTH sides, so a design-only row in between is a missing
+  element, never a spacing delta. Design gaps > 64px are layout distance,
+  not a spacing token; negative gaps (overlap / swapped order) belong to the
+  position check; horizontal gaps next to a data slot are content width.
+  Tolerance 2px, major > 8px; aggregation clusters spacing on Δgap per axis
+  like position on Δxy. Finding box = union of the two elements (crop shows
+  both). Containers with `gap`/`padding` remain the alternative if a corpus
+  needs padding checks the sibling view cannot express (first/last child
+  vs container edge).
+- **Decoration hoisting (extraction) — 2026-08-26.** A leaf that paints no
+  background/border/radius takes them from the nearest ancestor of which it
+  is the only (textless-wrapper-chain) child: `<button><span>⋯</span>
+  </button>` and a bordered `<div>⋯</div>` are the same pill. Without it
+  the border and radius checks reported "no border" / "radius 0" on doc-
+  detail for pills both sides draw. Box stays the leaf's (ink box for
+  text); the radius is clamped against the decorated ancestor's rect.
+  Border/radius are further compared only between comparable boxes (text
+  pairs, or size within tolerance) — an 8px dot matched to an 18px circle
+  is a size finding, not a border one.
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
   `@visual-compare` is free as of Aug 2026).
