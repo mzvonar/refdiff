@@ -6,7 +6,8 @@
  * DOM element tree.
  *
  * "Capture succeeded" means "a real component rendered": the Storybook
- * error overlay, an empty root and a blank render are typed CaptureErrors —
+ * error overlay, an empty root, a blank render and a host still preparing
+ * the story (Vite cold compile spinner) are typed CaptureErrors —
  * the documented 404-as-success failure of the old harness must be
  * impossible here.
  */
@@ -69,32 +70,64 @@ export async function captureStorybook(
     }
 
     // Vite compiles the story on first request — wait until it mounts for
-    // real (or the error overlay claims the page).
+    // real (or the error overlay claims the page). While preparing, Storybook
+    // sets `sb-show-preparing-story` on <body> and shows its own
+    // `.sb-preparing-story > .sb-loader` spinner beside the root: that is
+    // host chrome, never story content (a cold start once passed the spinner
+    // off as a mounted overlay — 1 leaf element, everything "missing").
+    const isPreparing = (): Promise<boolean> =>
+      page.evaluate(
+        () =>
+          document.body.classList.contains("sb-show-preparing-story") ||
+          document.body.classList.contains("sb-show-preparing-docs"),
+      );
     try {
       await page.waitForFunction(
         (overlay: boolean) => {
-          if (document.body.classList.contains("sb-show-errordisplay")) return true;
+          const body = document.body;
+          if (body.classList.contains("sb-show-errordisplay")) return true;
+          if (
+            body.classList.contains("sb-show-preparing-story") ||
+            body.classList.contains("sb-show-preparing-docs")
+          ) {
+            return false;
+          }
           const root = document.getElementById("storybook-root");
           if (!overlay)
             return !!root && root.children.length > 0 && root.getBoundingClientRect().height > 20;
           // Overlay stories portal the dialog to <body> — a mounted root is
           // NOT enough (the portal opens a tick later); wait for visible
-          // content beside the root.
-          return Array.from(document.body.children).some((el) => {
-            if (el === root || el.tagName === "SCRIPT" || el.tagName === "STYLE") return false;
+          // content beside the root that is not Storybook's own chrome. The
+          // portal wrapper itself is 0px tall (its children are fixed-
+          // positioned), so look at descendants, not just the wrapper.
+          const visible = (el: Element): boolean => {
             const r = el.getBoundingClientRect();
             return r.width > 20 && r.height > 20;
+          };
+          return Array.from(body.children).some((el) => {
+            if (el === root || el.tagName === "SCRIPT" || el.tagName === "STYLE") return false;
+            if (/(^|\s)sb-/.test(el.className)) return false;
+            return visible(el) || Array.from(el.querySelectorAll("*")).some(visible);
           });
         },
         source.overlay ?? false,
         { timeout: MOUNT_TIMEOUT_MS },
       );
     } catch {
-      return err({
-        kind: "blank-render",
-        ref: identity,
-        detail: `story "${source.storyId}" did not mount within ${MOUNT_TIMEOUT_MS}ms (no content, no error overlay)`,
-      });
+      const preparing = await isPreparing().catch(() => false);
+      return err(
+        preparing
+          ? {
+              kind: "still-loading",
+              ref: identity,
+              detail: `Storybook was still preparing "${source.storyId}" after ${MOUNT_TIMEOUT_MS}ms (cold Vite compile?) — retry once it is warm`,
+            }
+          : {
+              kind: "blank-render",
+              ref: identity,
+              detail: `story "${source.storyId}" did not mount within ${MOUNT_TIMEOUT_MS}ms (no content, no error overlay)`,
+            },
+      );
     }
 
     // A story that failed to load leaves the error overlay on <body>.

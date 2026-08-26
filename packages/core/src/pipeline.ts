@@ -86,6 +86,8 @@ export type CaptureError =
   | { kind: "hydration-failed"; ref: string; detail: string }
   | { kind: "story-error"; ref: string; storyId: string; detail: string }
   | { kind: "blank-render"; ref: string; detail: string }
+  /** The host was still preparing the render (Storybook/Vite compiling the story) when we gave up. */
+  | { kind: "still-loading"; ref: string; detail: string }
   | { kind: "capture-failed"; ref: string; detail: string };
 
 /** Both sides captured, nothing derived yet. */

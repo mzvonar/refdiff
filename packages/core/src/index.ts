@@ -76,6 +76,12 @@ export {
 export { extractElementTree } from "./adapters/extract.js";
 export { captureDcHtml, frameSelectors, type DcHtmlCaptureOptions } from "./adapters/dc-html.js";
 export { captureStorybook, type StorybookCaptureOptions } from "./adapters/storybook.js";
+export {
+  ensureStorybook,
+  type StorybookServer,
+  type StorybookServerError,
+  type StorybookServerOptions,
+} from "./adapters/storybook-server.js";
 
 export {
   alignStructural,

@@ -18,6 +18,7 @@ import type { Browser } from "playwright";
 import { launchBrowser } from "./adapters/browser.js";
 import { captureDcHtml } from "./adapters/dc-html.js";
 import { captureStorybook } from "./adapters/storybook.js";
+import { ensureStorybook } from "./adapters/storybook-server.js";
 import { parseManifest, type PairSpec } from "./manifest.js";
 import { normalize, pairRefs } from "./pipeline.js";
 import type { CaptureError } from "./pipeline.js";
@@ -60,6 +61,11 @@ Common:
                           (default: ≥3 identical deltas collapse into one
                           finding "×N" that still lists every location)
   --storybook-url <url>   default $VC_STORYBOOK_URL or http://localhost:6006
+  --storybook-dir <dir>   if nothing answers at --storybook-url, start Storybook
+                          from this project dir (no browser tab) and stop it
+                          after the run; default $VC_STORYBOOK_DIR. A Storybook
+                          you started yourself is reused and left alone.
+  --storybook-open        let the auto-started Storybook open its browser tab
   --out <dir>             run directory (default: out/<pair>)
   --fail-threshold <sev>  critical|major|minor (default major)
   --max-gamma <px>        element-match cutoff (default 100)
@@ -201,6 +207,8 @@ async function compare(argv: string[]): Promise<void> {
       "design-file": { type: "string" },
       "design-frame": { type: "string" },
       "storybook-url": { type: "string" },
+      "storybook-dir": { type: "string" },
+      "storybook-open": { type: "boolean" },
       story: { type: "string" },
       viewport: { type: "string" },
       overlay: { type: "boolean" },
@@ -268,6 +276,22 @@ async function compare(argv: string[]): Promise<void> {
   }
 
   const outRoot = values.out;
+
+  // Storybook: reuse a running one; otherwise start our own (no browser tab
+  // unless --storybook-open) when a project dir is known.
+  const storybookDir = values["storybook-dir"] ?? process.env["VC_STORYBOOK_DIR"];
+  let stopStorybook = async (): Promise<void> => {};
+  if (storybookDir !== undefined) {
+    const sb = await ensureStorybook({
+      url: storybookUrl,
+      dir: resolve(storybookDir),
+      open: values["storybook-open"] ?? false,
+      log: (line) => console.log(line),
+    });
+    if (!sb.ok) fail(`${sb.error.kind}: ${sb.error.detail}`);
+    stopStorybook = sb.value.stop;
+  }
+
   const browser = await launchBrowser();
   let anyFail = false;
   let anyError = false;
@@ -298,6 +322,7 @@ async function compare(argv: string[]): Promise<void> {
     }
   } finally {
     await browser.close();
+    await stopStorybook();
   }
   process.exit(anyError ? 2 : anyFail ? 1 : 0);
 }
