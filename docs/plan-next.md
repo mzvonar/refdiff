@@ -86,7 +86,7 @@ Work (all pure, in `packages/core/src/`):
 Done when: doc-detail run lists the column-width shift, the missing
 category row, the CTA section clipped by viewport, and little else.
 
-## 2. Pixel channel
+## 2. Pixel channel ← DO NEXT (steps in handoff "What REMAINS" §2)
 
 Scoped AA-aware diff inside matched boxes (odiff-bin / pixelmatch v7),
 cluster diff mask into boxes, Argos multi-threshold severity; runs only
