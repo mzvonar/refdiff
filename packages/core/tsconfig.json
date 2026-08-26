@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    /* DOM types for functions serialized into the page via page.evaluate. */
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
   "include": ["src"]
 }

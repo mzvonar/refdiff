@@ -74,7 +74,10 @@ export interface Finding {
 
 /** Result of aligning the two frames before any comparison. */
 export interface Alignment {
+  /** Total horizontal design→impl scale (normalization × structural fit). */
   scale: number;
+  /** Vertical scale when the estimate is anisotropic; defaults to `scale`. */
+  scaleY?: number;
   offsetX: number;
   offsetY: number;
   /** 0..1 — low confidence means the pixel channel is unreliable. */
