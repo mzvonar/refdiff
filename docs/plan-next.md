@@ -154,6 +154,16 @@ id), `inspect` last and only if the model loop is consuming reports.
 - `inspect` subcommand (crop/zoom/sample-pixel) once the model loop
   starts consuming reports.
 
+## 5. Figma design adapter ← DO NEXT (steps in handoff "What REMAINS" §4)
+
+Second design-side source, same `Capture` contract: `FigmaSource` +
+typed errors (`pipeline.ts`), REST edge ported from population-registry's
+`figma-api.mjs` (token, 429 cooldown, chunked renders), pure node-tree →
+`ElementNode[]` mapping with decoration hoisting, GIGO quality gate
+(`--min-design-quality`, default 0.3, score echoed in the report), CLI
+`--figma <fileKey>:<nodeId>` / manifest `design.kind: "figma"`. Prove on one
+real frame vs its story. Then the live-URL impl adapter (§5 in the handoff).
+
 ## 4. Deferred: pixel-region sub-classification (steal from @blazediff/interpret-native)
 
 Trigger: the first real pair where the pixel channel emits findings
