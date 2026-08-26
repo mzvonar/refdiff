@@ -154,7 +154,24 @@ id), `inspect` last and only if the model loop is consuming reports.
 - `inspect` subcommand (crop/zoom/sample-pixel) once the model loop
   starts consuming reports.
 
-## 5. Figma design adapter ← DO NEXT (steps in handoff "What REMAINS" §4)
+## 5. Figma design adapter — BUILT, NOT YET PROVEN (2026-08-26, session 7)
+
+Landed: `FigmaSource` + six typed errors (`pipeline.ts`), `adapters/figma-api.ts`
+(`FigmaClient`: token from `$FIGMA_TOKEN` / `.figma-token` upwards, 429 →
+cooldown record in `~/.cache/visual-compare/figma-cooldown.json` and
+`cooling-down` before any request until it passes, chunked `/v1/images` with
+`use_absolute_bounds=true`, variables endpoint optional), pure
+`adapters/figma-tree.ts` (`figmaTreeToElements` → leaves in root-box CSS px,
+icon collapsing, decoration hoisting, `rgb()/rgba()` colors, tokens from
+variables/shared styles, `figmaQuality`), `adapters/figma.ts` (`captureFigma`:
+nodes → variables → map → gate → render → PNG-size check → `Capture{dpr=scale,
+quality}`), CLI `--figma <fileKey:nodeId|URL> --figma-scale --min-design-quality`,
+manifest `design: { kind: "figma", fileKey, nodeId }`, `findings.json`
+`design.quality`. 27 tests on hand-authored fixtures (no token on this machine
+to record real ones). **Step 7 (prove on a real frame vs its story) needs a
+token + Mato's frame pick** — see handoff. Original spec below.
+
+### 5 (original spec, for reference)
 
 Second design-side source, same `Capture` contract: `FigmaSource` +
 typed errors (`pipeline.ts`), REST edge ported from population-registry's
@@ -163,6 +180,18 @@ typed errors (`pipeline.ts`), REST edge ported from population-registry's
 (`--min-design-quality`, default 0.3, score echoed in the report), CLI
 `--figma <fileKey>:<nodeId>` / manifest `design.kind: "figma"`. Prove on one
 real frame vs its story. Then the live-URL impl adapter (§5 in the handoff).
+
+## 6. Live-URL impl adapter — BUILT, NOT YET PROVEN (2026-08-26, session 7)
+
+`adapters/live-url.ts`: `LiveUrlSource { url, viewport?, selector?, waitFor?,
+auth?, fullPage? }`, auth = Playwright storage state or a session POST (the
+uctoinak `/api/test/session` shape), pure `classifyPage` (login path / password
+form on another path → `login-redirect`; error phrase in title/heading or a
+near-empty body → `error-page`), HTTP ≥ 400 → `http-error`, same
+`extractElementTree` (viewport origin when no `selector`). CLI `--url
+--selector --wait-for --full-page --app-url --auth-state --auth-post
+--auth-header`; manifest `app: { source: "live", route, role }` now runs
+instead of being skipped. Needs the uctoinak app in `dev:e2e` mode to prove.
 
 ## 4. Deferred: pixel-region sub-classification (steal from @blazediff/interpret-native)
 

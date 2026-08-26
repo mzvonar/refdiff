@@ -63,11 +63,16 @@ report as an explicit finding, not an exception or a silent null.
 ### Capture adapters (effectful edges)
 
 Design side:
-- **Figma**: REST renders (PNG at declared scale) + node tree (boxes,
-  text) + variables/tokens. Records file key + node id + version so ref
-  provenance is never lost. Extraction quality is scored; missing
-  variable bindings degrade the score and below a threshold the run
-  hard-stops (Kaelig's GIGO gate).
+- **Figma** (`adapters/figma.ts`, REST edge `figma-api.ts`, pure mapping
+  `figma-tree.ts`): REST renders (PNG at declared scale, `use_absolute_bounds`
+  so the PNG is exactly the node's bounding box × scale) + node tree (boxes,
+  text, fills/strokes/radii/typography) + variables/tokens when the plan has
+  them. Ref = `<fileKey>#<nodeId>@<version>` so provenance is never lost.
+  Extraction quality is scored (share of leaves bound to variables/shared
+  styles, penalized for detached instances); below `--min-design-quality`
+  the run hard-stops with `figma-low-quality` (Kaelig's GIGO gate), the
+  score is echoed in `findings.json` either way. A 429 records a cooldown and
+  later runs refuse to spend requests until it passes.
 - **Claude Design `.dc.html`**: rendered via Playwright. Since the canvas
   is HTML, this adapter also yields DOM boxes + computed styles — the
   richest ref source. Hydration is verified (no `{{…}}` remnants), fonts
@@ -75,8 +80,11 @@ Design side:
 
 Implementation side:
 - **Storybook**: per-story iframe capture with error-page detection.
-- **Live URL**: navigation + auth hook, with 404/error/login-redirect
-  *content* detection (not just navigation success).
+- **Live URL** (`adapters/live-url.ts`): navigation + auth hook (storage
+  state or session POST), with 404/error/login-redirect *content* detection
+  (pure `classifyPage` over final URL, title, heading, body text, password
+  field — not just navigation success); typed `http-error`,
+  `login-redirect`, `error-page`, `auth-failed`, `selector-not-found`.
 
 All captures: viewport matched to the design frame, DPR recorded,
 animations disabled via injected CSS, `document.fonts.ready`,
@@ -242,6 +250,20 @@ model-facing output.
   Border/radius are further compared only between comparable boxes (text
   pairs, or size within tolerance) — an 8px dot matched to an 18px circle
   is a size finding, not a border one.
+- **Figma quality score — 2026-08-26, provisional until proven on a real
+  frame.** `score = (bound / leaves) × (1 − 0.5 × detached / instances)` where
+  a leaf is "bound" when its color or typography comes from a bound variable
+  OR a shared style (`styles.fill/text/stroke`) — teams without the
+  Enterprise variables API still get a meaningful score. Icons (all-vector
+  containers ≤ 64px) count as leaves and are rarely bound, so icon-heavy
+  frames score lower; revisit the 0.3 default against the first real corpus.
+  Figma colors are emitted as `rgb()/rgba()` (paint opacity folded into
+  alpha) so identity keys and messages match the DOM side.
+- **Live-URL error detection is content-based and heuristic.** Login = final
+  path matches `/(login|sign-in|auth|sso|onboarding)/` when the requested one
+  did not, or a password field appears on a different path. Error page = an
+  error phrase (EN + SK) in `<title>`/first heading, or in a body under 300
+  chars. A long page mentioning "404" in a table cell is NOT an error page.
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
   `@visual-compare` is free as of Aug 2026).
