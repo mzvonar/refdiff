@@ -1,0 +1,26 @@
+{
+  "name": "@visual-compare/annotator",
+  "version": "0.0.1",
+  "description": "Split-screen design-vs-implementation review UI with element-anchored annotations",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "visual-compare-annotator": "./dist/cli.js"
+  },
+  "files": ["dist", "public"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@visual-compare/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.5"
+  }
+}

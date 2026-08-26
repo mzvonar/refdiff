@@ -1,0 +1,21 @@
+{
+  "name": "visual-compare",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Design-vs-implementation visual comparison harness for AI coding agents",
+  "license": "MIT",
+  "author": "Martin Zvonar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mzvonar/visual-compare.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

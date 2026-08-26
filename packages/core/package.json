@@ -1,0 +1,31 @@
+{
+  "name": "@visual-compare/core",
+  "version": "0.0.1",
+  "description": "Deterministic design-vs-implementation comparison engine with agent-facing output",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "visual-compare": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "culori": "^4.0.2",
+    "looks-same": "^10.0.1",
+    "odiff-bin": "^4.5.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.62.1",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.5"
+  }
+}
