@@ -19,9 +19,10 @@ produce ~70 of them (see 1b). See handoff "Learnings".
 ## 1b. Systematic-finding aggregation ← DO NEXT (small, pure)
 
 Same `(type, expected→actual)` across many matched pairs is ONE cause:
-on `doc-detail`, 51 typography findings are "Storybook renders serif
-fallback, design says Public Sans" and 16 color findings are "ink is
-#2c2419, design says #1a1a1a". Pure stage `aggregate(findings) ->
+on `doc-detail` (after the Storybook font fix: 100 findings, 8 critical
+/ 42 major / 50 minor) 15 color findings are "ink is #2c2419, design
+says #1a1a1a" and ~10 position findings are the same ~-23px shift of
+the action row. Pure stage `aggregate(findings) ->
 Finding[]` collapsing ≥3 identical deltas into one finding with
 `instances: number` + all boxes (overlay draws one mark per instance,
 message says "×51"). Severity of the aggregate = max of members. This is
