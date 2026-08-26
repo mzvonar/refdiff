@@ -186,6 +186,31 @@ model-facing output.
   research §4 says separate crop files read better. Pixel channel =
   pixelmatch v7 (`includeAA: false`) + own connected-components +
   Argos-style multi-threshold severity, inside matched element boxes.
+- **Rest of the `@blazediff/*` namespace — evaluated 2026-08-26, nothing
+  adopted now.** Measured on the real doc-detail element crop pairs
+  (design resampled onto the impl grid, no shift search):
+  - `core` / `core-native` / `core-wasm`: pixelmatch-compatible counters
+    (1.5–9× faster). Our diff time is sharp crop I/O, not the compare;
+    `core` is a one-line drop-in if that ever changes. Native/wasm take
+    same-size files, not in-memory element crops.
+  - `ssim`, `gmsd`, `hitchhikers-ssim`, `ms-ssim`: not discriminative at
+    element scale across two renders — identical text/icons score SSIM
+    0.28–0.74 and GMSD 0.27–0.41 (their own "substantial difference"
+    band); hitchhikers gives 1.000 for identical AND for the recolored 6px
+    dot; ms-ssim refuses images under a few hundred px.
+  - `interpret-native` (`interpret` / `interpretRegions(base, actual,
+    boxes)` → `regions[] { bbox, changeType, confidence, luminanceNcc,
+    chroma, edgeCorrelation … }`): the closest in spirit — region
+    classification for boxes you already know, with a `rendering-noise`
+    class. In practice it labels every identical-content crop
+    `content-change` at confidence 0.50 / severity high (calibrated for
+    same-render regression, not cross-render comparison); it did call the
+    two real recolors `color-change` correctly. Native-only binding, no JS
+    fallback. Keep its signal set (chroma cosine, edge correlation,
+    luminance NCC, fill ratios) as the reference if we ever sub-classify
+    `pixel-region` findings into color vs shape change.
+  - `jest`/`vitest`/`bun`/`matcher` (VRT matchers), `react`/`ui`
+    (viewer), `object` (JSON diff), `codec-*`, `cli`: out of scope.
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
   `@visual-compare` is free as of Aug 2026).
