@@ -119,16 +119,20 @@ NCC pixel alignment (~100 lines) lands here. Findings type
 `pixel-region`, crops as usual. Do NOT start before item 1 — it would
 only add noise to an untrustworthy list.
 
-## 3. Hygiene / small checks
+## 3. Hygiene / small checks ← DO NEXT (steps in handoff "What REMAINS" §3)
 
-- `spacing` check (gap/padding) using the container-emit path
-  extraction already half-supports; decide leaf-vs-container
-  granularity here.
+In this order — border first (data already extracted), spacing second
+(decide sibling-gap vs container extraction; recommend sibling-gap),
+relative verdict third (`delta` is typed, needs identity-by-content not by
+id), `inspect` last and only if the model loop is consuming reports.
+
 - `border` check (width/color) — extraction already collects both.
-- `inspect` subcommand (crop/zoom/sample-pixel) once the model loop
-  starts consuming reports.
+- `spacing` check (gap/padding) — extraction emits no containers today;
+  decide leaf-vs-container granularity here.
 - Relative verdict (`delta` vs previous run) — needed by the skill's
   regression guard.
+- `inspect` subcommand (crop/zoom/sample-pixel) once the model loop
+  starts consuming reports.
 
 ## 4. Deferred: pixel-region sub-classification (steal from @blazediff/interpret-native)
 
