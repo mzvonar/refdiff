@@ -19,8 +19,13 @@ opinion.
 
 ## Status
 
-Bootstrapped — research and architecture are settled, implementation has
-not started. Start with:
+Core pipeline implemented and proven on real pairs (`.dc.html` + Figma
+design adapters, Storybook + live-URL impl adapters, structural + pixel
+channels, ignore policies, aggregation, delta, agent packaging, CLI);
+the annotator renders a split-screen `report.html` per run (human
+annotations not yet). Current state and next steps:
+[`docs/handoff-2026-08-26.md`](docs/handoff-2026-08-26.md) and
+[`docs/plan-next.md`](docs/plan-next.md). Background:
 
 - [`docs/research.md`](docs/research.md) — the evidence base (VLM failure
   modes, validated architectures, metric/human-correlation studies,

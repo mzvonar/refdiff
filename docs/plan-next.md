@@ -181,7 +181,37 @@ typed errors (`pipeline.ts`), REST edge ported from population-registry's
 `--figma <fileKey>:<nodeId>` / manifest `design.kind: "figma"`. Prove on one
 real frame vs its story. Then the live-URL impl adapter (§5 in the handoff).
 
-## 6. Live-URL impl adapter — BUILT, NOT YET PROVEN (2026-08-26, session 7)
+## 7. Annotator — viewer half BUILT (2026-08-26, session 8)
+
+`packages/annotator`: `visual-compare-annotator <run-dir> [--out] [--serve
+--port --host]` writes `report.html` into the run dir — FULL design and FULL
+impl side by side, one shared pan/zoom with the design pane projected through
+`Alignment`, numbered marks on both panes, finding list (severity/text
+filters, j/k), detail with expected/actual + crops, suppressed + delta
+visible. Pure `renderReport` + pure `view-math.ts` (17 tests); `serveDir` in
+core gained `{ port, host }`. Verified on doc-detail and the live docs pair
+(Playwright screenshot, zero console errors). NEXT half: element-anchored
+human annotations (`open → implemented → done`) + a digest for the model —
+see architecture.md "Annotator".
+
+## 6. Live-URL impl adapter — PROVEN (2026-08-26, session 8)
+
+Run against uctoinak `serve-live.sh` (seeds `functional-sro` + the two
+`__test__` members into the TEST DB and starts `dev:e2e` on :3100):
+`docs-owner-desktop` captured the authenticated owner page at 1280×900 @2x,
+31 leaves (nav, heading, filter pills, search, sort, empty state); the comp
+has 87 → 119 findings / 126 instances, 7 data-slot suppressions, alignment
+confidence 0.00 (almost no shared text), pixel channel skipped. All of that
+is DATA, not drift: the seed has 0 documents, so every comp row is
+"missing" — a documents seed for the live pairs is the next corpus step.
+Typed errors proven for real: `auth-failed` (wrong secret → 404 from the
+session POST), `login-redirect` (no auth → `/app/sign-in?callbackURL=…`),
+`error-page` (authed unknown org / unknown route → heading "Stránka sa
+nenašla"; the app's not-found is a SOFT 404: 307 → 200, only the content
+check catches it), `http-error` (API route → status 404), `unreachable`
+(`ERR_CONNECTION_REFUSED`). Original note below.
+
+### 6 (original, for reference). Live-URL impl adapter — BUILT, NOT YET PROVEN (session 7)
 
 `adapters/live-url.ts`: `LiveUrlSource { url, viewport?, selector?, waitFor?,
 auth?, fullPage? }`, auth = Playwright storage state or a session POST (the

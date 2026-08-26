@@ -174,6 +174,23 @@ reference image (`artifacts.designPng` / `implPng`, native resolution),
 never only the per-finding crops; the Figma adapter keeps the full node
 render, the live/Storybook adapters the full viewport or `fullPage` shot.
 
+**Built (session 8) — the viewer half:** `packages/annotator` renders a
+self-contained `report.html` into a run dir (`visual-compare-annotator
+<run-dir> [--serve]`). Pure `renderReport(report, { viewMathSource })` →
+HTML; pure `view-math.ts` (compiled JS embedded verbatim into the page, no
+network, no deps). One world space = impl CSS px (the space every `Finding`
+box already uses); one shared `View { z, tx, ty }` drives both panes; the
+impl PNG maps in through its DPR, the design PNG through its DPR and then
+the `Alignment` (offset + per-axis scale), so pan/zoom on either side moves
+both and the same UI lands at the same screen point. Marks are drawn from
+`designBox`/`implBox` (+ aggregated members) on both panes; the list
+filters by severity/text, selection focuses both panes and shows
+expected/actual + the crop pair; `suppressed` and `delta` are visible;
+"align design through Alignment" can be switched off for a raw
+side-by-side. DPRs are read at load time from PNG natural width ÷ reported
+CSS width. Still to come: the annotation half (element-anchored notes →
+`open → implemented → done`, digests for the model).
+
 ## Reuse vs build
 
 | Concern | Decision |
