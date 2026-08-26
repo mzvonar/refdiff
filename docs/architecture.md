@@ -165,6 +165,15 @@ annotations through element identity instead of fragile geometry
 migration. Rendered annotation digests (marked PNG + text) remain the
 model-facing output.
 
+**Human view requirement (Mato, 2026-08-26):** the annotator/report must
+show the FULL design and the FULL implementation side by side in a split
+screen (synchronized pan/zoom, aligned through `Alignment`) — the crops and
+set-of-marks overlay serve the model, a person compares whole pages/
+components. Consequently every capture adapter stores the complete
+reference image (`artifacts.designPng` / `implPng`, native resolution),
+never only the per-finding crops; the Figma adapter keeps the full node
+render, the live/Storybook adapters the full viewport or `fullPage` shot.
+
 ## Reuse vs build
 
 | Concern | Decision |
