@@ -129,3 +129,41 @@ only add noise to an untrustworthy list.
   starts consuming reports.
 - Relative verdict (`delta` vs previous run) — needed by the skill's
   regression guard.
+
+## 4. Deferred: pixel-region sub-classification (steal from @blazediff/interpret-native)
+
+Trigger: the first real pair where the pixel channel emits findings
+(images, illustrations, gradients, shadows ≥16px). Until then a
+`pixel-region` finding only says "N% differ"; the model still has to look.
+
+What to take (own pure implementation, no dependency — the package is
+native-only, mis-calibrated for cross-render pairs, see architecture.md
+"Open decisions"): per region, computed over the DIFFERING pixels of the
+two crops we already hold in memory, in `pixel/classify.ts`:
+
+- **Chroma stats** (YIQ): `chromaCos` — cosine between the mean chroma
+  vectors of both sides (≈1 same hue → brightness/opacity change; negative
+  → hue rotation); `sat1`/`sat2` mean chroma magnitude; `chromaRough` —
+  roughness of the chroma-delta field (smooth = recolor, patchy =
+  replaced content); `meanDy` signed luminance delta.
+- **Structure**: `luminanceNcc` over changed pixels (high = same shape,
+  different color); `edgeCorrelation` + `structureAsymmetry` (edge density
+  img2 − img1: positive = something appeared, negative = disappeared).
+- **Shape**: `fillRatio`, `borderRatio`, `innerFillRatio`, row/col
+  occupancy — distinguishes an outline-only change (stroke/border) from a
+  filled one.
+- **Background blend**: distance of the changed pixels from the local
+  background on each side (`bgDistanceImg1/2`) → "addition" (blends with bg
+  on the design side only) vs "deletion".
+
+Map onto our vocabulary as `Finding.actual.changeKind`: `color` (high NCC,
+low edge change), `hue-rotation` (chromaCos < 0), `shape` (edges
+uncorrelated, both sides have structure), `added` / `removed`
+(asymmetric), `stroke` (borderRatio ≫ innerFill), `noise` (tiny, low
+color delta, correlated edges — the resample residue we measured). Message
+becomes code-actionable: "icon glyph differs in shape", "illustration
+recolored (same shape)", "shadow present in design only". Their exact
+verdicts to keep as regression fixtures: on doc-detail it correctly called
+the `Návrh` badge and the 6px status dot `color-change`. Tests: synthetic
+crop pairs per class (recolor, hue-rotate, outline change, add, remove,
+resample-noise). Aggregation then groups on `(type, changeKind)`.
