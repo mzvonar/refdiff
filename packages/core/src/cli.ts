@@ -27,7 +27,9 @@ import { err, ok, type Result } from "./result.js";
 import { aggregate } from "./structural/aggregate.js";
 import { alignStructural } from "./structural/align.js";
 import { matchElements } from "./structural/match.js";
-import { runTypedChecks } from "./structural/checks.js";
+import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js";
+import { diffMatches, writeDiffMask } from "./pixel/diff.js";
+import { lowConfidenceFinding, PIXEL_DEFAULTS, runPixelChecks } from "./pixel/checks.js";
 import { packageForModel } from "./package/package-for-model.js";
 import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js";
 
@@ -60,6 +62,9 @@ Common:
   --no-aggregate          report every instance of a repeated delta separately
                           (default: ≥3 identical deltas collapse into one
                           finding "×N" that still lists every location)
+  --no-pixels             skip the pixel channel (AA-aware diff inside matched
+                          boxes → \`pixel-region\` findings + diff-mask.png; runs
+                          only when alignment confidence ≥ 0.5)
   --storybook-url <url>   default $VC_STORYBOOK_URL or http://localhost:6006
   --storybook-dir <dir>   if nothing answers at --storybook-url, start Storybook
                           from this project dir (no browser tab) and stop it
@@ -97,6 +102,8 @@ interface RunOptions {
   policy: IgnorePolicy;
   /** Collapse systematic findings (default true). */
   aggregate: boolean;
+  /** Run the scoped pixel channel inside matched boxes (default true). */
+  pixels: boolean;
 }
 
 type PairError = { side: "design" | "impl"; error: CaptureError };
@@ -155,13 +162,34 @@ async function runPair(
     `matched ${match.matches.length} elements (${slots} as data slots; ${match.designOnly.length} design-only, ${match.implOnly.length} impl-only)`,
   );
 
-  const { kept, suppressed } = applyPolicy(runTypedChecks(match), policy);
+  const structural = runTypedChecks(match);
+
+  // Pixel channel: AA-aware diff inside each matched box, gated on the
+  // structural alignment being trustworthy. Never duplicates a structural
+  // finding on the same pair.
+  let pixel: RawFinding[] = [];
+  let diffMaskPath: string | undefined;
+  if (o.pixels) {
+    if (confidence < PIXEL_DEFAULTS.minConfidence) {
+      pixel = [lowConfidenceFinding(aligned.alignment, PIXEL_DEFAULTS.minConfidence)];
+      console.log(`pixel channel skipped (confidence ${confidence.toFixed(2)} < ${PIXEL_DEFAULTS.minConfidence})`);
+    } else {
+      const diffs = await diffMatches(aligned, match.matches);
+      pixel = runPixelChecks(diffs, structural);
+      diffMaskPath = join(o.outDir, "diff-mask.png");
+      await writeDiffMask(aligned, diffs, diffMaskPath);
+      console.log(`pixel channel: diffed ${diffs.length} matched boxes, ${pixel.length} pixel-region findings`);
+    }
+  }
+
+  const { kept, suppressed } = applyPolicy(finalize([...structural, ...pixel]), policy);
   const findings = o.aggregate ? aggregate(kept) : kept;
   const report = await packageForModel(aligned, findings, {
     outDir: o.outDir,
     failThreshold: o.failThreshold,
     suppressed,
     policy,
+    ...(diffMaskPath !== undefined ? { diffMaskPath } : {}),
   });
   return ok(report);
 }
@@ -216,6 +244,7 @@ async function compare(argv: string[]): Promise<void> {
       "ignore-text": { type: "string", multiple: true },
       "no-data-slots": { type: "boolean" },
       "no-aggregate": { type: "boolean" },
+      "no-pixels": { type: "boolean" },
       out: { type: "string" },
       "fail-threshold": { type: "string" },
       "max-gamma": { type: "string" },
@@ -309,6 +338,7 @@ async function compare(argv: string[]): Promise<void> {
         ...(maxGamma !== undefined ? { maxGamma } : {}),
         policy,
         aggregate: !values["no-aggregate"],
+        pixels: !values["no-pixels"],
       });
       if (!result.ok) {
         anyError = true;

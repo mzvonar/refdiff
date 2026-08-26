@@ -97,13 +97,26 @@ This channel deterministically catches exactly what VLMs miss
 
 ### Pixel channel (secondary, scoped)
 
-AA-aware perceptual diff (odiff / pixelmatch v7) **inside matched element
-boxes** and on the aligned frame; diff mask clustered into bounding boxes
-(looks-same `diffClusters` or own connected-components); multi-threshold
-passes for severity (Argos pattern). Runs only when alignment confidence
-is sufficient; low confidence is itself reported. `@blazediff/agent` is
-under evaluation as the packaging/engine for this channel — at minimum
-its verdict/tiles protocol is the reference.
+Implemented in `core/src/pixel/`. `diff.ts` (effectful edge, sharp +
+pixelmatch v7 `includeAA: false`, threshold 0.1) crops each matched
+element on both sides — the design side through the inverse alignment
+transform (`geometry.ts` `toDesignNative`) — resamples the design crop onto
+the impl pixel grid and returns a binary diff mask + ratio per match.
+Elements are compared inside their OWN boxes, so a positional offset
+(already a structural finding) does not fail every pixel. `cluster.ts`
+(pure) runs 8-connected components over the mask; `checks.ts` (pure) turns
+each match whose ratio passes the Argos-style thresholds (5% minor / 15%
+major / 30% critical, ≥12 px) into ONE `pixel-region` finding whose box is
+the union of its clusters (`actual: { diffRatio, diffPixels, clusters }`).
+Pairs the structural channel already reported (size/color/typography/
+radius/border/spacing) and data slots (differing text) are skipped —
+never a trivially-failing twin. Gate: alignment confidence ≥ 0.5, else one
+boxless minor finding says the channel was skipped. The whole-frame diff
+is intentionally not run (it would only re-report structural shifts).
+Pixel findings are merged with the structural ones through the same
+`finalize` numbering before the policy/aggregation stages;
+`artifacts.diffMask` (all masks painted on the impl canvas) is written.
+NCC translation refinement stays unbuilt until residue is measured.
 
 ### Agent packaging (the comprehension layer)
 
@@ -156,8 +169,23 @@ model-facing output.
 
 - Plain typed async functions with a `Result` union vs an effect system
   (Effect). Starting plain; revisit if composition gets noisy.
-- `@blazediff/agent` as a dependency for the pixel channel vs odiff +
-  own packaging.
+- `@blazediff/agent` — **decided 2026-08-26: skip as a dependency,
+  reference its protocol.** Evaluated against blazediff.dev/apis/agent
+  (time-boxed). It is a CLI-driven visual-regression harness (route
+  discovery, baseline-vs-actual of the SAME page, `check`/`rewrite`,
+  four-label verdicts `regression-likely | intentional-likely |
+  noise-likely | ambiguous`, `JudgmentRequest` → `verdict.json` handed to a
+  coding agent), not a library: no programmatic diff/cluster API, and its
+  baseline model does not fit design-vs-implementation where the two
+  sides are never expected to be pixel-identical. What we adopt as
+  reference: its `regions[]` output (bbox + pixel count + change type per
+  detected region), the "token discipline" point (region tiles 10–100×
+  smaller than full-page PNGs — our per-finding crops), and the
+  no-embedded-LLM rule (the host agent judges; the tool measures). We
+  deliberately do NOT adopt its concatenated `regions.png` stack —
+  research §4 says separate crop files read better. Pixel channel =
+  pixelmatch v7 (`includeAA: false`) + own connected-components +
+  Argos-style multi-threshold severity, inside matched element boxes.
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
   `@visual-compare` is free as of Aug 2026).

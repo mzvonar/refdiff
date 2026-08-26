@@ -3,7 +3,8 @@
 // Pipeline: capture (pluggable adapters) -> normalize -> structural channel
 // (element matching + typed checks) -> ignore policy -> aggregation of
 // systematic findings -> agent packaging (findings.json + set-of-marks
-// overlay + crops). Pixel channel lands later.
+// overlay + crops). The pixel channel (pixel/) adds AA-aware diffs inside
+// matched boxes, merged with the structural findings before the policy.
 //
 // Every stage is independently importable; the pipeline is just function
 // composition. See docs/architecture.md at the repo root.
@@ -96,7 +97,26 @@ export {
   matchElements,
   type MatchOptions,
 } from "./structural/match.js";
-export { runTypedChecks, type CheckOptions } from "./structural/checks.js";
+export { finalize, runTypedChecks, type CheckOptions, type RawFinding } from "./structural/checks.js";
 export { aggregate, type AggregateOptions } from "./structural/aggregate.js";
+
+export { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "./geometry.js";
+export {
+  clusterMask,
+  unionBox,
+  type Cluster,
+  type ClusterOptions,
+  type DiffMask,
+} from "./pixel/cluster.js";
+export {
+  isPixelEligible,
+  lowConfidenceFinding,
+  PIXEL_DEFAULTS,
+  runPixelChecks,
+  severityForRatio,
+  type MatchDiff,
+  type PixelCheckOptions,
+} from "./pixel/checks.js";
+export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js";
 
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js";

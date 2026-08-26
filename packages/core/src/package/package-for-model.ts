@@ -14,6 +14,7 @@ import { join, relative } from "node:path";
 
 import sharp from "sharp";
 
+import { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "../geometry.js";
 import type { AlignedPair } from "../pipeline.js";
 import type {
   Box,
@@ -35,6 +36,8 @@ export interface PackageOptions {
   suppressed?: readonly SuppressedFinding[];
   /** The policy that produced `suppressed`. */
   policy?: IgnorePolicy;
+  /** Absolute path of the pixel channel's diff mask PNG, when it ran. */
+  diffMaskPath?: string;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 };
@@ -46,30 +49,6 @@ const MARK_COLORS: Record<Severity, string> = {
 
 const atOrAbove = (s: Severity, threshold: Severity): boolean =>
   SEVERITY_RANK[s] <= SEVERITY_RANK[threshold];
-
-/** Integer-clamps a box into [0, width) × [0, height); null when nothing remains. */
-function clampBox(box: Box, width: number, height: number): Box | null {
-  const x = Math.max(0, Math.floor(box.x));
-  const y = Math.max(0, Math.floor(box.y));
-  const w = Math.min(Math.ceil(box.x + box.w), width) - x;
-  const h = Math.min(Math.ceil(box.y + box.h), height) - y;
-  if (x >= width || y >= height || w < 1 || h < 1) return null;
-  return { x, y, w, h };
-}
-
-const scaleBox = (box: Box, s: number): Box => ({
-  x: box.x * s,
-  y: box.y * s,
-  w: box.w * s,
-  h: box.h * s,
-});
-
-const pad = (box: Box, p: number): Box => ({
-  x: box.x - p,
-  y: box.y - p,
-  w: box.w + 2 * p,
-  h: box.h + 2 * p,
-});
 
 async function cropTo(
   srcPng: string,
@@ -132,7 +111,14 @@ async function renderOverlay(
 export async function packageForModel(
   pair: AlignedPair,
   findings: readonly Finding[],
-  { outDir, failThreshold = "major", cropPadding = 12, suppressed = [], policy = {} }: PackageOptions,
+  {
+    outDir,
+    failThreshold = "major",
+    cropPadding = 12,
+    suppressed = [],
+    policy = {},
+    diffMaskPath,
+  }: PackageOptions,
 ): Promise<ComparisonReport> {
   await mkdir(join(outDir, "crops"), { recursive: true });
 
@@ -149,18 +135,11 @@ export async function packageForModel(
       withCrops.push(f);
       continue;
     }
-    const padded = pad(cssBox, cropPadding);
+    const padded = padBox(cssBox, cropPadding);
     // Design png is at original (pre-alignment) scale: invert the total
     // design→impl transform, then go to native pixels.
-    const sx = alignment.scale;
-    const sy = alignment.scaleY ?? alignment.scale;
-    const designNative = {
-      x: ((padded.x - alignment.offsetX) / sx) * design.dpr,
-      y: ((padded.y - alignment.offsetY) / sy) * design.dpr,
-      w: (padded.w / sx) * design.dpr,
-      h: (padded.h / sy) * design.dpr,
-    };
-    const implNative = scaleBox(padded, impl.dpr);
+    const designNative = toDesignNative(padded, alignment, design.dpr);
+    const implNative = toImplNative(padded, impl.dpr);
     const designCrop = join(outDir, "crops", `${f.id}-design.png`);
     const implCrop = join(outDir, "crops", `${f.id}-impl.png`);
     const [dOk, iOk] = await Promise.all([
@@ -208,6 +187,7 @@ export async function packageForModel(
       overlay: rel(overlayPath),
       designPng: rel(design.pngPath),
       implPng: rel(impl.pngPath),
+      ...(diffMaskPath !== undefined ? { diffMask: rel(diffMaskPath) } : {}),
     },
   };
 

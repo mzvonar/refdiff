@@ -86,7 +86,29 @@ Work (all pure, in `packages/core/src/`):
 Done when: doc-detail run lists the column-width shift, the missing
 category row, the CTA section clipped by viewport, and little else.
 
-## 2. Pixel channel ← DO NEXT (steps in handoff "What REMAINS" §2)
+## 2. Pixel channel — DONE (2026-08-26, session 5)
+
+Landed as `packages/core/src/pixel/` (`diff.ts` effectful edge, `cluster.ts`
++ `checks.ts` pure) and pure `geometry.ts` (`toDesignNative` extracted from
+packaging). Per-match AA-aware pixelmatch inside each element's OWN box
+(design crop through the inverse alignment, resampled onto the impl grid,
+±2px shift search), connected-components → one `pixel-region` finding per
+element (union box, `actual: { diffRatio, diffPixels, clusters }`), Argos
+thresholds 5/15/30%. Gate: confidence ≥ 0.5 else one boxless minor finding.
+Pipeline `finalize(structural ++ pixel) → applyPolicy → aggregate → package`,
+`--no-pixels`, `artifacts.diffMask`. `@blazediff/agent`: skipped as a dep,
+`regions[]` protocol referenced (architecture.md "Open decisions").
+
+Measured on doc-detail (design ×0.94): identical text differs 10–40%,
+identical 10–14px icons/dots 12–16% even with shift — so the channel skips
+text elements (element data describes them exactly) and anything under
+16 CSS px. Result: 50 boxes diffed, **0 pixel findings, structural list
+unchanged at 57/100** — no false positives; the header icons (14px) and the
+badge (text, already a color finding) are the structural channel's. NCC
+refinement not built: the residue is sub-pixel phase, which the shift
+search absorbs. Original spec below.
+
+### 2 (original spec, for reference)
 
 Scoped AA-aware diff inside matched boxes (odiff-bin / pixelmatch v7),
 cluster diff mask into boxes, Argos multi-threshold severity; runs only

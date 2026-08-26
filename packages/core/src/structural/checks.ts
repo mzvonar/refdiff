@@ -37,7 +37,7 @@ const DEFAULTS: Required<CheckOptions> = {
   minElementSize: 4,
 };
 
-type RawFinding = Omit<Finding, "id" | "mark">;
+export type RawFinding = Omit<Finding, "id" | "mark">;
 
 const deltaE = differenceCiede2000();
 
@@ -256,8 +256,12 @@ const TYPE_ORDER: Partial<Record<FindingType, number>> = {
   color: 4,
 };
 
-/** Deterministic ordering + id/mark assignment. */
-function finalize(raw: RawFinding[]): Finding[] {
+/**
+ * Deterministic ordering + id/mark assignment: severity, then type, then
+ * reading order. Also used to merge channels — pass structural findings and
+ * raw pixel findings together and the numbering comes out consistent.
+ */
+export function finalize(raw: readonly RawFinding[]): Finding[] {
   const sorted = [...raw].sort((a, b) => {
     const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     if (bySeverity !== 0) return bySeverity;
