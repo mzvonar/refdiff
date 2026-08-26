@@ -11,7 +11,7 @@ const el = (id: string, partial: Partial<ElementNode> = {}): ElementNode => ({
 });
 
 const matched = (design: ElementNode, impl: ElementNode): MatchResult => ({
-  matches: [{ design, impl, gamma: 0 }],
+  matches: [{ design, impl, gamma: 0, via: "geometry" }],
   designOnly: [],
   implOnly: [],
 });
@@ -103,6 +103,41 @@ describe("runTypedChecks", () => {
     expect(findings[0]!.severity).toBe("minor");
   });
 
+  it("carries the element role so policies can key on it", () => {
+    const findings = runTypedChecks({
+      matches: [],
+      designOnly: [el("d", { role: "icon", box: { x: 0, y: 0, w: 20, h: 20 } })],
+      implOnly: [],
+    });
+    expect(findings[0]!.role).toBe("icon");
+  });
+
+  it("compares only height on pairs with differing text (data slots)", () => {
+    const findings = runTypedChecks({
+      matches: [
+        {
+          design: el("d", { text: "Alza.sk", box: { x: 10, y: 10, w: 68, h: 14 }, style: { fontSize: 12 } }),
+          impl: el("i", { text: "Telekom", box: { x: 10, y: 10, w: 198, h: 14 }, style: { fontSize: 16 } }),
+          gamma: 130,
+          via: "slot",
+        },
+      ],
+      designOnly: [],
+      implOnly: [],
+    });
+    expect(findings.map((f) => f.type).sort()).toEqual(["text-content", "typography"]);
+
+    const taller = runTypedChecks(
+      matched(
+        el("d", { text: "Alza.sk", box: { x: 10, y: 10, w: 68, h: 14 } }),
+        el("i", { text: "Telekom", box: { x: 10, y: 10, w: 198, h: 24 } }),
+      ),
+    );
+    const size = taller.find((f) => f.type === "size")!;
+    expect(size.expected).toEqual({ h: 14 });
+    expect(size.actual).toEqual({ h: 24 });
+  });
+
   it("assigns sequential ids and marks in severity order", () => {
     const findings = runTypedChecks({
       matches: [
@@ -110,6 +145,7 @@ describe("runTypedChecks", () => {
           design: el("d", { text: "a" }),
           impl: el("i", { text: "b" }),
           gamma: 0,
+          via: "geometry",
         },
       ],
       designOnly: [el("gone", { box: { x: 0, y: 0, w: 100, h: 100 } })],

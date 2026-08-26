@@ -10,12 +10,25 @@
 export type {
   Alignment,
   Box,
+  CaptureScope,
   ComparisonReport,
   ElementNode,
   Finding,
   FindingType,
+  IgnorePolicy,
   Severity,
+  SuppressedFinding,
+  SuppressionReason,
 } from "./types.js";
+
+export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js";
+export {
+  parseManifest,
+  type ManifestError,
+  type ManifestParse,
+  type PairSpec,
+} from "./manifest.js";
+export { pickLargestChild, MIN_SCOPE_AREA, type ScopeCandidate } from "./adapters/scope.js";
 
 export {
   all,
@@ -69,7 +82,9 @@ export {
 } from "./structural/align.js";
 export {
   DEFAULT_MAX_GAMMA,
+  DEFAULT_SLOT_MAX_GAMMA,
   gamma,
+  slotGamma,
   matchElements,
   type MatchOptions,
 } from "./structural/match.js";

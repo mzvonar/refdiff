@@ -14,7 +14,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import type { Browser } from "playwright";
+import type { Browser, Page } from "playwright";
 
 import type { Capture, CaptureError, DcHtmlSource } from "../pipeline.js";
 import { err, ok, type Result } from "../result.js";
@@ -25,6 +25,53 @@ import {
   waitForFonts,
 } from "./browser.js";
 import { extractElementTree } from "./extract.js";
+import { pickLargestChild, type ScopeCandidate } from "./scope.js";
+import type { CaptureScope } from "../types.js";
+
+/**
+ * Resolve the node to capture inside the frame. Explicit selector → must
+ * exist (typed error otherwise); none → largest child by area; a childless
+ * frame → the frame itself. The chosen node is tagged with `data-vc-scope`
+ * so a stable selector addresses it afterwards.
+ */
+async function resolveScope(
+  page: Page,
+  frameSelector: string,
+  scope: string | undefined,
+): Promise<Result<CaptureScope, "scope-not-found">> {
+  if (scope !== undefined) {
+    const selector = `${frameSelector} ${scope}`;
+    if ((await page.locator(selector).count()) === 0) return err("scope-not-found");
+    await page.locator(selector).first().evaluate((el) => el.setAttribute("data-vc-scope", ""));
+    return ok({ mode: "explicit", selector: `${frameSelector} [data-vc-scope]` });
+  }
+
+  const candidates: ScopeCandidate[] = await page.evaluate((sel: string) => {
+    const frame = document.querySelector(sel);
+    if (!frame) return [];
+    return Array.from(frame.children).flatMap((child, index) => {
+      const tag = child.tagName.toLowerCase();
+      if (tag === "script" || tag === "style" || tag === "template") return [];
+      const r = child.getBoundingClientRect();
+      return [{ index, w: r.width, h: r.height }];
+    });
+  }, frameSelector);
+
+  const best = pickLargestChild(candidates);
+  if (!best) return ok({ mode: "frame", selector: frameSelector, candidates: candidates.length });
+
+  await page.evaluate(
+    ({ sel, index }: { sel: string; index: number }) => {
+      document.querySelector(sel)?.children[index]?.setAttribute("data-vc-scope", "");
+    },
+    { sel: frameSelector, index: best.index },
+  );
+  return ok({
+    mode: "largest-child",
+    selector: `${frameSelector} > [data-vc-scope]`,
+    candidates: candidates.length,
+  });
+}
 
 /** Attribute-selector value: only the quote and the backslash need escaping. */
 function attrValue(raw: string): string {
@@ -122,14 +169,26 @@ export async function captureDcHtml(
 
     await page.addStyleTag({ content: FREEZE_CSS });
 
-    const locator = page.locator(selector).first();
+    // Scope: the component inside the artboard, not the artboard.
+    const scoped = await resolveScope(page, selector, source.scope);
+    if (!scoped.ok) {
+      return err({
+        kind: "scope-not-found",
+        ref: identity,
+        frame: source.frame,
+        scope: source.scope ?? "",
+      });
+    }
+    const scope = scoped.value;
+
+    const locator = page.locator(scope.selector).first();
     await locator.scrollIntoViewIfNeeded();
 
     // Settle the pixels first, then extract, so the element tree describes
     // exactly the state the screenshot shows.
     const { png } = await captureUntilStable(() => locator.screenshot());
 
-    const extraction = await extractElementTree(page, selector);
+    const extraction = await extractElementTree(page, scope.selector);
     if (!extraction) {
       return err({ kind: "frame-not-found", ref: identity, frame: source.frame, file: source.file });
     }
@@ -137,7 +196,7 @@ export async function captureDcHtml(
       return err({
         kind: "blank-render",
         ref: identity,
-        detail: `frame "${source.frame}" resolved but rendered no visible leaf elements (${extraction.width}x${extraction.height})`,
+        detail: `frame "${source.frame}" scope "${scope.selector}" (${scope.mode}) rendered no visible leaf elements (${extraction.width}x${extraction.height})`,
       });
     }
 
@@ -153,6 +212,7 @@ export async function captureDcHtml(
       height: extraction.height,
       dpr: DPR,
       elements: extraction.elements,
+      scope,
     });
   } catch (e) {
     return err({

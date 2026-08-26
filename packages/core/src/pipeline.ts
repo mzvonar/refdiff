@@ -6,7 +6,7 @@
  * docs/architecture.md "Pipeline".
  */
 
-import type { Alignment, Box, ElementNode } from "./types.js";
+import type { Alignment, Box, CaptureScope, ElementNode } from "./types.js";
 
 export interface Viewport {
   width: number;
@@ -24,6 +24,13 @@ export interface DcHtmlSource {
   /** Frame address inside the canvas: element id, falling back to
    *  data-screen-label (some comps ship label-only frames). */
   frame: string;
+  /**
+   * CSS selector (relative to the frame) of the node to compare — the
+   * component, not the artboard chrome around it. When absent the adapter
+   * falls back to the frame's largest child by area and records that in
+   * `Capture.scope`.
+   */
+  scope?: string;
   viewport?: Viewport;
 }
 
@@ -66,6 +73,8 @@ export interface Capture {
   dpr: number;
   /** Leaf element tree, boxes in CSS px relative to the capture origin. */
   elements: ElementNode[];
+  /** Design side only: which node inside the frame was captured, and why. */
+  scope?: CaptureScope;
 }
 
 /** Typed capture failures — data, not exceptions. */
@@ -73,6 +82,7 @@ export type CaptureError =
   | { kind: "unreachable"; ref: string; url: string; detail?: string }
   | { kind: "navigation-failed"; ref: string; url: string; detail: string }
   | { kind: "frame-not-found"; ref: string; frame: string; file: string }
+  | { kind: "scope-not-found"; ref: string; frame: string; scope: string }
   | { kind: "hydration-failed"; ref: string; detail: string }
   | { kind: "story-error"; ref: string; storyId: string; detail: string }
   | { kind: "blank-render"; ref: string; detail: string }
@@ -111,6 +121,12 @@ export interface ElementMatch {
   impl: ElementNode;
   /** γ = |Δx|+|Δy|+|Δw|+|Δh| in normalized CSS px (GVT). */
   gamma: number;
+  /**
+   * How the pair was formed: identical unique text, GVT geometry, or the
+   * width-blind slot pass (same anchor and height, different text — a
+   * value slot showing different data).
+   */
+  via: "text" | "geometry" | "slot";
 }
 
 /** Output of matchElements — unmatched boxes become missing/extra findings. */

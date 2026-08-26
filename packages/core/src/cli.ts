@@ -3,44 +3,65 @@
  * visual-compare CLI.
  *
  * Implemented:
- *   compare   run the pipeline for one design-frame / storybook-story pair
+ *   compare   run the pipeline for one design-frame / storybook-story pair,
+ *             or for every storybook pair of a manifest (--manifest)
  *
  * Planned (docs/architecture.md): inspect, explore, report.
  */
 
 import { parseArgs } from "node:util";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+import type { Browser } from "playwright";
 
 import { launchBrowser } from "./adapters/browser.js";
 import { captureDcHtml } from "./adapters/dc-html.js";
 import { captureStorybook } from "./adapters/storybook.js";
+import { parseManifest, type PairSpec } from "./manifest.js";
 import { normalize, pairRefs } from "./pipeline.js";
-import type { Capture, CaptureError } from "./pipeline.js";
-import type { Result } from "./result.js";
+import type { CaptureError } from "./pipeline.js";
+import { applyPolicy, mergePolicies } from "./policy.js";
+import { err, ok, type Result } from "./result.js";
 import { alignStructural } from "./structural/align.js";
 import { matchElements } from "./structural/match.js";
 import { runTypedChecks } from "./structural/checks.js";
 import { packageForModel } from "./package/package-for-model.js";
-import type { Severity } from "./types.js";
+import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js";
 
 const USAGE = `Usage: visual-compare compare [options]
 
-Compare one Claude Design (.dc.html) frame against one Storybook story.
+Compare Claude Design (.dc.html) frames against Storybook stories.
 
-Required:
+One pair:
   --design-dir <dir>      directory containing the .dc.html comps
   --design-file <file>    comp file name, e.g. doc-detail-modal.dc.html
   --design-frame <frame>  frame id or data-screen-label inside the comp
   --story <storyId>       storybook story id
-
-Optional:
   --pair <id>             pair identity (default: derived from frame+story)
-  --storybook-url <url>   default $VC_STORYBOOK_URL or http://localhost:6006
   --viewport <WxH>        impl viewport, e.g. 760x740 (default 1200x900)
   --overlay               story portals to <body> (dialog/sheet) — shoot viewport
+
+Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair):
+  --manifest <file>       run every storybook pair of the manifest
+  --design-dir <dir>      directory the manifest's design.file names live in
+  --pair <id[,id…]>       run only these manifest ids
+
+Ignore policy (both modes):
+  --scope <selector>      design node to compare instead of the artboard frame
+                          (default: the frame's largest child by area)
+  --ignore-text <regex>   suppress findings about matching text (repeatable)
+  --no-data-slots         report text differences on matched pairs (default:
+                          suppressed as demo data — the "data-slot" rule)
+
+Common:
+  --storybook-url <url>   default $VC_STORYBOOK_URL or http://localhost:6006
   --out <dir>             run directory (default: out/<pair>)
   --fail-threshold <sev>  critical|major|minor (default major)
   --max-gamma <px>        element-match cutoff (default 100)
+
+Suppressed findings are never dropped: findings.json lists them under
+\`suppressed\` with the rule that hit each one.
 
 Exit codes: 0 pass, 1 findings at/above threshold, 2 capture or usage error.`;
 
@@ -56,94 +77,52 @@ function parseViewport(raw: string | undefined): { width: number; height: number
   return { width: Number(m[1]), height: Number(m[2]) };
 }
 
-function unwrapCapture(result: Result<Capture, CaptureError>, side: string): Capture {
-  if (result.ok) return result.value;
-  console.error(`\n${side} capture failed (typed error):`);
-  console.error(JSON.stringify(result.error, null, 2));
-  process.exit(2);
+interface RunOptions {
+  designDir: string;
+  storybookUrl: string;
+  outDir: string;
+  failThreshold: Severity;
+  maxGamma?: number;
+  /** CLI-level policy, merged over the pair's own. */
+  policy: IgnorePolicy;
 }
 
-async function compare(argv: string[]): Promise<void> {
-  const { values } = parseArgs({
-    args: argv,
-    options: {
-      pair: { type: "string" },
-      "design-dir": { type: "string" },
-      "design-file": { type: "string" },
-      "design-frame": { type: "string" },
-      "storybook-url": { type: "string" },
-      story: { type: "string" },
-      viewport: { type: "string" },
-      overlay: { type: "boolean" },
-      out: { type: "string" },
-      "fail-threshold": { type: "string" },
-      "max-gamma": { type: "string" },
-      help: { type: "boolean" },
-    },
+type PairError = { side: "design" | "impl"; error: CaptureError };
+
+/** One pair through the whole pipeline. Capture errors are data. */
+async function runPair(
+  browser: Browser,
+  spec: PairSpec,
+  o: RunOptions,
+): Promise<Result<ComparisonReport, PairError>> {
+  const policy = mergePolicies(spec.ignore, o.policy);
+  const designSource = {
+    ...spec.design,
+    dir: resolve(o.designDir),
+    ...(policy.scope !== undefined ? { scope: policy.scope } : {}),
+  };
+
+  console.log(`capturing design: ${spec.design.file}#${spec.design.frame}`);
+  const design = await captureDcHtml(browser, designSource, {
+    pngPath: join(o.outDir, "design.png"),
   });
+  if (!design.ok) return err({ side: "design", error: design.error });
+  const d = design.value;
+  console.log(
+    `  ${d.width}x${d.height} css px, ${d.elements.length} leaf elements, scope ${d.scope?.mode ?? "frame"} (${d.scope?.selector ?? "-"})`,
+  );
 
-  if (values.help) {
-    console.log(USAGE);
-    return;
-  }
+  console.log(`capturing impl: ${spec.impl.storyId}`);
+  const impl = await captureStorybook(
+    browser,
+    { ...spec.impl, url: o.storybookUrl },
+    { pngPath: join(o.outDir, "impl.png") },
+  );
+  if (!impl.ok) return err({ side: "impl", error: impl.error });
+  const i = impl.value;
+  console.log(`  ${i.width}x${i.height} css px, ${i.elements.length} leaf elements`);
 
-  const designDir = values["design-dir"] ?? fail(USAGE);
-  const designFile = values["design-file"] ?? fail(USAGE);
-  const designFrame = values["design-frame"] ?? fail(USAGE);
-  const storyId = values.story ?? fail(USAGE);
-  const storybookUrl =
-    values["storybook-url"] ?? process.env["VC_STORYBOOK_URL"] ?? "http://localhost:6006";
-  const viewport = parseViewport(values.viewport);
-  const pairId = values.pair ?? `${designFrame}--${storyId}`;
-  const outDir = resolve(values.out ?? join("out", pairId));
-  const failThreshold = (values["fail-threshold"] ?? "major") as Severity;
-  if (!["critical", "major", "minor"].includes(failThreshold)) {
-    fail(`--fail-threshold must be critical|major|minor, got "${failThreshold}"`);
-  }
-  const maxGamma = values["max-gamma"] !== undefined ? Number(values["max-gamma"]) : undefined;
-
-  const browser = await launchBrowser();
-  let design: Capture;
-  let impl: Capture;
-  try {
-    console.log(`capturing design: ${designFile}#${designFrame}`);
-    design = unwrapCapture(
-      await captureDcHtml(
-        browser,
-        {
-          kind: "dc-html",
-          dir: resolve(designDir),
-          file: designFile,
-          frame: designFrame,
-          ...(viewport ? { viewport } : {}),
-        },
-        { pngPath: join(outDir, "design.png") },
-      ),
-      "design",
-    );
-    console.log(`  ${design.width}x${design.height} css px, ${design.elements.length} leaf elements`);
-
-    console.log(`capturing impl: ${storyId}`);
-    impl = unwrapCapture(
-      await captureStorybook(
-        browser,
-        {
-          kind: "storybook",
-          url: storybookUrl,
-          storyId,
-          ...(viewport ? { viewport } : {}),
-          ...(values.overlay ? { overlay: true } : {}),
-        },
-        { pngPath: join(outDir, "impl.png") },
-      ),
-      "impl",
-    );
-    console.log(`  ${impl.width}x${impl.height} css px, ${impl.elements.length} leaf elements`);
-  } finally {
-    await browser.close();
-  }
-
-  const normalized = normalize(pairRefs(pairId, design, impl));
+  const normalized = normalize(pairRefs(spec.id, d, i));
   if (normalized.designScale !== 1) {
     console.log(`normalized design side by ×${normalized.designScale.toFixed(4)}`);
   }
@@ -157,27 +136,158 @@ async function compare(argv: string[]): Promise<void> {
   const match = matchElements(
     aligned.design.elements,
     aligned.impl.elements,
-    maxGamma !== undefined ? { maxGamma } : {},
+    o.maxGamma !== undefined ? { maxGamma: o.maxGamma } : {},
   );
+  const slots = match.matches.filter((m) => m.via === "slot").length;
   console.log(
-    `matched ${match.matches.length} elements (${match.designOnly.length} design-only, ${match.implOnly.length} impl-only)`,
+    `matched ${match.matches.length} elements (${slots} as data slots; ${match.designOnly.length} design-only, ${match.implOnly.length} impl-only)`,
   );
 
-  const findings = runTypedChecks(match);
-  const report = await packageForModel(aligned, findings, { outDir, failThreshold });
+  const { kept, suppressed } = applyPolicy(runTypedChecks(match), policy);
+  const report = await packageForModel(aligned, kept, {
+    outDir: o.outDir,
+    failThreshold: o.failThreshold,
+    suppressed,
+    policy,
+  });
+  return ok(report);
+}
 
+function printReport(report: ComparisonReport): void {
   const counts = { critical: 0, major: 0, minor: 0 };
   for (const f of report.findings) counts[f.severity]++;
   console.log(
-    `\n${report.findings.length} findings (${counts.critical} critical, ${counts.major} major, ${counts.minor} minor)`,
+    `\n${report.findings.length} findings (${counts.critical} critical, ${counts.major} major, ${counts.minor} minor), ${report.suppressed.length} suppressed`,
   );
-  for (const f of report.findings.slice(0, 25)) {
+  for (const f of report.findings.slice(0, 40)) {
     console.log(`  [${f.mark}] ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}`);
   }
-  if (report.findings.length > 25) console.log(`  … ${report.findings.length - 25} more`);
-  console.log(`\nverdict: ${report.verdict.pass ? "PASS" : "FAIL"} (threshold: ${failThreshold})`);
-  console.log(`report: ${join(outDir, "findings.json")}`);
-  process.exit(report.verdict.pass ? 0 : 1);
+  if (report.findings.length > 40) console.log(`  … ${report.findings.length - 40} more`);
+  if (report.suppressed.length > 0) {
+    const byRule = new Map<string, number>();
+    for (const s of report.suppressed) byRule.set(s.suppressedBy, (byRule.get(s.suppressedBy) ?? 0) + 1);
+    console.log(
+      `  suppressed: ${[...byRule].map(([rule, n]) => `${n} ${rule}`).join(", ")} (see findings.json)`,
+    );
+  }
+  console.log(`verdict: ${report.verdict.pass ? "PASS" : "FAIL"} (threshold: ${report.verdict.failThreshold})`);
+}
+
+async function loadManifest(file: string): Promise<PairSpec[]> {
+  const mod: Record<string, unknown> = await import(pathToFileURL(resolve(file)).href);
+  const parsed = parseManifest(mod["manifest"] ?? mod["default"]);
+  if (!parsed.ok) fail(`invalid manifest ${file}: ${JSON.stringify(parsed.error)}`);
+  for (const s of parsed.value.skipped) console.log(`skipping ${s.id}: ${s.reason}`);
+  return parsed.value.pairs;
+}
+
+async function compare(argv: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      pair: { type: "string" },
+      manifest: { type: "string" },
+      "design-dir": { type: "string" },
+      "design-file": { type: "string" },
+      "design-frame": { type: "string" },
+      "storybook-url": { type: "string" },
+      story: { type: "string" },
+      viewport: { type: "string" },
+      overlay: { type: "boolean" },
+      scope: { type: "string" },
+      "ignore-text": { type: "string", multiple: true },
+      "no-data-slots": { type: "boolean" },
+      out: { type: "string" },
+      "fail-threshold": { type: "string" },
+      "max-gamma": { type: "string" },
+      help: { type: "boolean" },
+    },
+  });
+
+  if (values.help) {
+    console.log(USAGE);
+    return;
+  }
+
+  const designDir = values["design-dir"] ?? fail(USAGE);
+  const storybookUrl =
+    values["storybook-url"] ?? process.env["VC_STORYBOOK_URL"] ?? "http://localhost:6006";
+  const failThreshold = (values["fail-threshold"] ?? "major") as Severity;
+  if (!["critical", "major", "minor"].includes(failThreshold)) {
+    fail(`--fail-threshold must be critical|major|minor, got "${failThreshold}"`);
+  }
+  const maxGamma = values["max-gamma"] !== undefined ? Number(values["max-gamma"]) : undefined;
+
+  const policy: IgnorePolicy = {
+    dataSlots: !values["no-data-slots"],
+    ...(values.scope !== undefined ? { scope: values.scope } : {}),
+    ...(values["ignore-text"]?.length ? { textPatterns: values["ignore-text"] } : {}),
+  };
+  for (const p of policy.textPatterns ?? []) {
+    try {
+      new RegExp(p, "u");
+    } catch (e) {
+      fail(`--ignore-text "${p}" is not a valid regex: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  let specs: PairSpec[];
+  if (values.manifest !== undefined) {
+    const all = await loadManifest(values.manifest);
+    const only = values.pair?.split(",").map((s) => s.trim()).filter(Boolean);
+    specs = only ? all.filter((p) => only.includes(p.id)) : all;
+    if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`);
+  } else {
+    const designFile = values["design-file"] ?? fail(USAGE);
+    const designFrame = values["design-frame"] ?? fail(USAGE);
+    const storyId = values.story ?? fail(USAGE);
+    const viewport = parseViewport(values.viewport);
+    specs = [
+      {
+        id: values.pair ?? `${designFrame}--${storyId}`,
+        design: { kind: "dc-html", file: designFile, frame: designFrame, ...(viewport ? { viewport } : {}) },
+        impl: {
+          kind: "storybook",
+          storyId,
+          ...(viewport ? { viewport } : {}),
+          ...(values.overlay ? { overlay: true } : {}),
+        },
+      },
+    ];
+  }
+
+  const outRoot = values.out;
+  const browser = await launchBrowser();
+  let anyFail = false;
+  let anyError = false;
+  try {
+    for (const spec of specs) {
+      const outDir = resolve(
+        outRoot !== undefined && specs.length === 1 ? outRoot : join(outRoot ?? "out", spec.id),
+      );
+      console.log(`\n=== ${spec.id}${spec.title ? ` — ${spec.title}` : ""} ===`);
+      const result = await runPair(browser, spec, {
+        designDir,
+        storybookUrl,
+        outDir,
+        failThreshold,
+        ...(maxGamma !== undefined ? { maxGamma } : {}),
+        policy,
+      });
+      if (!result.ok) {
+        anyError = true;
+        console.error(`\n${spec.id}: ${result.error.side} capture failed (typed error):`);
+        console.error(JSON.stringify(result.error.error, null, 2));
+        continue;
+      }
+      printReport(result.value);
+      console.log(`report: ${join(outDir, "findings.json")}`);
+      if (!result.value.verdict.pass) anyFail = true;
+    }
+  } finally {
+    await browser.close();
+  }
+  process.exit(anyError ? 2 : anyFail ? 1 : 0);
 }
 
 const [command, ...rest] = process.argv.slice(2);

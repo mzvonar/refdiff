@@ -60,14 +60,25 @@ const elementLabel = (el: ElementNode): string =>
 
 const isSubstantial = (box: Box): boolean => box.w * box.h >= 64 * 64;
 
+const roleOf = (el: ElementNode): { role?: string } =>
+  el.role !== undefined ? { role: el.role } : {};
+
 /** Presence findings for elements only one side has. */
 function presenceFindings(match: MatchResult, min: number): RawFinding[] {
   const out: RawFinding[] = [];
+  // A backdrop/scrim's extent is the viewport's, so its presence alone says
+  // little about the design — never more than minor.
+  const isBackdrop = (el: ElementNode): boolean => el.role === "backdrop";
   for (const el of match.designOnly) {
     if (el.box.w < min || el.box.h < min) continue;
     out.push({
       type: "missing-element",
-      severity: isSubstantial(el.box) || el.text !== undefined ? "critical" : "major",
+      severity: isBackdrop(el)
+        ? "minor"
+        : isSubstantial(el.box) || el.text !== undefined
+          ? "critical"
+          : "major",
+      ...roleOf(el),
       designBox: el.box,
       message: `design ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) has no counterpart in the implementation`,
     });
@@ -76,7 +87,8 @@ function presenceFindings(match: MatchResult, min: number): RawFinding[] {
     if (el.box.w < min || el.box.h < min) continue;
     out.push({
       type: "extra-element",
-      severity: isSubstantial(el.box) || el.text !== undefined ? "major" : "minor",
+      severity: !isBackdrop(el) && (isSubstantial(el.box) || el.text !== undefined) ? "major" : "minor",
+      ...roleOf(el),
       implBox: el.box,
       message: `implementation renders ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) that the design does not have`,
     });
@@ -90,7 +102,7 @@ function pairFindings(
   o: Required<CheckOptions>,
 ): RawFinding[] {
   const out: RawFinding[] = [];
-  const boxes = { designBox: design.box, implBox: impl.box };
+  const boxes = { designBox: design.box, implBox: impl.box, ...roleOf(design) };
   const label = elementLabel(design);
 
   // Position — the strongest human-judgment signal after presence.
@@ -108,8 +120,11 @@ function pairFindings(
     });
   }
 
-  // Size.
-  const dw = impl.box.w - design.box.w;
+  // Size. A text pair showing DIFFERENT strings (a data slot) has a width
+  // dictated by its content, so only the height (line box) is compared.
+  const textDiffers =
+    design.text !== undefined && impl.text !== undefined && normText(design.text) !== normText(impl.text);
+  const dw = textDiffers ? 0 : impl.box.w - design.box.w;
   const dh = impl.box.h - design.box.h;
   if (Math.abs(dw) > o.sizeTolerance || Math.abs(dh) > o.sizeTolerance) {
     const worst = Math.max(Math.abs(dw), Math.abs(dh));
@@ -117,9 +132,11 @@ function pairFindings(
       type: "size",
       severity: worst > 3 * o.sizeTolerance ? "major" : "minor",
       ...boxes,
-      expected: { w: round1(design.box.w), h: round1(design.box.h) },
-      actual: { w: round1(impl.box.w), h: round1(impl.box.h) },
-      message: `${label} renders ${Math.round(impl.box.w)}×${Math.round(impl.box.h)}, design says ${Math.round(design.box.w)}×${Math.round(design.box.h)}`,
+      expected: textDiffers ? { h: round1(design.box.h) } : { w: round1(design.box.w), h: round1(design.box.h) },
+      actual: textDiffers ? { h: round1(impl.box.h) } : { w: round1(impl.box.w), h: round1(impl.box.h) },
+      message: textDiffers
+        ? `${label} renders ${Math.round(impl.box.h)}px tall, design says ${Math.round(design.box.h)}px (width not compared: differing text)`
+        : `${label} renders ${Math.round(impl.box.w)}×${Math.round(impl.box.h)}, design says ${Math.round(design.box.w)}×${Math.round(design.box.h)}`,
     });
   }
 

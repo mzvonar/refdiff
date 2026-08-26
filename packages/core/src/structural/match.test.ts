@@ -57,6 +57,33 @@ describe("matchElements", () => {
     expect(result.designOnly.map((e) => e.id)).toEqual(["d1"]);
   });
 
+  it("pairs value slots width-blind when texts differ (slot pass)", () => {
+    // Design shrink-wraps "Alza.sk s.r.o." (68px), impl stretches its cell to
+    // the column (198px): γ = 130 > 100, yet same anchor and line height.
+    const design = [el("d1", 280, 389, 68, 14, "Alza.sk s.r.o.")];
+    const impl = [el("i1", 281, 390, 198, 14, "Slovak Telekom, a.s.")];
+    const result = matchElements(design, impl);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0]!.via).toBe("slot");
+    expect(result.designOnly).toEqual([]);
+    expect(result.implOnly).toEqual([]);
+  });
+
+  it("slot pass never pairs non-text or far-apart elements", () => {
+    // 60px apart vertically AND 250px wider: γ = 310 (no geometry match),
+    // slot distance 60 > 40 (no slot match either).
+    const farText = matchElements([el("d1", 0, 0, 50, 14, "a")], [el("i1", 0, 60, 300, 14, "b")]);
+    expect(farText.matches).toEqual([]);
+    const boxes = matchElements([el("d1", 0, 0, 50, 14)], [el("i1", 0, 0, 300, 14)]);
+    expect(boxes.matches).toEqual([]);
+    const disabled = matchElements(
+      [el("d1", 0, 0, 50, 14, "a")],
+      [el("i1", 0, 0, 300, 14, "b")],
+      { slotMaxGamma: 0 },
+    );
+    expect(disabled.matches).toEqual([]);
+  });
+
   it("breaks gamma ties on matching text", () => {
     // Two identical boxes; the impl element carries d2's text.
     const design = [el("d1", 0, 0, 50, 10, "alpha"), el("d2", 0, 0, 50, 10, "beta")];

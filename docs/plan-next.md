@@ -5,7 +5,33 @@ packaging, CLI `compare`, proven on `doc-detail-owner-desktop` and
 `tx-picker-owner-desktop`. Problem observed: ~170–200 findings per pair,
 dominated by true-but-uninteresting differences. Three items, in order.
 
-## 1. Ignore policies for demo/seed data and artboard chrome
+## 1. Ignore policies — DONE (2026-08-26, this session)
+
+Landed exactly as specified below plus three measurement fixes the corpus
+forced: text leaves are measured by glyph-ink box (block cells vs
+shrink-wrapped spans no longer differ in `size`), pill radii are clamped
+to the effective radius (no more `33554400px`), and viewport-filling
+leaf boxes get role `backdrop` (minor presence only). `doc-detail`:
+171 → 141 findings, 0 chrome, 23 data-slot suppressions visible, no
+major `size`. Every remaining item is genuine — but two ROOT CAUSES
+produce ~70 of them (see 1b). See handoff "Learnings".
+
+## 1b. Systematic-finding aggregation ← DO NEXT (small, pure)
+
+Same `(type, expected→actual)` across many matched pairs is ONE cause:
+on `doc-detail`, 51 typography findings are "Storybook renders serif
+fallback, design says Public Sans" and 16 color findings are "ink is
+#2c2419, design says #1a1a1a". Pure stage `aggregate(findings) ->
+Finding[]` collapsing ≥3 identical deltas into one finding with
+`instances: number` + all boxes (overlay draws one mark per instance,
+message says "×51"). Severity of the aggregate = max of members. This is
+what makes the list SHORT without hiding anything. Then the doc-detail
+list is: missing category row (Služby/Účt. kategória/▾), missing
+Popis+description, missing "Zobraziť 1 ďalší návrh", one unmatched
+suggestion amount, the ~16–25px vertical shift of the lower half, badge
+colors (Návrh green vs ochre), 5 radii, 2 aggregates.
+
+## 1 (original spec, for reference). Ignore policies for demo/seed data and artboard chrome
 
 **Goal:** `findings.json` on `doc-detail-owner-desktop` shrinks to a
 short list where every item is a real layout/style difference; the

@@ -70,6 +70,48 @@ export interface Finding {
   message: string;
   /** Native-resolution crop pair for this finding, paths relative to the run dir. */
   crops?: { design: string; impl: string };
+  /** Role of the element(s) involved (design side wins) — policies key on it. */
+  role?: string;
+}
+
+/**
+ * What to ignore for one pair — serializable so it can live in a manifest.
+ * Regions are in impl (aligned) CSS-px space, the same space findings use.
+ */
+export interface IgnorePolicy {
+  /** Regex sources (`u` flag) matched against a finding's texts — demo IDs, amounts, names. */
+  textPatterns?: string[];
+  /** Element roles ("text" | "image" | "icon" | "box") whose findings are out of scope. */
+  roles?: string[];
+  /** Boxes whose contents are chrome, not UI. */
+  regions?: Box[];
+  /** CSS selector inside the design frame to compare instead of the whole frame. */
+  scope?: string;
+  /** Matched pairs with differing text are data, not drift → text-content suppressed. */
+  dataSlots?: boolean;
+}
+
+export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot";
+
+/** A finding a policy rule removed from the kept list — still reported. */
+export interface SuppressedFinding extends Finding {
+  suppressedBy: SuppressionReason;
+  /** The concrete rule that hit: regex source, role name, region, … */
+  rule: string;
+}
+
+/**
+ * Which node of the design frame a capture actually describes.
+ *  - explicit:      the policy's `scope` selector
+ *  - largest-child: fallback heuristic — the frame's largest child by area
+ *                   (the backdrop/modal, not the label strip or notes)
+ *  - frame:         the frame itself (no children to pick from)
+ */
+export interface CaptureScope {
+  mode: "explicit" | "largest-child" | "frame";
+  selector: string;
+  /** Debug aid: what the heuristic saw when it picked. */
+  candidates?: number;
 }
 
 /** Result of aligning the two frames before any comparison. */
@@ -91,11 +133,15 @@ export interface Alignment {
 export interface ComparisonReport {
   pair: string;
   createdAt: string;
-  design: { source: string; ref: string; width: number; height: number };
+  design: { source: string; ref: string; width: number; height: number; scope?: CaptureScope };
   impl: { source: string; ref: string; width: number; height: number };
   alignment: Alignment;
   findings: Finding[];
-  /** Deterministic gate: pass only when no findings at/above the threshold. */
+  /** Findings the ignore policy removed — visible, never silently dropped. */
+  suppressed: SuppressedFinding[];
+  /** The policy that produced `suppressed` (empty object when none). */
+  policy: IgnorePolicy;
+  /** Deterministic gate over `findings` only: pass when none is at/above the threshold. */
   verdict: { pass: boolean; failThreshold: Severity };
   /** Relative to the previous run of the same pair, when one exists. */
   delta?: { previousRun: string; resolved: string[]; introduced: string[] };

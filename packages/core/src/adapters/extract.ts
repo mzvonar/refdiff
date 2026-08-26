@@ -5,6 +5,10 @@
  * the subtree under a root selector and returns leaf elements — boxes in CSS
  * px relative to the root's origin plus the computed styles the typed checks
  * consume. GVT: 94% of design violations affect leaf components only.
+ *
+ * Text leaves are measured by their glyph-ink box (text-run client rects),
+ * not the element box — a block-width table cell and a shrink-wrapped span
+ * carrying the same label are the same thing visually.
  */
 
 import type { Page } from "playwright";
@@ -52,11 +56,14 @@ export async function extractElementTree(
 
     const radiusPx = (v: string, rect: DOMRect): number | undefined => {
       // Computed border-radius can be "8px", "50%", or "8px 8px" (x/y radii).
+      // Pill radii ("9999px") are clamped by the browser to half the shorter
+      // side — report the effective radius, not the declared one.
       const first = v.split(" ")[0] ?? "";
       const n = parseFloat(first);
       if (!Number.isFinite(n)) return undefined;
-      if (first.endsWith("%")) return round((n / 100) * Math.min(rect.width, rect.height));
-      return round(n);
+      const maxRadius = Math.min(rect.width, rect.height) / 2;
+      if (first.endsWith("%")) return round(Math.min((n / 100) * Math.min(rect.width, rect.height), maxRadius));
+      return round(Math.min(n, maxRadius));
     };
 
     const hasAlpha = (color: string): boolean => {
@@ -71,11 +78,42 @@ export async function extractElementTree(
     const out: Array<Record<string, unknown>> = [];
     let seq = 0;
 
-    const emit = (el: Element, rect: DOMRect, cs: CSSStyleDeclaration, ownText: string) => {
+    // The glyph-ink box of an element's own text nodes: a block-level cell
+    // and a shrink-wrapped span rendering the same string must measure the
+    // same, otherwise every label reports a bogus size difference.
+    const inkBox = (el: Element): DOMRect | undefined => {
+      let union: DOMRect | undefined;
+      for (const n of Array.from(el.childNodes)) {
+        if (n.nodeType !== Node.TEXT_NODE || !(n.textContent ?? "").trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of Array.from(range.getClientRects())) {
+          if (r.width < 0.5 || r.height < 0.5) continue;
+          union = union
+            ? new DOMRect(
+                Math.min(union.x, r.x),
+                Math.min(union.y, r.y),
+                Math.max(union.right, r.right) - Math.min(union.x, r.x),
+                Math.max(union.bottom, r.bottom) - Math.min(union.y, r.y),
+              )
+            : DOMRect.fromRect(r);
+        }
+      }
+      return union;
+    };
+
+    const rootArea = rootRect.width * rootRect.height;
+
+    const emit = (el: Element, elRect: DOMRect, cs: CSSStyleDeclaration, ownText: string) => {
       const tag = el.tagName.toLowerCase();
       const isImage = tag === "img" || tag === "picture" || tag === "video";
       const isIcon = tag === "svg";
-      const role = ownText ? "text" : isImage ? "image" : isIcon ? "icon" : "box";
+      // A childless, textless box covering (almost) the whole capture is a
+      // backdrop/scrim, whose extent is the viewport's, not the design's.
+      const isBackdrop =
+        !ownText && !isImage && !isIcon && rootArea > 0 && (elRect.width * elRect.height) / rootArea >= 0.9;
+      const role = ownText ? "text" : isImage ? "image" : isIcon ? "icon" : isBackdrop ? "backdrop" : "box";
+      const rect = (ownText && inkBox(el)) || elRect;
 
       const style: Record<string, unknown> = {};
       if (ownText) {
@@ -88,7 +126,7 @@ export async function extractElementTree(
         if (Number.isFinite(fw)) style["fontWeight"] = fw;
       }
       if (hasAlpha(cs.backgroundColor)) style["backgroundColor"] = cs.backgroundColor;
-      const radius = radiusPx(cs.borderTopLeftRadius, rect);
+      const radius = radiusPx(cs.borderTopLeftRadius, elRect);
       if (radius !== undefined && radius > 0) style["borderRadius"] = radius;
       const bw = pxOrUndef(cs.borderTopWidth);
       if (bw !== undefined && bw > 0 && cs.borderTopStyle !== "none") {

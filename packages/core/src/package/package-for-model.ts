@@ -15,7 +15,14 @@ import { join, relative } from "node:path";
 import sharp from "sharp";
 
 import type { AlignedPair } from "../pipeline.js";
-import type { Box, ComparisonReport, Finding, Severity } from "../types.js";
+import type {
+  Box,
+  ComparisonReport,
+  Finding,
+  IgnorePolicy,
+  Severity,
+  SuppressedFinding,
+} from "../types.js";
 
 export interface PackageOptions {
   /** Run directory: findings.json, overlay and crops land here. */
@@ -24,6 +31,10 @@ export interface PackageOptions {
   failThreshold?: Severity;
   /** CSS px of context around each crop. Default 12. */
   cropPadding?: number;
+  /** Findings the ignore policy removed — reported, not drawn or cropped. */
+  suppressed?: readonly SuppressedFinding[];
+  /** The policy that produced `suppressed`. */
+  policy?: IgnorePolicy;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 };
@@ -117,7 +128,7 @@ async function renderOverlay(
 export async function packageForModel(
   pair: AlignedPair,
   findings: readonly Finding[],
-  { outDir, failThreshold = "major", cropPadding = 12 }: PackageOptions,
+  { outDir, failThreshold = "major", cropPadding = 12, suppressed = [], policy = {} }: PackageOptions,
 ): Promise<ComparisonReport> {
   await mkdir(join(outDir, "crops"), { recursive: true });
 
@@ -172,10 +183,18 @@ export async function packageForModel(
   const report: ComparisonReport = {
     pair: pair.id,
     createdAt: new Date().toISOString(),
-    design: { source: design.source, ref: design.ref, width: design.width, height: design.height },
+    design: {
+      source: design.source,
+      ref: design.ref,
+      width: design.width,
+      height: design.height,
+      ...(design.scope ? { scope: design.scope } : {}),
+    },
     impl: { source: impl.source, ref: impl.ref, width: impl.width, height: impl.height },
     alignment,
     findings: withCrops,
+    suppressed: [...suppressed],
+    policy,
     verdict: {
       pass: !withCrops.some((f) => atOrAbove(f.severity, failThreshold)),
       failThreshold,
