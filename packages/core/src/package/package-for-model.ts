@@ -97,22 +97,26 @@ async function renderOverlay(
   const height = meta.height ?? 0;
   const parts: string[] = [];
   for (const f of findings) {
-    const cssBox = f.implBox ?? f.designBox;
-    if (!cssBox) continue;
-    const box = clampBox(scaleBox(cssBox, dpr), width, height);
-    if (!box) continue;
-    const color = MARK_COLORS[f.severity];
-    const sw = Math.max(2, Math.round(dpr));
-    const fontSize = 13 * dpr;
-    const r = 11 * dpr;
-    // Badge sits at the box's top-left corner, nudged inside the image.
-    const cx = Math.max(r, box.x);
-    const cy = Math.max(r, box.y);
-    parts.push(
-      `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="${color}" stroke-width="${sw}"/>`,
-      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"/>`,
-      `<text x="${cx}" y="${cy}" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${f.mark}</text>`,
-    );
+    // An aggregated finding marks every member location with the same number.
+    const locations = f.members ?? [{ designBox: f.designBox, implBox: f.implBox }];
+    for (const loc of locations) {
+      const cssBox = loc.implBox ?? loc.designBox;
+      if (!cssBox) continue;
+      const box = clampBox(scaleBox(cssBox, dpr), width, height);
+      if (!box) continue;
+      const color = MARK_COLORS[f.severity];
+      const sw = Math.max(2, Math.round(dpr));
+      const fontSize = 13 * dpr;
+      const r = 11 * dpr;
+      // Badge sits at the box's top-left corner, nudged inside the image.
+      const cx = Math.max(r, box.x);
+      const cy = Math.max(r, box.y);
+      parts.push(
+        `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="${color}" stroke-width="${sw}"/>`,
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"/>`,
+        `<text x="${cx}" y="${cy}" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${f.mark}</text>`,
+      );
+    }
   }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${parts.join("")}</svg>`;
   await sharp(implPng)
@@ -136,7 +140,8 @@ export async function packageForModel(
   const { design, impl, alignment } = pair;
 
   // Native-res crop pairs: same normalized region from both sides, so the
-  // model sees directly comparable patches.
+  // model sees directly comparable patches. Aggregates crop the primary
+  // member only; the other locations are in `members` and on the overlay.
   const withCrops: Finding[] = [];
   for (const f of findings) {
     const cssBox = f.implBox ?? f.designBox;

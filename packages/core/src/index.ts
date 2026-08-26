@@ -1,8 +1,9 @@
 // @visual-compare/core
 //
 // Pipeline: capture (pluggable adapters) -> normalize -> structural channel
-// (element matching + typed checks) -> agent packaging (findings.json +
-// set-of-marks overlay + crops). Pixel channel and alignment land later.
+// (element matching + typed checks) -> ignore policy -> aggregation of
+// systematic findings -> agent packaging (findings.json + set-of-marks
+// overlay + crops). Pixel channel lands later.
 //
 // Every stage is independently importable; the pipeline is just function
 // composition. See docs/architecture.md at the repo root.
@@ -14,6 +15,7 @@ export type {
   ComparisonReport,
   ElementNode,
   Finding,
+  FindingMember,
   FindingType,
   IgnorePolicy,
   Severity,
@@ -89,5 +91,6 @@ export {
   type MatchOptions,
 } from "./structural/match.js";
 export { runTypedChecks, type CheckOptions } from "./structural/checks.js";
+export { aggregate, type AggregateOptions } from "./structural/aggregate.js";
 
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js";

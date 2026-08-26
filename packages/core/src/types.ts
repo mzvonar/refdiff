@@ -72,6 +72,19 @@ export interface Finding {
   crops?: { design: string; impl: string };
   /** Role of the element(s) involved (design side wins) — policies key on it. */
   role?: string;
+  /**
+   * Set when this finding aggregates several identical deltas (one root
+   * cause): the number of members. `designBox`/`implBox` are the primary
+   * (first) member's; every member's boxes are listed in `members`.
+   */
+  instances?: number;
+  members?: FindingMember[];
+}
+
+/** One location of an aggregated finding. */
+export interface FindingMember {
+  designBox?: Box;
+  implBox?: Box;
 }
 
 /**

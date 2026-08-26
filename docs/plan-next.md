@@ -16,7 +16,22 @@ leaf boxes get role `backdrop` (minor presence only). `doc-detail`:
 major `size`. Every remaining item is genuine — but two ROOT CAUSES
 produce ~70 of them (see 1b). See handoff "Learnings".
 
-## 1b. Systematic-finding aggregation ← DO NEXT (small, pure)
+## 1b. Systematic-finding aggregation — DONE (2026-08-26, session 4)
+
+Landed as `structural/aggregate.ts` (pure; `aggregate(findings, { minInstances
+= 3, deltaTolerance = 2 })`), run after `applyPolicy`, `--no-aggregate` to
+disable. Categorical types (color/typography/border-radius/…) group on the
+exact `(type, expected, actual)`; position/size cluster on "the same shift":
+dominant-axis delta within ±2px of the cluster mean, the other axis free up
+to half the shift (the alignment fit leaves a few px of residue across a
+row). Aggregate = max severity, message "×N", `instances` + `members[]`
+(every box); overlay marks each member with the same number, crop is the
+primary's. Presence and text-content never aggregate. `doc-detail`:
+100 → **57 findings covering 100 instances** — 8 missing, 2 extras (+2 minor
+backdrops), ink token ×15, action-row shift ×7, lower-half shift ×4, badge
+colors, 6 radii, and a genuine minor tail. Original spec below.
+
+### 1b (original spec, for reference)
 
 Same `(type, expected→actual)` across many matched pairs is ONE cause:
 on `doc-detail` (after the Storybook font fix: 100 findings, 8 critical

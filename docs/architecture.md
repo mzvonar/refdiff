@@ -44,6 +44,8 @@ align            : NormalizedPair          -> AlignedPair             (NCC trans
 extractElements  : Capture                 -> ElementNode[]           (per side)
 matchElements    : (ElementNode[], ElementNode[]) -> ElementMatch[]
 runTypedChecks   : ElementMatch[]          -> Finding[]               (structural channel)
+applyPolicy      : (Finding[], IgnorePolicy) -> { kept, suppressed }  (suppressed stays in the report)
+aggregate        : Finding[]               -> Finding[]               (≥3 identical deltas → one finding ×N, all boxes kept)
 runPixelChecks   : (AlignedPair, ElementMatch[]) -> Finding[]         (pixel channel)
 packageForModel  : (Pair, Alignment, Finding[]) -> ComparisonReport   (+ overlay, crops)
 diffAgainstPrior : (ComparisonReport, ComparisonReport?) -> ComparisonReport (relative verdict)

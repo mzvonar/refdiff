@@ -23,6 +23,7 @@ import { normalize, pairRefs } from "./pipeline.js";
 import type { CaptureError } from "./pipeline.js";
 import { applyPolicy, mergePolicies } from "./policy.js";
 import { err, ok, type Result } from "./result.js";
+import { aggregate } from "./structural/aggregate.js";
 import { alignStructural } from "./structural/align.js";
 import { matchElements } from "./structural/match.js";
 import { runTypedChecks } from "./structural/checks.js";
@@ -55,6 +56,9 @@ Ignore policy (both modes):
                           suppressed as demo data — the "data-slot" rule)
 
 Common:
+  --no-aggregate          report every instance of a repeated delta separately
+                          (default: ≥3 identical deltas collapse into one
+                          finding "×N" that still lists every location)
   --storybook-url <url>   default $VC_STORYBOOK_URL or http://localhost:6006
   --out <dir>             run directory (default: out/<pair>)
   --fail-threshold <sev>  critical|major|minor (default major)
@@ -85,6 +89,8 @@ interface RunOptions {
   maxGamma?: number;
   /** CLI-level policy, merged over the pair's own. */
   policy: IgnorePolicy;
+  /** Collapse systematic findings (default true). */
+  aggregate: boolean;
 }
 
 type PairError = { side: "design" | "impl"; error: CaptureError };
@@ -144,7 +150,8 @@ async function runPair(
   );
 
   const { kept, suppressed } = applyPolicy(runTypedChecks(match), policy);
-  const report = await packageForModel(aligned, kept, {
+  const findings = o.aggregate ? aggregate(kept) : kept;
+  const report = await packageForModel(aligned, findings, {
     outDir: o.outDir,
     failThreshold: o.failThreshold,
     suppressed,
@@ -156,11 +163,14 @@ async function runPair(
 function printReport(report: ComparisonReport): void {
   const counts = { critical: 0, major: 0, minor: 0 };
   for (const f of report.findings) counts[f.severity]++;
+  const instances = report.findings.reduce((n, f) => n + (f.instances ?? 1), 0);
+  const aggregated = instances !== report.findings.length ? ` covering ${instances} instances` : "";
   console.log(
-    `\n${report.findings.length} findings (${counts.critical} critical, ${counts.major} major, ${counts.minor} minor), ${report.suppressed.length} suppressed`,
+    `\n${report.findings.length} findings (${counts.critical} critical, ${counts.major} major, ${counts.minor} minor)${aggregated}, ${report.suppressed.length} suppressed`,
   );
   for (const f of report.findings.slice(0, 40)) {
-    console.log(`  [${f.mark}] ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}`);
+    const times = f.instances !== undefined ? ` ×${f.instances}` : "";
+    console.log(`  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}`);
   }
   if (report.findings.length > 40) console.log(`  … ${report.findings.length - 40} more`);
   if (report.suppressed.length > 0) {
@@ -197,6 +207,7 @@ async function compare(argv: string[]): Promise<void> {
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
       "no-data-slots": { type: "boolean" },
+      "no-aggregate": { type: "boolean" },
       out: { type: "string" },
       "fail-threshold": { type: "string" },
       "max-gamma": { type: "string" },
@@ -273,6 +284,7 @@ async function compare(argv: string[]): Promise<void> {
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),
         policy,
+        aggregate: !values["no-aggregate"],
       });
       if (!result.ok) {
         anyError = true;
