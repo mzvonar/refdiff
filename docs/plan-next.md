@@ -1,9 +1,33 @@
-# Plan — after the first vertical slice (2026-08-26)
+# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27)
 
-Status: slice 1 landed (`7cabfd9`): both adapters, structural channel,
-packaging, CLI `compare`, proven on `doc-detail-owner-desktop` and
-`tx-picker-owner-desktop`. Problem observed: ~170–200 findings per pair,
-dominated by true-but-uninteresting differences. Three items, in order.
+Status: items 1–3, 5–7 DONE and proven (sessions 1–9, latest `d806ac9`);
+item 4 deferred until a pair emits pixel findings. Everything below is
+history; the live plan is `docs/handoff-2026-08-27.md` "What REMAINS":
+
+## 8. The skill — bounded fix loop consuming reports ← DO NEXT
+
+Nothing consumes `findings.json` / `annotations.md` in a loop yet. Draft the
+thin repo skill (uctoinak-bmad first, porting its "measure don't eyeball"
+checklist): run → read findings (expected/actual first, crops second) → read
+open annotations → fix → re-run → read `delta` → `--mark-implemented`.
+Bounded (5 iterations, diminishing-returns cutoff), regression guard on a
+re-introduced finding. `inspect` (§3.4) only if the loop needs it. Then §9.
+
+## 9. Per-variant manifest expansion for component sets ← DO SECOND
+
+One `figma` manifest entry expands a COMPONENT_SET into N pairs (child
+COMPONENT node id ↔ story cell selector from the variant's properties; pure,
+tested mapping fed by `componentPropertyDefinitions`). Then prove
+`alert/default` (6765:4792) and `dialog/header` (21397:2290). Details in the
+handoff §2.
+
+---
+
+Original plan (2026-08-26): slice 1 landed (`7cabfd9`): both adapters,
+structural channel, packaging, CLI `compare`, proven on
+`doc-detail-owner-desktop` and `tx-picker-owner-desktop`. Problem observed:
+~170–200 findings per pair, dominated by true-but-uninteresting differences.
+Three items, in order.
 
 ## 1. Ignore policies — DONE (2026-08-26, this session)
 
