@@ -11,7 +11,8 @@ scale-normalized (resample floor 2.5–3.7 % < 5 % minor; the 13–24 % was a
 real globe → plus-circle glyph swap); §4 sub-classification built
 (`pixel/classify.ts`, `actual.changeKind`, Button set: 26 pixel findings →
 ONE `shape` cause); `opacity` folded into colors on BOTH sides (DOM effective
-opacity, Figma layer opacity). Button 184/15 → **167 / 14 causes**;
+opacity, Figma layer opacity). Button 184/15 → 167/14 → **141 / 13 causes**
+(26 icon-placeholder `shape` findings accepted by `changeKind`);
 doc-detail baseline unchanged 60/122; tx-picker 82 → 83/138 (the +1 is the
 0.8-dimmed paired rows, now measured). (a) and (b) remain decisions in the
 consuming repos. Details: handoff "What's DONE (session 12)". Original below.
