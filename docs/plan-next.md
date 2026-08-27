@@ -4,6 +4,14 @@ Status: items 1–3, 5–9 DONE and proven (sessions 1–10); item 4 deferred
 until a pair emits pixel findings. Everything below is history; the live
 plan is `docs/handoff-2026-08-27.md` "What REMAINS".
 
+## 10. Use the skill for real from a consuming repo ← DO NEXT
+
+Invoke `/design-fix-loop` in population-registry (DS button/alert sets) and
+uctoinak-bmad (`tx-picker-owner-desktop`) as a user would; every stumble is a
+skill/harness fix here. Likely first CLI need: a per-set `summary`. Then the
+S10 corpus follow-ups (Figma fill-width text boxes, position identity,
+identity alignment for cells). Details: handoff "What REMAINS" §1–§2.
+
 ## 8. The skill — bounded fix loop consuming reports — DONE (session 10)
 
 Built as `skills/design-fix-loop/SKILL.md` (canonical) + an installed copy
