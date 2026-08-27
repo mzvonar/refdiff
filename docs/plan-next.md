@@ -201,7 +201,20 @@ typed errors (`pipeline.ts`), REST edge ported from population-registry's
 `--figma <fileKey>:<nodeId>` / manifest `design.kind: "figma"`. Prove on one
 real frame vs its story. Then the live-URL impl adapter (§5 in the handoff).
 
-## 7. Annotator — viewer half BUILT (2026-08-26, session 8)
+## 7. Annotator — annotation half BUILT (2026-08-27, session 9)
+
+`annotations.ts` (pure, embedded + imported): point/rect notes in world space
+snapped to the nearest `ElementNode` of that side (regions by IoU, points by
+smallest-containing, backdrops excluded), stored with element identity AND box;
+`open → implemented → done` (`--mark-implemented <ids|all>`, editing reopens);
+re-projection through element identity on every start (orphans → `stale`);
+digest `annotations.md` + marked `annotations-{design,impl}.png`. Effects in
+`cli.ts`: `annotations.json`, zero-dep `GET/PUT /api/annotations` on `serveDir`
+(`handle` hook). Verified end-to-end with Playwright on doc-detail: two notes
+placed, one marked done, `--mark-implemented all`, digest PNG markers land on
+the design through the inverse Alignment. 175 tests. Viewer half below.
+
+### 7 (viewer half, session 8)
 
 `packages/annotator`: `visual-compare-annotator <run-dir> [--out] [--serve
 --port --host]` writes `report.html` into the run dir — FULL design and FULL

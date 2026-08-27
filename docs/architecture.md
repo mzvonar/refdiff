@@ -201,8 +201,33 @@ filters by severity/text, selection focuses both panes and shows
 expected/actual + the crop pair; `suppressed` and `delta` are visible;
 "align design through Alignment" can be switched off for a raw
 side-by-side. DPRs are read at load time from PNG natural width ÷ reported
-CSS width. Still to come: the annotation half (element-anchored notes →
-`open → implemented → done`, digests for the model).
+CSS width.
+
+**Built (session 9) — the annotation half.** Pure model in
+`packages/annotator/src/annotations.ts` (no runtime imports; embedded into
+the page like view-math and imported by the CLI): `Annotation { id, side,
+shape: point | rect (world = impl CSS px), anchor? { elementId, role, text,
+box }, note, status, timestamps, stale? }` in an `AnnotationSet { version: 1,
+pair, annotations }`. Snapping (`snapToElement`): a region → the element with
+the largest intersection-over-union (a loose rectangle around a button means
+the button, not the label under its centre); a point → the smallest element
+containing it, else the nearest within 48px; `backdrop` leaves never anchor.
+State machine (`transition`/`editNote`): `open → implemented` (agent, via
+`--mark-implemented`) `→ done` (designer); `reopen` from either; editing an
+implemented note's text reopens it (the spec changed). Re-projection
+(`resolveAnchor`/`reproject`): on every CLI start the stored set is resolved
+against the CURRENT `elements.json` — same id with the same text, else the
+same text+role nearest, else same-role geometry within 40px — and the shape
+moves by the element's delta; an unresolved anchor marks the note `stale`
+(kept at its last place, never dropped). Digest for the model:
+`annotations.md` (numbered, grouped open → implemented → done, anchor
+description + world coords) and `annotations-design.png` /
+`annotations-impl.png` (the full PNGs with numbered markers at native
+resolution — the design side through the inverse Alignment). Effects live in
+`cli.ts`: `annotations.json` (atomic write), `GET/PUT /api/annotations` on
+core's `serveDir` via its new `handle` hook (validate → persist → re-digest,
+last write wins), sharp for the PNGs. The page saves to the API when served,
+to `localStorage` otherwise (and says so).
 
 ## Reuse vs build
 
