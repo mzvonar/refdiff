@@ -16,7 +16,7 @@ import sharp from "sharp";
 
 import { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "../geometry.js";
 import type { AlignedPair } from "../pipeline.js";
-import { diffReports } from "./delta.js";
+import { diffReports, type ResolvedLedger } from "./delta.js";
 import type {
   Box,
   ComparisonReport,
@@ -41,6 +41,8 @@ export interface PackageOptions {
   diffMaskPath?: string;
   /** The previous run's report of this pair, when one exists → `delta`. */
   previous?: ComparisonReport;
+  /** What earlier runs resolved → `delta.regressions` (needs `previous`). */
+  ledger?: ResolvedLedger;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 };
@@ -122,6 +124,7 @@ export async function packageForModel(
     policy = {},
     diffMaskPath,
     previous,
+    ledger,
   }: PackageOptions,
 ): Promise<ComparisonReport> {
   await mkdir(join(outDir, "crops"), { recursive: true });
@@ -188,7 +191,7 @@ export async function packageForModel(
       pass: !withCrops.some((f) => atOrAbove(f.severity, failThreshold)),
       failThreshold,
     },
-    ...(previous !== undefined ? { delta: diffReports(previous, { findings: withCrops }) } : {}),
+    ...(previous !== undefined ? { delta: diffReports(previous, { findings: withCrops }, {}, ledger) } : {}),
     artifacts: {
       overlay: rel(overlayPath),
       designPng: rel(design.pngPath),

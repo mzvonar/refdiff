@@ -75,11 +75,111 @@ export function diffFindings(
   return { resolved, introduced };
 }
 
-/** Pure: the `delta` block of `next` relative to `prev` (kept findings only). */
+/**
+ * Pure: the `delta` block of `next` relative to `prev` (kept findings only).
+ * With a ledger of what earlier runs resolved, introduced findings that match
+ * a ledger entry are ALSO listed under `regressions` — the loop's loud
+ * failure: a fix undone, not a new problem.
+ */
 export function diffReports(
   prev: ComparisonReport,
   next: Pick<ComparisonReport, "findings">,
   options: DeltaOptions = {},
+  ledger?: ResolvedLedger,
 ): ReportDelta {
-  return { previousRun: prev.createdAt, ...diffFindings(prev.findings, next.findings, options) };
+  const delta = diffFindings(prev.findings, next.findings, options);
+  const regressions = ledger ? findRegressions(ledger, next.findings, delta.introduced, options) : [];
+  return {
+    previousRun: prev.createdAt,
+    ...delta,
+    ...(regressions.length > 0 ? { regressions } : {}),
+  };
+}
+
+/* ---------------------------------------------------------- ledger -- */
+
+/**
+ * One finding an earlier run of this pair resolved: enough to recognise it
+ * if it ever comes back (identity key + place), plus what it said.
+ */
+export interface LedgerEntry {
+  key: string;
+  box?: Box;
+  message: string;
+  /** `createdAt` of the run that no longer showed it. */
+  resolvedAt: string;
+}
+
+/** Everything every run of one pair has resolved so far (`resolved-ledger.json`). */
+export interface ResolvedLedger {
+  pair: string;
+  entries: LedgerEntry[];
+}
+
+export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [] });
+
+const matchesEntry = (e: LedgerEntry, f: Finding, tolerance: number): boolean =>
+  e.key === identityKey(f) && boxDistance(e.box, anchor(f)) <= tolerance;
+
+/**
+ * Pure: ids (of `next`) among `introduced` that an earlier run had resolved.
+ * Same identity as `diffFindings`: key + nearest box within tolerance.
+ */
+export function findRegressions(
+  ledger: ResolvedLedger,
+  next: readonly Finding[],
+  introduced: readonly string[],
+  { boxTolerance = 5 }: DeltaOptions = {},
+): string[] {
+  const byId = new Map(next.map((f) => [f.id, f]));
+  return introduced.filter((id) => {
+    const f = byId.get(id);
+    return f !== undefined && ledger.entries.some((e) => matchesEntry(e, f, boxTolerance));
+  });
+}
+
+/**
+ * Pure: the ledger after this run — every finding the previous run showed
+ * and this one resolved is recorded once (a finding resolved twice keeps its
+ * first entry; only `resolvedAt` moves forward).
+ */
+export function recordResolved(
+  ledger: ResolvedLedger,
+  prev: ComparisonReport,
+  delta: Pick<ReportDelta, "resolved">,
+  resolvedAt: string,
+  { boxTolerance = 5 }: DeltaOptions = {},
+): ResolvedLedger {
+  const resolved = new Set(delta.resolved);
+  const entries = [...ledger.entries];
+  for (const f of prev.findings) {
+    if (!resolved.has(f.id)) continue;
+    const existing = entries.findIndex((e) => matchesEntry(e, f, boxTolerance));
+    const box = anchor(f);
+    const entry: LedgerEntry = {
+      key: identityKey(f),
+      ...(box !== undefined ? { box } : {}),
+      message: f.message,
+      resolvedAt,
+    };
+    if (existing === -1) entries.push(entry);
+    else entries[existing] = { ...entries[existing]!, resolvedAt };
+  }
+  return { pair: ledger.pair, entries };
+}
+
+/** Parse a ledger file's JSON; anything malformed → a fresh ledger for `pair`. */
+export function parseLedger(raw: unknown, pair: string): ResolvedLedger {
+  if (typeof raw !== "object" || raw === null) return emptyLedger(pair);
+  const r = raw as { pair?: unknown; entries?: unknown };
+  if (r.pair !== pair || !Array.isArray(r.entries)) return emptyLedger(pair);
+  const entries = r.entries.filter(
+    (e: unknown): e is LedgerEntry =>
+      typeof e === "object" &&
+      e !== null &&
+      typeof (e as LedgerEntry).key === "string" &&
+      typeof (e as LedgerEntry).message === "string" &&
+      typeof (e as LedgerEntry).resolvedAt === "string",
+  );
+  return { pair, entries };
 }

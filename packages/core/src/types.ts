@@ -102,9 +102,22 @@ export interface IgnorePolicy {
   scope?: string;
   /** Matched pairs with differing text are data, not drift → text-content suppressed. */
   dataSlots?: boolean;
+  /**
+   * Intended deviations: a finding of `type` whose expected/actual contain
+   * every listed key with the same value is accepted (e.g. the app's ink
+   * token when one comp is the outlier). The `reason` is the audit trail.
+   */
+  accepted?: AcceptedDeviation[];
 }
 
-export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot";
+export interface AcceptedDeviation {
+  type: FindingType;
+  expected?: Record<string, string | number>;
+  actual?: Record<string, string | number>;
+  reason: string;
+}
+
+export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot" | "accepted";
 
 /** A finding a policy rule removed from the kept list — still reported. */
 export interface SuppressedFinding extends Finding {
@@ -164,8 +177,12 @@ export interface ComparisonReport {
   policy: IgnorePolicy;
   /** Deterministic gate over `findings` only: pass when none is at/above the threshold. */
   verdict: { pass: boolean; failThreshold: Severity };
-  /** Relative to the previous run of the same pair, when one exists. */
-  delta?: { previousRun: string; resolved: string[]; introduced: string[] };
+  /**
+   * Relative to the previous run of the same pair, when one exists.
+   * `regressions` ⊆ `introduced`: findings an EARLIER run of this pair had
+   * resolved (per `resolved-ledger.json`) that are back — a fix undone.
+   */
+  delta?: { previousRun: string; resolved: string[]; introduced: string[]; regressions?: string[] };
   artifacts: {
     overlay: string;
     designPng: string;

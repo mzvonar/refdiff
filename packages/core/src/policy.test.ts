@@ -118,3 +118,45 @@ describe("mergePolicies", () => {
     expect(merged).toEqual({ textPatterns: ["a", "b"], scope: ".x", dataSlots: true });
   });
 });
+
+describe("accepted deviations", () => {
+  const ink = {
+    id: "f1",
+    mark: 1,
+    type: "color" as const,
+    severity: "major" as const,
+    role: "text",
+    designBox: { x: 0, y: 0, w: 10, h: 10 },
+    expected: { color: "rgb(26, 26, 26)" },
+    actual: { color: "rgb(44, 36, 25)" },
+    message: "ink",
+  };
+  const rule = {
+    type: "color" as const,
+    expected: { color: "rgb(26, 26, 26)" },
+    actual: { color: "rgb(44, 36, 25)" },
+    reason: "app ink token; the comp is the outlier",
+  };
+
+  it("suppresses a finding whose type and listed values match, keeping the reason", () => {
+    const { kept, suppressed } = applyPolicy([ink], { accepted: [rule] });
+    expect(kept).toEqual([]);
+    expect(suppressed[0]).toMatchObject({ suppressedBy: "accepted", rule: rule.reason });
+  });
+
+  it("does not accept a different value, type, or a partial mismatch", () => {
+    expect(applyPolicy([{ ...ink, actual: { color: "rgb(0, 0, 0)" } }], { accepted: [rule] }).kept).toHaveLength(1);
+    expect(applyPolicy([{ ...ink, type: "border" }], { accepted: [rule] }).kept).toHaveLength(1);
+    expect(applyPolicy([{ ...ink, actual: {} }], { accepted: [rule] }).kept).toHaveLength(1);
+  });
+
+  it("matches on the listed keys only (a type-wide acceptance needs no values)", () => {
+    const { kept } = applyPolicy([ink], { accepted: [{ type: "color", reason: "all colors reviewed" }] });
+    expect(kept).toEqual([]);
+  });
+
+  it("concatenates accepted rules when merging policies", () => {
+    const merged = mergePolicies({ accepted: [rule] }, { accepted: [{ type: "spacing", reason: "x" }] });
+    expect(merged.accepted).toHaveLength(2);
+  });
+});

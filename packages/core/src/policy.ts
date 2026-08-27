@@ -12,7 +12,7 @@
  * objects) so it can live in a manifest.
  */
 
-import type { Box, Finding, IgnorePolicy, SuppressedFinding, SuppressionReason } from "./types.js";
+import type { AcceptedDeviation, Box, Finding, IgnorePolicy, SuppressedFinding, SuppressionReason } from "./types.js";
 
 export interface PolicyResult {
   /** Findings that survive, renumbered f1..fn / marks 1..n. */
@@ -52,6 +52,15 @@ const centerIn = (region: Box, box: Box): boolean =>
   box.y + box.h / 2 >= region.y &&
   box.y + box.h / 2 <= region.y + region.h;
 
+const subsetOf = (
+  wanted: Record<string, string | number> | undefined,
+  have: Record<string, string | number> | undefined,
+): boolean => Object.entries(wanted ?? {}).every(([k, v]) => have?.[k] === v);
+
+/** An accepted deviation hits when type and every listed expected/actual value agree. */
+export const acceptsFinding = (a: AcceptedDeviation, f: Finding): boolean =>
+  a.type === f.type && subsetOf(a.expected, f.expected) && subsetOf(a.actual, f.actual);
+
 /**
  * Which rule (if any) suppresses a finding. Rules are checked in a fixed
  * order so a finding hit by several reports the most specific one.
@@ -81,6 +90,11 @@ export function suppressionFor(
     for (const re of patterns) {
       if (texts.some((t) => re.test(t))) return { reason: "text-pattern", rule: re.source };
     }
+  }
+
+  // Accepted deviations: intended, reviewed differences (the reason is the rule).
+  for (const a of policy.accepted ?? []) {
+    if (acceptsFinding(a, f)) return { reason: "accepted", rule: a.reason };
   }
 
   // Data slots: a MATCHED pair whose texts differ is data, not drift. The
@@ -120,6 +134,7 @@ export function mergePolicies(...policies: readonly (IgnorePolicy | undefined)[]
     if (p.textPatterns) out.textPatterns = [...(out.textPatterns ?? []), ...p.textPatterns];
     if (p.roles) out.roles = [...(out.roles ?? []), ...p.roles];
     if (p.regions) out.regions = [...(out.regions ?? []), ...p.regions];
+    if (p.accepted) out.accepted = [...(out.accepted ?? []), ...p.accepted];
     if (p.scope !== undefined) out.scope = p.scope;
     if (p.dataSlots !== undefined) out.dataSlots = p.dataSlots;
   }

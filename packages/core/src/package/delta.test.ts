@@ -83,3 +83,51 @@ describe("diffReports", () => {
     expect(boxDistance(undefined, undefined)).toBe(0);
   });
 });
+
+describe("resolved ledger", () => {
+  const ink = finding("f1");
+  const shift = finding("f2", {
+    type: "position",
+    expected: { x: 1, y: 2 },
+    actual: { x: 3, y: 4 },
+    designBox: { x: 200, y: 200, w: 10, h: 10 },
+  });
+
+  it("records what a run resolved, once per finding", async () => {
+    const { emptyLedger, recordResolved } = await import("./delta.js");
+    const prev = report([ink, shift]);
+    const l1 = recordResolved(emptyLedger("p"), prev, { resolved: ["f1"] }, "t1");
+    expect(l1.entries).toHaveLength(1);
+    expect(l1.entries[0]).toMatchObject({ message: "ink", resolvedAt: "t1", box: ink.designBox });
+    // Resolved again later (after a regression): same entry, newer timestamp.
+    const l2 = recordResolved(l1, report([ink]), { resolved: ["f1"] }, "t2");
+    expect(l2.entries).toHaveLength(1);
+    expect(l2.entries[0]?.resolvedAt).toBe("t2");
+  });
+
+  it("flags an introduced finding that an earlier run had resolved", async () => {
+    const { emptyLedger, recordResolved, diffReports } = await import("./delta.js");
+    const run1 = report([ink, shift], "t1");
+    const run2 = report([shift], "t2"); // ink fixed
+    const ledger = recordResolved(emptyLedger("p"), run1, diffReports(run1, run2), "t2");
+    const run3 = report([shift, finding("f9", { designBox: { x: 12, y: 8, w: 100, h: 20 } })], "t3"); // ink back
+    const delta = diffReports(run2, run3, {}, ledger);
+    expect(delta.introduced).toEqual(["f9"]);
+    expect(delta.regressions).toEqual(["f9"]);
+  });
+
+  it("does not call a genuinely new finding a regression", async () => {
+    const { emptyLedger, diffReports } = await import("./delta.js");
+    const delta = diffReports(report([ink]), report([ink, shift]), {}, emptyLedger("p"));
+    expect(delta.introduced).toEqual(["f2"]);
+    expect(delta.regressions).toBeUndefined();
+  });
+
+  it("parses a ledger file and rejects a foreign pair's", async () => {
+    const { parseLedger } = await import("./delta.js");
+    const raw = { pair: "p", entries: [{ key: "k", message: "m", resolvedAt: "t" }, { junk: 1 }] };
+    expect(parseLedger(raw, "p").entries).toHaveLength(1);
+    expect(parseLedger(raw, "other").entries).toEqual([]);
+    expect(parseLedger("nope", "p").entries).toEqual([]);
+  });
+});
