@@ -85,6 +85,9 @@ export function setGroupKey(f: Finding): string {
   if (f.type === "missing-element" || f.type === "extra-element" || f.type === "text-content") {
     return `${f.type}|${role}`;
   }
+  // Pixel regions: the same KIND of change on the same kind of element is one
+  // cause across cells; the ratio is the spread, not the identity.
+  if (f.type === "pixel-region") return `${f.type}|${role}|${String(f.actual?.["changeKind"] ?? "")}`;
   return `${f.type}|${role}|${canon(f.expected)}|${canon(f.actual)}`;
 }
 
@@ -174,6 +177,14 @@ export function summarizeReports(reports: readonly { dir: string; report: Compar
     }
     if (first.type === "missing-element" || first.type === "extra-element" || first.type === "text-content") {
       return base;
+    }
+    if (first.type === "pixel-region") {
+      const kind = first.actual?.["changeKind"];
+      return {
+        ...base,
+        ...(kind !== undefined ? { axis: String(kind) } : {}),
+        range: metricRange(members),
+      };
     }
     return {
       ...base,

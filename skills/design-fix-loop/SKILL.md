@@ -173,9 +173,9 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 | class | how it looks | what you do |
 |---|---|---|
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); `text-content` already under `suppressed: data-slot` | make the fixture / seed render the comp's data (or `ignore.textPatterns` for genuinely dynamic values) |
-| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
+| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
 | **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | add `accepted: [{ type, expected, actual, reason: "<evidence>" }]` to the pair's `ignore` (or `--accept`) — the reason must say why and cite the measurement |
-| **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5"), `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
+| **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
 
 Aggregates first: one `×15` color finding or one `×7` position shift is one
@@ -264,9 +264,15 @@ items is now a typed finding — read it there:
   here or in `pixel-region`.
 - **Borders / radii** → `border` (width, color ΔE), `border-radius`.
 - **Pixels** → `pixel-region` only inside matched boxes ≥ 16 px that are not
-  text and not already reported; `actual.diffRatio`. `diff-mask.png` shows
-  where. Runs only when alignment confidence ≥ 0.5 — a boxless minor note
-  says it was skipped.
+  text and not already reported; `actual.diffRatio` plus
+  `actual.changeKind`: `shape` (a different glyph or drawing — the story's
+  placeholder icon), `added` / `removed` (content on one side only),
+  `stroke` (outline differs), `color` / `hue-rotation` (same shape,
+  recolored), `noise` (resample residue along shared edges, < 10 %, ignore).
+  The message says which; boxes within the 5 px size tolerance are compared
+  scale-normalized ("design 24×24 resampled onto 21×21"). `diff-mask.png`
+  shows where. Runs only when alignment confidence ≥ 0.5 — a boxless minor
+  note says it was skipped.
 - **Alignment** → `alignment` in the report (`scale`, `offsetX/Y`,
   `confidence`). Confidence 0.00 means no unique shared text: everything
   positional is unreliable until the fixture shares text with the comp.

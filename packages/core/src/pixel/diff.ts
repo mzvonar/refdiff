@@ -21,6 +21,7 @@ import type { AlignedPair, ElementMatch } from "../pipeline.js";
 import type { Box } from "../types.js";
 import type { DiffMask } from "./cluster.js";
 import type { MatchDiff } from "./checks.js";
+import type { RawImage } from "./classify.js";
 
 export interface DiffOptions {
   /** pixelmatch per-pixel threshold (0..1, YIQ distance). Default 0.1. */
@@ -49,11 +50,7 @@ export interface DiffOptions {
  */
 export const DIFF_DEFAULTS: Required<DiffOptions> = { threshold: 0.1, minBoxPx: 4, blur: 0, shift: 2 };
 
-interface Raw {
-  data: Buffer;
-  width: number;
-  height: number;
-}
+type Raw = RawImage;
 
 /** Native-px crop of a PNG as RGBA, optionally resampled to `resize`. */
 async function rawCrop(
@@ -73,7 +70,7 @@ async function rawCrop(
   }
   if (blur > 0) pipeline = pipeline.blur(blur);
   const { data, info } = await pipeline.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  return { data, width: info.width, height: info.height };
+  return { data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength), width: info.width, height: info.height };
 }
 
 /** Diff one matched pair; null when either crop is empty/degenerate. */
@@ -105,28 +102,43 @@ async function diffMatch(
   );
   if (!designRaw || designRaw.width !== width + 2 * s || designRaw.height !== height + 2 * s) return null;
 
-  let best: { diffPixels: number; out: Uint8Array } | null = null;
-  const window = new Uint8Array(width * height * 4);
-  for (let dy = -s; dy <= s; dy++) {
-    for (let dx = -s; dx <= s; dx++) {
-      copyWindow(designRaw, s + dx, s + dy, width, height, window);
-      const out = new Uint8Array(width * height * 4);
-      const diffPixels = pixelmatch(window, implRaw.data, out, width, height, {
-        threshold: o.threshold,
-        includeAA: false,
-        diffMask: true,
-      });
-      if (best === null || diffPixels < best.diffPixels) best = { diffPixels, out };
-      if (diffPixels === 0) break;
-    }
-    if (best?.diffPixels === 0) break;
+  let best: { diffPixels: number; out: Uint8Array; window: Uint8Array } | null = null;
+  // Smallest shift first: when every offset differs alike (a whole-element
+  // recolor) the tie must resolve to (0, 0), not to the corner of the search.
+  for (const [dx, dy] of shiftOffsets(s)) {
+    const window = new Uint8Array(width * height * 4);
+    copyWindow(designRaw, s + dx, s + dy, width, height, window);
+    const out = new Uint8Array(width * height * 4);
+    const diffPixels = pixelmatch(window, implRaw.data, out, width, height, {
+      threshold: o.threshold,
+      includeAA: false,
+      diffMask: true,
+    });
+    if (best === null || diffPixels < best.diffPixels) best = { diffPixels, out, window };
+    if (diffPixels === 0) break;
   }
-  const { diffPixels, out } = best!;
+  const { diffPixels, out, window } = best!;
   // diffMask output is transparent except on differing pixels.
   const data = new Uint8Array(width * height);
   for (let i = 0; i < data.length; i++) data[i] = out[i * 4 + 3]! > 0 ? 1 : 0;
   const mask: DiffMask = { width, height, data };
-  return { match, mask, diffRatio: diffPixels / (width * height), diffPixels, dpr: impl.dpr };
+  return {
+    match,
+    mask,
+    diffRatio: diffPixels / (width * height),
+    diffPixels,
+    dpr: impl.dpr,
+    // The crops the classifier reads: design at the best shift, on the impl grid.
+    design: { data: window, width, height },
+    impl: implRaw,
+  };
+}
+
+/** All integer offsets within ±s, ordered by |dx|+|dy| (then dx, dy) — (0,0) first. */
+export function shiftOffsets(s: number): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (let dy = -s; dy <= s; dy++) for (let dx = -s; dx <= s; dx++) out.push([dx, dy]);
+  return out.sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - (Math.abs(b[0]) + Math.abs(b[1])) || a[0] - b[0] || a[1] - b[1]);
 }
 
 /** Copy the width×height RGBA window at (x0, y0) of `src` into `dst`. */

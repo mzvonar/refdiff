@@ -173,6 +173,20 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
     expect(ring.style?.backgroundColor).toBeUndefined();
   });
 
+  it("folds the variant's LAYER opacity into every emitted color (State=Disabled draws at 0.3)", () => {
+    const disabled = set.children!.filter((c) => c.name.startsWith("State=Disabled"));
+    expect(disabled.length).toBeGreaterThan(0);
+    expect(disabled.every((c) => Math.abs((c.opacity ?? 1) - 0.3) < 1e-6)).toBe(true);
+    // Compare a Disabled variant on its own, as the CLI captures one variant COMPONENT per cell.
+    const one = figmaTreeToElements(disabled[0]!, indexVariables(undefined)).elements;
+    const label = one.find((e) => e.role === "text")!;
+    expect(label.style).toMatchObject({ color: "rgba(0, 0, 0, 0.3)", backgroundColor: "rgba(90, 216, 230, 0.3)", opacity: 0.3 });
+    // Full-strength variants are untouched.
+    const full = figmaTreeToElements(set.children!.find((c) => c.name.startsWith("State=Default"))!, indexVariables(undefined)).elements;
+    expect(full.find((e) => e.role === "text")!.style).toMatchObject({ color: "rgb(0, 0, 0)", backgroundColor: "rgb(90, 216, 230)" });
+    expect(full.find((e) => e.role === "text")!.style?.opacity).toBeUndefined();
+  });
+
   it("scores 0.64 with variable ids as tokens (no variables endpoint on this plan)", () => {
     expect(quality).toEqual({ score: 0.64, leaves: 76, bound: 49, instances: 27, detached: 0 });
     expect(elements.find((e) => e.role === "text")!.token?.["color"]).toMatch(/^VariableID:/);

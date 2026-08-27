@@ -8,7 +8,17 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AlignedPair, ElementMatch } from "../pipeline.js";
 import type { Alignment, ElementNode } from "../types.js";
 import { PIXEL_DEFAULTS } from "./checks.js";
-import { diffMatches, writeDiffMask } from "./diff.js";
+import { diffMatches, shiftOffsets, writeDiffMask } from "./diff.js";
+
+describe("shiftOffsets", () => {
+  it("visits (0,0) first and grows outward so ties resolve to the smallest shift", () => {
+    const o = shiftOffsets(2);
+    expect(o).toHaveLength(25);
+    expect(o[0]).toEqual([0, 0]);
+    expect(o.slice(1, 5).map(([dx, dy]) => Math.abs(dx) + Math.abs(dy))).toEqual([1, 1, 1, 1]);
+    expect(o[24]).toEqual([2, 2]);
+  });
+});
 
 /**
  * Synthetic PNGs: a 200×200 (CSS) frame at dpr 2 with a filled square

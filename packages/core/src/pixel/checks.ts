@@ -16,6 +16,7 @@
 import type { ElementMatch } from "../pipeline.js";
 import type { Alignment, Box, Finding, FindingType, Severity } from "../types.js";
 import { clusterMask, unionBox, type Cluster, type DiffMask } from "./cluster.js";
+import { classifyRegion, describeChange, type RawImage } from "./classify.js";
 
 /** What the diff edge measured for one matched pair, in impl native pixels. */
 export interface MatchDiff {
@@ -27,6 +28,14 @@ export interface MatchDiff {
   diffPixels: number;
   /** Native px per CSS px of the impl capture (to map mask → CSS boxes). */
   dpr: number;
+  /**
+   * The two crops the mask was computed over (same size as the mask): the
+   * design element resampled onto the impl grid at the best shift, and the
+   * impl element. Optional so hand-built diffs (tests) need not carry pixels;
+   * without them the finding has no `changeKind`.
+   */
+  design?: RawImage;
+  impl?: RawImage;
 }
 
 export interface PixelCheckOptions {
@@ -162,6 +171,17 @@ function findingFor(d: MatchDiff, o: Required<PixelCheckOptions>): RawFinding | 
   const implBox = toImplCss(union, d.match.impl.box, d.dpr);
   const designBox = toDesignRegion(implBox, d.match.impl.box, d.match.design.box);
   const pct = round1(d.diffRatio * 100);
+  const regions = `${clusters.length} region${clusters.length === 1 ? "" : "s"}, ${Math.round(implBox.w)}×${Math.round(implBox.h)}px`;
+  // Boxes within the size tolerance still differ in size: the design crop was
+  // resampled onto the impl grid (measured residue ≤4%), say so.
+  const db = d.match.design.box;
+  const ib = d.match.impl.box;
+  const resampled =
+    Math.round(db.w) !== Math.round(ib.w) || Math.round(db.h) !== Math.round(ib.h)
+      ? `; design ${Math.round(db.w)}×${Math.round(db.h)} resampled onto ${Math.round(ib.w)}×${Math.round(ib.h)}`
+      : "";
+  const classified =
+    d.design !== undefined && d.impl !== undefined ? classifyRegion(d.design, d.impl, d.mask) : undefined;
   return {
     type: "pixel-region",
     severity,
@@ -169,8 +189,21 @@ function findingFor(d: MatchDiff, o: Required<PixelCheckOptions>): RawFinding | 
     designBox,
     implBox,
     expected: { diffRatio: 0 },
-    actual: { diffRatio: round1(d.diffRatio), diffPixels: d.diffPixels, clusters: clusters.length },
-    message: `${pct}% of pixels differ in ${elementLabel(d.match)} (${clusters.length} region${clusters.length === 1 ? "" : "s"}, ${Math.round(implBox.w)}×${Math.round(implBox.h)}px)`,
+    actual: {
+      diffRatio: round1(d.diffRatio),
+      diffPixels: d.diffPixels,
+      clusters: clusters.length,
+      ...(classified
+        ? {
+            changeKind: classified.kind,
+            edgeCorrelation: Math.round(classified.signals.edgeCorrelation * 100) / 100,
+            meanColorDelta: Math.round(classified.signals.meanColorDelta * 100) / 100,
+          }
+        : {}),
+    },
+    message: classified
+      ? `${pct}% of pixels differ in ${elementLabel(d.match)}: ${describeChange(classified.kind, classified.signals)} (${regions}${resampled})`
+      : `${pct}% of pixels differ in ${elementLabel(d.match)} (${regions}${resampled})`,
   };
 }
 

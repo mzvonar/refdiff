@@ -63,11 +63,14 @@ function groupKey(f: Finding): string {
       return f.type;
     case "spacing":
       return `${f.type}|${String(f.expected?.["axis"] ?? "")}`;
+    case "pixel-region":
+      // One cause = the same KIND of pixel change on the same kind of element;
+      // ratios and pixel counts differ per instance.
+      return `${f.type}|${f.role ?? ""}|${String(f.actual?.["changeKind"] ?? "")}`;
     case "color":
     case "typography":
     case "border-radius":
-    case "border":
-    case "pixel-region": {
+    case "border": {
       const canon = (r: Record<string, string | number> | undefined): string =>
         JSON.stringify(Object.entries(r ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
       return `${f.type}|${canon(f.expected)}|${canon(f.actual)}`;

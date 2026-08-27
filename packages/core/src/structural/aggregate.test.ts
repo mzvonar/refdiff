@@ -56,6 +56,25 @@ const missing = (): Finding =>
   finding({ type: "missing-element", severity: "critical" }, { design: true });
 const extra = (): Finding => finding({ type: "extra-element" }, { impl: true });
 
+const pixel = (changeKind: string, diffRatio: number): Finding =>
+  finding({
+    type: "pixel-region",
+    role: "icon",
+    severity: "major",
+    expected: { diffRatio: 0 },
+    actual: { diffRatio, diffPixels: Math.round(diffRatio * 1000), clusters: 1, changeKind },
+  });
+
+describe("aggregate pixel regions", () => {
+  it("groups pixel regions on (role, changeKind), not on the per-instance ratio", () => {
+    const out = aggregate([pixel("shape", 0.2), pixel("shape", 0.25), pixel("shape", 0.31), pixel("color", 0.3)]);
+    expect(out).toHaveLength(2);
+    const shape = out.find((f) => f.actual?.["changeKind"] === "shape")!;
+    expect(shape.instances).toBe(3);
+    expect(out.find((f) => f.actual?.["changeKind"] === "color")!.instances).toBeUndefined();
+  });
+});
+
 describe("aggregate", () => {
   it("collapses ≥3 identical color deltas into one finding with every member box", () => {
     const input = [color("#1a1a1a", "#2c2419"), color("#1a1a1a", "#2c2419"), color("#1a1a1a", "#2c2419")];

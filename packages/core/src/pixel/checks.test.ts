@@ -75,6 +75,26 @@ describe("runPixelChecks", () => {
     );
     const [f] = runPixelChecks([squareDiff(shifted, 20)], []);
     expect(f!.designBox).toEqual({ x: 4, y: 4, w: 20, h: 20 });
+    // Size-tolerated pairs are still diffed (scale-normalized); the message says so.
+    expect(f!.message).toContain("design 40×40 resampled onto 20×20");
+  });
+
+  it("classifies the region when the diff carries its crops", () => {
+    // Same 20×20 box both sides; the impl paints a black square where the design is white.
+    const w = 40;
+    const h = 40;
+    const white = new Uint8Array(w * h * 4).fill(255);
+    const impl = new Uint8Array(white);
+    for (let y = 4; y < 24; y++) for (let x = 4; x < 24; x++) impl.set([0, 0, 0, 255], (y * w + x) * 4);
+    const d: MatchDiff = {
+      ...squareDiff(m, 20),
+      design: { data: white, width: w, height: h },
+      impl: { data: impl, width: w, height: h },
+    };
+    const [f] = runPixelChecks([d], []);
+    expect(f!.actual?.["changeKind"]).toBe("added");
+    expect(f!.actual?.["edgeCorrelation"]).toBeDefined();
+    expect(f!.message).toMatch(/25% of pixels differ in icon at \(100, 50\): content present in the implementation only/);
   });
 
   it("does not report a pair the structural channel already covered", () => {

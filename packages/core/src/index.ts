@@ -169,6 +169,17 @@ export {
   type PixelCheckOptions,
 } from "./pixel/checks.js";
 export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js";
+export {
+  CLASSIFY_DEFAULTS,
+  classifyChange,
+  classifyRegion,
+  describeChange,
+  regionSignals,
+  type ChangeKind,
+  type ClassifyOptions,
+  type RawImage,
+  type RegionSignals,
+} from "./pixel/classify.js";
 
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js";
 export {

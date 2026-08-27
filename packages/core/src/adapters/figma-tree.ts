@@ -35,10 +35,16 @@ const CONTAINER_TYPES = new Set(["FRAME", "GROUP", "INSTANCE", "COMPONENT", "COM
 /** Icon heuristic: a container whose descendants are all vector shapes, no bigger than this. */
 const MAX_ICON_PX = 64;
 
-/** Figma colors are 0..1 floats; paint opacity multiplies alpha. Emitted like the DOM side (`rgb()`/`rgba()`). */
-export function paintToCss(p: FigmaPaint): string | undefined {
+/**
+ * Figma colors are 0..1 floats; paint opacity multiplies alpha, and so does
+ * the LAYER opacity of the node and its ancestors (`opacity`, passed in as
+ * the product) — a State=Disabled variant drawn at layer opacity 0.3 is
+ * `rgba(…, 0.3)`, the same statement the DOM side makes for `opacity: .3`.
+ * Emitted like the DOM side (`rgb()`/`rgba()`).
+ */
+export function paintToCss(p: FigmaPaint, opacity = 1): string | undefined {
   if (p.type !== "SOLID" || p.visible === false || !p.color) return undefined;
-  const a = round((p.color.a ?? 1) * (p.opacity ?? 1));
+  const a = round((p.color.a ?? 1) * (p.opacity ?? 1) * opacity);
   if (a <= 0) return undefined;
   const c = (v: number): number => Math.round(Math.min(1, Math.max(0, v)) * 255);
   const rgb = `${c(p.color.r)}, ${c(p.color.g)}, ${c(p.color.b)}`;
@@ -63,12 +69,12 @@ interface Decoration {
   borderColor?: string;
 }
 
-function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean): Decoration {
+function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean, opacity = 1): Decoration {
   const out: Decoration = {};
   // A text node's fills are its glyph color, not a background.
   if (!isText) {
     const bg = firstSolid(n.fills);
-    const css = bg ? paintToCss(bg) : undefined;
+    const css = bg ? paintToCss(bg, opacity) : undefined;
     if (css) out.backgroundColor = css;
   }
   const radius = cornerRadius(n, w, h);
@@ -77,11 +83,15 @@ function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean): Deco
   const sw = n.strokeWeight ?? 0;
   if (stroke && sw > 0) {
     out.borderWidth = round(sw);
-    const css = paintToCss(stroke);
+    const css = paintToCss(stroke, opacity);
     if (css) out.borderColor = css;
   }
   return out;
 }
+
+/** Effective layer opacity of a node: its own times every ancestor's (the captured root included). */
+const effectiveOpacity = (chain: readonly FigmaNode[]): number =>
+  round(chain.reduce((a, x) => a * (x.opacity ?? 1), 1));
 
 /**
  * Figma renders `style.textCase` over the raw `characters` the way CSS
@@ -198,9 +208,10 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
     if (isText && text === "") return;
 
     const style: NonNullable<ElementNode["style"]> = {};
+    const opacity = effectiveOpacity([...ancestors, n]);
     if (isText) {
       const fill = firstSolid(n.fills);
-      const css = fill ? paintToCss(fill) : undefined;
+      const css = fill ? paintToCss(fill, opacity) : undefined;
       if (css) style.color = css;
       const s = n.style ?? {};
       if (s.fontFamily) style.fontFamily = s.fontFamily;
@@ -213,7 +224,7 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
     // which it is the only visible child (a TEXT inside a one-child FRAME
     // that paints a fill/stroke is a labelled pill — same as
     // <button><span>⋯</span></button> on the DOM side).
-    let deco = decorationOf(n, b.width, b.height, isText);
+    let deco = decorationOf(n, b.width, b.height, isText, opacity);
     // The root itself counts: when the captured node IS the button (one Figma
     // variant COMPONENT) its fill/radius belong to the lone label, otherwise
     // that paint would vanish from the comparison altogether. Icon siblings
@@ -229,7 +240,7 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
         if (!siblings.every(isIconLike)) break;
         const pb = parent.absoluteBoundingBox;
         if (!pb) break;
-        const pd = decorationOf(parent, pb.width, pb.height, false);
+        const pd = decorationOf(parent, pb.width, pb.height, false, effectiveOpacity(ancestors.slice(0, i + 1)));
         if (paints(pd)) {
           deco = pd;
           break;
@@ -237,6 +248,7 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
       }
     }
     Object.assign(style, deco);
+    if (opacity < 1) style.opacity = opacity;
 
     const token = tokensOf(n, vars);
     const node: ElementNode = {
@@ -278,7 +290,9 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
       if (CONTAINER_TYPES.has(n.type)) {
         if (kids.length === 0) {
           // A childless frame is a box only when it paints something.
-          if (b && paints(decorationOf(n, b.width, b.height, false))) emit(n, "box", ancestors);
+          if (b && paints(decorationOf(n, b.width, b.height, false, effectiveOpacity([...ancestors, n])))) {
+            emit(n, "box", ancestors);
+          }
           return;
         }
         if (b && Math.max(b.width, b.height) <= MAX_ICON_PX && allVectors(n)) return emit(n, "icon", ancestors);

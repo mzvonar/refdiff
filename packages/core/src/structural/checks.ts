@@ -7,7 +7,7 @@
  * text findings stay minor.
  */
 
-import { differenceCiede2000, parse } from "culori";
+import { differenceCiede2000, parse, rgb, type Rgb } from "culori";
 
 import type { ElementMatch, MatchResult } from "../pipeline.js";
 import type { Box, ElementNode, Finding, FindingType, Severity } from "../types.js";
@@ -54,11 +54,23 @@ const deltaE = differenceCiede2000();
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
+/**
+ * Flatten a translucent color over white — ΔE2000 has no alpha, and both
+ * adapters emit translucency as alpha (Figma paint opacity, CSS `opacity`
+ * folded by the DOM extraction). White is an assumption (light UIs); the
+ * message still shows the raw strings so the alpha stays visible.
+ */
+export function flattenOverWhite(c: Rgb): Rgb {
+  const a = c.alpha ?? 1;
+  if (a >= 1) return c;
+  return { mode: "rgb", r: c.r * a + (1 - a), g: c.g * a + (1 - a), b: c.b * a + (1 - a) };
+}
+
 function colorDelta(a: string, b: string): number | undefined {
-  const ca = parse(a);
-  const cb = parse(b);
+  const ca = rgb(a);
+  const cb = rgb(b);
   if (!ca || !cb) return undefined;
-  return deltaE(ca, cb);
+  return deltaE(flattenOverWhite(ca), flattenOverWhite(cb));
 }
 
 const normText = (t: string): string => t.replace(/\s+/g, " ").trim();

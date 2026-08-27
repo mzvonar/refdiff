@@ -70,6 +70,25 @@ describe("runTypedChecks", () => {
     expect(findings[0]!.message).toContain("ΔE2000");
   });
 
+  it("compares translucent colors flattened over white (folded CSS opacity, Figma paint opacity)", () => {
+    // A disabled button at opacity .5: rgba(184, 92, 36, .5) over white ≈ rgb(220, 174, 146).
+    const faded = runTypedChecks(
+      matched(
+        el("d", { style: { backgroundColor: "rgb(220, 174, 146)" } }),
+        el("i", { style: { backgroundColor: "rgba(184, 92, 36, 0.5)" } }),
+      ),
+    );
+    expect(faded).toEqual([]);
+    // Ignoring the alpha would have called the full-strength orange a major color finding.
+    const full = runTypedChecks(
+      matched(
+        el("d", { style: { backgroundColor: "rgb(220, 174, 146)" } }),
+        el("i", { style: { backgroundColor: "rgb(184, 92, 36)" } }),
+      ),
+    );
+    expect(full.map((f) => f.type)).toEqual(["color"]);
+  });
+
   it("ignores imperceptible color differences", () => {
     const findings = runTypedChecks(
       matched(

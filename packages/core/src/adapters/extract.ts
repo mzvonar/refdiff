@@ -75,6 +75,25 @@ export async function extractElementTree(
     const firstFontFamily = (v: string): string =>
       (v.split(",")[0] ?? v).trim().replace(/^["']|["']$/g, "");
 
+    // CSS `opacity` fades the whole element (and its subtree); the computed
+    // colors do not carry it. Fold the effective opacity (product down the
+    // ancestor chain from the root) into the alpha of every emitted color,
+    // the way the Figma adapter folds paint opacity — a `disabled:opacity-50`
+    // button then reports rgba(…, 0.5), not its full-strength background.
+    const withOpacity = (color: string, opacity: number): string => {
+      if (opacity >= 1) return color;
+      const fold = (a: string | undefined): number =>
+        Math.round((a === undefined ? 1 : a.endsWith("%") ? parseFloat(a) / 100 : parseFloat(a)) * opacity * 1000) / 1000;
+      // Legacy comma syntax: rgb(r, g, b) / rgba(r, g, b, a).
+      const legacy = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.%]+)\s*)?\)$/.exec(color);
+      if (legacy) return `rgba(${legacy[1]}, ${legacy[2]}, ${legacy[3]}, ${fold(legacy[4])})`;
+      // CSS Color 4 space syntax with an optional slash alpha — Chrome emits
+      // `oklab(l a b / .4)` / `color(srgb …)` for Tailwind v4 alpha colors.
+      const modern = /^([a-z-]+)\((.*?)(?:\s*\/\s*([\d.%]+))?\s*\)$/.exec(color);
+      if (modern) return `${modern[1]}(${modern[2]} / ${fold(modern[3])})`;
+      return color;
+    };
+
     const out: Array<Record<string, unknown>> = [];
     let seq = 0;
 
@@ -153,7 +172,7 @@ export async function extractElementTree(
       return { cs, rect };
     };
 
-    const emit = (el: Element, elRect: DOMRect, cs: CSSStyleDeclaration, ownText: string) => {
+    const emit = (el: Element, elRect: DOMRect, cs: CSSStyleDeclaration, ownText: string, opacity: number) => {
       const tag = el.tagName.toLowerCase();
       const isImage = tag === "img" || tag === "picture" || tag === "video";
       const isIcon = tag === "svg";
@@ -166,7 +185,7 @@ export async function extractElementTree(
 
       const style: Record<string, unknown> = {};
       if (ownText) {
-        style["color"] = cs.color;
+        style["color"] = withOpacity(cs.color, opacity);
         style["fontFamily"] = firstFontFamily(cs.fontFamily);
         style["fontSize"] = pxOrUndef(cs.fontSize);
         const lh = pxOrUndef(cs.lineHeight);
@@ -180,15 +199,16 @@ export async function extractElementTree(
       // <div>⋯</div> are the same bordered pill, and one side's markup must
       // not decide whether the border is "missing".
       const { cs: dcs, rect: dRect } = decorationSource(el, elRect, cs);
-      if (hasAlpha(dcs.backgroundColor)) style["backgroundColor"] = dcs.backgroundColor;
+      if (hasAlpha(dcs.backgroundColor)) style["backgroundColor"] = withOpacity(dcs.backgroundColor, opacity);
       const radius = radiusPx(dcs.borderTopLeftRadius, dRect);
       if (radius !== undefined && radius > 0) style["borderRadius"] = radius;
       const bw = pxOrUndef(dcs.borderTopWidth);
       // A transparent border (Tailwind `border border-transparent`) paints nothing.
       if (bw !== undefined && bw > 0 && dcs.borderTopStyle !== "none" && hasAlpha(dcs.borderTopColor)) {
         style["borderWidth"] = bw;
-        style["borderColor"] = dcs.borderTopColor;
+        style["borderColor"] = withOpacity(dcs.borderTopColor, opacity);
       }
+      if (opacity < 1) style["opacity"] = Math.round(opacity * 1000) / 1000;
 
       const node: Record<string, unknown> = {
         id: `${tag}-${seq++}`,
@@ -205,10 +225,11 @@ export async function extractElementTree(
       out.push(node);
     };
 
-    const walk = (el: Element, isRoot: boolean) => {
+    const walk = (el: Element, isRoot: boolean, inheritedOpacity: number) => {
       const cs = getComputedStyle(el);
-      if (cs.display === "none" || cs.visibility === "hidden" || parseFloat(cs.opacity) === 0)
-        return;
+      const ownOpacity = parseFloat(cs.opacity);
+      if (cs.display === "none" || cs.visibility === "hidden" || ownOpacity === 0) return;
+      const opacity = inheritedOpacity * (Number.isFinite(ownOpacity) ? ownOpacity : 1);
       const rect = el.getBoundingClientRect();
       // Zero size hides the element itself but NOT its children — portal
       // wrappers and overflowing containers have no box of their own while
@@ -244,11 +265,11 @@ export async function extractElementTree(
       // clip pattern; real hairlines are thin in only one axis).
       const subVisible = rect.width <= 2 && rect.height <= 2;
       if (!isRoot && !zeroSize && !subVisible && (elementChildren.length === 0 || ownText))
-        emit(el, rect, cs, ownText);
-      for (const child of elementChildren) walk(child, false);
+        emit(el, rect, cs, ownText, opacity);
+      for (const child of elementChildren) walk(child, false, opacity);
     };
 
-    walk(root, true);
+    walk(root, true, 1);
     return {
       width: round(rootRect.width),
       height: round(rootRect.height),

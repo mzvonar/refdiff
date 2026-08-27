@@ -32,6 +32,8 @@ export interface ElementNode {
     borderRadius: number;
     borderColor: string;
     borderWidth: number;
+    /** Effective CSS opacity (< 1 only), already folded into the colors above. */
+    opacity: number;
     gap: number;
     padding: [number, number, number, number];
   }>;
