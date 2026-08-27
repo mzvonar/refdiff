@@ -16,10 +16,12 @@ times, and stop on diminishing returns.
 
 ## Repo bindings
 
-This skill file is repo-agnostic and is SYMLINKED into consuming repos from
-`~/Development/visual-compare/skills/design-fix-loop` while it is being
-developed. Everything repo-specific lives in the consuming repo — **read it
-first**, it is the source of truth for paths, ports, seeds and gotchas:
+This skill is a USER-level skill (symlinked from
+`~/.claude-shared/skills/design-fix-loop` → the visual-compare checkout; both
+profiles link it), so it is available in every project. Nothing of it lives
+in a consuming repo — the repo only carries its manifest and a bindings file.
+**Read the bindings first**; they are the source of truth for paths, ports,
+seeds and gotchas:
 
 ```
 <repo>/tools/design-compare/design-fix-loop.bindings.md          # uctoinak-bmad
