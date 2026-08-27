@@ -8,10 +8,43 @@
 // effectful edge that reads findings.json, writes report.html into the run
 // dir and optionally serves it.
 //
-// Still to come (docs/architecture.md "Annotator"): element-anchored human
-// annotations flowing back to the agent (open → implemented → done).
+// Annotations (docs/architecture.md "Annotator"): element-anchored human notes
+// flowing back to the agent (open → implemented → done) — pure model in
+// annotations.ts, effects (file, HTTP API, digest PNGs) in cli.ts.
 
 export { renderReport, embedJson, type RenderOptions } from "./render.js";
+export {
+  anchorFor,
+  anchorOf,
+  boxDistance,
+  counts,
+  createAnnotation,
+  describeAnchor,
+  digestSvg,
+  digestText,
+  editNote,
+  emptySet,
+  parseAnnotationSet,
+  reproject,
+  reprojectAll,
+  resolveAnchor,
+  shapeBox,
+  shapeCenter,
+  snapToElement,
+  transition,
+  STATUSES,
+  STATUS_COLORS,
+  type ABox,
+  type Action,
+  type Anchor,
+  type Annotation,
+  type AnnotationSet,
+  type AnnotationStatus,
+  type ElementLike,
+  type ParseResult,
+  type Shape,
+  type Side,
+} from "./annotations.js";
 export {
   IDENTITY_ALIGNMENT,
   designImageTransform,

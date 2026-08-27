@@ -16,7 +16,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@visual-compare/core": "workspace:*"
+    "@visual-compare/core": "workspace:*",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

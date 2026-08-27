@@ -37,13 +37,27 @@ export interface ServeDirOptions {
   port?: number;
   /** Bind address; default 127.0.0.1 (0.0.0.0 to reach it from another device). */
   host?: string;
+  /**
+   * Zero-dependency API hook: called before static serving; return true when
+   * the request was handled (the annotator mounts `/api/annotations` here).
+   */
+  handle?: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<boolean>;
 }
 
 /** Serve `rootDir` (default: ephemeral localhost port), with path containment. */
 export function serveDir(rootDir: string, options: ServeDirOptions = {}): Promise<StaticServer> {
-  const { port: wantedPort = 0, host = "127.0.0.1" } = options;
+  const { port: wantedPort = 0, host = "127.0.0.1", handle } = options;
   const rootResolved = resolve(rootDir);
   const server = http.createServer(async (req, res) => {
+    if (handle) {
+      try {
+        if (await handle(req, res)) return;
+      } catch (e) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end(e instanceof Error ? e.message : String(e));
+        return;
+      }
+    }
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
       const rel = normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]|\.\.[/\\])+/, "");

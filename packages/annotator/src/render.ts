@@ -17,9 +17,15 @@
 
 import type { ComparisonReport } from "@visual-compare/core";
 
+import { emptySet, type AnnotationSet } from "./annotations.js";
+
 export interface RenderOptions {
   /** Compiled source of view-math.js (an ESM module with no imports). */
   viewMathSource: string;
+  /** Compiled source of annotations.js (an ESM module with no imports). */
+  annotationsSource: string;
+  /** Annotations to embed (the page prefers the live API when served). */
+  annotations?: AnnotationSet;
   /** Page title; default "<pair> — visual-compare". */
   title?: string;
 }
@@ -33,9 +39,10 @@ export const embedJson = (value: unknown): string =>
 
 export function renderReport(report: ComparisonReport, options: RenderOptions): string {
   const title = options.title ?? `${report.pair} — visual-compare`;
-  if (options.viewMathSource.includes("</script")) {
-    throw new Error("viewMathSource must not contain a closing script tag");
+  if (options.viewMathSource.includes("</script") || options.annotationsSource.includes("</script")) {
+    throw new Error("embedded module sources must not contain a closing script tag");
   }
+  const annotations = options.annotations ?? emptySet(report.pair);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -55,6 +62,7 @@ export function renderReport(report: ComparisonReport, options: RenderOptions): 
     <div id="count" class="count"></div>
     <ol id="list" class="list"></ol>
     <details id="suppressed-box"><summary id="suppressed-summary"></summary><ol id="suppressed" class="list"></ol></details>
+    <details id="ann-box" open><summary id="ann-summary"></summary><ol id="ann-list" class="list"></ol></details>
   </aside>
   <section id="viewer">
     <div class="toolbar">
@@ -65,24 +73,30 @@ export function renderReport(report: ComparisonReport, options: RenderOptions): 
       <label><input type="checkbox" id="aligned" checked> align design through Alignment</label>
       <label><input type="checkbox" id="marks" checked> marks</label>
       <label><input type="checkbox" id="members" checked> all instances</label>
-      <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · Esc = deselect</span>
+      <span class="sep"></span>
+      <button id="ann-point" class="tog" title="drop a note on an element (n)">+ note</button>
+      <button id="ann-rect" class="tog" title="mark a region (r)">+ region</button>
+      <span id="ann-status" class="annstatus"></span>
+      <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · n/r = annotate · Esc = deselect</span>
     </div>
     <div class="panes" id="panes">
       <div class="pane" id="pane-design" data-side="design">
         <div class="pane-label" id="label-design"></div>
-        <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks" id="marks-design"></svg></div>
+        <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg></div>
       </div>
       <div class="pane" id="pane-impl" data-side="impl">
         <div class="pane-label" id="label-impl"></div>
-        <div class="stage"><img class="shot" id="img-impl" alt="implementation"><svg class="marks" id="marks-impl"></svg></div>
+        <div class="stage"><img class="shot" id="img-impl" alt="implementation"><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg></div>
       </div>
     </div>
     <div id="detail" class="detail"></div>
   </section>
 </main>
 <script type="application/json" id="report-data">${embedJson(report)}</script>
+<script type="application/json" id="annotations-data">${embedJson(annotations)}</script>
 <script type="module">
 ${options.viewMathSource}
+${options.annotationsSource}
 ${CLIENT}
 </script>
 </body>
@@ -160,6 +174,33 @@ details[open] .list { max-height:30vh; }
 .detail .crops { display:flex; gap:12px; flex-wrap:wrap; }
 .detail .crops figure { margin:0; } .detail .crops img { max-height:160px; max-width:45vw; border:1px solid var(--line); background:#fff; }
 .detail figcaption { color:var(--muted); font-size:11px; }
+/* annotations */
+:root { --open:#a855f7; --implemented:#f59e0b; --done:#22c55e; }
+.toolbar .sep { width:1px; height:18px; background:var(--line); }
+.toolbar button.tog.on { border-color:var(--open); color:var(--open); box-shadow:0 0 0 1px var(--open) inset; }
+.toolbar .annstatus { color:var(--muted); font-size:11px; }
+.toolbar .annstatus.err { color:var(--critical); }
+.pane.annotating { cursor:crosshair; }
+.pane.annotating .marks rect, .pane.annotating .marks .ann { pointer-events:none; }
+.marks.anns { pointer-events:none; }
+.marks.anns .ann { pointer-events:all; cursor:pointer; }
+.marks.anns circle.ann { stroke-width:2; vector-effect:non-scaling-stroke; fill-opacity:.35; }
+.marks.anns rect.ann { fill-opacity:.12; stroke-width:2; vector-effect:non-scaling-stroke; }
+.marks.anns .open { stroke:var(--open); fill:var(--open); } .marks.anns .implemented { stroke:var(--implemented); fill:var(--implemented); } .marks.anns .done { stroke:var(--done); fill:var(--done); }
+.marks.anns .stale { stroke-dasharray:4 3; }
+.marks.anns .sel { stroke-width:4; }
+.marks.anns g.lbl.open { color:var(--open); } .marks.anns g.lbl.implemented { color:var(--implemented); } .marks.anns g.lbl.implemented text { fill:#111; } .marks.anns g.lbl.done { color:var(--done); } .marks.anns g.lbl.done text { fill:#052e16; }
+.marks.anns rect.band { fill:rgba(168,85,247,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
+.num.open { background:var(--open); } .num.implemented { background:var(--implemented); color:#111; } .num.done { background:var(--done); color:#052e16; }
+.row.ann .msg { white-space:pre-wrap; }
+.row.ann.done .msg { color:var(--muted); text-decoration:line-through; }
+.detail textarea { width:100%; min-height:64px; margin:6px 0; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; resize:vertical; }
+.detail .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.detail .actions button { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
+.detail .actions button.primary { border-color:var(--accent); color:var(--accent); }
+.detail .actions button.danger { border-color:var(--critical); color:var(--critical); }
+.detail .status { display:inline-block; padding:0 8px; border-radius:999px; font-weight:600; font-size:11px; color:#fff; }
+.detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); color:#052e16; }
 @media (max-width: 900px) { main { grid-template-columns:1fr; grid-template-rows:38vh 1fr; } aside { border-right:0; border-bottom:1px solid var(--line); }
   .panes { flex-direction:column; } .pane + .pane { border-left:0; border-top:1px solid var(--line); } }
 `;
@@ -179,6 +220,16 @@ const state = {
 const panes = { design: $('pane-design'), impl: $('pane-impl') };
 const imgs = { design: $('img-design'), impl: $('img-impl') };
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
+const annLayers = { design: $('anns-design'), impl: $('anns-impl') };
+// Human annotations: the set (loaded from the API when served, else this
+// browser, else the embedded copy), the draw mode, the pending draft and the
+// element trees used for snapping (elements.json, both sides in world space).
+const ann = {
+  set: JSON.parse(document.getElementById('annotations-data').textContent),
+  mode: null, draft: null, selected: null, band: null,
+  elements: { design: [], impl: [] }, elementsLoaded: false,
+  storage: location.protocol.startsWith('http') ? 'api' : 'local', saveTimer: null, status: '',
+};
 const all = report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s)));
 const byId = new Map(all.map((f) => [f.id, f]));
 
@@ -196,6 +247,8 @@ function applyView() {
   imgs.design.style.transform = designImageTransform(v, alignment(), state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI);
   layers.design.style.transform = layers.impl.style.transform = worldLayerTransform(v);
+  annLayers.design.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
+  for (const c of document.querySelectorAll('.marks.anns circle.ann')) c.setAttribute('r', 7 / v.z);
   for (const g of document.querySelectorAll('.marks g.lbl')) {
     g.setAttribute('transform', 'translate(' + g.dataset.x + ' ' + g.dataset.y + ') scale(' + (1 / v.z) + ')');
   }
@@ -294,6 +347,7 @@ function renderMarks() {
 // ---- detail -------------------------------------------------------------
 function kv(obj) { return obj ? Object.entries(obj).map(([k, v]) => k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v)).join(', ') : '—'; }
 function renderDetail() {
+  if (ann.draft || ann.selected) { renderAnnDetail(); return; }
   const f = state.selected ? byId.get(state.selected) : null;
   if (!f) { $('detail').innerHTML = ''; return; }
   const keys = Array.from(new Set(Object.keys(f.expected || {}).concat(Object.keys(f.actual || {}))));
@@ -310,6 +364,7 @@ function renderDetail() {
 
 function select(id, focus) {
   state.selected = id;
+  if (id) { ann.selected = null; ann.draft = null; renderAnnList(); renderAnnMarks(); }
   renderList(); renderMarks(); renderDetail();
   const f = id ? byId.get(id) : null;
   const box = f && (f.implBox || f.designBox);
@@ -329,10 +384,13 @@ function wire() {
     const pointers = new Map();
     let last = null;
     pane.addEventListener('pointerdown', (e) => {
-      if (e.target.closest && e.target.closest('rect[data-id]')) return;
+      // Annotate mode wins over finding marks (a backdrop finding can cover the whole pane).
+      if (ann.mode) { annPointerDown(pane, e); return; }
+      if (e.target.closest && (e.target.closest('rect[data-id]') || e.target.closest('.ann[data-ann]'))) return;
       pane.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); pane.classList.add('dragging'); last = null;
     });
     pane.addEventListener('pointermove', (e) => {
+      if (ann.band && ann.band.pointerId === e.pointerId) { annPointerMove(pane, e); return; }
       if (!pointers.has(e.pointerId)) return;
       const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 1) { state.view = panBy(state.view, e.clientX - prev.x, e.clientY - prev.y); }
@@ -345,11 +403,22 @@ function wire() {
       }
       state.userMoved = true; applyView();
     });
-    const up = (e) => { pointers.delete(e.pointerId); if (!pointers.size) pane.classList.remove('dragging'); last = null; };
+    const up = (e) => {
+      if (ann.band && ann.band.pointerId === e.pointerId) { annPointerUp(pane, e); return; }
+      pointers.delete(e.pointerId); if (!pointers.size) pane.classList.remove('dragging'); last = null;
+    };
     pane.addEventListener('pointerup', up); pane.addEventListener('pointercancel', up);
-    pane.addEventListener('dblclick', fit);
-    pane.addEventListener('click', (e) => { const r = e.target.closest && e.target.closest('rect[data-id]'); if (r) select(r.dataset.id, false); });
+    pane.addEventListener('dblclick', (e) => { if (!ann.mode) fit(); });
+    pane.addEventListener('click', (e) => {
+      if (ann.suppressClick) { ann.suppressClick = false; return; } // the click that ended a draft gesture
+      const a = e.target.closest && e.target.closest('.ann[data-ann]'); if (a) { selectAnn(a.dataset.ann, false); return; }
+      const r = e.target.closest && e.target.closest('rect[data-id]'); if (r) select(r.dataset.id, false);
+    });
   }
+  $('ann-point').addEventListener('click', () => setAnnMode(ann.mode === 'point' ? null : 'point'));
+  $('ann-rect').addEventListener('click', () => setAnnMode(ann.mode === 'rect' ? null : 'rect'));
+  $('ann-list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) selectAnn(row.dataset.ann === ann.selected ? null : row.dataset.ann, true); });
+  $('detail').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) annAction(b.dataset.act, b.dataset.ann); });
   $('list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
   $('suppressed').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
   $('sev-chips').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (!c) return; state.sev[c.dataset.sev] = !state.sev[c.dataset.sev]; renderList(); renderMarks(); });
@@ -361,12 +430,14 @@ function wire() {
   $('marks').addEventListener('change', (e) => { state.showMarks = e.target.checked; renderMarks(); });
   $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; renderMarks(); });
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') { e.target.blur(); } return; }
     const p = paneSize();
     if (e.key === '+' || e.key === '=') { state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
     else if (e.key === '-') { state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
     else if (e.key === '0') fit();
-    else if (e.key === 'Escape') select(null, false);
+    else if (e.key === 'n') setAnnMode(ann.mode === 'point' ? null : 'point');
+    else if (e.key === 'r') setAnnMode(ann.mode === 'rect' ? null : 'rect');
+    else if (e.key === 'Escape') { if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); } else select(null, false); }
     else if (e.key === 'j' || e.key === 'k') {
       const kept = report.findings.filter(visible); if (!kept.length) return;
       const i = kept.findIndex((f) => f.id === state.selected);
@@ -377,17 +448,192 @@ function wire() {
   new ResizeObserver(() => { if (!state.userMoved) fit(); else applyView(); }).observe(panes.impl);
 }
 
+// ---- annotations --------------------------------------------------------
+// Shapes live in world space (impl CSS px) like every finding box; the anchor
+// is the element of that side under/around the shape (snapToElement over
+// elements.json). Status: open → implemented (agent) → done (designer).
+const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const nowIso = () => new Date().toISOString();
+
+function setAnnStatus(text, isError) { ann.status = text; const el = $('ann-status'); el.textContent = text; el.className = 'annstatus' + (isError ? ' err' : ''); }
+function setAnnMode(mode) {
+  ann.mode = mode;
+  $('ann-point').classList.toggle('on', mode === 'point'); $('ann-rect').classList.toggle('on', mode === 'rect');
+  for (const pane of Object.values(panes)) pane.classList.toggle('annotating', !!mode);
+}
+function persist() {
+  clearTimeout(ann.saveTimer);
+  ann.saveTimer = setTimeout(async () => {
+    const body = JSON.stringify(ann.set);
+    if (ann.storage === 'api') {
+      try {
+        const res = await fetch('api/annotations', { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
+        if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
+        setAnnStatus('saved · annotations.json', false);
+      } catch (e) { setAnnStatus('save failed: ' + e.message, true); }
+    } else {
+      try { localStorage.setItem('vc-annotations:' + report.pair, body); setAnnStatus('saved in this browser only — serve the run dir (--serve) to persist to annotations.json', false); }
+      catch (e) { setAnnStatus('cannot save: ' + e.message, true); }
+    }
+  }, 250);
+}
+function replaceAnn(next) { ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.map((a) => (a.id === next.id ? next : a)) }); }
+function annIndex(id) { return ann.set.annotations.findIndex((a) => a.id === id); }
+
+function paneWorld(pane, e) { const r = pane.getBoundingClientRect(); return screenToWorld(state.view, e.clientX - r.left, e.clientY - r.top); }
+function annPointerDown(pane, e) {
+  const p = paneWorld(pane, e);
+  ann.band = { pointerId: e.pointerId, side: pane.dataset.side, start: p, end: p };
+  pane.setPointerCapture(e.pointerId);
+  renderAnnMarks();
+}
+function annPointerMove(pane, e) { ann.band.end = paneWorld(pane, e); renderAnnMarks(); }
+function annPointerUp(pane, e) {
+  const b = ann.band; ann.band = null; ann.suppressClick = true;
+  const x = Math.min(b.start.x, b.end.x), y = Math.min(b.start.y, b.end.y), w = Math.abs(b.end.x - b.start.x), h = Math.abs(b.end.y - b.start.y);
+  const shape = ann.mode === 'rect' && w >= 3 && h >= 3 ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
+  ann.draft = { side: b.side, shape, anchor: anchorFor(shape, ann.elements[b.side]) };
+  ann.selected = null; state.selected = null;
+  setAnnMode(null);
+  renderList(); renderMarks(); renderAnnMarks(); renderDetail();
+  const ta = document.querySelector('#detail textarea'); if (ta) ta.focus();
+}
+function selectAnn(id, focus) {
+  ann.selected = id; ann.draft = null;
+  if (id) state.selected = null;
+  renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderDetail();
+  const a = id ? ann.set.annotations[annIndex(id)] : null;
+  if (focus && a) { state.view = focusView(shapeBox(a.shape).w ? shapeBox(a.shape) : { x: a.shape.x - 20, y: a.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view); state.userMoved = true; applyView(); }
+  const row = document.querySelector('#ann-list .row.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
+}
+function annAction(act, id) {
+  const now = nowIso();
+  if (act === 'save-draft') {
+    const note = document.querySelector('#detail textarea').value;
+    const a = createAnnotation({ id: uid(), side: ann.draft.side, shape: ann.draft.shape, note, now }, ann.elements[ann.draft.side]);
+    ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.concat([a]) });
+    ann.draft = null; persist(); selectAnn(a.id, false); return;
+  }
+  if (act === 'cancel-draft') { ann.draft = null; renderAnnMarks(); renderDetail(); return; }
+  const i = annIndex(id); if (i < 0) return;
+  const a = ann.set.annotations[i];
+  if (act === 'delete') { ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.filter((x) => x.id !== id) }); persist(); selectAnn(null, false); return; }
+  if (act === 'save-note') { replaceAnn(editNote(a, document.querySelector('#detail textarea').value, now)); }
+  else replaceAnn(transition(a, act, now));
+  persist(); renderAnnList(); renderAnnMarks(); renderDetail();
+}
+
+function annRowHtml(a, i) {
+  const n = i + 1;
+  return '<li class="row ann ' + a.status + (ann.selected === a.id ? ' sel' : '') + '" data-ann="' + a.id + '">' +
+    '<span class="num ' + a.status + '">' + n + '</span>' +
+    '<span><div class="msg">' + (a.note.trim() ? esc(a.note.trim()) : '<i>(no text)</i>') + '</div><div class="meta"><span class="tag">' + a.side + '</span><span class="tag">' + a.status + '</span>' +
+    (a.stale ? '<span class="tag">stale</span>' : '') + ' ' + esc(describeAnchor(a.anchor)) + '</div></span></li>';
+}
+function renderAnnList() {
+  const c = counts(ann.set);
+  $('ann-summary').textContent = ann.set.annotations.length + ' annotations — ' + c.open + ' open · ' + c.implemented + ' implemented · ' + c.done + ' done';
+  $('ann-list').innerHTML = ann.set.annotations.map(annRowHtml).join('');
+}
+function annLabel(x, y, n, status, id) {
+  const g = document.createElementNS(SVG, 'g');
+  g.setAttribute('class', 'lbl ann ' + status); g.dataset.x = x; g.dataset.y = y; g.dataset.ann = id;
+  const w = 10 + 7 * String(n).length;
+  const bg = document.createElementNS(SVG, 'rect'); bg.setAttribute('x', 0); bg.setAttribute('y', -16); bg.setAttribute('width', w); bg.setAttribute('height', 16); bg.setAttribute('rx', 3);
+  const t = document.createElementNS(SVG, 'text'); t.setAttribute('x', w / 2); t.setAttribute('y', -4); t.setAttribute('text-anchor', 'middle'); t.textContent = n;
+  g.append(bg, t);
+  return g;
+}
+function renderAnnMarks() {
+  for (const side of ['design', 'impl']) {
+    const layer = annLayers[side];
+    layer.replaceChildren();
+    ann.set.annotations.forEach((a, i) => {
+      if (a.side !== side) return;
+      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '');
+      if (a.shape.kind === 'rect') {
+        const r = document.createElementNS(SVG, 'rect');
+        r.setAttribute('x', a.shape.x); r.setAttribute('y', a.shape.y); r.setAttribute('width', Math.max(a.shape.w, 0.5)); r.setAttribute('height', Math.max(a.shape.h, 0.5));
+        r.setAttribute('class', cls); r.dataset.ann = a.id; layer.append(r);
+        layer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id));
+      } else {
+        const c = document.createElementNS(SVG, 'circle');
+        c.setAttribute('cx', a.shape.x); c.setAttribute('cy', a.shape.y); c.setAttribute('r', 7 / state.view.z);
+        c.setAttribute('class', cls); c.dataset.ann = a.id; layer.append(c);
+        layer.append(annLabel(a.shape.x + 9 / state.view.z, a.shape.y - 9 / state.view.z, i + 1, a.status, a.id));
+      }
+    });
+    const live = ann.band && ann.band.side === side ? ann.band : null;
+    const d = ann.draft && ann.draft.side === side ? ann.draft : null;
+    if (live && ann.mode === 'rect') {
+      const r = document.createElementNS(SVG, 'rect');
+      r.setAttribute('x', Math.min(live.start.x, live.end.x)); r.setAttribute('y', Math.min(live.start.y, live.end.y));
+      r.setAttribute('width', Math.abs(live.end.x - live.start.x)); r.setAttribute('height', Math.abs(live.end.y - live.start.y)); r.setAttribute('class', 'band'); layer.append(r);
+    }
+    if (d) {
+      if (d.shape.kind === 'rect') { const r = document.createElementNS(SVG, 'rect'); r.setAttribute('x', d.shape.x); r.setAttribute('y', d.shape.y); r.setAttribute('width', d.shape.w); r.setAttribute('height', d.shape.h); r.setAttribute('class', 'band'); layer.append(r); }
+      else { const c = document.createElementNS(SVG, 'circle'); c.setAttribute('cx', d.shape.x); c.setAttribute('cy', d.shape.y); c.setAttribute('r', 7 / state.view.z); c.setAttribute('class', 'ann open'); layer.append(c); }
+      if (d.anchor) { const r = document.createElementNS(SVG, 'rect'); r.setAttribute('x', d.anchor.box.x); r.setAttribute('y', d.anchor.box.y); r.setAttribute('width', d.anchor.box.w); r.setAttribute('height', d.anchor.box.h); r.setAttribute('class', 'band'); layer.append(r); }
+    }
+  }
+  applyView();
+}
+function renderAnnDetail() {
+  const d = ann.draft;
+  if (d) {
+    $('detail').innerHTML = '<h2>New ' + (d.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + d.side + '</b> side</h2>' +
+      '<div class="meta">anchored to ' + esc(describeAnchor(d.anchor)) + (ann.elementsLoaded ? '' : ' (elements.json not loaded — no snapping)') + ' · world ' + Math.round(d.shape.x) + ',' + Math.round(d.shape.y) + '</div>' +
+      '<textarea placeholder="what should change here?"></textarea>' +
+      '<div class="actions"><button class="primary" data-act="save-draft">Save note</button><button data-act="cancel-draft">Cancel</button></div>';
+    return;
+  }
+  const i = annIndex(ann.selected); const a = ann.set.annotations[i];
+  if (!a) { $('detail').innerHTML = ''; return; }
+  const when = (k) => (a[k] ? ' · ' + k.replace('At', '') + ' ' + esc(a[k]) : '');
+  $('detail').innerHTML = '<h2><span class="num ' + a.status + '" style="padding:0 6px;border-radius:5px">' + (i + 1) + '</span> <span class="status ' + a.status + '">' + a.status + '</span> ' +
+    (a.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + a.side + '</b> side' + (a.stale ? ' · <b>stale</b>: its element is not in the current capture' : '') + '</h2>' +
+    '<div class="meta">anchored to ' + esc(describeAnchor(a.anchor)) + ' · created ' + esc(a.createdAt) + when('implementedAt') + when('doneAt') + ' · id ' + a.id + '</div>' +
+    '<textarea>' + esc(a.note) + '</textarea>' +
+    '<div class="actions"><button class="primary" data-act="save-note" data-ann="' + a.id + '">Save note</button>' +
+    (a.status !== 'done' ? '<button data-act="done" data-ann="' + a.id + '">Mark done</button>' : '') +
+    (a.status !== 'open' ? '<button data-act="reopen" data-ann="' + a.id + '">Reopen</button>' : '') +
+    (a.status === 'open' ? '<button data-act="implement" data-ann="' + a.id + '" title="normally the agent does this via --mark-implemented">Mark implemented</button>' : '') +
+    '<button class="danger" data-act="delete" data-ann="' + a.id + '">Delete</button>' +
+    '<span class="hint">editing the text of an implemented note reopens it</span></div>';
+}
+async function loadAnnotations() {
+  if (ann.storage === 'api') {
+    try {
+      const res = await fetch('api/annotations');
+      if (res.ok) { const p = parseAnnotationSet(await res.json(), report.pair); if (p.ok) { ann.set = p.value; setAnnStatus('annotations.json · ' + ann.set.annotations.length + ' loaded', false); return; } }
+      else if (res.status === 404) { ann.storage = 'local'; }
+      else throw new Error('HTTP ' + res.status);
+    } catch (e) { ann.storage = 'local'; }
+  }
+  try {
+    const raw = localStorage.getItem('vc-annotations:' + report.pair);
+    if (raw) { const p = parseAnnotationSet(JSON.parse(raw), report.pair); if (p.ok && p.value.annotations.length >= ann.set.annotations.length) ann.set = p.value; }
+  } catch (e) { /* embedded copy stays */ }
+  setAnnStatus(ann.set.annotations.length + ' annotations · not served: changes stay in this browser', false);
+}
+async function loadElements() {
+  try {
+    const res = await fetch('elements.json'); if (!res.ok) throw new Error(res.status);
+    const j = await res.json(); ann.elements = { design: j.design || [], impl: j.impl || [] }; ann.elementsLoaded = true;
+  } catch (e) { ann.elementsLoaded = false; }
+}
+
 // ---- boot ---------------------------------------------------------------
 function loadImage(img, src) {
   return new Promise((resolve) => { img.addEventListener('load', () => resolve(true), { once: true }); img.addEventListener('error', () => resolve(false), { once: true }); img.src = src; });
 }
-renderHeader(); renderList(); renderDetail(); wire();
-Promise.all([loadImage(imgs.design, report.artifacts.designPng), loadImage(imgs.impl, report.artifacts.implPng)]).then(([okD, okI]) => {
+renderHeader(); renderList(); renderDetail(); renderAnnList(); wire();
+Promise.all([loadImage(imgs.design, report.artifacts.designPng), loadImage(imgs.impl, report.artifacts.implPng), loadAnnotations(), loadElements()]).then(([okD, okI]) => {
   // DPR = PNG native px / CSS px the capture reported; a missing image keeps 1.
   if (okD) state.dprD = imgs.design.naturalWidth / report.design.width;
   if (okI) state.dprI = imgs.impl.naturalWidth / report.impl.width;
   if (!okD) $('label-design').textContent += ' — image missing';
   if (!okI) $('label-impl').textContent += ' — image missing';
-  renderMarks(); fit();
+  renderMarks(); renderAnnList(); renderAnnMarks(); fit();
 });
 `;
