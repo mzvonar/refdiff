@@ -81,3 +81,28 @@ describe("parseManifest", () => {
     });
   });
 });
+
+describe("readAccepted", () => {
+  it("reads accepted deviations from a manifest ignore block and drops malformed ones", async () => {
+    const { parseManifest, readAccepted } = await import("./manifest.js");
+    const parsed = parseManifest([
+      {
+        ...entry,
+        ignore: {
+          accepted: [
+            { type: "color", expected: { color: "a" }, actual: { color: "b" }, reason: "token" },
+            { type: "color" },
+            { type: "spacing", expected: { gap: { nested: true } }, reason: "bad values" },
+          ],
+        },
+      },
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs[0]?.ignore?.accepted).toEqual([
+      { type: "color", expected: { color: "a" }, actual: { color: "b" }, reason: "token" },
+    ]);
+    expect(readAccepted({ type: "size", reason: "r" })).toEqual({ type: "size", reason: "r" });
+    expect(readAccepted({ reason: "r" })).toBeUndefined();
+  });
+});

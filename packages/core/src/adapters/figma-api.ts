@@ -337,6 +337,11 @@ export interface FigmaNode {
   styles?: Record<string, string>;
   boundVariables?: Record<string, unknown>;
   clipsContent?: boolean;
+  /** COMPONENT_SET only: property definitions; VARIANT ones carry `variantOptions`. */
+  componentPropertyDefinitions?: Record<
+    string,
+    { type: string; defaultValue?: unknown; variantOptions?: string[] }
+  >;
 }
 
 export interface FigmaNodesResponse {

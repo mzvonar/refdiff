@@ -4,16 +4,25 @@
  * can run. Loading the file is the CLI's effect; validating it is here.
  *
  * Design entries: `{ file, frame, scope? }` (dc-html) or
- * `{ kind: "figma", fileKey, nodeId, scale?, version?, minQuality? }`.
+ * `{ kind: "figma", fileKey, nodeId, scale?, version?, minQuality?, variants? }`
+ * where `variants: { selector, maps?, only?, omit? }` expands a COMPONENT_SET.
  * App entries: `{ source: "storybook", storyId, overlay?, selector?, viewport? }` or
  * `{ source: "live", route | url, role?, viewport?, selector?, waitFor? }`.
  */
 
+import type { VariantConfig } from "./adapters/figma-variants.js";
 import type { DcHtmlSource, FigmaSource, LiveUrlSource, StorybookSource, Viewport } from "./pipeline.js";
 import { err, ok, type Result } from "./result.js";
-import type { IgnorePolicy } from "./types.js";
+import type { AcceptedDeviation, IgnorePolicy } from "./types.js";
 
-export type DesignSpec = Omit<DcHtmlSource, "dir"> | FigmaSource;
+/**
+ * A figma design may carry `variants`: the node is a COMPONENT_SET and the
+ * CLI expands the entry into one pair per variant COMPONENT, each against
+ * the story cell its selector template names (see adapters/figma-variants.ts).
+ */
+export type FigmaDesignSpec = FigmaSource & { variants?: VariantConfig };
+
+export type DesignSpec = Omit<DcHtmlSource, "dir"> | FigmaDesignSpec;
 
 /** Live entries carry a route; the CLI supplies the origin (and auth). */
 export interface LiveSpec extends Omit<LiveUrlSource, "url" | "auth"> {
@@ -71,7 +80,51 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
   }
   if (typeof v["scope"] === "string") out.scope = v["scope"];
   if (typeof v["dataSlots"] === "boolean") out.dataSlots = v["dataSlots"];
+  if (Array.isArray(v["accepted"])) out.accepted = v["accepted"].flatMap((a: unknown) => readAccepted(a) ?? []);
   return out;
+}
+
+const isValues = (v: unknown): v is Record<string, string | number> =>
+  isRecord(v) && Object.values(v).every((x) => typeof x === "string" || typeof x === "number");
+
+/** `{ type, expected?, actual?, reason }` — anything else is not an accepted deviation. */
+export function readAccepted(a: unknown): AcceptedDeviation | undefined {
+  if (!isRecord(a) || typeof a["type"] !== "string" || typeof a["reason"] !== "string") return undefined;
+  if (a["expected"] !== undefined && !isValues(a["expected"])) return undefined;
+  if (a["actual"] !== undefined && !isValues(a["actual"])) return undefined;
+  return {
+    type: a["type"] as AcceptedDeviation["type"],
+    ...(isValues(a["expected"]) ? { expected: a["expected"] } : {}),
+    ...(isValues(a["actual"]) ? { actual: a["actual"] } : {}),
+    reason: a["reason"],
+  };
+}
+
+const isStringMap = (v: unknown): v is Record<string, string> =>
+  isRecord(v) && Object.values(v).every((x) => typeof x === "string");
+
+/** `variants: { selector, maps?, only?, omit? }`; absent → undefined; malformed → error. */
+export function readVariants(v: unknown): Result<VariantConfig | undefined, string> {
+  if (v === undefined) return ok(undefined);
+  if (!isRecord(v) || typeof v["selector"] !== "string") return err("variants needs { selector: string }");
+  const out: VariantConfig = { selector: v["selector"] };
+  if (v["maps"] !== undefined) {
+    if (!isRecord(v["maps"]) || !Object.values(v["maps"]).every(isStringMap)) {
+      return err("variants.maps must be { name: { option: token } }");
+    }
+    out.maps = v["maps"] as Record<string, Record<string, string>>;
+  }
+  if (v["only"] !== undefined) {
+    if (!isRecord(v["only"]) || !Object.values(v["only"]).every((a) => Array.isArray(a) && a.every((x) => typeof x === "string"))) {
+      return err("variants.only must be { property: [options] }");
+    }
+    out.only = v["only"] as Record<string, string[]>;
+  }
+  if (v["omit"] !== undefined) {
+    if (!Array.isArray(v["omit"]) || !v["omit"].every(isStringMap)) return err("variants.omit must be [{ property: option }]");
+    out.omit = v["omit"] as Record<string, string>[];
+  }
+  return ok(out);
 }
 
 function readDesign(
@@ -84,6 +137,8 @@ function readDesign(
     if (typeof design["fileKey"] !== "string" || typeof design["nodeId"] !== "string") {
       return err('figma design needs { kind: "figma", fileKey, nodeId }');
     }
+    const variants = readVariants(design["variants"]);
+    if (!variants.ok) return err(variants.error);
     return ok({
       kind: "figma",
       fileKey: design["fileKey"],
@@ -91,6 +146,7 @@ function readDesign(
       ...(typeof design["scale"] === "number" ? { scale: design["scale"] } : {}),
       ...(typeof design["version"] === "string" ? { version: design["version"] } : {}),
       ...(typeof design["minQuality"] === "number" ? { minQuality: design["minQuality"] } : {}),
+      ...(variants.value !== undefined ? { variants: variants.value } : {}),
     });
   }
   if (typeof design["file"] !== "string" || typeof design["frame"] !== "string") {

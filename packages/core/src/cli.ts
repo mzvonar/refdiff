@@ -9,7 +9,7 @@
  * Planned (docs/architecture.md): inspect, explore, report.
  */
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,12 +18,13 @@ import type { Browser } from "playwright";
 
 import { launchBrowser } from "./adapters/browser.js";
 import { captureDcHtml } from "./adapters/dc-html.js";
-import { captureFigma, FIGMA_DEFAULTS } from "./adapters/figma.js";
-import { parseFigmaRef } from "./adapters/figma-api.js";
+import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js";
+import { FigmaClient, parseFigmaRef, readToken } from "./adapters/figma-api.js";
+import { expandVariants } from "./adapters/figma-variants.js";
 import { captureLiveUrl } from "./adapters/live-url.js";
 import { captureStorybook } from "./adapters/storybook.js";
 import { ensureStorybook } from "./adapters/storybook-server.js";
-import { parseManifest, type LiveSpec, type PairSpec } from "./manifest.js";
+import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js";
 import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js";
 import type { Capture, CaptureError, LiveAuth } from "./pipeline.js";
 import { applyPolicy, mergePolicies } from "./policy.js";
@@ -35,6 +36,7 @@ import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.j
 import { diffMatches, writeDiffMask } from "./pixel/diff.js";
 import { lowConfidenceFinding, PIXEL_DEFAULTS, runPixelChecks } from "./pixel/checks.js";
 import { packageForModel } from "./package/package-for-model.js";
+import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js";
 import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js";
 
 const USAGE = `Usage: visual-compare compare [options]
@@ -73,8 +75,12 @@ Common to one pair:
                           not a scale to normalize away
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
-design { file, frame } or { kind: "figma", fileKey, nodeId }; app
-{ source: "storybook", storyId } or { source: "live", route, role? }):
+design { file, frame } or { kind: "figma", fileKey, nodeId, variants? }; app
+{ source: "storybook", storyId } or { source: "live", route, role? }).
+A figma design with variants { selector, maps?, only?, omit? } names a
+COMPONENT_SET: the entry expands into one pair per variant COMPONENT, each
+against the story cell the selector template renders from the variant's
+properties ('[data-rowkey="fill:{variant|tone}:…"][data-col="{State}"]'):
   --manifest <file>       run every pair of the manifest
   --design-dir <dir>      directory the manifest's design.file names live in
   --pair <id[,id…]>       run only these manifest ids
@@ -91,6 +97,9 @@ Ignore policy (both modes):
   --scope <selector>      design node to compare instead of the artboard frame
                           (default: the frame's largest child by area)
   --ignore-text <regex>   suppress findings about matching text (repeatable)
+  --accept <json>         intended deviation, repeatable: '{"type":"color",
+                          "expected":{"color":"rgb(26, 26, 26)"},"actual":{"color":
+                          "rgb(44, 36, 25)"},"reason":"…"}' → suppressed as "accepted"
   --no-data-slots         report text differences on matched pairs (default:
                           suppressed as demo data — the "data-slot" rule)
 
@@ -114,7 +123,9 @@ Common:
 Suppressed findings are never dropped: findings.json lists them under
 \`suppressed\` with the rule that hit each one. When --out already holds a
 findings.json from a previous run, the new report carries \`delta\`
-{ previousRun, resolved, introduced } (identity by content + place, not id).
+{ previousRun, resolved, introduced, regressions? } (identity by content +
+place, not id). resolved-ledger.json in the run dir remembers everything
+earlier runs resolved; an introduced finding matching it is a regression.
 
 Exit codes: 0 pass, 1 findings at/above threshold, 2 capture or usage error.`;
 
@@ -154,6 +165,8 @@ interface RunOptions {
   aggregate: boolean;
   /** Run the scoped pixel channel inside matched boxes (default true). */
   pixels: boolean;
+  /** Figma inputs a set expansion already fetched for this pair. */
+  prefetched?: FigmaCaptureOptions["prefetched"];
 }
 
 type PairError = { side: "design" | "impl"; error: CaptureError };
@@ -178,6 +191,17 @@ async function readPreviousReport(outDir: string): Promise<ComparisonReport | un
     // ENOENT or malformed: first run of this pair.
   }
   return undefined;
+}
+
+const LEDGER_FILE = "resolved-ledger.json";
+
+/** The pair's ledger of findings earlier runs resolved (fresh when absent/foreign). */
+async function readLedger(outDir: string, pair: string): Promise<ResolvedLedger> {
+  try {
+    return parseLedger(JSON.parse(await readFile(join(outDir, LEDGER_FILE), "utf8")), pair);
+  } catch {
+    return emptyLedger(pair);
+  }
 }
 
 /** Absolute URL for a live route: absolute as-is, else under --app-url. */
@@ -220,7 +244,7 @@ async function captureDesign(
           ? { minQuality: o.minDesignQuality }
           : {}),
       },
-      { pngPath },
+      { pngPath, ...(o.prefetched ? { prefetched: o.prefetched } : {}) },
     );
   }
   if (o.designDir === undefined) {
@@ -256,6 +280,7 @@ async function runPair(
   o: RunOptions,
 ): Promise<Result<ComparisonReport, PairError>> {
   const previous = await readPreviousReport(o.outDir);
+  const ledger = await readLedger(o.outDir, spec.id);
   const policy = mergePolicies(spec.ignore, o.policy);
 
   const design = await captureDesign(browser, spec, policy.scope, o);
@@ -326,8 +351,14 @@ async function runPair(
     suppressed,
     policy,
     ...(diffMaskPath !== undefined ? { diffMaskPath } : {}),
-    ...(previous !== undefined ? { previous } : {}),
+    ...(previous !== undefined ? { previous, ledger } : {}),
   });
+  // The ledger remembers every fix across runs, so a finding that comes back
+  // three iterations later is still recognised as a regression.
+  if (previous !== undefined && report.delta) {
+    const next = recordResolved(ledger, previous, report.delta, report.createdAt);
+    await writeFile(join(o.outDir, LEDGER_FILE), JSON.stringify(next, null, 2));
+  }
   return ok(report);
 }
 
@@ -352,14 +383,92 @@ function printReport(report: ComparisonReport): void {
     );
   }
   if (report.delta) {
-    const { introduced, resolved, previousRun } = report.delta;
+    const { introduced, resolved, previousRun, regressions = [] } = report.delta;
     console.log(
       `delta vs ${previousRun}: +${introduced.length} introduced / −${resolved.length} resolved${
         introduced.length > 0 ? ` (introduced: ${introduced.join(", ")})` : ""
       }`,
     );
+    if (regressions.length > 0) {
+      const byId = new Map(report.findings.map((f) => [f.id, f]));
+      console.log(`REGRESSION: ${regressions.length} previously resolved finding(s) are back:`);
+      for (const id of regressions) console.log(`  [${id}] ${byId.get(id)?.message ?? ""}`);
+    }
   }
   console.log(`verdict: ${report.verdict.pass ? "PASS" : "FAIL"} (threshold: ${report.verdict.failThreshold})`);
+}
+
+type Prefetched = NonNullable<FigmaCaptureOptions["prefetched"]>;
+
+/**
+ * A figma design with `variants` names a COMPONENT_SET: read the set once,
+ * expand it (pure) into one pair per variant COMPONENT against its story
+ * cell, fetch variables once and render every variant in one batched
+ * /images call, and hand each pair its prefetched inputs. Skipped variants
+ * are printed, never dropped silently.
+ */
+async function expandFigmaSet(
+  spec: PairSpec,
+  figmaScale: number | undefined,
+): Promise<Result<{ specs: PairSpec[]; prefetched: Map<string, Prefetched> }, CaptureError>> {
+  if (spec.design.kind !== "figma" || spec.design.variants === undefined) {
+    return ok({ specs: [spec], prefetched: new Map() });
+  }
+  const { variants, ...design } = spec.design;
+  const ref = `${design.fileKey}#${design.nodeId}`;
+  const token = await readToken();
+  if (!token) return err({ kind: "figma-auth", ref, detail: "no Figma token: set $FIGMA_TOKEN or create .figma-token" });
+  const client = new FigmaClient(token);
+  const apiErr = (e: { kind: string; detail: string; until?: string }): CaptureError =>
+    e.kind === "no-token" || e.kind === "auth"
+      ? { kind: "figma-auth", ref, detail: e.detail }
+      : e.kind === "rate-limited" || e.kind === "cooling-down"
+        ? { kind: "figma-rate-limited", ref, until: e.until ?? "", detail: e.detail }
+        : { kind: "figma-api", ref, detail: e.detail };
+
+  const nodes = await client.nodes(design.fileKey, [design.nodeId], design.version);
+  if (!nodes.ok) return err(apiErr(nodes.error));
+  const set = nodes.value.nodes[design.nodeId]?.document;
+  if (!set) return err({ kind: "figma-node-not-found", ref, fileKey: design.fileKey, nodeId: design.nodeId });
+  const version = design.version ?? nodes.value.version;
+
+  const expanded = expandVariants(set, variants);
+  if (!expanded.ok) return err({ kind: "figma-api", ref, detail: `variants: ${JSON.stringify(expanded.error)}` });
+  console.log(`${spec.id}: ${set.name} → ${expanded.value.pairs.length} variant pairs, ${expanded.value.skipped.length} skipped`);
+  for (const sk of expanded.value.skipped) console.log(`  skipping ${sk.name}: ${sk.reason}`);
+  if (expanded.value.pairs.length === 0) return ok({ specs: [], prefetched: new Map() });
+
+  const variables = await client.localVariables(design.fileKey);
+  if (!variables.ok) return err(apiErr(variables.error));
+  const scale = design.scale ?? figmaScale ?? FIGMA_DEFAULTS.scale;
+  const images = await client.renderImages(
+    design.fileKey,
+    expanded.value.pairs.map((p) => p.nodeId),
+    scale,
+    version ? { version } : {},
+  );
+  if (!images.ok) return err(apiErr(images.error));
+
+  const byId = new Map(set.children?.map((c) => [c.id, c]) ?? []);
+  const prefetched = new Map<string, Prefetched>();
+  const specs: PairSpec[] = expanded.value.pairs.map((p) => {
+    const id = `${spec.id}--${p.slug}`;
+    const url = images.value[p.nodeId];
+    prefetched.set(id, {
+      document: byId.get(p.nodeId)!,
+      ...(version ? { version } : {}),
+      variables: variables.value ?? null,
+      ...(url ? { imageUrl: url } : {}),
+    });
+    return {
+      id,
+      title: `${spec.title ?? spec.id} — ${p.name}`,
+      design: { ...design, nodeId: p.nodeId, ...(figmaScale !== undefined && design.scale === undefined ? { scale } : {}) },
+      impl: { ...spec.impl, selector: p.selector },
+      ...(spec.ignore ? { ignore: spec.ignore } : {}),
+    };
+  });
+  return ok({ specs, prefetched });
 }
 
 async function loadManifest(file: string): Promise<PairSpec[]> {
@@ -399,6 +508,7 @@ async function compare(argv: string[]): Promise<void> {
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
+      accept: { type: "string", multiple: true },
       "no-data-slots": { type: "boolean" },
       "no-aggregate": { type: "boolean" },
       "no-pixels": { type: "boolean" },
@@ -454,6 +564,17 @@ async function compare(argv: string[]): Promise<void> {
     ...(values.scope !== undefined ? { scope: values.scope } : {}),
     ...(values["ignore-text"]?.length ? { textPatterns: values["ignore-text"] } : {}),
   };
+  for (const raw of values.accept ?? []) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      fail(`--accept must be JSON { type, expected?, actual?, reason }, got ${raw}`);
+    }
+    const a = readAccepted(parsed);
+    if (!a) fail(`--accept needs { type, reason } and string/number expected/actual values: ${raw}`);
+    policy.accepted = [...(policy.accepted ?? []), a];
+  }
   for (const p of policy.textPatterns ?? []) {
     try {
       new RegExp(p, "u");
@@ -512,6 +633,25 @@ async function compare(argv: string[]): Promise<void> {
 
   const outRoot = values.out;
 
+  // Component sets → one pair per variant (typed errors keep the other entries running).
+  const prefetched = new Map<string, Prefetched>();
+  let anyError = false;
+  {
+    const expanded: PairSpec[] = [];
+    for (const spec of specs) {
+      const r = await expandFigmaSet(spec, figmaScale);
+      if (!r.ok) {
+        anyError = true;
+        console.error(`\n${spec.id}: component-set expansion failed (typed error):`);
+        console.error(JSON.stringify(r.error, null, 2));
+        continue;
+      }
+      expanded.push(...r.value.specs);
+      for (const [k, v] of r.value.prefetched) prefetched.set(k, v);
+    }
+    specs = expanded;
+  }
+
   // Storybook: reuse a running one; otherwise start our own (no browser tab
   // unless --storybook-open) when a project dir is known.
   const storybookDir = values["storybook-dir"] ?? process.env["VC_STORYBOOK_DIR"];
@@ -530,7 +670,6 @@ async function compare(argv: string[]): Promise<void> {
 
   const browser = await launchBrowser();
   let anyFail = false;
-  let anyError = false;
   try {
     for (const spec of specs) {
       const outDir = resolve(
@@ -550,6 +689,7 @@ async function compare(argv: string[]): Promise<void> {
         policy,
         aggregate: !values["no-aggregate"],
         pixels: !values["no-pixels"],
+        ...(prefetched.has(spec.id) ? { prefetched: prefetched.get(spec.id)! } : {}),
       });
       if (!result.ok) {
         anyError = true;

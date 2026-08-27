@@ -97,6 +97,15 @@ export {
 } from "./adapters/live-url.js";
 export { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js";
 export {
+  expandVariants,
+  parseVariantName,
+  variantProperties,
+  type VariantConfig,
+  type VariantExpandError,
+  type VariantExpansion,
+  type VariantPair,
+} from "./adapters/figma-variants.js";
+export {
   FigmaClient,
   chunk,
   cooldownFromHeaders,
@@ -167,6 +176,12 @@ export {
   diffFindings,
   diffReports,
   identityKey,
+  emptyLedger,
+  findRegressions,
+  parseLedger,
+  recordResolved,
   type DeltaOptions,
+  type LedgerEntry,
   type ReportDelta,
+  type ResolvedLedger,
 } from "./package/delta.js";

@@ -17,7 +17,14 @@ import sharp from "sharp";
 
 import type { Capture, CaptureError, FigmaSource } from "../pipeline.js";
 import { err, ok, type Result } from "../result.js";
-import { FigmaClient, readToken, type FigmaApiError, type FigmaClientOptions } from "./figma-api.js";
+import {
+  FigmaClient,
+  readToken,
+  type FigmaApiError,
+  type FigmaClientOptions,
+  type FigmaNode,
+  type FigmaVariablesResponse,
+} from "./figma-api.js";
 import { figmaTreeToElements, indexVariables } from "./figma-tree.js";
 
 export const FIGMA_DEFAULTS = { scale: 2, minQuality: 0.3 } as const;
@@ -29,6 +36,17 @@ export interface FigmaCaptureOptions {
   client?: FigmaClientOptions;
   /** Skip the GIGO gate entirely (score still recorded). */
   skipQualityGate?: boolean;
+  /**
+   * Inputs already fetched for this node (a set expansion reads the whole
+   * set once and renders all variants in one batch). `variables: null`
+   * means "looked, the file has none". Missing fields are fetched.
+   */
+  prefetched?: {
+    document?: FigmaNode;
+    version?: string;
+    variables?: FigmaVariablesResponse | null;
+    imageUrl?: string;
+  };
 }
 
 function apiError(ref: string, e: FigmaApiError): CaptureError {
@@ -46,7 +64,7 @@ function apiError(ref: string, e: FigmaApiError): CaptureError {
 
 export async function captureFigma(
   source: FigmaSource,
-  { pngPath, ref, client: clientOptions = {}, skipQualityGate = false }: FigmaCaptureOptions,
+  { pngPath, ref, client: clientOptions = {}, skipQualityGate = false, prefetched = {} }: FigmaCaptureOptions,
 ): Promise<Result<Capture, CaptureError>> {
   const scale = source.scale ?? FIGMA_DEFAULTS.scale;
   const minQuality = source.minQuality ?? FIGMA_DEFAULTS.minQuality;
@@ -59,27 +77,38 @@ export async function captureFigma(
   const client = new FigmaClient(token, clientOptions);
 
   try {
-    // 1. Subtree (also validates the token).
-    const nodes = await client.nodes(source.fileKey, [source.nodeId], source.version);
-    if (!nodes.ok) return err(apiError(identity, nodes.error));
-    const entry = nodes.value.nodes[source.nodeId];
-    if (!entry?.document) {
-      return err({ kind: "figma-node-not-found", ref: identity, fileKey: source.fileKey, nodeId: source.nodeId });
+    // 1. Subtree (also validates the token) — unless the caller already has it.
+    let document = prefetched.document;
+    let version = source.version ?? prefetched.version;
+    if (document === undefined) {
+      const nodes = await client.nodes(source.fileKey, [source.nodeId], source.version);
+      if (!nodes.ok) return err(apiError(identity, nodes.error));
+      const entry = nodes.value.nodes[source.nodeId];
+      if (!entry?.document) {
+        return err({ kind: "figma-node-not-found", ref: identity, fileKey: source.fileKey, nodeId: source.nodeId });
+      }
+      document = entry.document;
+      version = source.version ?? nodes.value.version;
     }
-    const version = source.version ?? nodes.value.version;
     if (ref === undefined && version) identity = `${source.fileKey}#${source.nodeId}@${version}`;
 
     // 2. Variables — optional (Enterprise); absence is not an error.
-    const variables = await client.localVariables(source.fileKey);
-    if (!variables.ok) return err(apiError(identity, variables.error));
+    let variableIndex = indexVariables(undefined);
+    if (prefetched.variables === undefined) {
+      const variables = await client.localVariables(source.fileKey);
+      if (!variables.ok) return err(apiError(identity, variables.error));
+      variableIndex = indexVariables(variables.value);
+    } else if (prefetched.variables !== null) {
+      variableIndex = indexVariables(prefetched.variables);
+    }
 
     // 3. Map + gate BEFORE spending an /images request on a hopeless frame.
-    const mapping = figmaTreeToElements(entry.document, indexVariables(variables.value));
+    const mapping = figmaTreeToElements(document, variableIndex);
     if (mapping.elements.length === 0 || mapping.width < 1 || mapping.height < 1) {
       return err({
         kind: "blank-render",
         ref: identity,
-        detail: `node ${source.nodeId} ("${entry.document.name}") has no visible leaf elements (${mapping.width}x${mapping.height})`,
+        detail: `node ${source.nodeId} ("${document.name}") has no visible leaf elements (${mapping.width}x${mapping.height})`,
       });
     }
     if (!skipQualityGate && mapping.quality.score < minQuality) {
@@ -93,12 +122,15 @@ export async function captureFigma(
       });
     }
 
-    // 4. Render + download + verify.
-    const images = await client.renderImages(source.fileKey, [source.nodeId], scale, {
-      ...(source.version ? { version: source.version } : {}),
-    });
-    if (!images.ok) return err(apiError(identity, images.error));
-    const url = images.value[source.nodeId];
+    // 4. Render + download + verify (a batch render may have supplied the URL).
+    let url = prefetched.imageUrl;
+    if (url === undefined) {
+      const images = await client.renderImages(source.fileKey, [source.nodeId], scale, {
+        ...(source.version ? { version: source.version } : {}),
+      });
+      if (!images.ok) return err(apiError(identity, images.error));
+      url = images.value[source.nodeId] ?? undefined;
+    }
     if (!url) {
       return err({ kind: "figma-render-failed", ref: identity, detail: `images endpoint returned no URL for ${source.nodeId}` });
     }
