@@ -105,7 +105,10 @@ Ignore policy (both modes):
                           "expected":{"color":"rgb(26, 26, 26)"},"actual":{"color":
                           "rgb(44, 36, 25)"},"reason":"…"}' → suppressed as "accepted";
                           optional "role" narrows it ({"type":"missing-element",
-                          "role":"box","reason":"focus ring …"})
+                          "role":"box","reason":"focus ring …"}); for pixel-region,
+                          "changeKind" narrows to shape|color|hue-rotation|added|
+                          removed|stroke|noise ({"type":"pixel-region","role":"icon",
+                          "changeKind":"shape","reason":"placeholder icon …"})
   --no-data-slots         report text differences on matched pairs (default:
                           suppressed as demo data — the "data-slot" rule)
 

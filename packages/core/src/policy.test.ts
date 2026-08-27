@@ -144,6 +144,24 @@ describe("accepted deviations", () => {
     expect(suppressed[0]).toMatchObject({ suppressedBy: "accepted", rule: rule.reason });
   });
 
+  it("narrows a pixel-region acceptance to one changeKind", () => {
+    const swap = {
+      ...ink,
+      type: "pixel-region" as const,
+      role: "icon",
+      expected: { diffRatio: 0 },
+      actual: { diffRatio: 0.2, diffPixels: 400, clusters: 1, changeKind: "shape" },
+      message: "glyph",
+    };
+    const placeholder = { type: "pixel-region" as const, role: "icon", changeKind: "shape", reason: "story placeholder icon" };
+    expect(applyPolicy([swap], { accepted: [placeholder] }).suppressed[0]).toMatchObject({ rule: placeholder.reason });
+    // A recolor of the same icon is NOT the accepted deviation.
+    const recolor = { ...swap, actual: { ...swap.actual, changeKind: "color" } };
+    expect(applyPolicy([recolor], { accepted: [placeholder] }).kept).toHaveLength(1);
+    // Without the key, any pixel difference on icons would be accepted — the blind form.
+    expect(applyPolicy([recolor], { accepted: [{ type: "pixel-region", role: "icon", reason: "any" }] }).kept).toHaveLength(0);
+  });
+
   it("does not accept a different value, type, or a partial mismatch", () => {
     expect(applyPolicy([{ ...ink, actual: { color: "rgb(0, 0, 0)" } }], { accepted: [rule] }).kept).toHaveLength(1);
     expect(applyPolicy([{ ...ink, type: "border" }], { accepted: [rule] }).kept).toHaveLength(1);

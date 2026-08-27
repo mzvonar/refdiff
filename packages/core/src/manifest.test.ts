@@ -104,5 +104,12 @@ describe("readAccepted", () => {
     ]);
     expect(readAccepted({ type: "size", reason: "r" })).toEqual({ type: "size", reason: "r" });
     expect(readAccepted({ reason: "r" })).toBeUndefined();
+    expect(readAccepted({ type: "pixel-region", role: "icon", changeKind: "shape", reason: "r" })).toEqual({
+      type: "pixel-region",
+      role: "icon",
+      changeKind: "shape",
+      reason: "r",
+    });
+    expect(readAccepted({ type: "pixel-region", changeKind: 3, reason: "r" })).toBeUndefined();
   });
 });

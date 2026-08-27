@@ -57,10 +57,11 @@ const subsetOf = (
   have: Record<string, string | number> | undefined,
 ): boolean => Object.entries(wanted ?? {}).every(([k, v]) => have?.[k] === v);
 
-/** An accepted deviation hits when type and every listed expected/actual value agree. */
+/** An accepted deviation hits when type, role, changeKind and every listed expected/actual value agree. */
 export const acceptsFinding = (a: AcceptedDeviation, f: Finding): boolean =>
   a.type === f.type &&
   (a.role === undefined || a.role === f.role) &&
+  (a.changeKind === undefined || a.changeKind === f.actual?.["changeKind"]) &&
   subsetOf(a.expected, f.expected) &&
   subsetOf(a.actual, f.actual);
 

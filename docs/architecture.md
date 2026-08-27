@@ -482,7 +482,12 @@ to `localStorage` otherwise (and says so).
   type-wide acceptance to one element kind. First use: the Focus ring (Figma
   draws State=Focus as a stroked 84×48 box around the 76×40 button; the story
   forces `:focus` via a class and the ring is a CSS outline the extraction
-  never emits) — 6/41 cells, visibly `accepted` in the DS manifest.
+  never emits) — 6/41 cells, visibly `accepted` in the DS manifest. **S12:
+  `changeKind` too** — `{ type: "pixel-region", role: "icon", changeKind:
+  "shape", reason }` accepts the story's placeholder glyph without accepting
+  every future pixel difference on icons (a recolor still surfaces). Chosen
+  over the equivalent `actual: { changeKind }` subset match because the
+  manifest then states intent, not the finding's internal shape.
 - **The DS Storybook renders everything at ×0.875 — observed 2026-08-27
   (S11), classified as one drift cause, needs a human.** Across 23 Alert
   cells every typography finding is 12.25/16.63 vs 14/19, every icon 17.5

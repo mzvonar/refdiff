@@ -122,6 +122,8 @@ export interface AcceptedDeviation {
   type: FindingType;
   /** Element role the finding must carry (e.g. a `missing-element` `box` = a focus ring the story cannot render). */
   role?: string;
+  /** `pixel-region` only: the classified change kind the finding must carry (`actual.changeKind`). */
+  changeKind?: string;
   expected?: Record<string, string | number>;
   actual?: Record<string, string | number>;
   reason: string;
