@@ -1,25 +1,51 @@
-# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27)
+# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S10)
 
-Status: items 1–3, 5–7 DONE and proven (sessions 1–9, latest `d806ac9`);
-item 4 deferred until a pair emits pixel findings. Everything below is
-history; the live plan is `docs/handoff-2026-08-27.md` "What REMAINS":
+Status: items 1–3, 5–9 DONE and proven (sessions 1–10); item 4 deferred
+until a pair emits pixel findings. Everything below is history; the live
+plan is `docs/handoff-2026-08-27.md` "What REMAINS".
 
-## 8. The skill — bounded fix loop consuming reports ← DO NEXT
+## 8. The skill — bounded fix loop consuming reports — DONE (session 10)
+
+Built as `skills/design-fix-loop/SKILL.md` (canonical) + an installed copy
+with repo bindings in `uctoinak-bmad/.claude/skills/design-fix-loop/`. Two
+harness additions the loop needed: a **regression ledger**
+(`resolved-ledger.json` per run dir, pure `recordResolved` /
+`findRegressions` in `package/delta.ts`, `delta.regressions` + a loud
+`REGRESSION:` line) and **accepted deviations** (`IgnorePolicy.accepted[]`
+`{ type, expected?, actual?, reason }`, manifest `ignore.accepted`, CLI
+`--accept <json>`, suppressed as `accepted` with the reason as the rule).
+`inspect` NOT built — `expected/actual` + crops sufficed for three
+iterations. Proven on doc-detail, measured by the delta: 60/122 → 59/103 →
+51/75 → **42/68**, alignment confidence 0.57 → 0.88, 0 regressions; details
+in the handoff "What's DONE (session 10)". Original spec below.
+
+### 8 (original spec, for reference)
 
 Nothing consumes `findings.json` / `annotations.md` in a loop yet. Draft the
 thin repo skill (uctoinak-bmad first, porting its "measure don't eyeball"
 checklist): run → read findings (expected/actual first, crops second) → read
 open annotations → fix → re-run → read `delta` → `--mark-implemented`.
 Bounded (5 iterations, diminishing-returns cutoff), regression guard on a
-re-introduced finding. `inspect` (§3.4) only if the loop needs it. Then §9.
+re-introduced finding. `inspect` (§3.4) only if the loop needs it.
 
-## 9. Per-variant manifest expansion for component sets ← DO SECOND
+## 9. Per-variant manifest expansion for component sets — DONE (session 10)
+
+Pure `adapters/figma-variants.ts` (`expandVariants(set, { selector, maps?,
+only?, omit? })`, template `{Prop}` / `{Prop|map}` / composite
+`{A,B|map}` over the set's `componentPropertyDefinitions`; skipped variants
+returned with reasons), manifest `design.variants`, CLI expansion with ONE
+nodes request + one variables request + one batched render per set handed to
+`captureFigma({ prefetched })`. Proven on the DS Storybook :6008 via
+`examples/population-registry-ds.manifest.mjs`: Button/Fill → 41 pairs (the
+S9 proof pair reproduced exactly), Alert → 23 pairs, Dialog/Header → 4 pairs
++ 4 skipped (no story panel). Original spec below.
+
+### 9 (original spec, for reference)
 
 One `figma` manifest entry expands a COMPONENT_SET into N pairs (child
 COMPONENT node id ↔ story cell selector from the variant's properties; pure,
 tested mapping fed by `componentPropertyDefinitions`). Then prove
-`alert/default` (6765:4792) and `dialog/header` (21397:2290). Details in the
-handoff §2.
+`alert/default` (6765:4792) and `dialog/header` (21397:2290).
 
 ---
 

@@ -158,14 +158,29 @@ What the model receives — every item evidence-backed (research §4):
   expected/actual, nearest box within 5px — never by `id`/`mark`, which
   renumber every run. The CLI reads the run dir's previous `findings.json`
   before anything is written and prints "+N introduced / −M resolved".
-- `inspect` CLI subcommand (crop/zoom/sample-pixel) for model-driven
-  closer looks (not built yet — waits for the model loop to consume reports).
+- **Regression ledger** (`package/delta.ts`, pure `recordResolved` /
+  `findRegressions`; the CLI persists `resolved-ledger.json` in the run
+  dir): every finding a run resolved is remembered by identity + place, so
+  an introduced finding matching one — even three iterations later — is
+  listed under `delta.regressions` and printed as `REGRESSION:`. The loop's
+  loud failure lives in the tool, not in the model's memory.
+- **Accepted deviations** (`IgnorePolicy.accepted[] { type, expected?,
+  actual?, reason }`): intended differences the loop has reviewed (an
+  app-wide token when one comp is the outlier) are suppressed as
+  `accepted` with the reason as the visible rule — the "NL ignore policy"
+  the skill needs, still never a silent skip.
+- `inspect` CLI subcommand (crop/zoom/sample-pixel) — NOT built: three
+  loop iterations on doc-detail never needed a closer look than
+  `expected/actual` + the crop pair.
 
-The **skill** (thin, per consuming repo) enforces loop discipline: run →
-read findings → fix → re-run; bounded iterations (default 5) with a
-diminishing-returns cutoff; regression guard (a previously-passing region
-that regresses is a loud failure); NL ignore-policies for intended
-deviations (seed data, dynamic content).
+The **skill** — `skills/design-fix-loop/SKILL.md` (canonical; installed per
+consuming repo with a "Repo bindings" section, first in
+`uctoinak-bmad/.claude/skills/design-fix-loop/`) — enforces loop discipline:
+run → classify every finding (data / drift / intended deviation /
+environment / needs a human) → act on open annotations → fix → re-run →
+read `delta`; bounded (5 iterations, diminishing-returns cutoff), a
+`REGRESSION` stops the plan, the deliverable is a table of iterations plus
+fixed / accepted / needs-a-human lists — never a description of a screenshot.
 
 ## Annotator
 
@@ -361,6 +376,42 @@ to `localStorage` otherwise (and says so).
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
   `@visual-compare` is free as of Aug 2026).
+
+- **Component-set expansion — decided 2026-08-27 (S10): a pure template
+  over the set's variant properties, not a discovery heuristic.**
+  `adapters/figma-variants.ts` `expandVariants(set, { selector, maps?,
+  only?, omit? })`: `{Prop}` inserts the option, `{Prop|map}` looks it up,
+  `{A,B|map}` looks the joined options up (positional, untagged story
+  cells → `:nth-child(n)`). A template naming an unknown property/map fails
+  the entry; a variant without a map entry is SKIPPED with its reason (the
+  story has no such cell) — returned, printed, never dropped. The CLI reads
+  the set once (`nodes`), fetches variables once, renders every variant in
+  one batched `/images` call and hands each pair `captureFigma({ prefetched
+  })`. Measured on the DS: tagged cells (`data-rowkey`/`data-col`, Button)
+  are robust; positional cells (Alert, Dialog) are fragile — a loose
+  `.flex-col > :nth-child(2)` matched an inner invisible node and produced
+  a `capture-failed` timeout until scoped to `#storybook-root > div >
+  div.flex-col`. The clean fix is in the corpus: tag every story cell with
+  the variant's properties (population-registry task).
+- **Delta identity churns when the alignment moves — observed 2026-08-27
+  (S10), not changed.** Position findings carry world coordinates in
+  `expected/actual`, so a fixture change that shifts the alignment offset by
+  ~7px re-identifies every position finding (doc-detail iteration 1:
+  +47/−48 while the count went 60 → 59). The first iteration of a loop
+  (data parity) is therefore judged by counts and by the ledger going
+  forward, not by that delta; the skill says so. A content-based identity
+  for position findings (element text + type, coordinates as payload) would
+  fix it — do it when a loop actually misreads a delta because of it.
+- **Figma fill-width TEXT boxes vs DOM ink — observed 2026-08-27 (S10),
+  not changed.** Every Alert variant reports a major `size` on its message:
+  the Figma text node is a fixed-width box (724×19, "responsive width")
+  while the DOM text measures its glyph ink (226×15). S9 kept
+  `absoluteBoundingBox` for TEXT because on buttons it is the closer
+  analogue of the DOM layout box; this corpus says the opposite for
+  stretched text. Candidate: use `absoluteRenderBounds` for width when the
+  node's `textAutoResize` is `NONE`/`HEIGHT`, keep the layout box for
+  height. Decide with the typography finding on the same pair (research.md
+  "text metrics").
 
 ## Migration targets
 

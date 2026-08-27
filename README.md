@@ -24,7 +24,12 @@ design adapters, Storybook + live-URL impl adapters, structural + pixel
 channels, ignore policies, aggregation, delta, agent packaging, CLI);
 the annotator renders a split-screen `report.html` per run with
 element-anchored human annotations (`open → implemented → done`) and a
-digest for the model. Current state and next steps:
+digest for the model. The bounded fix loop that consumes all of this is
+[`skills/design-fix-loop/SKILL.md`](skills/design-fix-loop/SKILL.md)
+(regression ledger + accepted deviations in the CLI); one Figma manifest
+entry expands a COMPONENT_SET into per-variant pairs
+([`examples/population-registry-ds.manifest.mjs`](examples/population-registry-ds.manifest.mjs)).
+Current state and next steps:
 [`docs/handoff-2026-08-27.md`](docs/handoff-2026-08-27.md) and
 [`docs/plan-next.md`](docs/plan-next.md). Background:
 
