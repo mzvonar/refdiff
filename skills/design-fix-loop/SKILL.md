@@ -16,18 +16,26 @@ times, and stop on diminishing returns.
 
 ## Repo bindings
 
-Copy this file into the consuming repo's `.claude/skills/design-fix-loop/` and
-fill in the bindings; everything below is repo-agnostic.
+This skill file is repo-agnostic and is SYMLINKED into consuming repos from
+`~/Development/visual-compare/skills/design-fix-loop` while it is being
+developed. Everything repo-specific lives in the consuming repo — **read it
+first**, it is the source of truth for paths, ports, seeds and gotchas:
 
-| binding | value |
-|---|---|
-| CLI | `node <visual-compare>/packages/core/dist/cli.js` (`pnpm build` there first) |
-| Annotator | `node <visual-compare>/packages/annotator/dist/cli.js` |
-| Manifest | `<repo>/…/manifest.mjs` (pairs: design frame ↔ story / live route, per-pair `ignore`) |
-| Design dir | directory of the `.dc.html` comps (Figma pairs need `$FIGMA_TOKEN` / `.figma-token`) |
-| Storybook | `--storybook-dir <repo>` auto-starts it; or a running `--storybook-url` |
-| Live app | how to start the test app + `--app-url --auth-post --auth-header` |
-| Run dir | `--out <dir>` — keep ONE dir per pair across iterations (the delta and the ledger live there) |
+```
+<repo>/tools/design-compare/design-fix-loop.bindings.md          # uctoinak-bmad
+<repo>/frontend/ds/tooling/visual/design-fix-loop.bindings.md    # population-registry
+```
+
+(`find . -name 'design-fix-loop.bindings.md' -not -path '*/node_modules/*'`
+if the repo moved it.) A bindings file names: the manifest, the design dir /
+Figma file, how the impl is served (Storybook dir or URL, live app + auth),
+the run dir convention, and the repo's environment traps. If none exists,
+stop and write one with the user before running anything.
+
+The CLIs are on PATH via `pnpm link --global` from the visual-compare
+checkout: `visual-compare` (core) and `visual-compare-annotator`. They run
+from `dist` — keep `pnpm dev` (tsc --watch) running in that checkout while
+developing, or `pnpm build` after pulling.
 
 ## The rules (non-negotiable)
 
@@ -92,7 +100,7 @@ while iteration < 5:
 ### 1. Run
 
 ```bash
-$CLI compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $RUN_DIR
+visual-compare compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $RUN_DIR
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
 ```
 
@@ -154,7 +162,7 @@ repo bindings). Read `delta`:
 Then mark the notes you acted on:
 
 ```bash
-$ANNOTATOR $RUN_DIR --mark-implemented <id,…|all>     # open → implemented; the designer closes them as done
+visual-compare-annotator $RUN_DIR --mark-implemented <id,…|all>     # open → implemented; the designer closes them as done
 ```
 
 ### 5. Bounds — when to stop
