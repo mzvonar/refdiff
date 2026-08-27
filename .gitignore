@@ -22,3 +22,6 @@ assets/
 .DS_Store
 .idea/
 .vscode/
+
+# pnpm dev watcher log (skills/design-fix-loop/setup-dev.sh --watch)
+.dev.log
