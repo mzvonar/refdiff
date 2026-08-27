@@ -79,7 +79,10 @@ Design side:
   awaited; failure is a typed error.
 
 Implementation side:
-- **Storybook**: per-story iframe capture with error-page detection.
+- **Storybook**: per-story iframe capture with error-page detection; an
+  optional `selector` narrows the capture to one node inside the story (one
+  cell of a variant matrix, `[data-rowkey=…][data-col=…]`, against one Figma
+  variant COMPONENT) — missing is a typed `selector-not-found`.
 - **Live URL** (`adapters/live-url.ts`): navigation + auth hook (storage
   state or session POST), with 404/error/login-redirect *content* detection
   (pure `classifyPage` over final URL, title, heading, body text, password
@@ -88,7 +91,17 @@ Implementation side:
 
 All captures: viewport matched to the design frame, DPR recorded,
 animations disabled via injected CSS, `document.fonts.ready`,
-capture-until-stable, render-completeness check.
+capture-until-stable, render-completeness check. Both element extractors
+emit the text as SHOWN — CSS `text-transform` on the DOM side, `textCase`
+on the Figma side — so `LABEL` matches `LABEL`, and both hoist a lone
+leaf's decoration from a single-child ancestor chain INCLUDING the captured
+root (when the root is the button, its fill/radius belong to the label).
+
+`normalize` scales design geometry into impl CSS px by a per-source policy
+(`--design-scale`): `auto` = impl width / design width for `.dc.html`
+artboards drawn at another size; **1 for Figma**, whose units already are CSS
+px — a Figma frame wider than the impl is a layout difference to report, not
+a scale to hide.
 
 ### Structural channel (primary)
 
@@ -276,15 +289,45 @@ CSS width. Still to come: the annotation half (element-anchored notes →
   Border/radius are further compared only between comparable boxes (text
   pairs, or size within tolerance) — an 8px dot matched to an 18px circle
   is a size finding, not a border one.
-- **Figma quality score — 2026-08-26, provisional until proven on a real
-  frame.** `score = (bound / leaves) × (1 − 0.5 × detached / instances)` where
+- **Figma quality score — 2026-08-26, confirmed on the real DS corpus
+  2026-08-27.** `score = (bound / leaves) × (1 − 0.5 × detached / instances)` where
   a leaf is "bound" when its color or typography comes from a bound variable
   OR a shared style (`styles.fill/text/stroke`) — teams without the
   Enterprise variables API still get a meaningful score. Icons (all-vector
   containers ≤ 64px) count as leaves and are rarely bound, so icon-heavy
-  frames score lower; revisit the 0.3 default against the first real corpus.
+  frames score lower. Real numbers: the `*Button/Fill` set scores 0.64 (49/76
+  bound, 27 icons unbound, 0 detached), a single variant COMPONENT 1.00; the
+  0.3 default stands. The DS plan has no variables endpoint (403), so tokens
+  are `VariableID:…` ids — still enough to count as bound.
   Figma colors are emitted as `rgb()/rgba()` (paint opacity folded into
   alpha) so identity keys and messages match the DOM side.
+- **Figma TEXT boxes = `absoluteBoundingBox`, NOT `absoluteRenderBounds` —
+  decided 2026-08-27.** Render bounds are the glyph ink (49.9×9.8 for a 14px
+  `LABEL`); the DOM side measures text by Range client rects = advance width ×
+  font content-area (33×19 for the same label in Oswald 12.25). Neither is
+  the other's measure, but the layout box (52×16 = advance × line height) is
+  the closer analogue on both axes, so it stays. Consequence: a text `size`
+  finding between Figma and DOM mixes line-height/content-area semantics —
+  read it together with the typography finding on the same pair.
+- **Design scale policy — decided 2026-08-27.** `.dc.html` artboards are
+  drawn at arbitrary sizes → `auto` (impl width / design width). Figma units
+  ARE CSS px → `1`; the first real pair (variant sheet 1283px vs story grid
+  716px, identical 40px buttons on both sides) proved width-normalization
+  wrong there. `--design-scale <n|auto>` overrides either.
+- **Alignment with fewer than 3 anchors — decided 2026-08-27.** The Theil–Sen
+  scale fit needs ≥3 unique-text anchors. Below that, a pure offset (median
+  center delta, scale 1) is applied ONLY when every design leaf is an anchor —
+  a component-sized capture where nothing unmatched can be dragged along; a
+  page sharing one accidental word stays at identity. Confidence keeps the
+  `anchors/8` damping (1 anchor → 0.13), so the pixel channel still waits for
+  real evidence.
+- **Component sets are sheets, not frames.** Every population-registry
+  `frames.json` node is a COMPONENT_SET; its variants are laid out by Figma,
+  the story's grid by CSS, and the texts repeat (`LABEL` ×42) — no anchors,
+  layouts differ, 77–137 honest-but-useless findings. The unit of comparison
+  for a design system is one variant COMPONENT (child node id) ↔ one story
+  cell (`selector`). A per-variant manifest expansion (component set → N
+  pairs, cell selector from the variant's properties) is the next corpus step.
 - **Live-URL error detection is content-based and heuristic.** Login = final
   path matches `/(login|sign-in|auth|sso|onboarding)/` when the requested one
   did not, or a password field appears on a different path. Error page = an

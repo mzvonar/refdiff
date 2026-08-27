@@ -154,7 +154,27 @@ id), `inspect` last and only if the model loop is consuming reports.
 - `inspect` subcommand (crop/zoom/sample-pixel) once the model loop
   starts consuming reports.
 
-## 5. Figma design adapter — BUILT, NOT YET PROVEN (2026-08-26, session 7)
+## 5. Figma design adapter — PROVEN (2026-08-27, session 9)
+
+Proven on the population-registry DS (`M0hnCQJIUho3tcW6PcnHWH`, DS Storybook
+:6008). Every `frames.json` "frame" is a COMPONENT_SET sheet, so the real
+pairing is **one variant COMPONENT ↔ one story cell**: `--figma …:12:229`
+(State=Default, 76×40, quality 1.00) vs `--story ds-button--fill --selector
+'[data-rowkey="fill:label:md:Label:"][data-col="Default"]'` → aligned (8.1,
+−2.5) @0.13, **4 findings**: size 33×19 vs 52×16, typography Oswald 12.25/500/
+21 vs Montserrat 14/700/16 (genuine — the DS Storybook renders Oswald), minor
+position (the size delta's half), pixel-skip note. Sheet vs grid
+(`8226:4244` ↔ `ds-button--fill`): 76 leaves (42 text/27 icon/7 box) vs 70,
+quality 0.64, confidence 0.00 (no unique text) — 137 findings at scale 1, 77
+at `--design-scale auto`; both honest (different sheet layouts), neither
+useful. Real-schema fixes: `textCase` ↔ `text-transform` applied on BOTH
+sides, `--design-scale` (Figma default 1: its units ARE CSS px), decoration
+hoisting may take the ROOT's paint (the captured node is the button), Storybook
+`selector`, offset-only alignment when every design leaf is an anchor. Real
+nodes response recorded as `test/fixtures/figma/nodes-button-fill-set.json`
+(6 tests on it). Handoff "What's DONE (session 9)" has the details.
+
+### 5 (as built, session 7)
 
 Landed: `FigmaSource` + six typed errors (`pipeline.ts`), `adapters/figma-api.ts`
 (`FigmaClient`: token from `$FIGMA_TOKEN` / `.figma-token` upwards, 429 →
