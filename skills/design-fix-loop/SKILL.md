@@ -1,6 +1,6 @@
 ---
 name: design-fix-loop
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the visual-compare CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run the visual-compare loop", or to verify a UI change against its design. Never eyeball two screenshots; every claim is a number from findings.json.
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the visual-compare CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run the visual-compare loop", or to verify a UI change against its design — and when asked to "set up visual-compare / design-fix-loop in dev mode", "install the visual-compare CLI", or the `visual-compare` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
 ---
 
 # design-fix-loop — the bounded fix loop over visual-compare reports
@@ -38,6 +38,31 @@ The CLIs are on PATH via `pnpm link --global` from the visual-compare
 checkout: `visual-compare` (core) and `visual-compare-annotator`. They run
 from `dist` — keep `pnpm dev` (tsc --watch) running in that checkout while
 developing, or `pnpm build` after pulling.
+
+## Dev-mode setup (new machine / VM)
+
+When the user asks to set the skill up in dev mode, or `visual-compare` is
+not on PATH, run the bundled script — it is idempotent and touches no
+consuming repo:
+
+```bash
+bash "$(dirname "$(readlink -f ~/.claude/skills/design-fix-loop/SKILL.md)")/setup-dev.sh" --watch
+# options: --checkout <dir> (default ~/Development/visual-compare, cloned from
+#          github.com/mzvonar/visual-compare if missing)  --no-browser  (skip Playwright Chromium)
+```
+
+It makes these true, then verifies (`visual-compare --help`, test count):
+the checkout exists; deps + Playwright Chromium installed; both packages
+built; `pnpm link --global` so `visual-compare` / `visual-compare-annotator`
+resolve (it tells you the PATH line to add if pnpm's global bin is not on
+PATH yet); the skill is user-level via `~/.claude-shared/skills/design-fix-loop`
+→ the checkout, linked from every `~/.claude*/skills` profile that exists;
+with `--watch`, `pnpm dev` runs in the background (`<checkout>/.dev.log`) so
+edits to `packages/*/src` reach the linked CLIs without a manual build. Edits
+to `SKILL.md` are live immediately (symlink). Needs Node ≥22, pnpm, git, and
+network for the clone / Chromium download (in a sandboxed shell, run it with
+the sandbox off). Then the repo you are in needs only its manifest and a
+`design-fix-loop.bindings.md` — write the bindings with the user if absent.
 
 ## The rules (non-negotiable)
 
