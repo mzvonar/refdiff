@@ -55,8 +55,10 @@ It makes these true, then verifies (`visual-compare --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages
 built; `pnpm link --global` so `visual-compare` / `visual-compare-annotator`
 resolve (it tells you the PATH line to add if pnpm's global bin is not on
-PATH yet); the skill is user-level via `~/.claude-shared/skills/design-fix-loop`
-→ the checkout, linked from every `~/.claude*/skills` profile that exists;
+PATH yet); the skill is user-level — `~/.claude/skills/design-fix-loop` (and
+`~/.claude-personal` if present) → the checkout, through
+`~/.claude-shared/skills` only when that dir already exists (a plain machine
+with just `~/.claude` links directly; nothing is created that was not in use);
 with `--watch`, `pnpm dev` runs in the background (`<checkout>/.dev.log`) so
 edits to `packages/*/src` reach the linked CLIs without a manual build. Edits
 to `SKILL.md` are live immediately (symlink). Needs Node ≥22, pnpm, git, and
