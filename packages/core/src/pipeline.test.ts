@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Capture } from "./pipeline.js";
-import { normalize, pairRefs } from "./pipeline.js";
+import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js";
 import { all, andThen, err, isErr, isOk, map, ok } from "./result.js";
 
 const capture = (side: "design" | "impl", width: number, height: number): Capture => ({
@@ -32,6 +32,26 @@ describe("normalize", () => {
     expect(n.design.elements[0]!.box).toEqual({ x: 5, y: 10, w: 50, h: 25 });
     // input untouched
     expect(design.elements[0]!.box).toEqual({ x: 10, y: 20, w: 100, h: 50 });
+  });
+
+  it("keeps Figma designs at scale 1 by default — its units are CSS px, a wider frame is layout", () => {
+    const design: Capture = { ...capture("design", 1283, 761), source: "figma" };
+    const pair = pairRefs("p", design, capture("impl", 716.5, 415));
+    expect(defaultDesignScale(design)).toBe(1);
+    const n = normalize(pair);
+    expect(n.designScale).toBe(1);
+    expect(n.design).toBe(design);
+  });
+
+  it("honours an explicit scale or 'auto' over the source default", () => {
+    const figma: Capture = { ...capture("design", 1520, 1480), source: "figma" };
+    expect(normalize(pairRefs("p", figma, capture("impl", 760, 740)), { designScale: "auto" }).designScale).toBe(0.5);
+    const dc = capture("design", 1520, 1480);
+    expect(defaultDesignScale(dc)).toBe("auto");
+    const n = normalize(pairRefs("p", dc, capture("impl", 760, 740)), { designScale: 1 });
+    expect(n.designScale).toBe(1);
+    expect(n.design.elements[0]!.box).toEqual({ x: 10, y: 20, w: 100, h: 50 });
+    expect(normalize(pairRefs("p", dc, capture("impl", 760, 740)), { designScale: 0.25 }).design.width).toBe(380);
   });
 });
 

@@ -24,7 +24,7 @@ import { captureLiveUrl } from "./adapters/live-url.js";
 import { captureStorybook } from "./adapters/storybook.js";
 import { ensureStorybook } from "./adapters/storybook-server.js";
 import { parseManifest, type LiveSpec, type PairSpec } from "./manifest.js";
-import { normalize, pairRefs } from "./pipeline.js";
+import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js";
 import type { Capture, CaptureError, LiveAuth } from "./pipeline.js";
 import { applyPolicy, mergePolicies } from "./policy.js";
 import { err, ok, type Result } from "./result.js";
@@ -57,12 +57,20 @@ One pair — impl side (one of):
   --story <storyId>       storybook story id
   --overlay               story portals to <body> (dialog/sheet) — shoot viewport
   --url <url>             live page (absolute, or a path under --app-url)
-  --selector <css>        live: capture this node instead of the viewport
+  --selector <css>        capture this node instead of the viewport (live) or
+                          #storybook-root (story) — e.g. one variant-matrix cell
+                          '[data-rowkey="…"][data-col="Default"]' against one
+                          Figma variant COMPONENT node
   --wait-for <css>        live: wait for this selector before capturing
   --full-page             live: full-page shot instead of the viewport
 Common to one pair:
   --pair <id>             pair identity (default: derived from design+impl)
   --viewport <WxH>        impl viewport, e.g. 760x740 (default 1200x900)
+  --design-scale <n|auto> design→impl geometry scale before alignment. auto =
+                          impl width / design width (an artboard drawn at another
+                          size; dc-html default). Figma default is 1: its units
+                          ARE CSS px, so a wider frame is a layout difference,
+                          not a scale to normalize away
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
 design { file, frame } or { kind: "figma", fileKey, nodeId }; app
@@ -135,6 +143,8 @@ interface RunOptions {
   live: LiveOptions;
   figmaScale?: number;
   minDesignQuality?: number;
+  /** Design→impl geometry scale; default per design source (Figma 1, dc-html auto). */
+  designScale?: number | "auto";
   outDir: string;
   failThreshold: Severity;
   maxGamma?: number;
@@ -262,9 +272,14 @@ async function runPair(
   const i = impl.value;
   console.log(`  ${i.width}x${i.height} css px, ${i.elements.length} leaf elements`);
 
-  const normalized = normalize(pairRefs(spec.id, d, i));
+  const scalePolicy = o.designScale ?? defaultDesignScale(d);
+  const normalized = normalize(pairRefs(spec.id, d, i), { designScale: scalePolicy });
   if (normalized.designScale !== 1) {
-    console.log(`normalized design side by ×${normalized.designScale.toFixed(4)}`);
+    console.log(`normalized design side by ×${normalized.designScale.toFixed(4)} (--design-scale ${scalePolicy})`);
+  } else if (Math.abs(i.width / d.width - 1) >= 0.05) {
+    console.log(
+      `design ${d.width}px wide vs impl ${i.width}px, kept at scale 1 (--design-scale ${scalePolicy}): a layout difference, not a scale`,
+    );
   }
 
   const aligned = alignStructural(normalized);
@@ -380,6 +395,7 @@ async function compare(argv: string[]): Promise<void> {
       "storybook-open": { type: "boolean" },
       story: { type: "string" },
       viewport: { type: "string" },
+      "design-scale": { type: "string" },
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
@@ -426,6 +442,12 @@ async function compare(argv: string[]): Promise<void> {
     fail(`--fail-threshold must be critical|major|minor, got "${failThreshold}"`);
   }
   const maxGamma = values["max-gamma"] !== undefined ? Number(values["max-gamma"]) : undefined;
+  let designScale: number | "auto" | undefined;
+  if (values["design-scale"] !== undefined) {
+    const raw = values["design-scale"];
+    designScale = raw === "auto" ? "auto" : Number(raw);
+    if (designScale !== "auto" && !(designScale >= 0.1 && designScale <= 10)) fail(`--design-scale must be auto or 0.1..10`);
+  }
 
   const policy: IgnorePolicy = {
     dataSlots: !values["no-data-slots"],
@@ -481,6 +503,7 @@ async function compare(argv: string[]): Promise<void> {
         storyId,
         ...(viewport ? { viewport } : {}),
         ...(values.overlay ? { overlay: true } : {}),
+        ...(values.selector !== undefined ? { selector: values.selector } : {}),
       };
       implId = storyId;
     }
@@ -520,6 +543,7 @@ async function compare(argv: string[]): Promise<void> {
         live,
         ...(figmaScale !== undefined ? { figmaScale } : {}),
         ...(minDesignQuality !== undefined ? { minDesignQuality } : {}),
+        ...(designScale !== undefined ? { designScale } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

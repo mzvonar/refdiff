@@ -44,6 +44,12 @@ export interface StorybookSource {
   /** Dialog/sheet stories portal their content to <body>, outside
    *  #storybook-root — capture the whole viewport instead of the root. */
   overlay?: boolean;
+  /**
+   * Capture this node inside the story instead of `#storybook-root` — one
+   * cell of a variant matrix (`[data-rowkey=…][data-col=…]`) against one
+   * Figma variant COMPONENT. Missing → typed `selector-not-found`.
+   */
+  selector?: string;
 }
 
 /**
@@ -231,9 +237,22 @@ function scaleBox(box: Box, s: number): Box {
   return { x: box.x * s, y: box.y * s, w: box.w * s, h: box.h * s };
 }
 
+export interface NormalizeOptions {
+  /**
+   * Design→impl scale. `"auto"` (dc-html default) = impl.width / design.width —
+   * an artboard drawn at another size. `1` (Figma default) = the design's units
+   * already ARE CSS px, so a frame wider than the impl is a LAYOUT difference
+   * (a variant sheet vs a grid), not a scale to normalize away.
+   */
+  designScale?: number | "auto";
+}
+
+/** The default scale policy per design source: Figma units are CSS px. */
+export const defaultDesignScale = (design: Capture): number | "auto" => (design.source === "figma" ? 1 : "auto");
+
 /** Pure: rescales design-side geometry into impl CSS-px space. */
-export function normalize(pair: Pair): NormalizedPair {
-  const raw = pair.impl.width / pair.design.width;
+export function normalize(pair: Pair, { designScale: wanted = defaultDesignScale(pair.design) }: NormalizeOptions = {}): NormalizedPair {
+  const raw = wanted === "auto" ? pair.impl.width / pair.design.width : wanted;
   const designScale = Math.abs(raw - 1) < SCALE_EPSILON ? 1 : raw;
   const design =
     designScale === 1

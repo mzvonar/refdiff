@@ -126,7 +126,9 @@ export async function extractElementTree(
       let node: Element = el;
       for (;;) {
         const parent = node.parentElement;
-        if (!parent || parent === root || parent.children.length !== 1) break;
+        // The root may donate too (a captured `selector` node that IS the
+        // painted button around a lone label) — same rule as the Figma side.
+        if (!parent || parent.children.length !== 1) break;
         const ownText = Array.from(parent.childNodes).some(
           (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "",
         );
@@ -207,12 +209,22 @@ export async function extractElementTree(
       const treatAsLeaf = tag === "svg" || tag === "img" || tag === "video" || tag === "canvas";
       const elementChildren = treatAsLeaf ? [] : Array.from(el.children);
 
-      const ownText = Array.from(el.childNodes)
+      const rawText = Array.from(el.childNodes)
         .filter((n) => n.nodeType === Node.TEXT_NODE)
         .map((n) => n.textContent ?? "")
         .join("")
         .replace(/\s+/g, " ")
         .trim();
+      // Emit what is SHOWN: `text-transform` is part of the rendered text the
+      // same way Figma's `textCase` is (the Figma adapter applies that one).
+      const ownText =
+        cs.textTransform === "uppercase"
+          ? rawText.toUpperCase()
+          : cs.textTransform === "lowercase"
+            ? rawText.toLowerCase()
+            : cs.textTransform === "capitalize"
+              ? rawText.replace(/(^|\s)(\S)/g, (_, sp: string, ch: string) => sp + ch.toUpperCase())
+              : rawText;
 
       // Leaves always emit; containers emit only when they carry direct text
       // (mixed content like <p>Total <b>12</b></p>). The root never emits,

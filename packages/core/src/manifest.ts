@@ -5,7 +5,7 @@
  *
  * Design entries: `{ file, frame, scope? }` (dc-html) or
  * `{ kind: "figma", fileKey, nodeId, scale?, version?, minQuality? }`.
- * App entries: `{ source: "storybook", storyId, overlay?, viewport? }` or
+ * App entries: `{ source: "storybook", storyId, overlay?, selector?, viewport? }` or
  * `{ source: "live", route | url, role?, viewport?, selector?, waitFor? }`.
  */
 
@@ -114,6 +114,7 @@ function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec
       storyId: app["storyId"],
       ...(viewport ? { viewport } : {}),
       ...(app["overlay"] === true ? { overlay: true } : {}),
+      ...(typeof app["selector"] === "string" ? { selector: app["selector"] } : {}),
     });
   }
   if (app["source"] === "live" || app["source"] === "live-url") {

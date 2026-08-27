@@ -52,8 +52,10 @@ export {
 } from "./result.js";
 
 export {
+  defaultDesignScale,
   normalize,
   pairRefs,
+  type NormalizeOptions,
   type AlignedPair,
   type Capture,
   type CaptureError,

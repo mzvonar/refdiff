@@ -125,7 +125,20 @@ export function estimateTransform(
     iY.push(i.box.y + i.box.h / 2);
   }
   const anchors = dX.length;
-  if (anchors < MIN_ANCHORS) return { ...IDENTITY, anchors };
+  if (anchors < MIN_ANCHORS) {
+    // Too few anchors for a scale fit. A pure OFFSET is still well-defined —
+    // and safe by construction — when every design leaf is itself an anchor
+    // (a component-sized capture: one Figma variant vs one story cell), since
+    // no unmatched element could be dragged to the wrong place. A page that
+    // shares one accidental word stays at identity.
+    if (anchors === 0 || anchors !== design.length) return { ...IDENTITY, anchors };
+    const offsetX = median(dX.map((dx, i) => iX[i]! - dx));
+    const offsetY = median(dY.map((dy, i) => iY[i]! - dy));
+    const agreeing = dX.filter(
+      (dx, i) => Math.abs(dx + offsetX - iX[i]!) <= AGREE_PX && Math.abs(dY[i]! + offsetY - iY[i]!) <= AGREE_PX,
+    ).length;
+    return { scaleX: 1, scaleY: 1, offsetX, offsetY, anchors, confidence: (agreeing / anchors) * Math.min(1, anchors / 8) };
+  }
 
   const x = fitAxis(dX, iX);
   const y = fitAxis(dY, iY);

@@ -83,6 +83,24 @@ function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean): Deco
   return out;
 }
 
+/**
+ * Figma renders `style.textCase` over the raw `characters` the way CSS
+ * `text-transform` renders over the DOM text — the design says "label" and
+ * shows LABEL. Both adapters emit what is SHOWN, so a matching pair matches.
+ */
+export function applyTextCase(text: string, textCase: string | undefined): string {
+  switch (textCase) {
+    case "UPPER":
+      return text.toUpperCase();
+    case "LOWER":
+      return text.toLowerCase();
+    case "TITLE":
+      return text.replace(/(^|\s)(\S)/g, (_, sp: string, ch: string) => sp + ch.toUpperCase());
+    default:
+      return text;
+  }
+}
+
 const paints = (d: Decoration): boolean =>
   d.backgroundColor !== undefined || d.borderWidth !== undefined || d.borderRadius !== undefined;
 
@@ -148,7 +166,7 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
     const b = n.absoluteBoundingBox;
     if (!b) return;
     const isText = n.type === "TEXT";
-    const text = isText ? (n.characters ?? "").replace(/\s+/g, " ").trim() : "";
+    const text = isText ? applyTextCase((n.characters ?? "").replace(/\s+/g, " ").trim(), n.style?.textCase) : "";
     if (isText && text === "") return;
 
     const style: NonNullable<ElementNode["style"]> = {};
@@ -168,10 +186,12 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
     // that paints a fill/stroke is a labelled pill — same as
     // <button><span>⋯</span></button> on the DOM side).
     let deco = decorationOf(n, b.width, b.height, isText);
+    // The root itself counts: when the captured node IS the button (one Figma
+    // variant COMPONENT) its fill/radius belong to the lone label, otherwise
+    // that paint would vanish from the comparison altogether.
     if (!paints(deco)) {
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const parent = ancestors[i]!;
-        if (parent === root) break;
         if ((parent.children ?? []).filter(isVisible).length !== 1) break;
         const pb = parent.absoluteBoundingBox;
         if (!pb) break;

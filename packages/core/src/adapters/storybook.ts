@@ -150,18 +150,22 @@ export async function captureStorybook(
     // #storybook-root — extract and shoot the whole viewport.
     // Settle the pixels FIRST, extract SECOND: the element tree must
     // describe the same state the screenshot shows.
-    const rootSelector = source.overlay ? "body" : ROOT;
+    // A `selector` narrows the capture to one node inside the story (a cell
+    // of a variant matrix) — the same contract as the live-url adapter.
+    if (source.selector !== undefined && (await page.locator(source.selector).count()) === 0) {
+      return err({ kind: "selector-not-found", ref: identity, selector: source.selector });
+    }
+    const rootSelector = source.selector ?? (source.overlay ? "body" : ROOT);
+    const viewportOrigin = source.selector === undefined && (source.overlay ?? false);
     let png: Buffer;
-    if (source.overlay) {
+    if (viewportOrigin) {
       ({ png } = await captureUntilStable(() => page.screenshot()));
     } else {
-      const root = page.locator(ROOT);
+      const root = page.locator(rootSelector).first();
       ({ png } = await captureUntilStable(() => root.screenshot()));
     }
 
-    const extraction = await extractElementTree(page, rootSelector, {
-      viewportOrigin: source.overlay ?? false,
-    });
+    const extraction = await extractElementTree(page, rootSelector, { viewportOrigin });
     if (!extraction || extraction.elements.length === 0 || extraction.height < 20) {
       return err({
         kind: "blank-render",
@@ -172,8 +176,8 @@ export async function captureStorybook(
 
     await mkdir(dirname(pngPath), { recursive: true });
     // For overlay shots the png is the viewport, not the (possibly taller) body.
-    const width = source.overlay ? viewport.width : extraction.width;
-    const height = source.overlay ? viewport.height : extraction.height;
+    const width = viewportOrigin ? viewport.width : extraction.width;
+    const height = viewportOrigin ? viewport.height : extraction.height;
     await writeFile(pngPath, png);
 
     return ok({

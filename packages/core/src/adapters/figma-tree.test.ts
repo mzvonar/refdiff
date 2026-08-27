@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import type { FigmaNode, FigmaNodesResponse, FigmaVariablesResponse } from "./figma-api.js";
-import { figmaTreeToElements, indexVariables, paintToCss } from "./figma-tree.js";
+import { applyTextCase, figmaTreeToElements, indexVariables, paintToCss } from "./figma-tree.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../test/fixtures/figma");
@@ -102,5 +102,70 @@ describe("figmaTreeToElements", () => {
     const m = figmaTreeToElements(empty);
     expect(m.elements).toEqual([]);
     expect(m.quality.score).toBe(0);
+  });
+});
+
+describe("applyTextCase", () => {
+  it("renders Figma textCase like CSS text-transform", () => {
+    expect(applyTextCase("label", "UPPER")).toBe("LABEL");
+    expect(applyTextCase("Label", "LOWER")).toBe("label");
+    expect(applyTextCase("save all changes", "TITLE")).toBe("Save All Changes");
+    expect(applyTextCase("Label", "ORIGINAL")).toBe("Label");
+    expect(applyTextCase("Label", undefined)).toBe("Label");
+  });
+});
+
+/**
+ * The REAL `/v1/files/:key/nodes?geometry=paths` response for the
+ * population-registry DS `*Button/Fill` COMPONENT_SET (recorded 2026-08-27,
+ * fileKey M0hnCQJIUho3tcW6PcnHWH, node 8226:4244): 42 variant COMPONENTs,
+ * INSTANCE icons (`*Icon/globe`, `*Icon/loader`), Focus variants wrapped in a
+ * FRAME with a stroked focus-ring RECTANGLE, variables bound but no variables
+ * endpoint (non-Enterprise plan).
+ */
+describe("figmaTreeToElements on the recorded Button/Fill component set", () => {
+  const real = JSON.parse(readFileSync(join(fixtures, "nodes-button-fill-set.json"), "utf8")) as FigmaNodesResponse;
+  const set = real.nodes["8226:4244"]!.document;
+  const { elements, quality, width, height } = figmaTreeToElements(set, indexVariables(undefined));
+  const roles = elements.reduce<Record<string, number>>((acc, e) => ({ ...acc, [e.role ?? "?"]: (acc[e.role ?? "?"] ?? 0) + 1 }), {});
+
+  it("uses the set's bounding box and emits one leaf per label, icon and focus ring", () => {
+    expect([width, height]).toEqual([1283, 761]);
+    // 42 variants → 42 labels; 27 icon instances (globe/loader) → 27 icons; 7 Focus rings → 7 boxes.
+    expect(roles).toEqual({ text: 42, icon: 27, box: 7 });
+    expect(elements.some((e) => e.id.startsWith("vector") || e.id.startsWith("boolean_operation"))).toBe(false);
+  });
+
+  it("applies textCase UPPER so the label reads as rendered (LABEL, not label)", () => {
+    const labels = elements.filter((e) => e.role === "text").map((e) => e.text);
+    expect(new Set(labels)).toEqual(new Set(["LABEL", "SUCCESS", "DANGER"]));
+  });
+
+  it("keeps TEXT boxes at the layout box (line height), not the glyph-ink render bounds", () => {
+    // absoluteRenderBounds is 49.86×9.8 for this label; the DOM side measures
+    // advance × content-area, so the 52×16 layout box is the closer analogue.
+    const label = elements.find((e) => e.role === "text")!;
+    expect(label.box).toEqual({ x: 127, y: 193, w: 52, h: 16 });
+    expect(label.style).toMatchObject({ fontFamily: "Montserrat", fontSize: 14, lineHeight: 16, fontWeight: 700, color: "rgb(0, 0, 0)" });
+  });
+
+  it("hoists the variant's fill/radius onto a lone label but not onto an icon+label pair", () => {
+    const lone = elements.find((e) => e.box.x === 127 && e.box.y === 193)!; // State=Default, iconPlacement=none
+    expect(lone.style).toMatchObject({ backgroundColor: "rgb(90, 216, 230)", borderRadius: 5 });
+    const withIcon = elements.find((e) => e.box.x === 1123 && e.box.y === 193)!; // State=Loading, icon left
+    expect(withIcon.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("collapses INSTANCE icons to one 24×24 leaf and keeps the stroked focus ring as a bordered box", () => {
+    const icons = elements.filter((e) => e.role === "icon");
+    expect(icons.every((e) => e.box.w === 24 && e.box.h === 24)).toBe(true);
+    const ring = elements.find((e) => e.role === "box" && e.box.w === 84 && e.box.h === 48)!;
+    expect(ring.style).toMatchObject({ borderWidth: 2, borderColor: "rgb(89, 171, 230)", borderRadius: 10 });
+    expect(ring.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("scores 0.64 with variable ids as tokens (no variables endpoint on this plan)", () => {
+    expect(quality).toEqual({ score: 0.64, leaves: 76, bound: 49, instances: 27, detached: 0 });
+    expect(elements.find((e) => e.role === "text")!.token?.["color"]).toMatch(/^VariableID:/);
   });
 });
