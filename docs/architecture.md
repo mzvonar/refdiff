@@ -497,6 +497,50 @@ to `localStorage` otherwise (and says so).
   to the DS owners; the harness's job was to find the one cause behind 66
   findings, which the set summary did.
 
+- **Size-tolerated pairs stay pixel-diffed, scale-normalized — decided
+  2026-08-27 (S12).** A 21 vs 24 px icon passes the 5 px `size` tolerance and
+  then showed 13–24 % pixel difference on the Button set; the question was
+  whether to skip such pairs or normalize. Measured (research.md §6b): the
+  channel already resamples the design crop onto the impl grid, and the same
+  content through that resample differs 2.5–3.7 % (< 5 % minor), while the
+  13–24 % was a REAL glyph swap (Figma globe vs story plus-circle) a skip
+  rule would have hidden. Nothing changed in the diff except the message,
+  which now says "design 24×24 resampled onto 21×21" when the boxes differ.
+- **`pixel-region` findings are sub-classified — built 2026-08-27 (S12),
+  plan-next §4.** Pure `pixel/classify.ts`: `regionSignals(design, impl,
+  mask)` over the two crops the diff edge already holds (design at the best
+  shift on the impl grid, impl) → exact edge Dice inside the differing region,
+  edge densities per side, edge-adjacent share, perimeter share, mean RGB
+  delta, signed luminance delta, YIQ chroma cosine; `classifyChange` →
+  `color | hue-rotation | shape | added | removed | stroke | noise`
+  (thresholds and their evidence in research.md §6b). `MatchDiff` carries the
+  crops; the finding gets `actual.changeKind` (+ `edgeCorrelation`,
+  `meanColorDelta`) and a code-actionable message ("shape differs (edges do
+  not line up — a different glyph or drawing), and the fill around it is
+  recolored"). `aggregate` and the set `summary` group pixel regions on
+  `(role, changeKind)` with the ratio as the spread — the Button set's 26
+  pixel findings are ONE cause row ("shape, 26/41 pairs"). Severity stays the
+  Argos ratio; `noise` is informational by construction (< 10 %, at most
+  minor). Not adopted from interpret-native: its 0.50-confidence
+  `content-change` default (it labels identical cross-render crops as
+  changed); our floor is measured, not assumed.
+- **Opacity is folded into colors on BOTH sides — decided 2026-08-27
+  (S12).** The DOM extraction multiplies the effective CSS `opacity`
+  (product from the captured root down) into the alpha of every emitted
+  color (`rgb`/`rgba` comma syntax and CSS Color 4 slash syntax — Chrome
+  emits `oklab(… / .4)` for Tailwind v4 alpha colors) and records
+  `style.opacity` when < 1; the Figma adapter does the same with LAYER
+  opacity (`node.opacity`, product down the chain, the captured variant
+  COMPONENT included) on top of the paint opacity it already folded.
+  Evidence: uctoinak's `disabled:opacity-50` CTA reported its full-strength
+  `rgb(184, 92, 36)` (ΔE 35.4 vs the design's beige), now `rgba(184, 92, 36,
+  0.5)` (ΔE 14.3 — still a real difference, now the right one); the DS
+  Button State=Disabled variants draw at layer opacity 0.3 in Figma and
+  `opacity: .3` in the story — without the fold on both sides the fold on one
+  side would have invented 7 color findings. `colorDelta` flattens
+  translucent colors over WHITE before ΔE2000 (a documented assumption for
+  light UIs; the message keeps the raw strings so the alpha stays visible).
+
 ## Migration targets
 
 Once the core works end-to-end on one real pair per source type:

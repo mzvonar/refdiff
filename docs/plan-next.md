@@ -1,11 +1,22 @@
-# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S11)
+# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S12)
 
-Status: items 1–3, 5–10 DONE and proven (sessions 1–11); item 4's trigger
-has now fired (the pixel channel emits findings on DS icon cells). Everything
-below is history; the live plan is `docs/handoff-2026-08-27.md` "What
-REMAINS".
+Status: items 1–11 DONE and proven (sessions 1–12), item 4 included.
+Everything below is history; the live plan is `docs/handoff-2026-08-27.md`
+"What REMAINS" (consuming-repo decisions, then migration / publishing).
 
-## 11. Corpus decisions + pixel calibration ← DO NEXT
+## 11. Corpus decisions + pixel calibration — harness half DONE (session 12)
+
+(c) decided and measured: size-tolerated pairs stay pixel-diffed,
+scale-normalized (resample floor 2.5–3.7 % < 5 % minor; the 13–24 % was a
+real globe → plus-circle glyph swap); §4 sub-classification built
+(`pixel/classify.ts`, `actual.changeKind`, Button set: 26 pixel findings →
+ONE `shape` cause); `opacity` folded into colors on BOTH sides (DOM effective
+opacity, Figma layer opacity). Button 184/15 → **167 / 14 causes**;
+doc-detail baseline unchanged 60/122; tx-picker 82 → 83/138 (the +1 is the
+0.8-dimmed paired rows, now measured). (a) and (b) remain decisions in the
+consuming repos. Details: handoff "What's DONE (session 12)". Original below.
+
+### 11 (original, for reference)
 
 The harness found the causes; the next moves are in the other repos and in
 one calibration: (a) population-registry — the ×0.875 root font-size (one
@@ -332,7 +343,20 @@ near-empty body → `error-page`), HTTP ≥ 400 → `http-error`, same
 --auth-header`; manifest `app: { source: "live", route, role }` now runs
 instead of being skipped. Needs the uctoinak app in `dev:e2e` mode to prove.
 
-## 4. Deferred: pixel-region sub-classification (steal from @blazediff/interpret-native)
+## 4. Pixel-region sub-classification — DONE (session 12)
+
+Built as pure `pixel/classify.ts` (`regionSignals` → `classifyChange` →
+`color | hue-rotation | shape | added | removed | stroke | noise`), fed by the
+crops `diffMatches` now returns on each `MatchDiff`; `actual.changeKind` +
+message; `aggregate` / `summary` group on `(role, changeKind)`. Calibrated on
+the DS Button icons, where exact edge Dice inside the differing region
+separates the same glyph resampled (0.90–0.95) from a different glyph
+(0.27–0.45) — the ±1 px tolerant Dice (0.78–0.80 for both) was rejected.
+Synthetic fixtures per class in `classify.test.ts`; evidence in research.md
+§6b, decision in architecture.md. A shift-search tie-break bug fixed on the
+way (`shiftOffsets`). Original spec below.
+
+### 4 (original spec, for reference)
 
 Trigger: the first real pair where the pixel channel emits findings
 (images, illustrations, gradients, shadows ≥16px). Until then a

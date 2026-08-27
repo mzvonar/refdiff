@@ -203,6 +203,64 @@ scoped pixel diff + agent-facing packaging in one composable core.
 `@blazediff/agent` (pixels, run-vs-run) and `claude-pixel-perfect-agent`
 (tokens, no pixels) are the two existing halves.
 
+## 6b. Pixel channel — measurements on the real corpora (2026-08-27, S12)
+
+The channel diffs each matched element INSIDE its own box: the design crop
+goes through the inverse alignment, is resampled (sharp, `fit: fill`) onto
+the impl element's native pixel grid with a ±2px margin, and pixelmatch v7
+(`includeAA: false`, threshold 0.1) runs at every integer offset within ±2;
+the fewest-differing offset wins. Numbers below come from the DS Button set
+(41 Figma variant COMPONENTS vs story cells, impl dpr 2, design scale 2) and
+answer the S11 question "is 13–24 % on a 21 vs 24 px icon signal or noise?".
+
+**Same content, different size (the resample floor).** The design icon
+(24 CSS px) resampled to the impl grid (21 CSS px) and compared with the same
+design crop resampled through a second path: **2.5–3.7 %** differing pixels on
+four cells — below the 5 % minor threshold. The same glyph at the same size
+(impl icon of the left-placement cell vs the right-placement cell): **0.0 %**.
+(A naive "upscale the 42 px impl raster to 48 then back" control gave 32–35 %,
+but that blurs a 2 px stroke raster twice and is not how either side is
+produced — discarded.) Consequence: **a size-tolerated pair (≤5 px) IS
+pixel-diffed, scale-normalized** — exactly what the channel already did; a
+skip rule would have hidden the finding below.
+
+**The 13–24 % on the Button icons is real.** The crops show a globe in Figma
+and a plus-in-circle in the story (`f2-design.png` / `f2-impl.png` of any
+Default cell) — the story renders a placeholder icon. The 71–80 % cells
+(Active / Focus / Hover-danger / Disabled) are that swap PLUS the button
+background recolor filling the icon crop; Loading (13–15 %) is two different
+spinner arcs. So the corpus has no same-shape recolor at all; every one of
+the 26 icon pairs is a shape change.
+
+**Sub-classification signals, calibrated on those pairs** (`pixel/classify.ts`,
+signal set after `@blazediff/interpret-native`, own implementation):
+
+| signal | same glyph, resampled 24→21 | different glyph | recolor + swap |
+|---|---|---|---|
+| exact edge Dice inside the differing region | **0.90–0.95** | **0.27–0.45** | 0.39–0.45 |
+| edge Dice with a ±1 px tolerance (rejected) | ~0.95 | 0.78–0.80 | 0.78 |
+| share of differing pixels adjacent to an edge | 1.00 | 1.00 | 0.46–0.61 |
+| diff ratio | 2.5–3.7 % | 13–31 % | 71–80 % |
+
+The ±1 px tolerant Dice cannot tell two circular glyphs apart at 42 native px;
+exact Dice separates them by a factor of two, so `sameStructure` = 0.7 on
+exact Dice measured inside the (1 px-dilated) differing region — edges the two
+sides share outside the region (an unchanged outer ring around a swapped
+glyph) must not vote. Rules, in order: `noise` (same structure, ≥80 % of
+differing pixels on shared edges, ratio < 10 %); `stroke` (≥70 % of differing
+pixels in the outer 15 % band, ratio < 50 %); `removed` / `added` (one side's
+edge density ≥3× the other's, the flat side < 0.02); `color` /
+`hue-rotation` (same structure; chroma cosine < 0 with both sides saturated);
+else `shape`, with "and the fill around it is recolored" when < 70 % of the
+differing pixels touch an edge. Synthetic pairs for every class are the
+regression fixtures (`classify.test.ts`); the 26 real pairs all read `shape`.
+
+**A shift-search tie-break bug found on the way.** The offset loop ran in
+raster order and kept the first minimum, so a whole-element recolor (every
+offset differs alike) "won" at (−2, −2) and misaligned the crops the
+classifier reads. Offsets are now visited by |dx|+|dy| so ties resolve to
+(0, 0) (`shiftOffsets`, tested).
+
 ## 7. Never rely on
 
 - A VLM comparing two raw screenshots (detection recall <41%, and its
