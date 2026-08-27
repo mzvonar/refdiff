@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ElementNode } from "../types.js";
-import { estimateTransform } from "./align.js";
+import { alignStructural, estimateTransform } from "./align.js";
 
 const el = (id: string, x: number, y: number, w: number, h: number, text?: string): ElementNode => ({
   id,
@@ -45,5 +45,56 @@ describe("estimateTransform", () => {
     const t = estimateTransform(design, impl);
     expect(t.anchors).toBe(1);
     expect(t).toMatchObject({ scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, confidence: 0 });
+  });
+});
+
+describe("alignStructural on element pairs", () => {
+  const capture = (elements: ElementNode[], scope?: "explicit" | "largest-child") => ({
+    side: "design" as const,
+    source: "figma" as const,
+    ref: "r",
+    pngPath: "p",
+    width: 76,
+    height: 40,
+    dpr: 1,
+    elements,
+    ...(scope ? { scope: { mode: scope, selector: "s" } } : {}),
+  });
+  const design = [el("label", 12, 12, 52, 16, "LABEL")];
+  const impl = [el("label", 29.4, 8, 33.3, 19, "LABEL")];
+
+  it("is the identity with confidence 1 when BOTH sides captured one explicit node and anchors are too few", () => {
+    const { alignment } = alignStructural({
+      id: "p",
+      design: capture(design, "explicit"),
+      impl: { ...capture(impl, "explicit"), side: "impl", source: "storybook" },
+      designScale: 1,
+    });
+    expect(alignment).toEqual({ scale: 1, offsetX: 0, offsetY: 0, confidence: 1, basis: "element-pair" });
+  });
+
+  it("falls back to the pure offset (basis offset) when only one side is an explicit node", () => {
+    const { alignment } = alignStructural({
+      id: "p",
+      design: capture(design, "largest-child"),
+      impl: { ...capture(impl, "explicit"), side: "impl", source: "storybook" },
+      designScale: 1,
+    });
+    expect(alignment.basis).toBe("offset");
+    expect(alignment.offsetX).toBeCloseTo(8.05, 5);
+    expect(alignment.confidence).toBeCloseTo(1 / 8, 5);
+  });
+
+  it("keeps the anchor fit (basis anchors) when an element pair has ≥3 unique texts", () => {
+    const d = [el("a", 0, 0, 40, 10, "One"), el("b", 0, 20, 40, 10, "Two"), el("c", 0, 40, 40, 10, "Three")];
+    const i = d.map((e) => ({ ...e, box: { ...e.box, x: e.box.x + 5, y: e.box.y + 5 } }));
+    const { alignment } = alignStructural({
+      id: "p",
+      design: capture(d, "explicit"),
+      impl: { ...capture(i, "explicit"), side: "impl", source: "storybook" },
+      designScale: 1,
+    });
+    expect(alignment.basis).toBe("anchors");
+    expect(alignment.offsetX).toBeCloseTo(5, 5);
   });
 });

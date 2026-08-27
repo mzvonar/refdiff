@@ -73,6 +73,12 @@ export interface Finding {
   /** Role of the element(s) involved (design side wins) — policies key on it. */
   role?: string;
   /**
+   * Text of the element(s) involved (design side wins; spacing: "a → b").
+   * The finding's identity across runs: a fixture change that moves the
+   * alignment moves every box, but not what the finding is about.
+   */
+  text?: string;
+  /**
    * Set when this finding aggregates several identical deltas (one root
    * cause): the number of members. `designBox`/`implBox` are the primary
    * (first) member's; every member's boxes are listed in `members`.
@@ -112,6 +118,8 @@ export interface IgnorePolicy {
 
 export interface AcceptedDeviation {
   type: FindingType;
+  /** Element role the finding must carry (e.g. a `missing-element` `box` = a focus ring the story cannot render). */
+  role?: string;
   expected?: Record<string, string | number>;
   actual?: Record<string, string | number>;
   reason: string;
@@ -150,6 +158,14 @@ export interface Alignment {
   offsetY: number;
   /** 0..1 — low confidence means the pixel channel is unreliable. */
   confidence: number;
+  /**
+   * What the transform rests on: a Theil–Sen fit over ≥3 unique-text
+   * anchors; a pure offset (every design leaf an anchor, <3 of them); the
+   * element pair itself (both sides captured ONE explicit node — a Figma
+   * variant vs a story cell — so their origins coincide by construction);
+   * or nothing (identity, confidence 0).
+   */
+  basis?: "anchors" | "offset" | "element-pair" | "none";
   /** Regions present on only one side (reported, not silently cropped). */
   designOnly?: Box[];
   implOnly?: Box[];

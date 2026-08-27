@@ -185,3 +185,12 @@ export {
   type ReportDelta,
   type ResolvedLedger,
 } from "./package/delta.js";
+export {
+  renderSummary,
+  runRow,
+  setGroupKey,
+  summarizeReports,
+  type RunRow,
+  type SetGroup,
+  type SetSummary,
+} from "./package/summary.js";

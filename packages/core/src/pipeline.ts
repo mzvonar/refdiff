@@ -135,7 +135,12 @@ export interface Capture {
   dpr: number;
   /** Leaf element tree, boxes in CSS px relative to the capture origin. */
   elements: ElementNode[];
-  /** Design side only: which node inside the frame was captured, and why. */
+  /**
+   * Which node was captured, and why. Design: the frame's scope (explicit /
+   * largest-child / frame). Impl: `explicit` when a `selector` narrowed the
+   * capture to one node — together with an explicit design scope that makes
+   * the pair an ELEMENT pair (origins coincide → identity alignment).
+   */
   scope?: CaptureScope;
   /** Figma only: the GIGO quality score, echoed even when the gate passed. */
   quality?: DesignQuality;

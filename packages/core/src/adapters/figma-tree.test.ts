@@ -42,8 +42,9 @@ describe("figmaTreeToElements", () => {
       fontWeight: 600,
       lineHeight: 20,
     });
-    // A text's fill is its color, never a background of its own.
-    expect(label.style?.backgroundColor).toBeUndefined();
+    // A text's fill is its color, never a background of its own — the background it
+    // carries is the button's, hoisted (the icon sibling does not break the chain).
+    expect(label.style?.backgroundColor).toBe("rgb(16, 118, 232)");
   });
 
   it("collapses an all-vector instance into one icon leaf and never descends into it", () => {
@@ -56,11 +57,14 @@ describe("figmaTreeToElements", () => {
     // ⋯ inside a bordered 40×24 frame: border + radius belong to the text leaf.
     const dots = byText("⋯")!;
     expect(dots.style).toMatchObject({ borderWidth: 2, borderColor: "rgb(51, 51, 51)", borderRadius: 8 });
-    // The button instance has two children → the label does NOT take its fill.
-    expect(byText("Save changes")!.style?.borderRadius).toBeUndefined();
-    // Container with children and decoration is not itself a leaf; the pill
-    // (cornerRadius 9999 on 160×40) would clamp to 20 if it were.
+    // The button instance has two children, icon + label → the label takes its
+    // fill/radius (an icon sibling is part of the same labelled control), and the
+    // pill radius (cornerRadius 9999 on 160×40) is clamped to the button's 20.
+    expect(byText("Save changes")!.style?.borderRadius).toBe(20);
+    // Container with children and decoration is not itself a leaf.
     expect(elements.some((e) => e.style?.borderRadius === 9999)).toBe(false);
+    // The icon does not take the button's paint.
+    expect(elements.find((e) => e.role === "icon")!.style?.backgroundColor).toBeUndefined();
   });
 
   it("skips invisible, transparent and childless-undecorated nodes", () => {
@@ -141,7 +145,7 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
     expect(new Set(labels)).toEqual(new Set(["LABEL", "SUCCESS", "DANGER"]));
   });
 
-  it("keeps TEXT boxes at the layout box (line height), not the glyph-ink render bounds", () => {
+  it("keeps HUGGING TEXT boxes (textAutoResize WIDTH_AND_HEIGHT) at the layout box, not the glyph-ink render bounds", () => {
     // absoluteRenderBounds is 49.86×9.8 for this label; the DOM side measures
     // advance × content-area, so the 52×16 layout box is the closer analogue.
     const label = elements.find((e) => e.role === "text")!;
@@ -149,11 +153,16 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
     expect(label.style).toMatchObject({ fontFamily: "Montserrat", fontSize: 14, lineHeight: 16, fontWeight: 700, color: "rgb(0, 0, 0)" });
   });
 
-  it("hoists the variant's fill/radius onto a lone label but not onto an icon+label pair", () => {
+  it("hoists the variant's fill/radius onto a lone label AND onto a label with an icon sibling", () => {
     const lone = elements.find((e) => e.box.x === 127 && e.box.y === 193)!; // State=Default, iconPlacement=none
     expect(lone.style).toMatchObject({ backgroundColor: "rgb(90, 216, 230)", borderRadius: 5 });
-    const withIcon = elements.find((e) => e.box.x === 1123 && e.box.y === 193)!; // State=Loading, icon left
-    expect(withIcon.style?.backgroundColor).toBeUndefined();
+    // State=Loading, icon left: `[icon] LABEL` in a filled frame is one labelled control — the DOM
+    // side emits the <button> itself as the text leaf with its paint, so the label carries it here.
+    const withIcon = elements.find((e) => e.box.x === 1123 && e.box.y === 193)!;
+    expect(withIcon.style).toMatchObject({ backgroundColor: "rgb(90, 216, 230)", borderRadius: 5 });
+    // The icon itself does not take the button's paint.
+    const icon = elements.find((e) => e.role === "icon" && e.box.y === 189 && e.box.x > 1080 && e.box.x < 1123)!;
+    expect(icon?.style?.backgroundColor).toBeUndefined();
   });
 
   it("collapses INSTANCE icons to one 24×24 leaf and keeps the stroked focus ring as a bordered box", () => {
@@ -167,5 +176,36 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
   it("scores 0.64 with variable ids as tokens (no variables endpoint on this plan)", () => {
     expect(quality).toEqual({ score: 0.64, leaves: 76, bound: 49, instances: 27, detached: 0 });
     expect(elements.find((e) => e.role === "text")!.token?.["color"]).toMatch(/^VariableID:/);
+  });
+});
+
+describe("figmaTreeToElements on the recorded Alert component set (fill-width text)", () => {
+  const real = JSON.parse(readFileSync(join(fixtures, "nodes-alert-set.json"), "utf8")) as FigmaNodesResponse;
+  const set = real.nodes["6765:4792"]!.document;
+  const info = set.children!.find((c) => c.name === "Color=Info, Aligned=Left, Type=Text")!;
+  const center = set.children!.find((c) => c.name === "Color=Info, Aligned=Center, Type=Text")!;
+
+  it("measures a fill-width (textAutoResize HEIGHT) message by its glyph ink horizontally, layout box vertically", () => {
+    const { elements } = figmaTreeToElements(info, indexVariables(undefined));
+    const msg = elements.find((e) => e.role === "text")!;
+    expect(msg.text).toBe("Left-aligned text + Responsive width.");
+    // absoluteBoundingBox is 724×19 at x=48 (the row's free width); absoluteRenderBounds 255.3×13.2 at x=49.6.
+    expect(msg.box).toEqual({ x: 49.6, y: 18.5, w: 255.31, h: 19 });
+    expect(elements.find((e) => e.role === "icon")!.box).toEqual({ x: 16, y: 16, w: 24, h: 24 });
+  });
+
+  it("keeps a hugging (WIDTH_AND_HEIGHT) message at its layout box even inside the same set", () => {
+    // "Center-aligned text + No responsive width." hugs: bbox 297×19 at x=261.5, render 295.3 wide.
+    const { elements } = figmaTreeToElements(center, indexVariables(undefined));
+    const msg = elements.find((e) => e.role === "text")!;
+    expect(msg.box).toEqual({ x: 261.5, y: 18.5, w: 297, h: 19 });
+  });
+
+  it("exposes the raw node shape the decision rests on", () => {
+    const text = info.children!.find((c) => c.type === "TEXT")!;
+    expect(text.style?.textAutoResize).toBe("HEIGHT");
+    expect(text.layoutSizingHorizontal).toBe("FILL");
+    expect(text.absoluteBoundingBox!.width).toBe(724);
+    expect(Math.round(text.absoluteRenderBounds!.width)).toBe(255);
   });
 });

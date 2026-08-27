@@ -402,16 +402,100 @@ to `localStorage` otherwise (and says so).
   forward, not by that delta; the skill says so. A content-based identity
   for position findings (element text + type, coordinates as payload) would
   fix it — do it when a loop actually misreads a delta because of it.
-- **Figma fill-width TEXT boxes vs DOM ink — observed 2026-08-27 (S10),
-  not changed.** Every Alert variant reports a major `size` on its message:
-  the Figma text node is a fixed-width box (724×19, "responsive width")
-  while the DOM text measures its glyph ink (226×15). S9 kept
-  `absoluteBoundingBox` for TEXT because on buttons it is the closer
-  analogue of the DOM layout box; this corpus says the opposite for
-  stretched text. Candidate: use `absoluteRenderBounds` for width when the
-  node's `textAutoResize` is `NONE`/`HEIGHT`, keep the layout box for
-  height. Decide with the typography finding on the same pair (research.md
-  "text metrics").
+- **Figma fill-width TEXT boxes vs DOM ink — decided 2026-08-27 (S11):
+  horizontal extent from `absoluteRenderBounds` when the text does not size
+  its own width.** Observed in S10: every Alert variant reported a major
+  `size` on its message — the Figma text node is a fill-width box (724×19,
+  `textAutoResize: HEIGHT`, `layoutSizingHorizontal: FILL`) while the DOM
+  text measures its glyph ink (226×15). The recorded set
+  (`test/fixtures/figma/nodes-alert-set.json`) shows render bounds 255.3
+  wide at x 69.6 for that node — and 255.3 × 0.875 (the DS Storybook's rem
+  factor, see S11) = 223 ≈ the DOM's 226, so ink is the right analogue for
+  a stretched box. `figma-tree.ts` `textBox(n)`: `textAutoResize`
+  `WIDTH_AND_HEIGHT` (hugging) keeps `absoluteBoundingBox` on both axes (the
+  S9 button measurement, unchanged: 52×16 layout box vs DOM advance ×
+  content-area); `HEIGHT` / `NONE` / `TRUNCATE` take `x` + `width` from
+  `absoluteRenderBounds` and keep `y` + `height` from the layout box
+  (line-height ↔ DOM content-area, as before). Measured on the Alert set:
+  the four 8→416px `spacing` majors to the close icon vanish and the 20
+  `size` majors stop saying 724 vs 226 — they now say 255×19 vs 226×15,
+  which is the text's own size delta (the ×0.875 typography cause below plus
+  the known line-height vs content-area height semantics), i.e. a true
+  statement about the text instead of about the row. The same set has a
+  HUGGING centered message
+  ("No responsive width", 297×19) that keeps its layout box — one set covers
+  both branches.
+- **Set summary — built 2026-08-27 (S11), the first CLI need the skill hit.**
+  Reading 23 or 41 per-cell `findings.json` files was the real blocker of a
+  set loop. Pure `package/summary.ts`: `summarizeReports(runs)` → one row per
+  run (counts, verdict, confidence, delta) + `groups` — the same finding
+  across pairs is ONE cause: categorical types group on exact `(type, role,
+  expected, actual)` like `aggregate`, metric types on `(type, role, axis)`
+  with the value spread, presence on `(type, role)`; every group lists its
+  pairs. `renderSummary` is Markdown. `visual-compare summary <out-root>`
+  writes `summary.md` + `summary.json` over every run dir under the root; a
+  multi-pair `compare` prints the table for the pairs it ran and rewrites
+  the root's files. Measured: Alert 153 findings → 10 causes, Button 201 → 16.
+  Lossless in the only sense that matters: the rows point back to the per-cell
+  reports, which stay the truth.
+- **Finding identity is by content when the element has text — decided
+  2026-08-27 (S11).** `Finding.text` (design side wins; spacing `"a → b"`)
+  is set by every check. `delta.ts` `identityKey`: position / presence /
+  spacing findings WITH text → `type|role|text(|axis)`, coordinates ignored;
+  other types add the text to the value key; textless findings keep
+  `type|role|expected|actual` + a box within 5px. Among same-key candidates
+  the nearest box wins, anchored on the IMPL box (world space, does not move
+  with the alignment). The ledger stores `text` and applies the same rule.
+  Consequence: a data-parity iteration no longer churns the delta (tx-picker
+  it.1 re-run: +0/−0; the S10 doc-detail +47/−48 would have been the counts
+  only); a text finding whose values changed is neither resolved nor
+  introduced — the counts and message carry that. Reports written before
+  this identity churn exactly once.
+- **Element pairs align by identity — decided 2026-08-27 (S11).** Impl
+  captures with a `selector` record `scope: { mode: "explicit" }` like the
+  design side. When BOTH sides are explicit single-node captures (Figma
+  variant COMPONENT vs story cell) and there are fewer than 3 anchors, the
+  origins coincide by construction → identity, confidence 1,
+  `alignment.basis: "element-pair"` (else `anchors` / `offset` / `none`).
+  The S9 pure offset for that case ((8.1, −2.5) on the Button cell) was in
+  fact absorbing half of a SIZE difference (impl cell 92×35 vs 76×40, label
+  centred) into position; identity reports it honestly. Effect on the DS
+  sets: 64/64 cells at confidence 1.00, the per-cell "pixel channel skipped"
+  minor is gone, and the pixel channel measures the icons (13–24 % on the
+  ×0.875-shrunk Button icons — within the 5px size tolerance so not a `size`
+  finding, the diff is the resample of a 21 vs 24px glyph; 76 % on the two
+  Loading spinners — real). Whether a size-tolerated icon should be
+  pixel-diffed at all is the next calibration question (research.md).
+- **Decoration hoisting tolerates icon siblings on BOTH sides — decided
+  2026-08-27 (S11).** `[icon] LABEL` inside a filled frame is one labelled
+  control; `<button><svg/><span>` / `<div class="alert"><svg/><p>` likewise.
+  The DOM side already emitted `<button>` itself as the text leaf with its
+  paint while the Figma label had an icon sibling and hoisted nothing → 29 of
+  41 Button cells reported "design radius 0" and no background compared at
+  all. Now `figma-tree.ts` and `extract.ts` both walk up through ancestors
+  whose other visible children are all icon-like (svg / all-vector, ≤64px).
+  Measured: Button false radius 29 → 6, the Hover/Active/Disabled background
+  colors compare for real; the Alert frame's border and radius now reach the
+  message on both sides.
+- **`accepted` may name a `role` — 2026-08-27 (S11).** A `missing-element`
+  has no expected/actual to match on; `{ type, role, reason }` narrows a
+  type-wide acceptance to one element kind. First use: the Focus ring (Figma
+  draws State=Focus as a stroked 84×48 box around the 76×40 button; the story
+  forces `:focus` via a class and the ring is a CSS outline the extraction
+  never emits) — 6/41 cells, visibly `accepted` in the DS manifest.
+- **The DS Storybook renders everything at ×0.875 — observed 2026-08-27
+  (S11), classified as one drift cause, needs a human.** Across 23 Alert
+  cells every typography finding is 12.25/16.63 vs 14/19, every icon 17.5
+  vs 24 (icon `size-5` = 1.25rem → 20 at a 16px root) and every gap 10.5 vs
+  8 (`gap-3` = 0.75rem). population-registry
+  `frontend/ds/src/styles/tokens.css` sets `:where(:host, :root) {
+  font-size: var(--inn-typography-size-md) }` where Terrazzo emits `size-md`
+  as `0.875rem` (14/16) — so the root becomes 14px and every rem token
+  inside (`--text-base: 0.875rem`, spacing, sizes) resolves against 14
+  instead of 16. One line, DS-wide effect, and a documented token-scale
+  decision (the "rem is the default" block in that file) — the fix belongs
+  to the DS owners; the harness's job was to find the one cause behind 66
+  findings, which the set summary did.
 
 ## Migration targets
 

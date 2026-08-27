@@ -117,6 +117,14 @@ export async function extractElementTree(
      * root) reached through a chain of single-child, textless wrappers that
      * paints some. Otherwise `el` (undecorated).
      */
+    /** An svg, or a small textless wrapper around nothing but svg — what `emit` reports as an icon. */
+    const isIconLike = (e: Element): boolean => {
+      if (e.tagName.toLowerCase() === "svg") return true;
+      if ((e.textContent ?? "").trim() !== "" || e.querySelector("svg") === null) return false;
+      const r = e.getBoundingClientRect();
+      return Math.max(r.width, r.height) <= 64 && Array.from(e.querySelectorAll("*")).every((d) => d.namespaceURI === "http://www.w3.org/2000/svg" || (d.textContent ?? "").trim() === "");
+    };
+
     const decorationSource = (
       el: Element,
       rect: DOMRect,
@@ -127,8 +135,12 @@ export async function extractElementTree(
       for (;;) {
         const parent = node.parentElement;
         // The root may donate too (a captured `selector` node that IS the
-        // painted button around a lone label) — same rule as the Figma side.
-        if (!parent || parent.children.length !== 1) break;
+        // painted button around a lone label) — same rule as the Figma side,
+        // including icon siblings: `<div class="alert"><svg/><p>msg</p></div>`
+        // gives its border/radius to the message, as the Figma frame does.
+        if (!parent) break;
+        const siblings = Array.from(parent.children).filter((c) => c !== node);
+        if (!siblings.every(isIconLike)) break;
         const ownText = Array.from(parent.childNodes).some(
           (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "",
         );

@@ -92,8 +92,10 @@ export function readAccepted(a: unknown): AcceptedDeviation | undefined {
   if (!isRecord(a) || typeof a["type"] !== "string" || typeof a["reason"] !== "string") return undefined;
   if (a["expected"] !== undefined && !isValues(a["expected"])) return undefined;
   if (a["actual"] !== undefined && !isValues(a["actual"])) return undefined;
+  if (a["role"] !== undefined && typeof a["role"] !== "string") return undefined;
   return {
     type: a["type"] as AcceptedDeviation["type"],
+    ...(typeof a["role"] === "string" ? { role: a["role"] } : {}),
     ...(isValues(a["expected"]) ? { expected: a["expected"] } : {}),
     ...(isValues(a["actual"]) ? { actual: a["actual"] } : {}),
     reason: a["reason"],

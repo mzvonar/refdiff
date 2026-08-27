@@ -2,17 +2,24 @@
  * Relative verdict (pure): what changed between two runs of the same pair.
  *
  * Finding ids and marks are renumbered on every run, so identity is by
- * CONTENT: type, role, canonical expected/actual, and the nearest box (design
- * side, impl as fallback) within a few px. A finding of the previous run with
- * no counterpart in the new one is `resolved`; a new finding with no
- * counterpart in the previous run is `introduced`. Ids listed under
- * `resolved` are the PREVIOUS run's, under `introduced` the new run's.
+ * CONTENT. A finding that knows its element's `text` is identified by type,
+ * role and that text (plus the axis for spacing) — NOT by coordinates: a
+ * fixture change that moves the alignment moves every box and every
+ * position value, but "the amount is offset" is still the same finding
+ * (S10 iteration 1 churned +47/−48 for a net −1 before this). Among several
+ * candidates with the same key (three "−219,00 €" rows) the nearest box
+ * wins. A finding with no text (an icon, a box) has nothing but geometry to
+ * go by: type, role, canonical expected/actual, and a box within a few px.
+ * A finding of the previous run with no counterpart in the new one is
+ * `resolved`; a new finding with no counterpart in the previous run is
+ * `introduced`. Ids under `resolved` are the PREVIOUS run's, under
+ * `introduced` the new run's.
  */
 
 import type { Box, ComparisonReport, Finding } from "../types.js";
 
 export interface DeltaOptions {
-  /** Max distance (px, per edge) between boxes that still count as the same place. Default 5. */
+  /** Max distance (px, per edge) between boxes that still count as the same place (textless findings). Default 5. */
   boxTolerance?: number;
 }
 
@@ -21,11 +28,26 @@ export type ReportDelta = NonNullable<ComparisonReport["delta"]>;
 const canon = (r: Record<string, string | number> | undefined): string =>
   JSON.stringify(Object.entries(r ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 
-/** Everything about a finding that is not geometry — must match exactly. */
-export const identityKey = (f: Finding): string =>
-  `${f.type}|${f.role ?? ""}|${canon(f.expected)}|${canon(f.actual)}`;
+/** Types whose expected/actual are coordinates — meaningless as identity once the text is known. */
+const COORDINATE_TYPES = new Set<Finding["type"]>(["position", "missing-element", "extra-element", "spacing"]);
 
-const anchor = (f: Finding): Box | undefined => f.designBox ?? f.implBox;
+/** Everything about a finding that is not geometry — must match exactly. */
+export const identityKey = (f: Finding): string => {
+  const head = `${f.type}|${f.role ?? ""}`;
+  if (f.text !== undefined) {
+    const axis = f.type === "spacing" ? `|${String(f.expected?.["axis"] ?? "")}` : "";
+    return COORDINATE_TYPES.has(f.type)
+      ? `${head}|text:${f.text}${axis}`
+      : `${head}|${canon(f.expected)}|${canon(f.actual)}|text:${f.text}`;
+  }
+  return `${head}|${canon(f.expected)}|${canon(f.actual)}`;
+};
+
+/** Does this identity need a box to be complete? (No text → geometry is all it has.) */
+const needsBox = (f: Pick<Finding, "text">): boolean => f.text === undefined;
+
+/** The impl box is world space and does not move with the alignment; design as fallback. */
+const anchor = (f: Finding): Box | undefined => f.implBox ?? f.designBox;
 
 /** Largest per-edge distance between two boxes; Infinity when only one has a box. */
 export function boxDistance(a: Box | undefined, b: Box | undefined): number {
@@ -58,9 +80,10 @@ export function diffFindings(
     const candidates = remaining.get(identityKey(f)) ?? [];
     let best = -1;
     let bestDistance = Infinity;
+    const limit = needsBox(f) ? boxTolerance : Infinity;
     candidates.forEach((c, i) => {
       const d = boxDistance(anchor(c), anchor(f));
-      if (d <= boxTolerance && d < bestDistance) {
+      if (d <= limit && d < bestDistance) {
         best = i;
         bestDistance = d;
       }
@@ -104,6 +127,8 @@ export function diffReports(
  */
 export interface LedgerEntry {
   key: string;
+  /** Set when the identity is by text — the box is then a tie-break, not a requirement. */
+  text?: string;
   box?: Box;
   message: string;
   /** `createdAt` of the run that no longer showed it. */
@@ -119,7 +144,7 @@ export interface ResolvedLedger {
 export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [] });
 
 const matchesEntry = (e: LedgerEntry, f: Finding, tolerance: number): boolean =>
-  e.key === identityKey(f) && boxDistance(e.box, anchor(f)) <= tolerance;
+  e.key === identityKey(f) && (!needsBox(e) || boxDistance(e.box, anchor(f)) <= tolerance);
 
 /**
  * Pure: ids (of `next`) among `introduced` that an earlier run had resolved.
@@ -158,6 +183,7 @@ export function recordResolved(
     const box = anchor(f);
     const entry: LedgerEntry = {
       key: identityKey(f),
+      ...(f.text !== undefined ? { text: f.text } : {}),
       ...(box !== undefined ? { box } : {}),
       message: f.message,
       resolvedAt,

@@ -1,16 +1,34 @@
-# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S10)
+# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S11)
 
-Status: items 1–3, 5–9 DONE and proven (sessions 1–10); item 4 deferred
-until a pair emits pixel findings. Everything below is history; the live
-plan is `docs/handoff-2026-08-27.md` "What REMAINS".
+Status: items 1–3, 5–10 DONE and proven (sessions 1–11); item 4's trigger
+has now fired (the pixel channel emits findings on DS icon cells). Everything
+below is history; the live plan is `docs/handoff-2026-08-27.md` "What
+REMAINS".
 
-## 10. Use the skill for real from a consuming repo ← DO NEXT
+## 11. Corpus decisions + pixel calibration ← DO NEXT
 
-Invoke `/design-fix-loop` in population-registry (DS button/alert sets) and
-uctoinak-bmad (`tx-picker-owner-desktop`) as a user would; every stumble is a
-skill/harness fix here. Likely first CLI need: a per-set `summary`. Then the
-S10 corpus follow-ups (Figma fill-width text boxes, position identity,
-identity alignment for cells). Details: handoff "What REMAINS" §1–§2.
+The harness found the causes; the next moves are in the other repos and in
+one calibration: (a) population-registry — the ×0.875 root font-size (one
+line in `tokens.css`, DS-wide; trial numbers in the bindings file), tag the
+Alert/Dialog story cells, expose the dialog header; (b) uctoinak-bmad — review
+the S10/S11 loop edits and decide the tx-picker needs-a-human list (row
+format, hidden paired rows, chip copy, "+" on incoming amounts, disabled CTA
+style); (c) here — decide whether a size-tolerated icon (21 vs 24px) should
+be pixel-diffed at all, then §4 sub-classification now that real
+`pixel-region` findings exist. Details: handoff "What REMAINS".
+
+## 10. Use the skill for real from a consuming repo — DONE (session 11)
+
+Ran from population-registry (`ds-alert` 23 cells, `ds-button-fill` 41) and
+uctoinak-bmad (`tx-picker-owner-desktop`). Every stumble became a harness fix
+here: `visual-compare summary` (per-set table + causes across pairs; Alert 153
+findings → 10 causes, Button 201 → 16), Figma fill-width TEXT measured by
+render bounds, decoration hoisting through icon siblings on BOTH sides,
+`accepted.role`, finding identity by text (delta no longer churns when the
+alignment moves), identity alignment for element pairs (confidence 1 → pixel
+channel runs on cells). Skill gained the set-level loop rules. One DS-wide
+cause found and measured (root `font-size` ×0.875: Alert 152/3 PASS → 79/15
+PASS in a reverted trial). Details: handoff "What's DONE (session 11)".
 
 ## 8. The skill — bounded fix loop consuming reports — DONE (session 10)
 

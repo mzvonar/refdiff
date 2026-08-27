@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComparisonReport, Finding } from "../types.js";
-import { boxDistance, diffFindings, diffReports } from "./delta.js";
+import { boxDistance, diffFindings, diffReports, emptyLedger, recordResolved } from "./delta.js";
 
 const finding = (id: string, partial: Partial<Finding> = {}): Finding => ({
   id,
@@ -81,6 +81,63 @@ describe("diffReports", () => {
     expect(boxDistance({ x: 0, y: 0, w: 10, h: 10 }, { x: 0, y: 0, w: 16, h: 10 })).toBe(6);
     expect(boxDistance(undefined, { x: 0, y: 0, w: 1, h: 1 })).toBe(Infinity);
     expect(boxDistance(undefined, undefined)).toBe(0);
+  });
+});
+
+describe("identity by text (findings that know their element)", () => {
+  const pos = (id: string, x: number, y: number, text = "−219,00 €"): Finding =>
+    finding(id, {
+      type: "position",
+      role: "text",
+      text,
+      designBox: { x, y, w: 60, h: 16 },
+      implBox: { x: x + 3, y: y + 20, w: 60, h: 16 },
+      expected: { x, y },
+      actual: { x: x + 3, y: y + 20 },
+      message: `"${text}" is offset`,
+    });
+
+  it("keeps a position finding's identity when the alignment moves every box and value", () => {
+    const prev = report([pos("f1", 100, 200)]);
+    const next = report([pos("f1", 107.2, 193.5)]); // alignment shifted (7.2, −6.5)
+    expect(diffReports(prev, next)).toMatchObject({ resolved: [], introduced: [] });
+  });
+
+  it("pairs same-text candidates by the nearest box (three amount rows)", () => {
+    const prev = report([pos("f1", 100, 200), pos("f2", 100, 260), pos("f3", 100, 320)]);
+    const next = report([pos("f1", 106, 326), pos("f2", 106, 206)]); // the middle row's finding is gone
+    expect(diffReports(prev, next)).toEqual({ previousRun: prev.createdAt, resolved: ["f2"], introduced: [] });
+  });
+
+  it("still identifies a text finding when the values changed (same finding, still there)", () => {
+    const prev = report([pos("f1", 100, 200)]);
+    const next = report([{ ...pos("f1", 100, 200), actual: { x: 100, y: 240 }, message: "moved more" }]);
+    expect(diffReports(prev, next)).toMatchObject({ resolved: [], introduced: [] });
+  });
+
+  it("distinguishes different texts and keeps geometry-only identity for textless findings", () => {
+    const prev = report([pos("f1", 100, 200, "−84,20 €")]);
+    expect(diffReports(prev, report([pos("f1", 100, 200, "−96,30 €")]))).toMatchObject({ resolved: ["f1"], introduced: ["f1"] });
+    const icon = finding("f1", { type: "position", role: "icon", expected: { x: 10, y: 10 }, actual: { x: 12, y: 18 }, designBox: { x: 10, y: 10, w: 16, h: 16 }, implBox: { x: 12, y: 18, w: 16, h: 16 } });
+    const moved = { ...icon, designBox: { x: 40, y: 10, w: 16, h: 16 }, implBox: { x: 42, y: 18, w: 16, h: 16 } };
+    expect(diffReports(report([icon]), report([moved]))).toMatchObject({ resolved: ["f1"], introduced: ["f1"] });
+  });
+
+  it("identifies a missing-element by its text across an alignment shift", () => {
+    const missing = (id: string, y: number): Finding =>
+      finding(id, { type: "missing-element", role: "text", text: "Karta · 12. 7.", designBox: { x: 136, y, w: 63, h: 14 }, message: "missing" });
+    const { expected: _e, actual: _a, ...m1 } = missing("f1", 547);
+    const { expected: _e2, actual: _a2, ...m2 } = missing("f1", 555.8);
+    expect(diffReports(report([m1]), report([m2]))).toMatchObject({ resolved: [], introduced: [] });
+  });
+
+  it("carries the text into the ledger so a regression is recognised after a shift", () => {
+    const prev = report([pos("f1", 100, 200)]);
+    const gone = report([]);
+    const ledger = recordResolved(emptyLedger("p"), prev, diffReports(prev, gone), gone.createdAt);
+    expect(ledger.entries[0]).toMatchObject({ text: "−219,00 €" });
+    const back = report([pos("f1", 130, 170)]);
+    expect(diffReports(gone, back, {}, ledger).regressions).toEqual(["f1"]);
   });
 });
 

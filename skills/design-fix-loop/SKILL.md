@@ -131,6 +131,7 @@ while iteration < 5:
 ```bash
 visual-compare compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $RUN_DIR
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
+visual-compare summary $RUN_ROOT      # sets / many pairs: one table + causes across pairs (see 1b)
 ```
 
 Read the console summary (`N findings (c critical, m major, k minor) covering
@@ -141,6 +142,31 @@ I instances, S suppressed`, `delta vs …: +introduced / −resolved`,
 lists every place), `message`, `expected`, `actual`, `role`, the boxes
 (impl CSS px, world space). Skim `suppressed` once per run so you know what
 the policy is hiding and why.
+
+### 1b. Sets — a component set or a whole manifest is ONE loop
+
+A manifest entry with `design.variants` expands into one pair per variant
+cell (Alert 23, Button 41). Do not read 41 `findings.json`. A multi-pair run
+ends with the set summary (also `visual-compare summary <out-root>`, written
+to `<out-root>/summary.md` + `summary.json`): one row per pair (verdict,
+counts, alignment confidence, delta) and — the part you read first — **one
+row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
+
+- **Iterations count per SET, not per cell**: one set run = one iteration;
+  the five-iteration bound and the diminishing-returns stop apply to the
+  set. A per-cell `findings.json` is opened only for a cause that is local
+  (`pairs` well under N/2) or to check a fix on one cell.
+- **A cause on (nearly) every cell is never per-cell code.** `k/N ≈ 1` means
+  the environment, a token layer, or the harness: fonts not loaded, a root
+  font-size, the story's render scale, a measurement rule. Find the one
+  cause (ratios help: 12.25/14 = 16.63/19 = 10.5/12 = 0.875 was a root
+  `font-size` in rem), then **trial it in a separate `--out`** (`out/vc-trial`)
+  so the loop's ledger and delta stay clean, read the trial's summary, revert
+  if the change is not yours to make, and report the before/after counts.
+  A token-layer change that alters the whole design system is `needs a
+  human` with those numbers attached, not a fix you commit.
+- Sets share one out root; `summary.md` there always covers every run dir
+  under it (all sets), the console shows the set just run.
 
 ### 2. Classify every finding — this is the whole skill
 
@@ -182,11 +208,13 @@ repo bindings). Read `delta`:
 - `regressions` (also printed as `REGRESSION: …`) — introduced findings that
   an EARLIER iteration had resolved. This is the loud failure: stop the
   plan, undo or fix that regression first, and count the iteration.
-- A data-parity iteration (fixture now shares the comp's texts) moves the
-  alignment offset, and position findings carry world coordinates — so that
-  delta churns (`+47 / −48` while the count barely moves). Judge THAT
-  iteration by the counts, the alignment confidence and the criticals; the
-  delta and the ledger are trustworthy from the next iteration on.
+- Findings that know their element's `text` are identified by content
+  (type, role, text), not by coordinates — so a data-parity iteration that
+  moves the alignment does NOT churn them; textless findings (icons, boxes)
+  still pair by place within 5px and may churn when everything shifts. A
+  finding whose values changed but is still there is neither resolved nor
+  introduced — read the counts and the message for progress on it. (Runs
+  made before this identity existed churn exactly once on the next run.)
 
 Then mark the notes you acted on:
 

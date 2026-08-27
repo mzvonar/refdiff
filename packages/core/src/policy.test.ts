@@ -155,6 +155,15 @@ describe("accepted deviations", () => {
     expect(kept).toEqual([]);
   });
 
+  it("narrows by role when the rule names one (a boxless missing-element has no values to match)", () => {
+    const { expected: _e, actual: _a, ...boxless } = ink;
+    const ring = { ...boxless, type: "missing-element" as const, role: "box", message: "ring" };
+    const rule = { type: "missing-element" as const, role: "box", reason: "focus ring is a CSS outline" };
+    expect(applyPolicy([ring], { accepted: [rule] }).suppressed[0]).toMatchObject({ suppressedBy: "accepted", rule: rule.reason });
+    expect(applyPolicy([{ ...ring, role: "text" }], { accepted: [rule] }).kept).toHaveLength(1);
+    expect(applyPolicy([ring], { accepted: [{ type: rule.type, reason: rule.reason }] }).kept).toEqual([]);
+  });
+
   it("concatenates accepted rules when merging policies", () => {
     const merged = mergePolicies({ accepted: [rule] }, { accepted: [{ type: "spacing", reason: "x" }] });
     expect(merged.accepted).toHaveLength(2);

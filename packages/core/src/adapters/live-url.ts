@@ -201,6 +201,7 @@ export async function captureLiveUrl(
       height,
       dpr: DPR,
       elements: extraction.elements,
+      ...(source.selector !== undefined ? { scope: { mode: "explicit" as const, selector: source.selector } } : {}),
     });
   } catch (e) {
     return err({ kind: "capture-failed", ref: identity, detail: e instanceof Error ? e.message : String(e) });

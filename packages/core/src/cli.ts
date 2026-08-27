@@ -5,11 +5,13 @@
  * Implemented:
  *   compare   run the pipeline for one design-frame / storybook-story pair,
  *             or for every storybook pair of a manifest (--manifest)
+ *   summary   one table over every run dir under an out root (a component
+ *             set's cells, a manifest's pairs) + the causes shared across them
  *
  * Planned (docs/architecture.md): inspect, explore, report.
  */
 
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -37,9 +39,11 @@ import { diffMatches, writeDiffMask } from "./pixel/diff.js";
 import { lowConfidenceFinding, PIXEL_DEFAULTS, runPixelChecks } from "./pixel/checks.js";
 import { packageForModel } from "./package/package-for-model.js";
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js";
+import { renderSummary, summarizeReports } from "./package/summary.js";
 import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js";
 
 const USAGE = `Usage: visual-compare compare [options]
+       visual-compare summary <out-root> [--json]
 
 Compare a design frame (Claude Design .dc.html or Figma) against an
 implementation (Storybook story or live URL).
@@ -99,7 +103,9 @@ Ignore policy (both modes):
   --ignore-text <regex>   suppress findings about matching text (repeatable)
   --accept <json>         intended deviation, repeatable: '{"type":"color",
                           "expected":{"color":"rgb(26, 26, 26)"},"actual":{"color":
-                          "rgb(44, 36, 25)"},"reason":"…"}' → suppressed as "accepted"
+                          "rgb(44, 36, 25)"},"reason":"…"}' → suppressed as "accepted";
+                          optional "role" narrows it ({"type":"missing-element",
+                          "role":"box","reason":"focus ring …"})
   --no-data-slots         report text differences on matched pairs (default:
                           suppressed as demo data — the "data-slot" rule)
 
@@ -126,6 +132,13 @@ findings.json from a previous run, the new report carries \`delta\`
 { previousRun, resolved, introduced, regressions? } (identity by content +
 place, not id). resolved-ledger.json in the run dir remembers everything
 earlier runs resolved; an introduced finding matching it is a regression.
+
+Set summary — reading one findings.json per cell does not scale to a 41-variant
+set, so a multi-pair run ends with ONE table (pair → verdict, counts, alignment
+confidence, delta) plus the causes shared across pairs (same type/role/values →
+one row listing how many cells show it), and writes it as summary.md +
+summary.json into the out root. Rebuild it any time from the run dirs:
+  visual-compare summary <out-root>   (--json prints summary.json instead)
 
 Exit codes: 0 pass, 1 findings at/above threshold, 2 capture or usage error.`;
 
@@ -308,9 +321,9 @@ async function runPair(
   }
 
   const aligned = alignStructural(normalized);
-  const { offsetX, offsetY, confidence } = aligned.alignment;
+  const { offsetX, offsetY, confidence, basis } = aligned.alignment;
   console.log(
-    `aligned design by (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})px (confidence ${confidence.toFixed(2)})`,
+    `aligned design by (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})px (confidence ${confidence.toFixed(2)}${basis ? `, basis: ${basis}` : ""})`,
   );
 
   const match = matchElements(
@@ -670,6 +683,7 @@ async function compare(argv: string[]): Promise<void> {
 
   const browser = await launchBrowser();
   let anyFail = false;
+  const done: { dir: string; report: ComparisonReport }[] = [];
   try {
     for (const spec of specs) {
       const outDir = resolve(
@@ -700,18 +714,78 @@ async function compare(argv: string[]): Promise<void> {
       printReport(result.value);
       console.log(`report: ${join(outDir, "findings.json")}`);
       if (!result.value.verdict.pass) anyFail = true;
+      done.push({ dir: spec.id, report: result.value });
     }
   } finally {
     await browser.close();
     await stopStorybook();
   }
+  // A set run ends with the one page the loop actually reads: the console
+  // shows the pairs just run; summary.md/json cover EVERY run dir under the
+  // root (several sets share one root), exactly what `summary <root>` writes.
+  if (specs.length > 1 && done.length > 0) {
+    const root = resolve(outRoot ?? "out");
+    console.log(`\n${renderSummary(summarizeReports(done), { title: `visual-compare summary — this run` })}`);
+    await writeSummary(root, await readRunDirs(root));
+    console.log(`summary (all run dirs under the root): ${join(root, "summary.md")}`);
+  }
   process.exit(anyError ? 2 : anyFail ? 1 : 0);
+}
+
+/** Effect: summary.md + summary.json into `root`; returns the rendered text. */
+async function writeSummary(root: string, reports: { dir: string; report: ComparisonReport }[]): Promise<string> {
+  const summary = summarizeReports(reports);
+  const text = renderSummary(summary, { title: `visual-compare summary — ${root}` });
+  await writeFile(join(root, "summary.md"), text);
+  await writeFile(join(root, "summary.json"), JSON.stringify(summary, null, 2));
+  return text;
+}
+
+/** Every `<root>/<dir>/findings.json` (or `<root>/findings.json` itself), oldest run first. */
+async function readRunDirs(root: string): Promise<{ dir: string; report: ComparisonReport }[]> {
+  const self = await readPreviousReport(root);
+  if (self) return [{ dir: root.split("/").filter(Boolean).at(-1) ?? root, report: self }];
+  let names: string[];
+  try {
+    names = (await readdir(root, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name);
+  } catch (e) {
+    fail(`summary: cannot read ${root}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const runs: { dir: string; report: ComparisonReport }[] = [];
+  for (const dir of names.sort()) {
+    const report = await readPreviousReport(join(root, dir));
+    if (report) runs.push({ dir, report });
+  }
+  return runs.sort((a, b) => a.report.createdAt.localeCompare(b.report.createdAt));
+}
+
+async function summary(argv: string[]): Promise<void> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: { json: { type: "boolean" }, help: { type: "boolean" } },
+  });
+  if (values.help || positionals.length !== 1) {
+    console.log(USAGE);
+    if (!values.help) process.exit(2);
+    return;
+  }
+  const root = resolve(positionals[0]!);
+  const runs = await readRunDirs(root);
+  if (runs.length === 0) fail(`summary: no findings.json under ${root}`);
+  const text = await writeSummary(root, runs);
+  if (values.json) console.log(await readFile(join(root, "summary.json"), "utf8"));
+  else console.log(text);
+  process.exit(runs.every((r) => r.report.verdict.pass) ? 0 : 1);
 }
 
 const [command, ...rest] = process.argv.slice(2);
 switch (command) {
   case "compare":
     await compare(rest);
+    break;
+  case "summary":
+    await summary(rest);
     break;
   case undefined:
   case "--help":

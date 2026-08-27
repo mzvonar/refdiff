@@ -82,6 +82,12 @@ const isVisibleBorder = (s: NonNullable<ElementNode["style"]>): boolean => {
 const roleOf = (el: ElementNode): { role?: string } =>
   el.role !== undefined ? { role: el.role } : {};
 
+/** The text a finding is about — design side first, impl as fallback. */
+const textField = (design: ElementNode | undefined, impl?: ElementNode): { text?: string } => {
+  const t = design?.text ?? impl?.text;
+  return t !== undefined && t.length > 0 ? { text: normText(t) } : {};
+};
+
 /** Presence findings for elements only one side has. */
 function presenceFindings(match: MatchResult, min: number): RawFinding[] {
   const out: RawFinding[] = [];
@@ -98,6 +104,7 @@ function presenceFindings(match: MatchResult, min: number): RawFinding[] {
           ? "critical"
           : "major",
       ...roleOf(el),
+      ...textField(el),
       designBox: el.box,
       message: `design ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) has no counterpart in the implementation`,
     });
@@ -108,6 +115,7 @@ function presenceFindings(match: MatchResult, min: number): RawFinding[] {
       type: "extra-element",
       severity: !isBackdrop(el) && (isSubstantial(el.box) || el.text !== undefined) ? "major" : "minor",
       ...roleOf(el),
+      ...textField(el),
       implBox: el.box,
       message: `implementation renders ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) that the design does not have`,
     });
@@ -121,7 +129,7 @@ function pairFindings(
   o: Required<CheckOptions>,
 ): RawFinding[] {
   const out: RawFinding[] = [];
-  const boxes = { designBox: design.box, implBox: impl.box, ...roleOf(design) };
+  const boxes = { designBox: design.box, implBox: impl.box, ...roleOf(design), ...textField(design, impl) };
   const label = elementLabel(design);
 
   // Position — the strongest human-judgment signal after presence.
@@ -405,6 +413,9 @@ function spacingFindings(match: MatchResult, o: Required<CheckOptions>): RawFind
         designBox: unionBox(A, b.design.box),
         implBox: unionBox(a.impl.box, b.impl.box),
         ...roleOf(a.design),
+        ...(a.design.text !== undefined || b.design.text !== undefined
+          ? { text: `${normText(a.design.text ?? "")} → ${normText(b.design.text ?? "")}` }
+          : {}),
         expected: { gap: round1(dGap), axis },
         actual: { gap: round1(iGap), axis },
         message: `${axis} gap between ${elementLabel(a.design)} and ${elementLabel(b.design)} is ${round1(iGap)}px, design says ${round1(dGap)}px`,

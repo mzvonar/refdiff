@@ -15,7 +15,7 @@
  */
 
 import type { NormalizedPair, AlignedPair } from "../pipeline.js";
-import type { ElementNode } from "../types.js";
+import type { Alignment, ElementNode } from "../types.js";
 
 const MIN_ANCHORS = 3;
 const MIN_TEXT_LENGTH = 3;
@@ -168,7 +168,23 @@ export function estimateTransform(
  * says how well the anchors are explained.
  */
 export function alignStructural(pair: NormalizedPair): AlignedPair {
-  const t = estimateTransform(pair.design.elements, pair.impl.elements);
+  const fit = estimateTransform(pair.design.elements, pair.impl.elements);
+  // An ELEMENT pair — both sides captured one explicit node (a Figma variant
+  // COMPONENT vs a story cell `selector`) — has coinciding origins by
+  // construction, so with too few anchors for a fit the identity is not a
+  // guess but the truth: confidence 1, and a size difference stays a size
+  // difference instead of being half-absorbed into an offset (S11).
+  const elementPair = pair.design.scope?.mode === "explicit" && pair.impl.scope?.mode === "explicit";
+  const t: TransformEstimate =
+    elementPair && fit.anchors < MIN_ANCHORS ? { ...IDENTITY, anchors: fit.anchors, confidence: 1 } : fit;
+  const basis: NonNullable<Alignment["basis"]> =
+    elementPair && fit.anchors < MIN_ANCHORS
+      ? "element-pair"
+      : fit.anchors >= MIN_ANCHORS
+        ? "anchors"
+        : fit.confidence > 0
+          ? "offset"
+          : "none";
 
   const design =
     t.scaleX !== 1 || t.scaleY !== 1 || t.offsetX !== 0 || t.offsetY !== 0
@@ -199,6 +215,7 @@ export function alignStructural(pair: NormalizedPair): AlignedPair {
       offsetX: t.offsetX,
       offsetY: t.offsetY,
       confidence: t.confidence,
+      basis,
     },
   };
 }

@@ -59,7 +59,10 @@ const subsetOf = (
 
 /** An accepted deviation hits when type and every listed expected/actual value agree. */
 export const acceptsFinding = (a: AcceptedDeviation, f: Finding): boolean =>
-  a.type === f.type && subsetOf(a.expected, f.expected) && subsetOf(a.actual, f.actual);
+  a.type === f.type &&
+  (a.role === undefined || a.role === f.role) &&
+  subsetOf(a.expected, f.expected) &&
+  subsetOf(a.actual, f.actual);
 
 /**
  * Which rule (if any) suppresses a finding. Rules are checked in a fixed

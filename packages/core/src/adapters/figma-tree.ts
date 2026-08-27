@@ -146,6 +146,34 @@ export interface FigmaMapping {
   height: number;
 }
 
+type FigmaRect = { x: number; y: number; width: number; height: number };
+
+/** A small all-vector node — what `walk` emits as role `icon`. */
+const isIconLike = (n: FigmaNode): boolean => {
+  const b = n.absoluteBoundingBox;
+  if (!b || Math.max(b.width, b.height) > MAX_ICON_PX) return false;
+  return VECTOR_TYPES.has(n.type) || allVectors(n);
+};
+
+/**
+ * The box a leaf is measured by. TEXT nodes whose WIDTH is not their own
+ * (`textAutoResize` HEIGHT/NONE/TRUNCATE — a fill-width or fixed box) take
+ * their horizontal extent from the glyph-ink `absoluteRenderBounds`: the DOM
+ * side measures text by its glyph rects, and a 724px "responsive width" box
+ * around 255px of glyphs is layout, not text size. Vertical extent stays the
+ * layout box (line-height), the closer analogue of the DOM's content-area
+ * rect. Hugging text keeps its layout box on both axes (S9 measurement).
+ */
+export function textBox(n: FigmaNode): FigmaRect | undefined {
+  const b = n.absoluteBoundingBox;
+  if (!b) return undefined;
+  if (n.type !== "TEXT") return b;
+  const mode = n.style?.textAutoResize ?? "WIDTH_AND_HEIGHT";
+  const r = n.absoluteRenderBounds;
+  if (mode === "WIDTH_AND_HEIGHT" || !r || r.width <= 0) return b;
+  return { x: r.x, y: b.y, width: r.width, height: b.height };
+}
+
 /**
  * Map a node subtree to leaves. Leaves: TEXT; vector shapes; childless
  * containers that paint something; containers whose descendants are all
@@ -163,7 +191,7 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
   let detached = 0;
 
   const emit = (n: FigmaNode, role: string, ancestors: readonly FigmaNode[]) => {
-    const b = n.absoluteBoundingBox;
+    const b = textBox(n);
     if (!b) return;
     const isText = n.type === "TEXT";
     const text = isText ? applyTextCase((n.characters ?? "").replace(/\s+/g, " ").trim(), n.style?.textCase) : "";
@@ -188,11 +216,17 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
     let deco = decorationOf(n, b.width, b.height, isText);
     // The root itself counts: when the captured node IS the button (one Figma
     // variant COMPONENT) its fill/radius belong to the lone label, otherwise
-    // that paint would vanish from the comparison altogether.
+    // that paint would vanish from the comparison altogether. Icon siblings
+    // do not break the chain: `[icon] LABEL` inside a filled frame is still a
+    // labelled control — the DOM side emits the <button> itself as the text
+    // leaf with its own paint, so the label must carry it here too (S11: 29
+    // of 41 Button cells reported "radius 0" for the design otherwise).
     if (!paints(deco)) {
       for (let i = ancestors.length - 1; i >= 0; i--) {
         const parent = ancestors[i]!;
-        if ((parent.children ?? []).filter(isVisible).length !== 1) break;
+        const onPath = i === ancestors.length - 1 ? n : ancestors[i + 1]!;
+        const siblings = (parent.children ?? []).filter(isVisible).filter((c) => c !== onPath);
+        if (!siblings.every(isIconLike)) break;
         const pb = parent.absoluteBoundingBox;
         if (!pb) break;
         const pd = decorationOf(parent, pb.width, pb.height, false);

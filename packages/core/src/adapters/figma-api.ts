@@ -314,6 +314,9 @@ export interface FigmaTypeStyle {
   lineHeightPx?: number;
   lineHeightUnit?: string;
   textCase?: string;
+  /** TEXT: WIDTH_AND_HEIGHT (hug), HEIGHT (fixed width), NONE (fixed box), TRUNCATE. */
+  textAutoResize?: string;
+  textAlignHorizontal?: string;
 }
 
 export interface FigmaNode {
@@ -324,6 +327,10 @@ export interface FigmaNode {
   opacity?: number;
   children?: FigmaNode[];
   absoluteBoundingBox?: { x: number; y: number; width: number; height: number } | null;
+  /** Glyph-ink bounds (TEXT) / painted bounds; null when nothing renders. */
+  absoluteRenderBounds?: { x: number; y: number; width: number; height: number } | null;
+  /** Auto-layout child sizing: FIXED | HUG | FILL. */
+  layoutSizingHorizontal?: string;
   fills?: FigmaPaint[];
   strokes?: FigmaPaint[];
   strokeWeight?: number;

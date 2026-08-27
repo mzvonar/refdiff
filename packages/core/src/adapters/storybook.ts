@@ -189,6 +189,7 @@ export async function captureStorybook(
       height,
       dpr: DPR,
       elements: extraction.elements,
+      ...(source.selector !== undefined ? { scope: { mode: "explicit" as const, selector: source.selector } } : {}),
     });
   } catch (e) {
     return err({
