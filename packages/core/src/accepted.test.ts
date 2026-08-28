@@ -67,6 +67,16 @@ describe("acceptedFromFinding", () => {
     }
   })
 
+  it("refuses the identity note — its numbers move and the fix is the size difference it names", () => {
+    const r = acceptedFromFinding(
+      finding({ type: "alignment", role: undefined, text: undefined, expected: { scale: 1 }, actual: { scale: 1.002 } }),
+      "intended",
+      NOW,
+    )
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toMatch(/box model/)
+  })
+
   it("drops the volatile diff numbers from a pixel-region and keeps changeKind", () => {
     const r = acceptedFromFinding(
       finding({

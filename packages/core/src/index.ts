@@ -145,7 +145,7 @@ export {
   type StorybookServerOptions,
 } from "./adapters/storybook-server.js"
 
-export { alignStructural, estimateTransform, type TransformEstimate } from "./structural/align.js"
+export { alignmentNote, alignStructural, estimateTransform, type TransformEstimate } from "./structural/align.js"
 export {
   DEFAULT_MAX_GAMMA,
   DEFAULT_SLOT_MAX_GAMMA,

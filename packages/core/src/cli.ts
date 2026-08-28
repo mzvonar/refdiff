@@ -48,7 +48,7 @@ import { diffMatches, writeDiffMask } from "./pixel/diff.js"
 import { applyPolicy, mergePolicies } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
-import { alignStructural } from "./structural/align.js"
+import { alignmentNote, alignStructural } from "./structural/align.js"
 import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
 import { matchElements } from "./structural/match.js"
 
@@ -190,9 +190,15 @@ earlier runs resolved; an introduced finding that is ABSENT from the previous
 run and matches the ledger is a regression (a shared-text key whose count
 grew is only introduced — the key never left).
 
+Alignment: on a same-size pair (a fluid comp rendered at the pair viewport, or a
+design frame whose css px equal it) a structural fit that is not the identity
+(|scale − 1| > 0.0005 or |offset| > 0.5 px) is ONE boxless minor \`alignment\`
+finding (printed as ALIGNMENT:) — a chrome size / box model difference no
+element finding shows. A frame of another size is layout, not scale: no note.
+
 Set summary — reading one findings.json per cell does not scale to a 41-variant
 set, so a multi-pair run ends with ONE table (pair → verdict, counts, alignment
-confidence, delta) plus the causes shared across pairs (same type/role/values →
+confidence + transform, delta) plus the causes shared across pairs (same type/role/values →
 one row listing how many cells show it), and writes it as summary.md +
 summary.json into the out root. Rebuild it any time from the run dirs:
   refdiff summary <out-root>   (--json prints summary.json instead)
@@ -420,6 +426,12 @@ async function runPair(
   console.log(
     `aligned design by (${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})px (confidence ${confidence.toFixed(2)}${axes}${basis ? `, basis: ${basis}` : ""})`,
   )
+  // Same-size sides (a fluid frame is rendered AT the pair viewport; a design
+  // whose raw css px equal it) leave the fit nothing legitimate to absorb —
+  // a non-identity transform there is a finding of its own.
+  const sameSize = d.scope?.fluid === true || Math.abs(d.width - i.width) < 1
+  const identity = alignmentNote(aligned.alignment, sameSize)
+  if (identity) console.log(`ALIGNMENT: ${identity.message}`)
 
   const match = matchElements(
     aligned.design.elements,
@@ -466,7 +478,10 @@ async function runPair(
   // otherwise outlive the findings that justified it.
   if (diffMaskPath === undefined) await rm(join(o.outDir, "diff-mask.png"), { force: true })
 
-  const { kept, suppressed } = applyPolicy(finalize([...structural, ...pixel]), policy)
+  const { kept, suppressed } = applyPolicy(
+    finalize([...structural, ...pixel, ...(identity ? [identity] : [])]),
+    policy,
+  )
   const findings = o.aggregate ? aggregate(kept) : kept
   const report = await packageForModel(aligned, findings, {
     outDir: o.outDir,

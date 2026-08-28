@@ -27,6 +27,7 @@ const NEVER_AGGREGATE: ReadonlySet<FindingType> = new Set<FindingType>([
   "missing-element",
   "extra-element",
   "text-content",
+  "alignment",
 ])
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
@@ -78,6 +79,7 @@ function groupKey(f: Finding): string {
     case "missing-element":
     case "extra-element":
     case "text-content":
+    case "alignment":
       return f.type
   }
 }

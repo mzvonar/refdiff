@@ -4,7 +4,7 @@
  * page instead of N `findings.json` files.
  *
  * Two views, both lossless with respect to what they claim:
- *  - `runs`: one row per pair (counts, verdict, alignment confidence, delta).
+ *  - `runs`: one row per pair (counts, verdict, alignment confidence + transform, delta).
  *  - `groups`: the same finding seen across pairs is ONE cause. Categorical
  *    types group on exact `(type, role, expected, actual)` like `aggregate`;
  *    metric types (position/size/spacing) group on `(type, role, axis)` with
@@ -30,6 +30,8 @@ export interface RunRow {
   suppressed: number;
   pass: boolean;
   confidence: number;
+  /** The structural fit (design → impl); `1 / 0,0` in the table when it is the identity. */
+  alignment: { scale: number; scaleY?: number; offsetX: number; offsetY: number };
   delta?: { introduced: number; resolved: number; regressions: number };
 }
 
@@ -88,6 +90,8 @@ export function setGroupKey(f: Finding): string {
   // Pixel regions: the same KIND of change on the same kind of element is one
   // cause across cells; the ratio is the spread, not the identity.
   if (f.type === "pixel-region") return `${f.type}|${role}|${String(f.actual?.["changeKind"] ?? "")}`;
+  // The identity note: one cause across pairs whatever each fit's numbers are.
+  if (f.type === "alignment") return f.type;
   return `${f.type}|${role}|${canon(f.expected)}|${canon(f.actual)}`;
 }
 
@@ -104,6 +108,12 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
     suppressed: r.suppressed.length,
     pass: r.verdict.pass,
     confidence: r.alignment.confidence,
+    alignment: {
+      scale: r.alignment.scale,
+      ...(r.alignment.scaleY !== undefined ? { scaleY: r.alignment.scaleY } : {}),
+      offsetX: r.alignment.offsetX,
+      offsetY: r.alignment.offsetY,
+    },
     ...(r.delta
       ? {
           delta: {
@@ -114,6 +124,18 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
         }
       : {}),
   };
+}
+
+const fmtScale = (s: number): string => (Math.abs(s - 1) < 0.0005 ? "1" : s.toFixed(3));
+const fmtOffset = (v: number): string => (Math.abs(v) < 0.05 ? "0" : (v < 0 ? "−" : "") + Math.abs(v).toFixed(1));
+
+/** `1 / 0,0` for the identity, else `1.002 / −0.5,−2.0` (`1×0.997` when the axes differ). */
+export function formatAlignment(a: RunRow["alignment"]): string {
+  const scale =
+    a.scaleY !== undefined && Math.abs(a.scaleY - a.scale) >= 0.0005
+      ? `${fmtScale(a.scale)}×${fmtScale(a.scaleY)}`
+      : fmtScale(a.scale);
+  return `${scale} / ${fmtOffset(a.offsetX)},${fmtOffset(a.offsetY)}`;
 }
 
 const num = (v: string | number | undefined): number | undefined =>
@@ -230,16 +252,22 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
   );
 
   const dirWidth = Math.max(4, ...s.runs.map((r) => r.dir.length));
-  lines.push(`| ${pad("pair", dirWidth)} | verdict | findings (c/M/m) | inst | supp | conf | delta |`);
-  lines.push(`|${"-".repeat(dirWidth + 2)}|---------|------------------|------|------|------|-------|`);
-  for (const r of s.runs) {
+  const aligns = s.runs.map((r) => formatAlignment(r.alignment));
+  const alignWidth = Math.max(5, ...aligns.map((a) => a.length));
+  lines.push(
+    `| ${pad("pair", dirWidth)} | verdict | findings (c/M/m) | inst | supp | conf | ${pad("align", alignWidth)} | delta |`,
+  );
+  lines.push(
+    `|${"-".repeat(dirWidth + 2)}|---------|------------------|------|------|------|${"-".repeat(alignWidth + 2)}|-------|`,
+  );
+  s.runs.forEach((r, i) => {
     const delta = r.delta
       ? `+${r.delta.introduced}/−${r.delta.resolved}${r.delta.regressions > 0 ? ` R${r.delta.regressions}` : ""}`
       : "-";
     lines.push(
-      `| ${pad(r.dir, dirWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${r.confidence.toFixed(2)} | ${pad(delta, 5)} |`,
+      `| ${pad(r.dir, dirWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${r.confidence.toFixed(2)} | ${pad(aligns[i]!, alignWidth)} | ${pad(delta, 5)} |`,
     );
-  }
+  });
   lines.push("");
 
   if (s.groups.length > 0) {

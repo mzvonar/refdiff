@@ -2,7 +2,7 @@ import type { ComparisonReport, Finding } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { renderSummary, setGroupKey, summarizeReports } from "./summary.js"
+import { formatAlignment, renderSummary, setGroupKey, summarizeReports } from "./summary.js"
 
 const finding = (id: string, partial: Partial<Finding> = {}): Finding => ({
   id,
@@ -151,7 +151,7 @@ describe("summarizeReports", () => {
       "3 pairs: 1 PASS / 2 FAIL — 5 findings covering 7 instances, 0 suppressed; delta +1 / −2, 1 REGRESSION(S)",
     )
     expect(text).toMatch(
-      /\| alert--success\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \| 0\.00 \| \+1\/−2 R1 \|/,
+      /\| alert--success\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \| 0\.00 \| 1 \/ 0,0\s+\| \+1\/−2 R1 \|/,
     )
     expect(text).toContain("| major | size | text | 2/3 | 2 | w 500..692→200..302, h 19→15 |")
     expect(text).toContain(
@@ -163,5 +163,49 @@ describe("summarizeReports", () => {
     const s = summarizeReports([])
     expect(s.totals.pairs).toBe(0)
     expect(renderSummary(s)).toContain("0 pairs: 0 PASS / 0 FAIL")
+  })
+})
+
+describe("the align column — the transform beside the confidence", () => {
+  it("prints the identity as `1 / 0,0` and a non-identity fit to the digit that matters", () => {
+    expect(formatAlignment({ scale: 1, offsetX: 0, offsetY: 0 })).toBe("1 / 0,0")
+    expect(formatAlignment({ scale: 1.00175, offsetX: -0.54, offsetY: -1.98 })).toBe("1.002 / −0.5,−2.0")
+    expect(formatAlignment({ scale: 1, scaleY: 0.9966, offsetX: 0, offsetY: 0.24 })).toBe("1×0.997 / 0,0.2")
+    expect(formatAlignment({ scale: 1.0003, offsetX: 0.04, offsetY: -0.04 })).toBe("1 / 0,0")
+  })
+
+  it("carries the transform into summary.json and the table, and groups the identity note as ONE cause across pairs", () => {
+    const note = (id: string): Finding => {
+      const { designBox: _b, role: _r, ...boxless } = finding(id, {
+        type: "alignment",
+        severity: "minor",
+        expected: { scale: 1, offsetX: 0, offsetY: 0 },
+        actual: { scale: 1.00175, offsetX: -0.54, offsetY: -1.98 },
+        message: "alignment is not the identity",
+      })
+      return boxless
+    }
+    const reports = [
+      {
+        dir: "a",
+        report: report("a", [note("f1")], {
+          alignment: { scale: 1.00175, offsetX: -0.54, offsetY: -1.98, confidence: 0.9 },
+        }),
+      },
+      {
+        dir: "b",
+        report: report("b", [{ ...note("f1"), actual: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 } }], {
+          alignment: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52, confidence: 0.9 },
+        }),
+      },
+    ]
+    const s = summarizeReports(reports)
+    expect(s.runs[0]?.alignment).toEqual({ scale: 1.00175, offsetX: -0.54, offsetY: -1.98 })
+    expect(s.runs[1]?.alignment).toEqual({ scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 })
+    expect(s.groups.map((g) => [g.type, g.pairs])).toEqual([["alignment", ["a", "b"]]])
+    const text = renderSummary(s)
+    expect(text).toContain("| align")
+    expect(text).toMatch(/\| a\s+\| PASS\s+\|.*\| 0\.90 \| 1\.002 \/ −0\.5,−2\.0 \| -\s+\|/)
+    expect(text).toMatch(/\| b\s+\| PASS\s+\|.*\| 0\.90 \| 1×1\.001 \/ 0,−0\.5\s+\| -\s+\|/)
   })
 })

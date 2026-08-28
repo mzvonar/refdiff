@@ -16,6 +16,7 @@
 
 import type { NormalizedPair, AlignedPair } from "../pipeline.js"
 import type { Alignment, ElementNode } from "../types.js"
+import type { RawFinding } from "./checks.js"
 import { normalizeForMatching as normText } from "./text.js"
 
 const MIN_ANCHORS = 3
@@ -260,5 +261,57 @@ export function alignStructural(pair: NormalizedPair): AlignedPair {
       confidenceY: t.confidenceY,
       basis,
     },
+  }
+}
+
+/* ------------------------------------------------ the identity note -- */
+
+/** |scale − 1| above this is a size difference, not rounding (0.0005 × 800 px = 0.4 px). */
+const IDENTITY_SCALE_EPSILON = 0.0005
+/** |offset| above this (px) is a real shift, not a sub-pixel residue. */
+const IDENTITY_OFFSET_EPSILON = 0.5
+
+const round = (n: number, digits: number): number => {
+  const k = 10 ** digits
+  return Math.round(n * k) / k
+}
+
+const signed = (n: number): string => (n < 0 ? "−" : "") + Math.abs(n).toFixed(2)
+
+/**
+ * Pure: the one boxless minor finding a pair gets when its structural fit is
+ * NOT the identity although the two sides are the same size — a fluid frame
+ * rendered at the pair viewport, or a design frame whose css px equal it.
+ * There the transform has nothing legitimate to absorb: `scale 1.00175`
+ * means something above or beside the anchors is systematically taller or
+ * wider on one side (a comp with no `box-sizing` reset drawing `height:46px`
+ * + border as 47 px against an app's border-box 46), and no per-element
+ * finding shows it because every box was moved to fit. A design of ANOTHER
+ * size (a Figma frame at 1440 against a 1280 viewport) is a layout
+ * difference, not a scale — no note. Undefined when the fit is the identity
+ * within epsilon, so the note disappears when the sizes are right.
+ */
+export function alignmentNote(alignment: Alignment, sameSize: boolean): RawFinding | undefined {
+  if (!sameSize) return undefined
+  const { scale, offsetX, offsetY } = alignment
+  const scaleY = alignment.scaleY ?? scale
+  const scaleOff = Math.max(Math.abs(scale - 1), Math.abs(scaleY - 1)) > IDENTITY_SCALE_EPSILON
+  const offsetOff = Math.max(Math.abs(offsetX), Math.abs(offsetY)) > IDENTITY_OFFSET_EPSILON
+  if (!scaleOff && !offsetOff) return undefined
+  const anisotropic = Math.abs(scaleY - scale) > IDENTITY_SCALE_EPSILON
+  const scaleText = anisotropic
+    ? `scale ${scale.toFixed(5)} × ${scaleY.toFixed(5)} (x × y)`
+    : `scale ${scale.toFixed(5)}`
+  return {
+    type: "alignment",
+    severity: "minor",
+    expected: { scale: 1, offsetX: 0, offsetY: 0 },
+    actual: {
+      scale: round(scale, 5),
+      ...(anisotropic ? { scaleY: round(scaleY, 5) } : {}),
+      offsetX: round(offsetX, 2),
+      offsetY: round(offsetY, 2),
+    },
+    message: `alignment is not the identity on a same-size page: the fit absorbed ${scaleText}, offset (${signed(offsetX)}, ${signed(offsetY)})px — a systematic size difference in the chrome above or beside the anchors (box model?); fix the sizes and the transform snaps to scale 1, offset 0`,
   }
 }

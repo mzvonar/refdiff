@@ -2,7 +2,7 @@ import type { ElementNode } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { alignStructural, estimateTransform } from "./align.js"
+import { alignmentNote, alignStructural, estimateTransform } from "./align.js"
 
 const el = (
   id: string,
@@ -189,5 +189,37 @@ describe("alignStructural on element pairs", () => {
     })
     expect(alignment.basis).toBe("anchors")
     expect(alignment.offsetX).toBeCloseTo(5, 5)
+  })
+})
+
+describe("alignmentNote — a non-identity fit on a same-size page is a finding", () => {
+  const identity = { scale: 1, offsetX: 0, offsetY: 0, confidence: 0.9 }
+
+  it("is silent when the fit is the identity (within rounding)", () => {
+    expect(alignmentNote(identity, true)).toBeUndefined()
+    expect(alignmentNote({ ...identity, scale: 1.0003, offsetX: 0.4, offsetY: -0.2 }, true)).toBeUndefined()
+  })
+
+  it("names the transform the fit absorbed (phase 5: the comps' content-box chrome, scale 1.00175 offset (−0.54, −1.98))", () => {
+    const note = alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, true)
+    expect(note).toMatchObject({
+      type: "alignment",
+      severity: "minor",
+      expected: { scale: 1, offsetX: 0, offsetY: 0 },
+      actual: { scale: 1.00175, offsetX: -0.54, offsetY: -1.98 },
+    })
+    expect(note?.designBox).toBeUndefined()
+    expect(note?.message).toContain("scale 1.00175, offset (−0.54, −1.98)px")
+    expect(note?.message).toMatch(/box model/)
+  })
+
+  it("reports an anisotropic fit per axis (the mobile pair's scaleY 1.00067, offsetY −0.52)", () => {
+    const note = alignmentNote({ ...identity, scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 }, true)
+    expect(note?.actual).toEqual({ scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 })
+    expect(note?.message).toContain("scale 1.00000 × 1.00067 (x × y)")
+  })
+
+  it("stays silent for a design frame of another size — that is layout, not scale", () => {
+    expect(alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, false)).toBeUndefined()
   })
 })

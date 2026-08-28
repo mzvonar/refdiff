@@ -44,6 +44,9 @@ const COORDINATE_TYPES = new Set<Finding["type"]>(["position", "missing-element"
 /** Everything about a finding that is not geometry — must match exactly. */
 export const identityKey = (f: Finding): string => {
   const head = `${f.type}|${f.role ?? ""}`;
+  // One per run and its numbers move with every hairline change: the note is
+  // the same finding until the fit IS the identity (then it is `resolved`).
+  if (f.type === "alignment") return head;
   if (f.text !== undefined) {
     const axis = f.type === "spacing" ? `|${String(f.expected?.["axis"] ?? "")}` : "";
     return COORDINATE_TYPES.has(f.type)

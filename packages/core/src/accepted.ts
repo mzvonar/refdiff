@@ -102,6 +102,8 @@ const REFUSALS: Partial<Record<FindingType, string>> = {
     "an offset is a coordinate pair that moves with every recapture, so the rule would lapse on the next run — fix the comp, the alignment or the fixture instead",
   spacing:
     "a gap is measured in fractional px and changes with the alignment, so the rule would lapse on the next run — fix the comp or the layout instead",
+  alignment:
+    "the identity note's numbers move on every capture and it is not a deviation to keep — fix the size difference it names (box model, chrome height) and it goes away",
 }
 
 /**

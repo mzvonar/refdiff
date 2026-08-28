@@ -195,13 +195,28 @@ To see the anchors yourself, intersect the unique texts in `elements.json`
 (`design` / `impl`): the ones that match are your anchors, and the design-only
 list is the shopping list for the fixture.
 
+**Then read the TRANSFORM, not only the score.** On a same-size pair (a fluid
+comp rendered at the pair viewport — `scope … fluid` in the run log — or a
+design frame whose css px equal it) the fit has nothing legitimate to absorb,
+so a non-identity transform IS a finding: the run emits one boxless minor
+`alignment` finding (`expected { scale: 1, offsetX: 0, offsetY: 0 }`,
+`actual { scale, scaleY?, offsetX, offsetY }`, printed as `ALIGNMENT:`) and
+the set summary shows it in the `align` column (`1 / 0,0` is the identity;
+`1.002 / −0.5,−2.0` is not). It means a systematic size difference in the
+chrome above or beside the anchors — typically a box model mismatch — that no
+per-element finding shows, because every box was moved to fit. Fix the sizes
+first; it cannot be accepted (the numbers move) and disappears when the fit
+snaps to the identity. A design frame of ANOTHER size never gets the note:
+that is a layout difference, not a scale.
+
 ### 1b. Sets — a component set or a whole manifest is ONE loop
 
 A manifest entry with `design.variants` expands into one pair per variant
 cell (Alert 23, Button 41). Do not read 41 `findings.json`. A multi-pair run
 ends with the set summary (also `refdiff summary <out-root>`, written
 to `<out-root>/summary.md` + `summary.json`): one row per pair (verdict,
-counts, alignment confidence, delta) and — the part you read first — **one
+counts, alignment confidence + `align` transform, delta) and — the part you
+read first — **one
 row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 
 - **Iterations count per SET, not per cell**: one set run = one iteration;
@@ -226,7 +241,7 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 |---|---|---|
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
 | **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
-| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
+| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image), `alignment` (the fit is not the identity on a same-size page — a chrome size / box model difference, §1a) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members; fix `alignment` before anything positional |
 | **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference" |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
@@ -480,13 +495,14 @@ items is now a typed finding — read it there:
   `confidence`, plus `confidenceX` / `confidenceY`). Read it FIRST, before any
   finding — see §1a. Confidence 0.00 means too little unique shared text:
   everything positional is unreliable until the fixture shares text with the
-  comp, and no policy tweak substitutes for that. Once a page is close, read
-  the transform too: on a same-size viewport, a fit that is NOT the identity
-  (`scale 1.002`, `offsetY −2`) is a systematic size difference the fit is
-  absorbing and no finding will show — typically a box model mismatch (a comp
-  with no `box-sizing` reset renders `height:46px` + border as 47px; an app
-  with `* { box-sizing:border-box }` renders 46) in the chrome above or beside
-  the anchors. Fix the sizes; the transform snaps to `scale 1, offset 0`.
+  comp, and no policy tweak substitutes for that. Read the transform too: on
+  a same-size pair a fit that is NOT the identity (`scale 1.002`, `offsetY
+  −2`) is reported as one boxless minor `alignment` finding (§1a) — a
+  systematic size difference the fit is absorbing that no element finding
+  shows, typically a box model mismatch (a comp with no `box-sizing` reset
+  renders `height:46px` + border as 47px; an app with `* { box-sizing:
+  border-box }` renders 46) in the chrome above or beside the anchors. Fix
+  the sizes; the transform snaps to `scale 1, offset 0` and the note goes.
 
 ## Environment pre-flight (fill in per repo)
 

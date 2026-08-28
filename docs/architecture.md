@@ -181,6 +181,13 @@ What the model receives — every item evidence-backed (research §4):
   expected/actual, nearest box within 5px — never by `id`/`mark`, which
   renumber every run. The CLI reads the run dir's previous `findings.json`
   before anything is written and prints "+N introduced / −M resolved".
+- **Alignment identity note** (`structural/align.ts`, pure `alignmentNote
+  (alignment, sameSize)`): on a same-size pair (`design.scope.fluid`, or raw
+  design width = impl width) a fit that is not the identity is ONE boxless
+  minor `alignment` finding whose `actual` is the transform, printed as
+  `ALIGNMENT:`; `summary.md` shows every pair's transform in an `align`
+  column. Its delta identity is the type alone (the numbers move), it
+  never aggregates and cannot be accepted.
 - **Regression ledger** (`package/delta.ts`, pure `recordResolved` /
   `findRegressions`; the CLI persists `resolved-ledger.json` in the run
   dir): every finding a run resolved is remembered by identity + place, so
@@ -579,6 +586,17 @@ to `localStorage` otherwise (and says so).
   the run. Multiplicity changes are `introduced` only. The box stays a
   tie-break for a unique key so a fixture shift cannot un-regress a real
   regression. Tests in `delta.test.ts` name the case.
+- **A non-identity fit on a same-size page is a finding — decided 2026-08-28
+  (plan-next §13).** For five annotator phases the fit absorbed `scale
+  1.00175, offset (−0.54, −1.98)` — the comps' content-box chrome — and
+  nothing reported it; it was found by hand from a 1 px on the phone sheet.
+  Now `alignmentNote` emits a minor boxless `alignment` finding when the
+  sides are the same size (a fluid frame is rendered AT the viewport; a
+  Figma frame of another size is layout, not scale, and gets none), with
+  `|scale − 1| > 0.0005` / `|offset| > 0.5 px` as the epsilon (0.0005 × 800
+  px = 0.4 px). A new `FindingType` member rather than a `pixel-region`
+  note: it is neither a region nor an element. Not accepted-able — the fix
+  is the size difference it names.
 - `@blazediff/agent` — **decided 2026-08-26: skip as a dependency,
   reference its protocol.** Evaluated against blazediff.dev/apis/agent
   (time-boxed). It is a CLI-driven visual-regression harness (route

@@ -53,6 +53,14 @@ export type FindingType =
   | "spacing"
   | "text-content"
   | "pixel-region"
+  /**
+   * The pair-level note that the structural fit is NOT the identity on a
+   * same-size page (a fluid frame rendered at the pair viewport, or a design
+   * whose css px equal it): the transform absorbed a systematic size
+   * difference in the chrome around the anchors that no per-element finding
+   * shows. One per run, boxless, minor; it goes away when the sizes are right.
+   */
+  | "alignment"
 
 export type Severity = "critical" | "major" | "minor"
 

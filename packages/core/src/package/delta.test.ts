@@ -287,3 +287,27 @@ describe("resolved ledger", () => {
     expect(parseLedger("nope", "p").entries).toEqual([])
   })
 })
+
+describe("the identity note across runs", () => {
+  const note = (id: string, scale: number): Finding => {
+    const { designBox: _b, ...boxless } = finding(id, {
+      type: "alignment",
+      severity: "minor",
+      expected: { scale: 1, offsetX: 0, offsetY: 0 },
+      actual: { scale, offsetX: 0, offsetY: 0 },
+      message: "alignment is not the identity",
+    })
+    return boxless
+  }
+
+  it("is the same finding while its numbers move, resolved when the fit is the identity, a regression when it returns", () => {
+    const run1 = report([note("f1", 1.00175)], "t1")
+    const run2 = report([note("f1", 1.0012)], "t2")
+    expect(diffReports(run1, run2)).toMatchObject({ resolved: [], introduced: [] })
+    const run3 = report([], "t3")
+    const ledger = recordResolved(emptyLedger("p"), run2, diffReports(run2, run3), "t3")
+    expect(ledger.entries).toHaveLength(1)
+    const run4 = report([note("f1", 1.0009)], "t4")
+    expect(diffReports(run3, run4, {}, ledger).regressions).toEqual(["f1"])
+  })
+})
