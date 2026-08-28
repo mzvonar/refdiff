@@ -245,12 +245,13 @@ the element's text/role/box, marker numbers on `annotations-design.png` /
 a note contradicts a finding, the note wins — and you say so in the report.
 `stale` notes lost their element: read them, do not guess.
 
-A note may well come from the annotator's **diff lab** (Diff / Focus / Strobe,
-`[` `]` to step regions, and blink / onion / swipe / difference over the impl
-pane). Those views are built from the SAME reported findings you are reading,
-plus `Finding.regions` — the connected components inside a `pixel-region`'s
-box, largest first. When a note points at "the green box", `regions` is where
-it points.
+A note may well come from the annotator's **diff lab** (the tool strip's
+Highlight / Dim / Strobe, `[` `]` to step the highlighted boxes, and the
+topbar's Wipe / Onion / Blink / Diff overlays of the design on the impl
+pane). Those views are built from the SAME reported findings you are reading
+— every listed finding's box, plus `Finding.regions` — the connected
+components inside a `pixel-region`'s box, largest first. When a note points
+at "the magenta box", `regions` is where it points.
 
 ### 3a. Record the decisions — never edit the comp to agree
 
@@ -466,9 +467,11 @@ failure shapes that recur everywhere and impersonate product bugs.
   A comp with no fixed width (`width:100%`, `min-height:100vh` page comps)
   would grow into that slack and capture 120px wider than the impl — every
   right-aligned control offset, confidence gone — so the adapter detects the
-  frame reaching the canvas edge and snaps the window to the exact viewport
-  first. The design capture line then reads `scope … fluid` and its css px
-  equal the pair viewport. A fluid comp WITHOUT `app.viewport` on the pair
+  frame reaching the canvas edge, snaps the window to the exact viewport and
+  RELOADS there (a resize alone leaves any mount-time layout — a canvas that
+  fits its artboard once, on load — where the wider window put it). The design
+  capture line then reads `scope … fluid` and its css px equal the pair
+  viewport. A fluid comp WITHOUT `app.viewport` on the pair
   captures at the 1560px default canvas: give every full-bleed pair a viewport.
 - Storybook: token / global-CSS edits may not HMR — restart before trusting
   a re-run; confirm a color via the `color` finding, not the screenshot.

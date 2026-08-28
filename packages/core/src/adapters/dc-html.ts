@@ -159,7 +159,10 @@ export async function captureDcHtml(
   const { ctx, page } = opened
   const url = `${server.origin}/${encodeURIComponent(source.file)}`
 
-  try {
+  // Load, wait for fonts, find the frame, gate on hydration. Called twice for
+  // a fluid comp: once on the slack canvas (to learn it is fluid), then again
+  // at the exact pair viewport — see below.
+  const load = async (): Promise<Result<string, CaptureError>> => {
     try {
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 })
     } catch (e) {
@@ -211,11 +214,22 @@ export async function captureDcHtml(
         detail: `template mustaches still present in "${selector}" after ${HYDRATION_TIMEOUT_MS}ms — dc-runtime did not hydrate (network/CDN?)`,
       })
     }
+    return ok(selector)
+  }
+
+  try {
+    const first = await load()
+    if (!first.ok) return first
+    let selector = first.value
 
     // A fluid comp (full-bleed page, no fixed frame size) has grown into the
     // canvas slack and is now CANVAS_SLACK wider than the impl viewport. Snap
     // the window to the pair's exact viewport so both sides render at the same
-    // width and height, then let fonts/layout settle again.
+    // width and height — and RELOAD there, not just resize: a comp's own
+    // mount-time logic (a canvas that fits its artboard once, on load) has
+    // already run against the slack width, and a resize alone leaves its
+    // layout where a 120px-wider window put it (the RefDiff Comparison Tool
+    // measured its zoom at 75% against the app's 67% for exactly that reason).
     const frameWidth = await page
       .locator(selector)
       .first()
@@ -223,7 +237,9 @@ export async function captureDcHtml(
     fluid = isFluidFrame(frameWidth, canvas.width)
     if (fluid && source.viewport) {
       await page.setViewportSize({ width: source.viewport.width, height: source.viewport.height })
-      await waitForFonts(page)
+      const second = await load()
+      if (!second.ok) return second
+      selector = second.value
     }
 
     await page.addStyleTag({ content: FREEZE_CSS })

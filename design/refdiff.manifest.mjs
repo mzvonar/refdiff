@@ -58,6 +58,34 @@ const LIBRARY_IGNORE = {
   ],
 }
 
+// What the Comparison Tool pairs excuse, and why (phase 3). The comp renders the
+// pair under review as LIVE DOM (`dc-import` of parts/Artboard Design|Impl), the
+// app renders the run's own design.png / impl.png — so the artboard's texts can
+// never be matched and the two screenshots are always "extra". Content-shaped:
+// the pattern names the artboard's vocabulary and expires with the artboard
+// (regenerate: `grep -oh '>[^<{]*<' design/refdiff/parts/*.dc.html`).
+const COMPARE_IGNORE = {
+  textPatterns: [
+    "^(Veriflow|Need help\\?|Document|Selfie|Review|Verify your identity|Choose a document type and upload a clear photo of it\\.|Passport|Driver’s licence|ID card|Photo page with MRZ visible|Front and back sides|Drag your document here|PNG, JPG or PDF · up to 10 MB|Browse files|Continue|Save for later|Your documents are encrypted in transit and processed in line with GDPR\\. Verification usually takes under a minute\\.|directions_car|badge|public|upload_file)$",
+  ],
+  accepted: [
+    {
+      type: "extra-element",
+      role: "image",
+      reason: "the app draws the run's design.png / impl.png where the comp imports the artboards as live DOM",
+    },
+  ],
+}
+// gap 29 (RESOLVED 2026-08-28: `showDeltaStrip` defaults to true in the comp,
+// flipped at Mato's request): both sides draw the delta strip. Its COPY is
+// still designer data — the Tool comp says "Run 47 vs 46 · −6 resolved", the
+// Library card "−1 resolved" (gap 23), the app the fixture's real delta — so
+// the strip's vocabulary is excused; the layout underneath is measured. The
+// minus is written both ways because the extractor folds U+2212 to "-".
+COMPARE_IGNORE.textPatterns.push(
+  "^(\\+\\d+ introduced|[−-]\\d+ resolved|\\d+ regressions?|vs run \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}|fixed earlier, back again — fix plan halted)$",
+)
+
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
 const COMPARE_ROUTE = "/#/onboarding-document-step"
@@ -75,6 +103,7 @@ export const manifest = [
     title: "RefDiff · Comparison tool (desktop)",
     design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool" },
     app: { source: "live", route: COMPARE_ROUTE, viewport: desktop, waitFor: "#panes" },
+    ignore: COMPARE_IGNORE,
   },
   {
     id: "refdiff-library-mobile",
@@ -88,5 +117,6 @@ export const manifest = [
     title: "RefDiff · Comparison tool (mobile)",
     design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool" },
     app: { source: "live", route: COMPARE_ROUTE, viewport: mobile, waitFor: "#panes" },
+    ignore: COMPARE_IGNORE,
   },
 ]

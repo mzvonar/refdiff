@@ -218,6 +218,26 @@ describe("applyPolicy", () => {
     expect(suppressed.every((s) => s.suppressedBy === "text-pattern")).toBe(true)
   })
 
+  it("text patterns see the element's FULL label, not the message's truncated quote", () => {
+    // The RefDiff Comparison Tool comp renders its artboard as live DOM; the sentence
+    // "Choose a document type and upload a clear photo of it." (54 chars) is quoted in the
+    // message as "Choose a document type and upload a clea…", so an anchored pattern for the
+    // whole sentence never hit and the finding stayed visible.
+    const sentence = "Choose a document type and upload a clear photo of it."
+    const f = finding("f1", {
+      type: "missing-element",
+      severity: "critical",
+      role: "text",
+      text: sentence,
+      designBox: { x: 593, y: 281, w: 258, h: 13 },
+      message: 'design "Choose a document type and upload a clea…" (258×13) has no counterpart in the implementation',
+    })
+    const { kept, suppressed } = applyPolicy([f], { textPatterns: [`^${sentence.replace(".", "\\.")}$`] })
+    expect(kept).toHaveLength(0)
+    expect(suppressed).toHaveLength(1)
+    expect(suppressed[0]!.suppressedBy).toBe("text-pattern")
+  })
+
   it("regions suppress findings whose box sits inside them (impl space)", () => {
     const inside = missing("f1", "1a", { x: 0, y: -20, w: 25, h: 16 })
     const outside = missing("f2", "Detail", { x: 60, y: 60, w: 60, h: 14 })

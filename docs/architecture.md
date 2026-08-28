@@ -82,7 +82,9 @@ Design side:
   viewport) would grow into that slack and capture 120px wider than the impl,
   so `isFluidFrame` (pure, `adapters/scope.ts`) detects the frame reaching the
   canvas edge after hydration and the window is snapped to the exact pair
-  viewport before capture (`CaptureScope.fluid`, printed as `scope … fluid`).
+  viewport and the comp RELOADED there before capture (`CaptureScope.fluid`,
+  printed as `scope … fluid`) — a resize alone leaves a comp's mount-time
+  layout (a one-shot fit of its artboard) where the wider window put it.
 
 Implementation side:
 - **Storybook**: per-story iframe capture with error-page detection; an
@@ -442,6 +444,13 @@ off disk with no server; the served API also answers the emitted file's own
 `<pair>/api/annotations` shape. The client is shared verbatim between both
 deliveries — it takes its data through `openReport(report, notes, page)` and
 prefixes artifacts with `page.base`, so it never learns which mode it is in.
+
+> **Superseded in part by the annotator redesign (2026-08-28, phase 3 —
+> `docs/plan-annotator-redesign.md`):** the breakpoint is the comps' 760px,
+> the toolbar is gone (segments in the topbar, a tool strip and floating
+> pills over the canvas), Split/Single is the Split / Full segment and the
+> corner controls are the tool strip. The rail paragraphs below still describe
+> the current rail until phase 4. Phase 6 rewrites this section.
 
 **Phone variant (Mato, 2026-08-27):** a split screen on a 390px-wide phone
 left each pane ~50px tall inside a height-locked page that could not be

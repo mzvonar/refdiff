@@ -4,7 +4,7 @@
 // side by side with one shared pan/zoom (the design pane projected through
 // the run's Alignment), numbered finding marks on both sides, the finding
 // list with expected/actual + crops, suppressed findings and the delta.
-// Below 900px the same page scrolls and shows one side at a time (see the
+// Below 760px the same page scrolls and shows one side at a time (see the
 // layout note at the top of render.ts).
 // Two deliveries, one client: `renderAppShell` is the served app (data fetched
 // per pair at runtime, app-shell.ts) and `renderReport` the self-contained

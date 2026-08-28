@@ -284,10 +284,21 @@ describe("designCaptureDpr", () => {
 
 describe("view operations", () => {
   it("fitView centres the world box with padding", () => {
-    const v = fitView({ x: 0, y: 0, w: 200, h: 100 }, { w: 432, h: 232 }, 16)
-    expect(v.z).toBeCloseTo(2) // 400/200 = 2, 200/100 = 2
+    const v = fitView({ x: 0, y: 0, w: 200, h: 100 }, { w: 432, h: 232 }, 16, Infinity)
+    expect(v.z).toBeCloseTo(2) // 400/200 = 2, 200/100 = 2 (uncapped for the centring check)
     expect(v.tx).toBeCloseTo(16)
     expect(v.ty).toBeCloseTo(16)
+  })
+
+  it("fitView defaults to the comps' fit: 24px of air, capped at 1.6×", () => {
+    // The RefDiff Comparison Tool comp fits a 680px artboard into a 390px pane at 50%
+    // ((390 − 48) / 680); the annotator read 53% with 16px of padding.
+    const phone = fitView({ x: 0, y: 0, w: 680, h: 740 }, { w: 390, h: 2000 })
+    expect(phone.z).toBeCloseTo((390 - 48) / 680, 5)
+    // A small component is not blown up to fill the pane.
+    const small = fitView({ x: 0, y: 0, w: 100, h: 40 }, { w: 1000, h: 800 })
+    expect(small.z).toBe(1.6)
+    expect(small.tx).toBeCloseTo(24 + (952 - 160) / 2, 5)
   })
 
   it("fitView is limited by the tighter axis", () => {

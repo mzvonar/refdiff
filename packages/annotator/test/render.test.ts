@@ -86,22 +86,6 @@ describe("renderReport", () => {
     expect(html).toContain(annotationsSource)
   })
 
-  it("carries the diff lab: region layers on both panes, a ghost over the impl, no baked overlay", () => {
-    for (const id of ["diff-toggle", "dim-toggle", "strobe-toggle", "lab-mode", "lab-amount"]) {
-      expect(html).toContain(`id="${id}"`)
-    }
-    expect(html).toContain('id="diffs-design"')
-    expect(html).toContain('id="diffs-impl"')
-    // The ghost and the raster mask belong to the impl pane only: superimposing
-    // means drawing the design ONTO the implementation.
-    expect(html).toContain('id="ghost-wrap"')
-    expect(html).toContain('id="img-ghost"')
-    expect(html).toContain('id="img-mask"')
-    // The set-of-marks PNG is gone — the panes draw the marks live.
-    expect(html).not.toContain("overlay.png")
-    expect(html).not.toContain(">overlay<")
-  })
-
   it("strobes on hard keyframe stops, never `steps(1) … alternate`", () => {
     // A reversed iteration flips the step position as well as the direction, so Chrome sampled the
     // SAME keyframe going both ways: the animation ran and nothing on the page ever changed.
@@ -115,24 +99,158 @@ describe("renderReport", () => {
     expect(html).toMatch(/50%,100% \{ stroke:#00ff9c; stroke-width:4; translate:1px 1px; \}/)
   })
 
-  it("offers the align MODES as one cycling control, not an on/off toggle", () => {
+  it("carries the diff lab: highlight/dim/strobe tools, region layers on both panes, a ghost over the impl", () => {
+    // The comps' tool strip: pan · focus · comment · highlight (difference) · dim (tonality) · strobe (flare).
+    for (const id of ["move-toggle", "focus-toggle", "ann-draw", "diff-toggle", "dim-toggle", "strobe-toggle"]) {
+      expect(html).toContain(`id="${id}" class="tool`)
+    }
+    expect(html).toContain('id="diff-toggle" class="tool" aria-pressed="false" title="Highlight changed parts (d)')
+    expect(html).toContain('<span class="msi" aria-hidden="true">flare</span>')
+    expect(html).toContain('id="diffs-design"')
+    expect(html).toContain('id="diffs-impl"')
+    // The ghost and the raster mask belong to the impl pane only: superimposing
+    // means drawing the design ONTO the implementation.
+    expect(html).toContain('id="ghost-wrap"')
+    expect(html).toContain('id="img-ghost"')
+    expect(html).toContain('id="img-mask"')
+    // The set-of-marks PNG is gone — the panes draw the marks live.
+    expect(html).not.toContain("overlay.png")
+    // Highlight boxes EVERY listed difference, not only the pixel channel's regions: the demo pair
+    // has no pixel-region finding and the tool must still show something.
+    expect(html).toContain("const b = f[key] || (side === 'design' ? f.implBox : f.designBox);")
+    // The comps' dim mask: 6px round each box, 8px radius, rgba(15,17,20,.5).
+    expect(html).toContain("rect(pad(r.box, 6), 'dim-hole', r.id, 8)")
+    expect(html).toContain(".marks.diffs rect.dim { fill:rgba(15,17,20,.5);")
+  })
+
+  it("puts the overlay segment in the topbar: Off / Wipe / Onion / Blink / Diff, with the opacity pill and a wipe handle", () => {
+    expect(html).toContain('id="seg-variant"')
+    for (const [mode, label] of [["none", "Off"], ["swipe", "Wipe"], ["onion", "Onion"], ["blink", "Blink"], ["difference", "Diff"]]) {
+      expect(html).toContain(`data-lab="${mode}"`)
+      expect(html).toContain(`>${label}</button>`)
+    }
+    expect(html).not.toContain('id="lab-mode"')
+    // The opacity pill serves onion and difference (the comps' opShow), each with its own amount.
+    expect(html).toContain('id="op-pill"')
+    expect(html).toContain('id="lab-amount"')
+    expect(html).toContain("labAmount: { onion: 55, difference: 100 }")
+    expect(html).toContain("else if (state.lab === 'difference') { ghost.style.opacity = state.labAmount.difference / 100; }")
+    // The wipe is a curtain at a WORLD x with the comps' sync_alt knob, not a percentage of the pane.
+    expect(html).toContain('id="wipe"')
+    expect(html).toContain(">sync_alt</span>")
+    expect(html).toContain("$('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)'")
+    // Pane labels go while an overlay is on (the panes no longer show one side each).
+    expect(html).toContain("body.lab-on .pane-label { display:none; }")
+  })
+
+  it("offers the align modes as the comps' pill + dropdown, with the lock and the confidence warning", () => {
     expect(html).toContain('id="align-mode"')
     expect(html).toContain('id="align-label"')
-    // "aligned / not aligned" never said what it aligned ON; the control names the mode instead.
+    expect(html).toContain('id="align-menu"')
+    expect(html).toContain('id="align-lock"')
+    expect(html).toContain('id="conf-warn"')
+    expect(html).toContain("<h3>Align lock mode</h3>")
+    // "aligned / not aligned" never said what it aligned ON; the menu names the mode (and `a` still cycles).
     expect(html).not.toContain('id="aligned"')
     expect(html).toContain("cycleAlign(")
     expect(html).toContain("displayAlignment(state.align")
-    expect(html).toContain("a = align mode")
+    // Confidence is a warning STATE under the gate, on the Anchors mode only — never a number on the chrome (gap 2).
+    expect(html).toContain("const CONF_MIN = 0.5;")
+    expect(html).toContain("function confWarn() { return anchorLow() && state.lock && state.align === 'anchors'; }")
+    // The lock (gap 22): off, the design pane has its own view; on, it snaps back to the shared one.
+    expect(html).toContain("function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }")
+    expect(html).toContain("if (on) state.viewD = state.view;")
   })
 
-  it("has ONE annotate control: click = note, drag = region", () => {
+  it("has ONE comment tool: click = note, drag = region", () => {
     expect(html).toContain('id="ann-draw"')
     expect(html).not.toContain('id="ann-point"')
     expect(html).not.toContain('id="ann-rect"')
-    expect(html).toContain(">+ note</button>")
-    expect(html).not.toContain(">+ region</button>")
+    expect(html).toContain(">add_comment</span>")
     // The gesture decides the shape, in one place, so the preview cannot disagree with what is saved.
     expect(html).toContain("const shape = drawn ? { kind: 'rect'")
+  })
+
+  it("draws the comps' numbered badges as HTML, the box only while selected or highlighted", () => {
+    // A div per badge, like the comps: its number is TEXT the element extractor sees and matches,
+    // where an SVG <text> was invisible to it (phase 3 measured 22 missing/extra badge numbers).
+    expect(html).toContain('<div class="vmarks" id="vmarks-design"></div>')
+    expect(html).toContain('<div class="vmarks" id="vmarks-impl"></div>')
+    expect(html).toContain("d.className = 'vmark ' + cls; d.dataset.id = f.id;")
+    expect(html).toContain("d.style.left = (box.x - r) + 'px'; d.style.top = (box.y - r) + 'px';")
+    expect(html).toContain("if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel'")
+    // Constant screen size, capped like the comps' scale(min(2.4, 1/s)), through one custom property per layer.
+    expect(html).toContain("cs = Math.min(2.4, 1 / z)")
+    expect(html).toContain("markLayers[side].style.setProperty('--cs', cs)")
+    expect(html).toContain(".vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%;")
+    // Comment badges: the 22px rounded square in the status colour.
+    expect(html).toContain(".vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }")
+    expect(html).toContain("d.className = 'vmark ann ' + status; d.dataset.ann = id;")
+    expect(html).not.toContain("g.lbl")
+    // The comps mark the primary instance only by default: a ×15 aggregate must not carpet the artboard (gap 12).
+    expect(html).toContain("layer: 'all', showMarks: true, showMembers: false,")
+    expect(html).toContain('<input type="checkbox" id="members"> all instances')
+  })
+
+  it("carries the phone layout (< 760px, the comps' breakpoint): scrolling page, sticky viewer, floating tools", () => {
+    const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)
+    expect(mobile).not.toBeNull()
+    const rules = mobile![1]!
+    expect(html).toContain("const narrow = window.matchMedia('(max-width: 759px)');")
+    expect(html).not.toContain("max-width: 900px")
+    // The desktop page is height-locked (only the inner lists scroll); on a
+    // phone that left each pane ~50px tall with no way to reach the rest.
+    expect(rules).toContain("html, body { height:auto; }")
+    expect(rules).toContain("position:sticky")
+    // The tool strip floats bottom-left over the canvas, the zoom pill moves top-left, the layer
+    // strip appears under the topbar and the brand + the two desktop segments go.
+    expect(rules).toContain(".tools { position:absolute; left:8px; bottom:56px;")
+    expect(rules).toContain(".zoom-pill { left:12px; top:12px; bottom:auto; }")
+    expect(rules).toContain(".layer-strip { display:flex; }")
+    expect(rules).toContain(".tb-left .brand-name, #seg-layout, #seg-layer { display:none; }")
+    // The lists flow into the page scroll instead of clipping inside their own boxes.
+    expect(rules).toContain(".list { overflow:visible; flex:none; }")
+    // The rail is collapsed until asked for; pinned to the bottom so it stays tappable.
+    expect(rules).toContain(".rail-toggle { position:sticky; bottom:0;")
+    expect(rules).toContain("body:not(.rail-open) main { grid-template-columns:1fr; }")
+    expect(rules).toContain("aside .rail-body { display:none; }")
+    expect(html).toContain("body:not(.rail-open) main { grid-template-columns:38px 1fr; }")
+    expect(html).toContain('aria-expanded="false" aria-controls="rail-body"')
+  })
+
+  it("makes one-side-at-a-time a mode, not a breakpoint: the Split / Full segment drives body.single", () => {
+    expect(html).toContain('id="seg-layout"')
+    expect(html).toContain('data-layout="split"')
+    expect(html).toContain('data-layout="full"')
+    expect(html).toContain("body.single .pane { display:none; }")
+    expect(html).toContain("body.single .pane.active { display:block; }")
+    // The Design / Impl fab only exists in Full mode; the pane labels stay (the comp keeps them).
+    expect(html).toContain('id="side-switch"')
+    expect(html).toContain("body.single .side-fab { display:flex; }")
+    expect(html).not.toContain("body.single .pane-label")
+  })
+
+  it("has the comps' topbar and delta strip, and no verdict header (gap 14)", () => {
+    expect(html).toContain('<header id="hdr" class="topbar">')
+    expect(html).toContain('id="hdr-left"')
+    expect(html).toContain('<span class="brand-name">RefDiff</span>')
+    expect(html).toContain('id="seg-layer"')
+    for (const label of ["Findings", "Comments", "All", "Clean"]) expect(html).toContain(`>${label}</button>`)
+    // The layer segment generalises the old marks checkbox; Comments off hides the shapes, never the focus region.
+    expect(html).not.toContain('id="marks"')
+    expect(html).toContain("state.showMarks = state.layer === 'findings' || state.layer === 'all';")
+    expect(html).toContain("body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann")
+    // The verdict pill, counts and alignment numbers are gone from the chrome.
+    expect(html).not.toContain("hdr-more")
+    expect(html).not.toContain("' · threshold '")
+    // The delta strip (gap 15): only when the run changed something, red with a Review filter on a regression.
+    expect(html).toContain('id="delta-strip"')
+    expect(html).toContain("fixed earlier, back again — fix plan halted")
+    expect(html).toContain("if (state.regOnly && !regressionIds().has(f.id)) return false;")
+    // Zoom lives in a floating pill; the focus chip carries the comps' copy.
+    expect(html).toContain('id="zoom-pill"')
+    expect(html).toContain(">fit_screen</span>")
+    expect(html).toContain("'Region focus · '")
   })
 
   it("embeds the whole report — findings, suppressed, delta, alignment — as data", () => {
@@ -174,62 +292,6 @@ describe("renderReport", () => {
     expect(renderReport(report, { viewMathSource, annotationsSource, title: "T & U" })).toContain(
       "<title>T &amp; U</title>",
     )
-  })
-
-  it("carries the phone layout: scrolling page, sticky viewer, canvas above its controls", () => {
-    const mobile = /@media \(max-width: 900px\) \{([\s\S]*?)\n\}/.exec(html)
-    expect(mobile).not.toBeNull()
-    const rules = mobile![1]!
-    // The desktop page is height-locked (only the inner lists scroll); on a
-    // phone that left each pane ~50px tall with no way to reach the rest.
-    expect(rules).toContain("html, body { height:auto; }")
-    expect(rules).toContain("position:sticky")
-    // Zoom and the rest of the toolbar sit BELOW the canvas, the detail under both.
-    expect(rules).toContain(".panes { order:1; } .toolbar { order:2; } .detail { order:3; }")
-    // The lists flow into the page scroll instead of clipping inside their own boxes.
-    expect(rules).toContain(".list { overflow:visible; flex:none; }")
-    expect(rules).toContain("details[open] .list { max-height:none; }")
-    // The rail is collapsed until asked for; desktop keeps it open beside the canvas.
-    // Pinned to the bottom: a summary bar that scrolls under the sticky canvas cannot be tapped.
-    expect(rules).toContain(".rail-toggle { position:sticky; bottom:0;")
-    // The desktop strip must not leak into the phone, where the rail is a section of a scrolling page.
-    expect(rules).toContain("body:not(.rail-open) main { grid-template-columns:1fr; }")
-    expect(rules).toContain("aside .rail-body { display:none; }")
-    // …and the toggle itself is no longer phone-only: desktop collapses to a 38px strip.
-    expect(html).toContain("body:not(.rail-open) main { grid-template-columns:38px 1fr; }")
-    expect(rules).toContain("body.rail-open aside .rail-body { display:block; }")
-    expect(html).toContain("aside .rail-body { display:contents; }")
-    expect(html).toContain('aria-expanded="false" aria-controls="rail-body"')
-  })
-
-  it("makes one-side-at-a-time a mode, not a breakpoint: body.single drives the panes", () => {
-    // Forced below 900px, chosen above it via #layout-toggle — one rule set for both.
-    expect(html).toContain("body.single .pane { display:none; }")
-    expect(html).toContain("body.single .pane.active { display:block; }")
-    // Move and focus show in every layout; only the side SWITCH is single-mode.
-    expect(html).toContain(".canvas-controls { display:flex; }")
-    expect(html).toContain("#side-switch { display:none; }")
-    expect(html).toContain("body.single #side-switch { display:inline-flex; }")
-    // The corner switch names the side, so the pane label is redundant there.
-    expect(html).toContain("body.single .pane-label { display:none; }")
-    expect(html).toContain('id="layout-toggle"')
-    expect(html).toContain('id="layout-label"')
-    // …and the layout toggle is meaningless on a phone, which is always single.
-    expect(
-      /@media \(max-width: 900px\) \{[\s\S]*?#layout-toggle \{ display:none; \}/.test(html),
-    ).toBe(true)
-  })
-
-  it("puts the side switch and the move/annotate toggle in the canvas corner", () => {
-    expect(html).toContain('id="canvas-controls"')
-    expect(html).toContain('id="side-switch"')
-    expect(html).toContain('id="move-toggle"')
-    expect(html).toContain('id="side-label"')
-    // Two icons, one per mode; CSS shows exactly the one the mode calls for.
-    expect(html).toContain('class="i i-move"')
-    expect(html).toContain('class="i i-note"')
-    expect(html).toContain(".cbtn .i-note, body.ann-mode .cbtn .i-move { display:none; }")
-    expect(html).toContain("body.ann-mode .cbtn .i-note { display:block; }")
   })
 
   it("shows a back link only when the report belongs to a set", () => {
@@ -280,10 +342,6 @@ describe("renderReport", () => {
     expect(html).toContain("function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }")
   })
 
-  it("keeps the header disclosure phone-only", () => {
-    expect(html).toContain(".hdr-more { display:none;")
-    expect(html).toContain("  .hdr-more { display:inline-block; }")
-  })
 })
 
 describe("embedJson", () => {

@@ -486,7 +486,7 @@ ship UNMEASURED by decision (gap 20, section C).
 
 ---
 
-## 3. Comparison tool — chrome, tool strip, canvas overlays — TODO
+## 3. Comparison tool — chrome, tool strip, canvas overlays — DONE (2026-08-28)
 
 `render.ts` `REPORT_BODY` + `CSS` + the toolbar half of `CLIENT`.
 
@@ -518,7 +518,175 @@ ship UNMEASURED by decision (gap 20, section C).
 
 **Exit:** `refdiff-compare-desktop` chrome causes measured.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+What shipped (`render.ts` `REPORT_BODY` + `CSS` + the chrome half of
+`CLIENT`; `view-math.ts` labels/icons/menu copy): the comps' 46px topbar
+(`arrow_back` to the Library, brand square, "RefDiff", pair title; the
+**Split / Full**, **Off / Wipe / Onion / Blink / Diff** and **Findings /
+Comments / All / Clean** segments at the comps' geometry; theme toggle) —
+the verdict pill, c/M/m counts, source/alignment kv lines, `findings.json`
+link and the shortcut hint line are gone (gap 14; the refs and the fit live
+in the pane labels' and align pill's `title`s; gap 18 stays deferred, keys
+in the tool titles). The **delta strip** (gap 15) under the topbar: mono run
+label, `+N introduced` / `−M resolved`, and on a regression the red tint +
+3px edge, "N regressions · fixed earlier, back again — fix plan halted" and
+**Review** (narrows the list to `delta.regressions`; dismiss `close` when
+there is none). The 44px **tool strip** (`pan_tool` · `center_focus_strong`
+· `add_comment` · `difference` = Highlight · `tonality` = Dim · `flare` =
+Strobe; 32px, radius 7, `--acc` fill; floating pill bottom-left on the
+phone) — gaps 16 and 17 turned out RESOLVED IN THE COMP (`toolDefs` carries
+`strobe`, `opShow` the opacity pill). Floating **zoom pill** (`remove` /
+mono `NN%` / `add` / `fit_screen`), the **Design / Impl fab** in Full mode,
+the **opacity pill** for Onion (55%) and Diff (100%, now adjustable — one
+amount per blend, `labAmount { onion, difference }`), the **align pill**
+(lock — gap 22, per-pane pan/zoom when unlinked, `l`; icon + `Anchors` /
+`Width` / `Top left` / `Top right` + chevron; the amber `warning` badge and
+border under `CONF_MIN = 0.5` on Anchors only — gap 2) with the **Align lock
+mode** dropdown (`hub` / `width` / `north_west` / `north_east`, the comps'
+descriptions, the Anchors row's warning line, `check` on the active one),
+the **focus chip** ("Region focus · N of M findings · Clear") and a
+`lab-note` pill in the same slot for the stretch / highlight-count notes.
+Canvas: `--canvas` panes, `DESIGN` / `IMPLEMENTATION` mono-caps labels
+(hidden while an overlay is on, and on the phone), the **wipe handle** (a
+curtain at a WORLD x — the ghost clipped `inset(0 0 0 …)`, the comps'
+`sync_alt` knob; the old percentage curtain is gone), dim mask holes 6px
+round each box with 8px radius at `rgba(15,17,20,.5)`, Highlight boxes =
+EVERY listed finding's box (1.5px `#ff5cd0`, 8% fill, radius 4) plus the
+pixel channel's regions (it used to light only regions + presence findings —
+the demo pair has neither), blink 650ms. **Marks are the comps' badges**:
+24px severity circles at the box's top-left corner, 18px hollow ones for
+repeat instances, 22px rounded squares in the status colour for comments —
+HTML divs, not SVG `<text>` (the extractor never saw an SVG number: 22
+badge digits measured missing/extra until they became DOM) — and the box
+itself only while selected (4px-padded outline) or through Highlight / Dim.
+`showMembers` defaults to **false** (the comps' `allInst`; gap 12 — a ×15
+aggregate carpeted the artboard). Breakpoints are the comps' (**< 760px**
+phone, < 1120px shortens the layer labels to `Find.` / `Comm.` and drops
+the pair title). `fitView` defaults to the comps' fit (24px air, capped
+1.6×): the mobile zoom went 53% → the comp's 50%. The layer segment
+generalises the old `marks` checkbox (`layer: findings | items | all |
+none`, persisted in `vc-controls`; Comments off hides comment shapes, never
+the focus region). Parked until phase 4 (the rail): the `all instances`
+checkbox and the `annotations.json · N loaded` status line sit in the rail's
+filter block; the bottom detail panel and its crops stay.
+
+Harness fixes this phase surfaced (both with tests that fail without them):
+
+- `policy.ts` `findingTexts` tested `textPatterns` against the text quoted in
+  the MESSAGE, which truncates at ~40 chars — an anchored pattern could never
+  excuse a long label on a missing/extra-element finding. `f.text` now comes
+  first, in full.
+- `dc-html.ts` RELOADS a fluid comp at the pair viewport instead of only
+  resizing: the Tool comp's `fit()` runs once on load, so under the 120px
+  slack canvas it fitted for a 1480px window and never re-fitted — its zoom
+  read 75% against the app's 67% and every badge sat where the wider window
+  put it. After the reload the comp reads 66% (its true fit at 1360).
+
+Manifest: `COMPARE_IGNORE` on both compare pairs — one content-shaped
+`textPatterns` rule for the artboard's vocabulary (the comp imports
+`parts/Artboard Design|Impl` as live DOM; the app draws the run's PNGs; the
+rule expires with the artboard), one for the delta strip's copy (gap 29),
+`accepted` for the two screenshots (D6's reasoning) and the strip's
+`warning` icon. The `75%` rule written for the fit artefact was deleted once
+the reload made it dead.
+
+| pair | before findings (c/M/m) / inst / supp / conf | after findings (c/M/m) / inst / supp / conf |
+| --- | --- | --- |
+| refdiff-compare-desktop | 342 (118/136/88) / 462 / 0 / 0.13 | **217** (78/110/29) / 270 / 103 / **0.38** |
+| refdiff-compare-mobile | 116 (57/29/30) / 124 / 0 / 0.25 | **34** (6/18/10) / 47 / 40 / **0.52** |
+| refdiff-library-desktop | 9 (2/5/2) / 16 / 21 / 0.90 | 9 (2/5/2) / 16 / 21 / 0.90 — unchanged |
+| refdiff-library-mobile | 5 (0/3/2) / 5 / 10 / 1.00 | 5 (0/3/2) / 5 / 10 / 1.00 — unchanged |
+
+Total 472 / 607 → **265 / 338**, 174 suppressed, every one visible under
+`suppressed`. Confidence went UP on both compare pairs; the final run
+reports no regressions. "Before" reproduced phase 2's table exactly.
+
+The staircase, each step measured (desktop / mobile):
+
+1. the chrome to the comp, badges still SVG: 342 → 270 (conf 0.13 → 0.38) /
+   116 → 58 (0.25 → 0.54).
+2. HTML badges + primary-only + the artboard vocabulary excused: 270 → 224
+   (88 suppressed) / 58 → 49.
+3. the adapter reload (the comp's fit 75% → 66%): 224 → 223 / 49 → 46 — the
+   badge digits now differ from the comp's by the rail side only.
+4. the strip's copy excused: 223 → 217 / 46 → 41.
+5. the `.badge` class collision with the Library's `.badge` (INDEX_CSS painted
+   the number in the fill colour and at weight 600 — invisible numbers,
+   caught by the mobile pair's `color "3" … rgb(255,255,255)` rows before
+   the screenshot showed it) renamed to `.vmark`, and the comps' fit padding:
+   217 → 217 / 41 → **34** (53% → 50%).
+
+**Run B — the strip hidden (measured for gap 29, not shipped):** desktop
+210 / conf 0.38, mobile 46 / conf **1.00** (against 223 / 49 / 0.54 at the
+same step). The strip's 38px (65px on the phone, where it wraps) is what
+breaks the mobile anchors.
+
+**After the flip of gap 29 (2026-08-28, same day, comp's `showDeltaStrip`
+default → true, the manifest's strip rule made fold-safe `[−-]\d+ resolved`
+and the dead `warning` accept dropped):** compare-desktop **218**
+(78/107/33) / 272 / 96 supp / conf **0.36**; compare-mobile **11** (5/6/0) /
+11 / 30 / conf **0.93**. The mobile pair is now the sheet (phase 4) plus
+three comment-badge digits; on desktop the strip pairs, leaving `-1 resolved`
+vs `-6 resolved` excused (the Tool comp's demo delta vs the Library card's,
+gap 23) and the 1px divider. The `REGRESSION` lines on that run (10 + 1)
+are the same-text reshuffle shape again (digits, `right_panel_close`).
+
+**What remains, all read from `findings.json`:**
+
+- desktop: **178 of 217 involve the rail** (the comp's 320px RIGHT panel
+  with tabs, chips, `prop expected → actual` lines and `REVIEW` header vs
+  our 340px LEFT aside — phase 4); **36 are badge digits** on both panes
+  that sit 331px left of ours for the same reason (the two panes' fits agree
+  once the rail moves: the comp reads 66% for a 498px pane, we read 65% for
+  488); `pan_tool` (339.5, 37.5) ×10 and `IMPLEMENTATION` (321, 37.5) ×5 are
+  the rail side + the strip; the pixel gate line. No topbar / segment / pill
+  cause is left.
+- mobile: `"Show" offset (0, 65)` ×14 and the 22 badge rows under it are ONE
+  cause — the strip (gap 29) pushing everything down and re-pairing the
+  badge columns; the sheet's `8 findings · 3 comments · 1 unsaved` /
+  `expand_less` vs our summary bar and `▾` are phase 4.
+
+Causes that closed: every toolbar / header copy row (verdict, counts,
+alignment kv, `findings.json`, the hint), the `Split`/`Diff` border and
+radius rows (segments), `arrow_back` / `pan_tool` / `flare` / `remove` /
+`add` / `fit_screen` / `link` / `hub` / `expand_less` / `warning` drawn as
+words or missing (Material Symbols placed), `DESIGN` / `IMPLEMENTATION`
+mono caps, the zoom pct mono, the `Anchors` colour/border rows (pill), the
+member-badge carpet, the 63 artboard texts and the two screenshots
+(policy, visible). Causes that did not: the rail (phase 4), the strip's
+shift (gap 29), the comp's mobile sheet (phase 4).
+
+Decided in this phase (gap numbers in section E/F):
+
+- **29 (new) → ask Mato.** The comp draws the delta strip but its
+  `showDeltaStrip` prop defaults to false, so the capture never shows it;
+  decision 23b gave the fixture two regressions, so the app draws it (gap 15:
+  impossible to miss). Its copy is excused by policy; its 38px cannot be
+  and is measured above. Options: (a) flip the comp's default to true (the
+  fixture's state IS the regression state the strip was designed for) — the
+  measurement then closes by itself; (b) leave it and carry the shift as a
+  known cost through phases 4–5; (c) 23a after all (no delta on the fixture),
+  which phase 2 measured as worse for the Library. Recommendation: (a).
+- **16 → the comp's own answer**: Strobe is in the tool strip as `flare`, our
+  `s` key and coupling (strobe implies highlight) kept.
+- **17 → the comp's own answer**: the opacity pill, for Onion and Diff.
+- **18 unchanged**: nothing drawn; every tool title carries its key.
+- **Fit**: the comps' `fit()` (24px air, 1.6× cap) is now `fitView`'s default.
+
+Light theme, the error states, Full mode, the open align menu, the wipe /
+onion / blink / diff overlays, the focus chip and the lab notes ship
+UNMEASURED by decision (gap 20 / section C — the comp captures its default
+state); each was exercised once headlessly for console errors, none found.
+That is not a parity claim.
+
+Notes for phase 4: the comp's `×N` is `1 + inst.length` (×15 for g1) where
+`rowHtml` shows `×instances` (×14) — settle what `instances` counts when the
+rail rows get their `prop expected → actual` line; `#members` and
+`#ann-status` need their comp homes (the `Primary only · N` chip, the
+save-error surfaces); the detail panel and crops go (gap 13); once the rail
+is 320px on the right, the 36 badge digits and the two offset rows above
+should pair on their own.
 
 ---
 
@@ -798,6 +966,28 @@ with Mato where the two comps disagree.
     state — the comp's grey plate is the obvious candidate, but that is
     phase 2's call, not a fixture problem. **DECIDED 2026-08-28 (phase 2):
     the plate.**
+
+### F. Found while building the comparison chrome (phase 3, 2026-08-28)
+
+29. **The delta strip is designed but never captured.** The Tool comp's
+    `showDeltaStrip` prop (section "Debug") defaults to false; the fixture
+    pair carries a delta with two regressions (23b), so the app draws the
+    strip the comp designs for that state and every anchor below the topbar
+    sits 38px lower than the comp's (65px on the phone). Measured in phase 3
+    (run B): 13 desktop findings and the mobile pair's confidence 0.54 → 1.00
+    hinge on it. **RESOLVED 2026-08-28 — (a), at Mato's request:** the one
+    token `"default":false → true` in `RefDiff Comparison Tool.dc.html`'s
+    `data-props`, nothing else touched. Measured right after (phase 3
+    Numbers, "after the flip"). NOTE the flip is in the LOCAL copy only —
+    the Claude Design project is not reachable as a writable design-system
+    project through DesignSync (404 / no writable projects), so make the
+    same change in the app's prop editor before the next refetch, or the
+    refetch reverts it.
+30. **The Tool comp fits once, on load, and never on resize.** Under the
+    adapter's slack canvas it fitted for a 1480px window (zoom 75%). Closed on
+    the harness side — the dc-html adapter now reloads a fluid comp at the
+    pair viewport — but a comp that re-fits on resize would be the sturdier
+    design; a note for Mato, not a request.
 26. **Aggregate `cause` line.** The comp's `g1` / `g2` show a second line
     ("Muted label token resolves to the wrong grey"). `Finding` has no such
     field — `message` is the title. Either the aggregator writes a cause (core

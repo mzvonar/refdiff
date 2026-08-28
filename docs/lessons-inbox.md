@@ -45,3 +45,32 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 - **Context:** what work / branch / file this came from
 - **Lesson:** the durable insight, stated as an actionable rule (what to do, and why)
 - **Candidate home:** (optional guess) skill:<name> · CLAUDE.md · ADR · anchor · wiki · memory · discard
+
+## 2026-08-28 — phase 3 of the annotator redesign (comparison tool chrome)
+
+- **`textPatterns` never saw a long label.** `policy.ts` `findingTexts` took the
+  text from the message's quotes, which truncate at ~40 chars, so an anchored
+  `^…$` pattern could not excuse a long sentence on a missing/extra-element
+  finding. Fixed (`f.text` first, in full) with a test that fails without it.
+  Lesson shape: when a rule "does not fire", check what STRING the rule is
+  tested against, not the regex — display strings are not data strings.
+- **A fluid comp must be RELOADED at the pair viewport, not resized.** The
+  dc-html adapter opened 120px wide, detected fluidity, then resized; a comp
+  whose mount-time logic runs once (the Tool comp's `fit()` on load) kept the
+  layout of the wider window — its zoom read 75% against the app's 67%, every
+  badge off. Now `load()` runs twice. Candidate for SKILL.md pre-flight (done)
+  and `docs/architecture.md` (done).
+- **Badges as SVG `<text>` are invisible to the element extractor.** The comps
+  draw numbered marks as divs; the annotator drew them as SVG text and every
+  number measured as "missing". Anything the comp draws as DOM text must be
+  DOM text in the app if it is to be matched at all.
+- **A comp's capture DEFAULT can hide a designed state.** `showDeltaStrip`
+  defaults false in the Tool comp, so the delta strip is designed but never
+  captured; the app draws it (the fixture has regressions) and pays 38px on
+  every anchor below the topbar (mobile confidence 1.00 → 0.54). Plan gap 29:
+  Mato flips the default, or the strip's shift stays a known cost until then.
+- **Regressions after a chrome move are the text-keyed reshuffle again**
+  (phases 1–3, three times now): same-text candidates ("1", "3", "warning")
+  re-pair when every box moves. `delta.ts` pairs by key + nearest box; worth a
+  test with N same-text findings once the redesign lands (still open).
+

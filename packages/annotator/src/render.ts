@@ -21,11 +21,17 @@
  * (or served from it). No network, no dependencies: the view math is the
  * compiled `view-math.js` embedded verbatim into an inline module script.
  *
- * On a phone (≤900px) the split screen would leave each pane ~50px tall, so
- * the layout switches: the page scrolls, the header's metadata collapses
- * behind a "details" toggle, the viewer sticks to the top showing ONE side at
- * a time (a Design/Impl switch over the shared pan/zoom, so flipping compares
- * the same spot), and the finding list flows underneath.
+ * The chrome follows the RefDiff comps (docs/plan-annotator-redesign.md,
+ * phase 3): a 46px topbar (back, brand, pair title; the Split / Full,
+ * Off / Wipe / Onion / Blink / Diff and Findings / Comments / All / Clean
+ * segments; the theme toggle), the delta strip under it when the run changed
+ * something, a 44px tool strip beside the canvas (pan, focus, comment,
+ * highlight, dim, strobe), and floating pills over the canvas (zoom, the
+ * Design / Impl switch in Full mode, overlay opacity, the align pill with its
+ * lock, dropdown and confidence warning, the focus chip). On a phone
+ * (< 760px, the comps' breakpoint) the page scrolls, the viewer sticks to
+ * the top showing ONE side at a time, the tools float over the canvas and
+ * the finding list flows underneath (phase 4 turns it into the bottom sheet).
  */
 
 import type { ComparisonReport } from "@refdiff/core"
@@ -49,18 +55,6 @@ export interface RenderOptions {
   /** Page title; default "<pair> — refdiff". */
   title?: string
 }
-
-/** Four-arrow "move" glyph: the canvas is in pan/zoom mode. */
-const MOVE_ICON = `<svg class="i i-move" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 10.4 4 8.9 4 8.9 7.1 12 7.1 12 5.6 15 8 12 10.4 12 8.9 8.9 8.9 8.9 12 10.4 12 8 15 5.6 12 7.1 12 7.1 8.9 4 8.9 4 10.4 1 8 4 5.6 4 7.1 7.1 7.1 7.1 4 5.6 4Z"/></svg>`
-
-/** Two frames snapped onto each other: the design projected through the run's Alignment. */
-const ALIGN_ICON = `<svg class="i i-align" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1h9v1.6H2.6V10H1Z"/><path d="M6 6h9v9H6Zm1.6 1.6v5.8h5.8V7.6Z"/></svg>`
-
-/** Crop-marks glyph: drag a region and the list narrows to what is inside it. */
-const FOCUS_ICON = `<svg class="i i-focus" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 4.6V1h3.6v1.5H2.5v2.1ZM11.4 1H15v3.6h-1.5V2.5h-2.1ZM1 11.4h1.5v2.1h2.1V15H1ZM13.5 11.4H15V15h-3.6v-1.5h2.1ZM5.4 5.4h5.2v5.2H5.4Z"/></svg>`
-
-/** Pencil glyph: the canvas is in annotate mode (tap = note, drag = region). */
-const NOTE_ICON = `<svg class="i i-note" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 14.4 5.2 13.3 12.7 5.8 10.2 3.3 2.7 10.8Z"/><path d="M11.2 2.3 12.2 1.3 14.7 3.8 13.7 4.8Z"/></svg>`
 
 const escapeHtml = (s: string): string =>
   s.replace(
@@ -120,7 +114,38 @@ export const VIEWPORT_META =
  * The report markup, shared by the emitted report.html and the served app
  * shell — one DOM, so the client never branches on how it was delivered.
  */
-export const REPORT_BODY = `<header id="hdr"></header>
+export const REPORT_BODY = `<header id="hdr" class="topbar">
+  <div class="tb-left" id="hdr-left"></div>
+  <span class="tb-spacer"></span>
+  <div class="seg" id="seg-layout" role="group" aria-label="layout">
+    <button type="button" data-layout="split" title="both sides side by side">Split</button>
+    <button type="button" data-layout="full" title="one side at a time">Full</button>
+  </div>
+  <div class="seg" id="seg-variant" role="group" aria-label="comparison overlay">
+    <button type="button" data-lab="none" title="No comparison overlay">Off</button>
+    <button type="button" data-lab="swipe" title="Wipe slider between refs (w)">Wipe</button>
+    <button type="button" data-lab="onion" title="Onion-skin: the design over the impl (o)">Onion</button>
+    <button type="button" data-lab="blink" title="Alternate refs (b)">Blink</button>
+    <button type="button" data-lab="difference" title="Pixel difference blend (x)">Diff</button>
+  </div>
+  <div class="seg" id="seg-layer" role="group" aria-label="canvas layer">
+    <button type="button" data-layer="findings">Findings</button>
+    <button type="button" data-layer="items">Comments</button>
+    <button type="button" data-layer="all">All</button>
+    <button type="button" data-layer="none">Clean</button>
+  </div>
+  <span class="tb-spacer"></span>
+  <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
+</header>
+<div id="delta-strip" class="delta-strip" hidden></div>
+<div class="layer-strip" id="layer-strip"><span class="layer-strip-label">Show</span>
+  <div class="seg seg-sm" id="seg-layer-m" role="group" aria-label="canvas layer">
+    <button type="button" data-layer="findings">Findings</button>
+    <button type="button" data-layer="items">Comments</button>
+    <button type="button" data-layer="all">All</button>
+    <button type="button" data-layer="none">Clean</button>
+  </div>
+</div>
 <main>
   <aside id="side">
     <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="false" aria-controls="rail-body"></button>
@@ -128,6 +153,8 @@ export const REPORT_BODY = `<header id="hdr"></header>
       <div class="filters">
         <input id="q" type="search" placeholder="filter findings…" aria-label="filter findings">
         <div class="chips" id="sev-chips"></div>
+        <label class="members"><input type="checkbox" id="members"> all instances</label>
+        <span id="ann-status" class="annstatus"></span>
       </div>
       <div id="count" class="count"></div>
       <ol id="list" class="list"></ol>
@@ -136,49 +163,42 @@ export const REPORT_BODY = `<header id="hdr"></header>
     </div>
   </aside>
   <section id="viewer">
-    <div class="toolbar">
-      <button id="zoom-out" title="zoom out (−)">−</button>
-      <span id="zoom-pct" class="pct">100%</span>
-      <button id="zoom-in" title="zoom in (+)">+</button>
-      <button id="fit" title="fit both (0)">Fit</button>
-      <button type="button" id="layout-toggle" aria-pressed="false" title="split screen — switch to one side at a time"><span id="layout-label">Split</span></button>
-      <button type="button" id="align-mode" class="icon-toggle align-mode" title="how the design is registered onto the impl (a)">${ALIGN_ICON}<span id="align-label">anchors</span></button>
-      <label><input type="checkbox" id="marks" checked> marks</label>
-      <label><input type="checkbox" id="members" checked> all instances</label>
-      <span class="sep"></span>
-      <button type="button" id="diff-toggle" class="tog lab" aria-pressed="false" title="highlight where the pixels differ (d) — [ and ] step through the regions">Diff</button>
-      <button type="button" id="dim-toggle" class="tog lab" aria-pressed="false" title="dim everything except the diff regions (g)">Focus</button>
-      <button type="button" id="strobe-toggle" class="tog lab" aria-pressed="false" title="pulse and wiggle the diff regions (s)">Strobe</button>
-      <label class="labsel">over impl
-        <select id="lab-mode" title="superimpose the design on the implementation pane">
-          <option value="none">—</option>
-          <option value="blink">blink (b)</option>
-          <option value="onion">onion (o)</option>
-          <option value="swipe">swipe (w)</option>
-          <option value="difference">difference (x)</option>
-        </select>
-      </label>
-      <input type="range" id="lab-amount" class="labrange" min="0" max="100" value="50" aria-label="lab amount" hidden>
-      <span id="lab-note" class="labnote"></span>
-      <span class="sep"></span>
-      <button id="ann-draw" class="tog" title="annotate: click = note on an element, drag = region (n)">+ note</button>
-      <button type="button" id="focus-chip" class="chip focus-chip" hidden></button>
-      <span id="ann-status" class="annstatus"></span>
-      <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · [ ] = next/prev diff · a = align mode · d/g/s = diff/focus/strobe · b/o/w/x = blink/onion/swipe/difference · n = annotate (click = note, drag = region) · Esc = deselect</span>
-    </div>
-    <div class="panes" id="panes">
-      <div class="pane" id="pane-design" data-side="design">
-        <div class="pane-label" id="label-design"></div>
-        <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg></div>
+    <div class="work">
+      <div class="tools" id="tools">
+        <button type="button" id="move-toggle" class="tool on" aria-pressed="true" title="Pan / move (Esc)"><span class="msi" aria-hidden="true">pan_tool</span></button>
+        <button type="button" id="focus-toggle" class="tool" aria-pressed="false" title="Focus region — drag to limit findings (press again to clear)"><span class="msi" aria-hidden="true">center_focus_strong</span></button>
+        <button type="button" id="ann-draw" class="tool" aria-pressed="false" title="Comment — tap a point or drag a region (n)"><span class="msi" aria-hidden="true">add_comment</span></button>
+        <button type="button" id="diff-toggle" class="tool" aria-pressed="false" title="Highlight changed parts (d) — [ and ] step through them"><span class="msi" aria-hidden="true">difference</span></button>
+        <button type="button" id="dim-toggle" class="tool" aria-pressed="false" title="Dim unchanged parts (g)"><span class="msi" aria-hidden="true">tonality</span></button>
+        <button type="button" id="strobe-toggle" class="tool" aria-pressed="false" title="Strobe — pulse the differences in colour (s)"><span class="msi" aria-hidden="true">flare</span></button>
       </div>
-      <div class="pane" id="pane-impl" data-side="impl">
-        <div class="pane-label" id="label-impl"></div>
-        <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg></div>
-      </div>
-      <div class="canvas-controls" id="canvas-controls">
-        <button type="button" class="cbtn" id="side-switch" title="switch side"><span aria-hidden="true">⇄</span><span id="side-label">Design</span></button>
-        <button type="button" class="cbtn" id="move-toggle" aria-pressed="true" title="move: pan and zoom (off = tap to note, drag to mark a region)">${MOVE_ICON}${NOTE_ICON}</button>
-        <button type="button" class="cbtn" id="focus-toggle" aria-pressed="false" title="focus a region: drag a box, and only findings inside it are listed">${FOCUS_ICON}</button>
+      <div class="panes" id="panes">
+        <div class="pane" id="pane-design" data-side="design">
+          <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg><div class="vmarks" id="vmarks-design"></div></div>
+          <div class="pane-label" id="label-design">DESIGN</div>
+        </div>
+        <div class="pane" id="pane-impl" data-side="impl">
+          <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg><div class="vmarks" id="vmarks-impl"></div><div class="wipe" id="wipe" hidden title="drag to wipe between the design and the implementation"><div class="wipe-line"></div><div class="wipe-knob"><span class="msi" aria-hidden="true">sync_alt</span></div></div></div>
+          <div class="pane-label right" id="label-impl">IMPLEMENTATION</div>
+        </div>
+        <div class="zoom-pill" id="zoom-pill">
+          <button type="button" id="zoom-out" title="Zoom out (−)"><span class="msi" aria-hidden="true">remove</span></button>
+          <span id="zoom-pct" class="pct">100%</span>
+          <button type="button" id="zoom-in" title="Zoom in (+)"><span class="msi" aria-hidden="true">add</span></button>
+          <button type="button" id="fit" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
+        </div>
+        <div class="side-fab" id="side-switch" role="group" aria-label="which side"><button type="button" data-side="design">Design</button><button type="button" data-side="impl">Impl</button></div>
+        <div class="op-pill" id="op-pill" hidden><span class="msi" aria-hidden="true">opacity</span><span id="op-label" class="op-label">Onion</span><input type="range" id="lab-amount" min="0" max="100" step="1" value="55" aria-label="overlay opacity"><span id="op-pct" class="op-pct">55%</span></div>
+        <div class="align-wrap" id="align-wrap">
+          <div class="align-pill" id="align-pill">
+            <button type="button" class="lock on" id="align-lock" aria-pressed="true" title="Lockstep on — panes move together. Click to unlink."><span class="msi" aria-hidden="true">link</span></button>
+            <button type="button" class="align-cur" id="align-mode" aria-expanded="false" aria-controls="align-menu"><span class="msi" id="align-icon" aria-hidden="true">hub</span><span id="align-label">Anchors</span><span class="msi chev" id="align-chev" aria-hidden="true">expand_less</span></button>
+            <span class="conf-warn" id="conf-warn" hidden><span class="msi" aria-hidden="true">warning</span></span>
+          </div>
+          <div class="align-menu" id="align-menu" hidden></div>
+        </div>
+        <div class="focus-chip" id="focus-chip" hidden><span class="msi" aria-hidden="true">center_focus_strong</span><span id="focus-msg"></span><button type="button" id="focus-clear">Clear</button></div>
+        <div class="lab-note" id="lab-note" hidden></div>
       </div>
     </div>
     <div id="detail" class="detail"></div>
@@ -218,21 +238,58 @@ button, input, select, textarea { font:inherit; }
    under it (the panes keep touch-action:none for their own pan/pinch). */
 html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
 body { display:flex; flex-direction:column; }
-header { display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; padding:8px 14px;
-  border-bottom:1px solid var(--line); background:var(--bg1); }
-header h1 { font-size:15px; margin:0; }
-header #hdr-meta { display:contents; }
-header .back { flex:none; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--txt); text-decoration:none; }
-header .back:hover { border-color:var(--acc); color:var(--acc); }
-header .kv { color:var(--txt2); }
-header .kv b { color:var(--txt); font-weight:500; }
-header a { color:var(--acc); text-decoration:none; }
-.pill { display:inline-block; padding:1px 8px; border-radius:999px; font-weight:600; font-size:12px; }
-.pill.pass { background:var(--ok); color:#fff; } .pill.fail { background:var(--critical); color:#fff; }
+/* ---- topbar: the comps' 46px bar — back arrow, brand, pair title; the three
+   segmented groups (layout / overlay / layer) centred; the theme toggle right. */
+.topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:46px; flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
+.tb-left { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
+.tb-left .back { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--txt2); text-decoration:none; flex-shrink:0; }
+.tb-left .back:hover { background:var(--bg3); color:var(--txt); }
+.tb-left .back .msi { font-size:19px; }
+.tb-left .brand { width:18px; height:18px; border-radius:5px; background:var(--acc); flex-shrink:0; }
+.tb-left .brand-name { font-size:13px; font-weight:700; letter-spacing:.02em; }
+.tb-left .pair-title { font-size:12px; color:var(--txt2); white-space:nowrap; }
+.tb-spacer { flex:1; min-width:4px; }
+.seg { display:flex; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:2px; gap:2px; flex-shrink:0; }
+.seg button { padding:5px 10px; border:0; border-radius:6px; font-size:12px; font-weight:500; line-height:16px; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
+.seg button.on { color:var(--txt); font-weight:600; background:var(--bg3); }
+.seg.seg-sm { border-radius:7px; }
+.seg.seg-sm button { padding:3px 8px; font-size:11px; line-height:14px; }
+/* The phone's layer strip under the topbar ("Show · Findings Comments All Clean"). */
+.layer-strip { display:none; align-items:center; justify-content:center; gap:7px; padding:4px 10px; background:var(--bg1); border-bottom:1px solid var(--line); flex-shrink:0; }
+.layer-strip-label { font-size:10.5px; color:var(--txt2); flex-shrink:0; }
+/* The topbar icon buttons (theme, and on the Library the layout toggle): the comps' 32px / radius 7 square. */
+.theme-toggle, .layout-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+  background:transparent; color:var(--txt2); cursor:pointer; }
+.theme-toggle:hover, .layout-toggle:hover { background:var(--bg3); }
+.theme-toggle .msi, .layout-toggle .msi { font-size:19px; }
+/* ---- delta strip (gap 15): under the topbar, only when the run changed something;
+   red-tinted with a 3px edge when a regression is in it — the loop's stop signal. */
+.delta-strip { display:flex; align-items:center; gap:12px; padding:0 12px; min-height:38px; flex-shrink:0; background:var(--bg2);
+  border-bottom:1px solid var(--line); border-left:3px solid transparent; font-size:12px; }
+.delta-strip[hidden] { display:none; }
+.delta-strip.reg { background:rgba(229,72,77,.13); border-left-color:var(--critical); }
+.delta-strip > .msi { font-size:17px; color:var(--txt2); flex-shrink:0; }
+.delta-strip.reg > .msi { color:var(--critical); }
+.delta-strip .run { font-size:11.5px; font-family:var(--font-mono); color:var(--txt2); white-space:nowrap; }
+.delta-strip .add { font-weight:600; color:var(--critical); white-space:nowrap; }
+.delta-strip .res { font-weight:600; color:var(--ok); white-space:nowrap; }
+.delta-strip .dsep { width:1px; height:16px; background:var(--line); flex-shrink:0; }
+.delta-strip .regmsg { font-weight:700; color:var(--critical); white-space:nowrap; }
+.delta-strip .regsub { font-size:11.5px; color:var(--txt2); white-space:nowrap; }
+.delta-strip .review { margin-left:auto; padding:4px 12px; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer;
+  background:var(--critical); border:1px solid var(--critical); color:#fff; white-space:nowrap; flex-shrink:0; }
+.delta-strip .review.on { background:transparent; border-color:var(--line); color:var(--txt2); }
+.delta-strip .dismiss { margin-left:auto; width:24px; height:24px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
+.delta-strip .dismiss:hover { background:var(--bg3); }
+.delta-strip .dismiss .msi { font-size:16px; }
+/* ---- the rail (phase 4 moves it to the comps' right-hand review panel) */
 main { flex:1; display:grid; grid-template-columns:340px 1fr; min-height:0; }
 aside { border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; background:var(--bg1); }
 .filters { padding:8px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--line); }
-.filters input { width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); }
+.filters input[type=search] { width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); }
+.filters .members { color:var(--txt2); display:flex; gap:4px; align-items:center; font-size:12px; }
+.annstatus { color:var(--txt2); font-size:11px; }
+.annstatus.err { color:var(--critical); }
 .chips { display:flex; gap:6px; }
 .chip { cursor:pointer; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--txt2); user-select:none; }
 .chip.on { color:var(--txt); border-color:currentColor; }
@@ -251,44 +308,6 @@ aside { border-right:1px solid var(--line); display:flex; flex-direction:column;
 details { border-top:1px solid var(--line); max-height:40%; display:flex; flex-direction:column; }
 details summary { padding:6px 10px; color:var(--txt2); cursor:pointer; }
 details[open] .list { max-height:30vh; }
-#viewer { display:flex; flex-direction:column; min-height:0; min-width:0; }
-.toolbar { display:flex; gap:10px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-.toolbar button { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
-.toolbar label { color:var(--txt2); display:flex; gap:4px; align-items:center; }
-.toolbar .pct { min-width:48px; text-align:center; }
-.toolbar .hint { margin-left:auto; color:var(--txt2); font-size:11px; }
-/* The topbar icon buttons (theme, and on the Library the layout toggle): the comps' 32px / radius 7 square. */
-.theme-toggle, .layout-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
-  background:transparent; color:var(--txt2); cursor:pointer; }
-.theme-toggle:hover, .layout-toggle:hover { background:var(--bg3); }
-.theme-toggle .msi, .layout-toggle .msi { font-size:19px; }
-header .theme-toggle { margin-left:auto; }
-.hdr-more { display:none; background:var(--bg0); color:var(--txt2); border:1px solid var(--line); border-radius:999px; padding:2px 10px; cursor:pointer; }
-/* One side at a time — always on a phone, on demand on desktop (#layout-toggle).
-   The corner controls replace the pane label: they name the side being shown. */
-body.single .pane { display:none; }
-body.single .pane.active { display:block; }
-body.single .pane-label { display:none; }
-/* Move and focus are useful in every layout; only the side SWITCH is meaningless when both panes
-   are on screen, so the controls show always and that one button hides itself. */
-.canvas-controls { display:flex; }
-#side-switch { display:none; }
-body.single #side-switch { display:inline-flex; }
-/* corner controls over the canvas: which side, and move vs annotate. Bottom-right, where a thumb
-   reaches them and they cover no content — the top-right is where page headers live. */
-.canvas-controls { position:absolute; z-index:3; bottom:8px; right:8px; gap:6px; }
-.cbtn { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--line); border-radius:8px;
-  background:var(--bg1); color:var(--txt); font:inherit; line-height:1; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.25); }
-.cbtn .i { width:15px; height:15px; fill:currentColor; display:block; }
-.cbtn .i-note, body.ann-mode .cbtn .i-move { display:none; }
-body.ann-mode .cbtn .i-note { display:block; }
-#move-toggle { color:var(--acc); border-color:var(--acc); }
-body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
-/* findings rail disclosure (phone only): the rail is collapsed until asked for */
-.rail-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px; padding:9px 12px;
-  background:var(--bg1); color:var(--txt); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
-.rail-toggle .chev { color:var(--txt2); }
-.rail-toggle .num { display:inline-block; padding:0 6px; border-radius:5px; font-weight:700; font-size:11px; color:#fff; }
 /* triage — a verdict on a finding, and the region filter */
 .verdict { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; font-weight:600; color:#fff; }
 .verdict.fix { background:var(--fix); } .verdict.ignore { background:var(--ignore); color:#fff; } .verdict.snooze { background:var(--snooze); }
@@ -300,27 +319,12 @@ body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
 .verdict-btn.on.snooze { border-color:var(--snooze); color:var(--snooze); }
 .triage-none { color:var(--txt2); font-style:italic; }
 .triage .meta code { background:var(--bg0); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
-.focus-chip { border-color:var(--acc); color:var(--acc); background:transparent; font:inherit; }
-.focus-chip b { text-decoration:underline; margin-left:4px; }
-.pane.focusing { cursor:crosshair; }
-.marks.anns rect.focus-rect { fill:rgba(91,141,239,.10); stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
-/* Handles are interactive; the region's BODY is not, so a drag inside it still pans. */
-.marks.anns circle.focus-handle { fill:var(--acc); stroke:var(--bg0); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
-.marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg0); stroke:var(--acc); stroke-width:2; }
-.marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
-#focus-toggle.on { color:var(--acc); border-color:var(--acc); }
-/* Icon toggle in the toolbar: "align design through Alignment" as words ate a third of the phone's
-   toolbar row, and that row is horizontally scrollable — the long label pushed the rest off. */
-.icon-toggle { display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; color:var(--txt2); }
-.icon-toggle .i { width:15px; height:15px; fill:currentColor; display:block; }
-.icon-toggle.on { color:var(--acc); border-color:var(--acc); }
-/* The align control cycles registrations rather than switching one on and off, so it carries the
-   current mode's NAME: "aligned / not aligned" never said what it aligned on. */
-.icon-toggle.align-mode { gap:5px; }
-.icon-toggle.align-mode.measured { color:var(--acc); border-color:var(--acc); }
-.icon-toggle.align-mode.manual { color:var(--major); border-color:var(--major); }
+/* findings rail disclosure (phone only): the rail is collapsed until asked for */
+.rail-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px; padding:9px 12px;
+  background:var(--bg1); color:var(--txt); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
+.rail-toggle .chev { color:var(--txt2); }
+.rail-toggle .num { display:inline-block; padding:0 6px; border-radius:5px; font-weight:700; font-size:11px; color:#fff; }
 body.rail-open .rail-toggle .chev { transform:rotate(180deg); }
-.panes { flex:1; display:flex; min-height:0; position:relative; }
 aside .rail-body { display:contents; }
 /* Collapsed on DESKTOP: the rail becomes a strip and the canvas takes the width. Phone keeps its
    own rules (the rail is a section of a scrolling page there, not a column). */
@@ -328,43 +332,123 @@ body:not(.rail-open) main { grid-template-columns:38px 1fr; }
 body:not(.rail-open) aside .rail-body { display:none; }
 body:not(.rail-open) .rail-toggle { writing-mode:vertical-rl; height:100%; width:38px; padding:12px 0; justify-content:flex-start; gap:12px; }
 body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
+/* ---- the viewer: the tool strip beside the canvas, the detail panel under both */
+#viewer { display:flex; flex-direction:column; min-height:0; min-width:0; }
+.work { flex:1; display:flex; min-height:0; position:relative; }
+.tools { width:44px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 0; background:var(--bg1); border-right:1px solid var(--line); }
+.tool { width:32px; height:32px; padding:0; border:0; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
+.tool .msi { font-size:18px; }
+.tool:hover { background:var(--bg3); }
+.tool.on { color:#fff; background:var(--acc); }
+.panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); }
 .pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }
 .pane + .pane { border-left:1px solid var(--line); }
 .pane.dragging { cursor:grabbing; }
-.pane-label { position:absolute; z-index:2; top:6px; left:8px; padding:2px 8px; border-radius:6px; background:var(--bg1);
-  color:var(--txt); font-size:12px; pointer-events:none; }
-.pane-label span { color:var(--txt2); }
+.pane.focusing, .pane.annotating { cursor:crosshair; }
+/* One side at a time — always on a phone, on demand on desktop (the Split / Full segment). */
+body.single .pane { display:none; }
+body.single .pane.active { display:block; }
+body.single .pane + .pane { border-left:0; }
+/* Pane labels: the comps' mono caps pills, top corners; gone while an overlay is on (the panes no
+   longer show one side each) and on the phone. The refs and the fit live in their title. */
+.pane-label { position:absolute; z-index:8; top:10px; left:10px; padding:3px 9px; border-radius:6px; background:var(--bg1); border:1px solid var(--line);
+  color:var(--txt2); font-size:10px; font-weight:700; letter-spacing:.1em; font-family:var(--font-mono); pointer-events:none; }
+.pane-label.right { left:auto; right:10px; }
+body.lab-on .pane-label { display:none; }
 .stage { position:absolute; inset:0; }
 .shot { position:absolute; left:0; top:0; transform-origin:0 0; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+/* ---- floating pills over the canvas */
+.zoom-pill { position:absolute; left:12px; bottom:12px; z-index:14; display:flex; align-items:center; gap:2px; background:var(--bg1); border:1px solid var(--line); border-radius:9px; padding:3px; }
+.zoom-pill button { width:28px; height:28px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; }
+.zoom-pill button:hover { background:var(--bg3); }
+.zoom-pill .msi { font-size:17px; }
+.zoom-pill .pct { min-width:44px; text-align:center; font-size:11.5px; font-family:var(--font-mono); color:var(--txt2); }
+.side-fab { display:none; position:absolute; right:8px; bottom:12px; z-index:15; gap:2px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:3px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+body.single .side-fab { display:flex; }
+.side-fab button { padding:7px 14px; border:0; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
+.side-fab button.on { color:#fff; background:var(--acc); }
+.op-pill { position:absolute; bottom:61px; left:50%; transform:translateX(-50%); z-index:16; display:flex; align-items:center; gap:10px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:6px 14px 6px 11px; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+.op-pill[hidden] { display:none; }
+body.single .op-pill { bottom:107px; }
+.op-pill > .msi { font-size:16px; color:var(--txt2); }
+.op-label { font-size:11.5px; font-weight:600; white-space:nowrap; }
+.op-pill input { width:132px; height:4px; accent-color:var(--acc); cursor:pointer; margin:0; }
+.op-pct { font-size:11.5px; font-family:var(--font-mono); color:var(--txt2); min-width:34px; text-align:right; }
+/* The align pill + its dropdown (gaps 2 and 22): the lock, the mode, the confidence warning. */
+.align-wrap { position:absolute; bottom:12px; right:12px; z-index:16; }
+body.single .align-wrap { bottom:58px; }
+.align-wrap[hidden] { display:none; }
+.align-pill { display:flex; align-items:center; gap:6px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:4px 8px 4px 4px; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+.align-pill.is-warn { border-color:var(--major); box-shadow:0 4px 16px rgba(0,0,0,.25),0 0 0 3px rgba(245,166,35,.16); }
+.align-pill .lock { width:26px; height:26px; padding:0; border:0; border-radius:999px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:var(--bg3); flex-shrink:0; }
+.align-pill .lock.on { color:#fff; background:var(--acc); }
+.align-pill .lock .msi { font-size:15px; }
+.align-cur { display:flex; align-items:center; gap:5px; cursor:pointer; padding:0 2px; border:0; background:transparent; color:var(--txt); }
+.align-cur #align-icon { font-size:16px; color:var(--txt2); }
+.align-cur #align-label { font-size:11.5px; font-weight:600; }
+.align-cur .chev { font-size:15px; color:var(--txt2); }
+.conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
+.conf-warn[hidden] { display:none; }
+.conf-warn .msi { font-size:14px; }
+.align-menu { position:absolute; bottom:calc(100% + 8px); right:0; width:264px; background:var(--bg1); border:1px solid var(--line); border-radius:11px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:17; }
+.align-menu[hidden] { display:none; }
+.align-menu h3 { margin:0; padding:8px 10px 4px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); }
+.align-opt { display:flex; align-items:flex-start; gap:9px; padding:8px 10px; border-radius:8px; cursor:pointer; background:transparent; }
+.align-opt.on { background:var(--bg2); }
+.align-opt > .msi { font-size:17px; color:var(--txt2); flex-shrink:0; margin-top:1px; }
+.align-opt.on > .msi { color:var(--acc); }
+.align-opt.is-warn > .msi { color:var(--major); }
+.align-opt .txt { flex:1; display:flex; flex-direction:column; gap:2px; }
+.align-opt .name { font-size:12px; font-weight:600; }
+.align-opt .desc { font-size:11px; line-height:1.4; color:var(--txt2); }
+.align-opt .warnline { display:flex; align-items:flex-start; gap:5px; margin-top:2px; font-size:11px; line-height:1.35; color:var(--major); }
+.align-opt .warnline .msi { font-size:13px; margin-top:1px; }
+.align-opt .check { font-size:16px; color:var(--acc); }
+/* The focus chip (top centre) and the lab note under it — both only while they have something to say. */
+.focus-chip { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:5px 7px 5px 14px; z-index:14; font-size:12px; color:var(--txt); white-space:nowrap; }
+.focus-chip[hidden] { display:none; }
+.focus-chip > .msi { font-size:15px; color:var(--acc); }
+.focus-chip button { padding:3px 10px; border:0; border-radius:999px; background:var(--bg3); color:var(--txt); cursor:pointer; font-weight:600; font-size:11.5px; }
+.lab-note { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:13; padding:5px 12px; border-radius:999px; background:var(--bg1); border:1px solid var(--line); font-size:11.5px; color:var(--txt2); white-space:nowrap; pointer-events:none; }
+.lab-note[hidden] { display:none; }
+.lab-note.warn { color:var(--major); border-color:var(--major); }
+.focus-chip:not([hidden]) ~ .lab-note { top:52px; }
+/* ---- marks. The numbered badges are HTML, as the comps draw them (a div per finding, so its
+   number is text the extractor sees); the boxes stay SVG. A badge keeps a constant screen size
+   (the comps' scale(min(2.4, 1/z)), via --cs on its layer) and sits at its box's top-left corner. */
 .marks { position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; transform-origin:0 0; pointer-events:none; }
-.marks rect { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:pointer; }
+.marks rect { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke; }
 .marks rect.critical { stroke:var(--critical); } .marks rect.major { stroke:var(--major); } .marks rect.minor { stroke:var(--minor); }
-.marks rect.member { stroke-dasharray:3 3; opacity:.7; }
-.marks rect.sel { stroke-width:3; fill:rgba(91,141,239,.14); }
+.marks rect.member { stroke-dasharray:3 3; stroke-width:1.2; }
+.marks rect.sel { stroke-width:2; }
 .marks rect.suppressed { stroke:var(--txt2); stroke-dasharray:2 3; }
-.marks g.lbl rect { fill:currentColor; stroke:none; } .marks g.lbl text { fill:#fff; font:700 11px var(--font-sans); }
+.vmarks { position:absolute; left:0; top:0; width:0; height:0; overflow:visible; transform-origin:0 0; pointer-events:none; z-index:6; --cs:1; }
+.vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; line-height:1;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:all; user-select:none;
+  box-shadow:0 1px 4px rgba(0,0,0,.4); border:2px solid rgba(255,255,255,.9); transform:scale(var(--cs)); transform-origin:center; }
+.vmark.critical { background:var(--critical); } .vmark.major { background:var(--major); } .vmark.minor { background:var(--minor); }
+.vmark.suppressed { opacity:.5; filter:grayscale(.7); border-style:dashed; }
+.vmark.triaged { opacity:.45; }
+/* A repeat instance of an aggregate: the comps' small hollow badge with the same number; its element gets a dashed box. */
+.vmark.member { width:18px; height:18px; background:#fff; border-width:1.5px; font-size:10px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
+.vmark.member.critical { color:var(--critical); border-color:var(--critical); } .vmark.member.major { color:var(--major); border-color:var(--major); } .vmark.member.minor { color:var(--minor); border-color:var(--minor); }
+/* Comment badges: the comps' 22px rounded square in the status colour. */
+.vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }
+.vmark.ann.open { background:var(--open); } .vmark.ann.implemented { background:var(--implemented); } .vmark.ann.done { background:var(--done); }
 /* Findings cluster: three marks can share a box, and the neighbour drawn last used to sit on top
-   of the one you just selected — you clicked 1 and read 95. While something is selected its mark
+   of the one you just selected — you clicked 1 and read 95. While something is selected its badge
    is drawn LAST and everything else steps back. */
-.marks.has-sel g.lbl:not(.sel) { opacity:.25; }
-.marks.has-sel rect:not(.sel) { opacity:.35; }
-.marks g.lbl.sel rect { stroke:#fff; stroke-width:1.5; }
-.marks g.lbl.critical { color:var(--critical); } .marks g.lbl.major { color:var(--major); } .marks g.lbl.major text { fill:#111; } .marks g.lbl.minor { color:var(--minor); }
+.vmarks.has-sel .vmark:not(.sel):not(.ann) { opacity:.35; }
 /* ---- diff lab -----------------------------------------------------------
-   Chromatic-style reading aids over OUR signal. The regions are the reported
-   pixel diffs (Finding.regions) plus the presence findings the pixel channel
-   structurally cannot see, so nothing here lights up residue: boxes say WHERE,
-   the raster mask (coloured by changeKind) says WHAT. */
-.toolbar button.tog.lab.on { border-color:var(--diff); color:var(--diff); box-shadow:0 0 0 1px var(--diff) inset; }
-.toolbar .labsel { color:var(--txt2); gap:6px; }
-.toolbar .labsel select { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 6px; font:inherit; }
-.toolbar .labrange { width:120px; accent-color:var(--diff); }
-.toolbar .labnote { color:var(--txt2); font-size:11px; white-space:nowrap; }
-.toolbar .labnote.warn { color:var(--major); }
+   Chromatic-style reading aids over OUR signal: Highlight boxes every listed
+   difference (the reported finding boxes + the pixel channel's regions), Dim
+   masks everything else, Strobe pulses the boxes, and the overlay segment
+   superimposes the design on the impl pane. The raster mask (coloured by
+   changeKind) says WHAT differs where the pixel channel ran. */
 .marks.diffs { z-index:1; }
-.marks.diffs rect.region { fill:rgba(255,92,208,.16); stroke:var(--diff); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:none; }
+.marks.diffs rect.region { fill:rgba(255,92,208,.08); stroke:var(--diff); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:none; }
 .marks.diffs rect.region.cur { fill:rgba(255,92,208,.32); stroke-width:3; }
-.marks.diffs rect.dim { fill:rgba(0,0,0,.6); stroke:none; pointer-events:none; }
+.marks.diffs rect.dim { fill:rgba(15,17,20,.5); stroke:none; pointer-events:none; }
 /* The wiggle is 1 world px on the CSS translate property, which composes with
    the layer's own transform instead of fighting it — a hard-to-see 1px
    difference announces itself by moving, the way a blink comparator makes a
@@ -388,6 +472,13 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .ghost-wrap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:hidden; pointer-events:none; }
 .ghost { opacity:0; transition:opacity .08s linear; }
 .ghost.difference { mix-blend-mode:difference; }
+/* The wipe handle: a 28px grab strip with the comps' 2px accent line and sync_alt knob. */
+.wipe { position:absolute; top:0; bottom:0; width:28px; cursor:ew-resize; z-index:7; display:flex; align-items:center; justify-content:center; touch-action:none; }
+.wipe[hidden] { display:none; }
+.wipe-line { position:absolute; top:0; bottom:0; left:13px; width:2px; background:var(--acc); }
+.wipe-knob { position:relative; z-index:1; width:24px; height:24px; border-radius:50%; background:var(--acc); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); }
+.wipe-knob .msi { font-size:14px; }
+/* ---- the detail panel (phase 4 folds it into the rail) */
 .detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--bg1); }
 .detail:empty { display:none; }
 .detail h2 { margin:0 0 4px; font-size:13px; }
@@ -398,12 +489,7 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .detail .crops figure { margin:0; } .detail .crops img { max-height:160px; max-width:45vw; border:1px solid var(--line); background:#fff; }
 .detail figcaption { color:var(--txt2); font-size:11px; }
 /* annotations */
-.toolbar .sep { width:1px; height:18px; background:var(--line); }
-.toolbar button.tog.on { border-color:var(--open); color:var(--open); box-shadow:0 0 0 1px var(--open) inset; }
-.toolbar .annstatus { color:var(--txt2); font-size:11px; }
-.toolbar .annstatus.err { color:var(--critical); }
-.pane.annotating { cursor:crosshair; }
-.pane.annotating .marks rect, .pane.annotating .marks .ann { pointer-events:none; }
+.pane.annotating .marks rect, .pane.annotating .vmarks .vmark, .pane.annotating .marks .ann { pointer-events:none; }
 .marks.anns { pointer-events:none; }
 .marks.anns .ann { pointer-events:all; cursor:pointer; }
 .marks.anns circle.ann { stroke-width:2; vector-effect:non-scaling-stroke; fill-opacity:.35; }
@@ -411,8 +497,14 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .marks.anns .open { stroke:var(--open); fill:var(--open); } .marks.anns .implemented { stroke:var(--implemented); fill:var(--implemented); } .marks.anns .done { stroke:var(--done); fill:var(--done); }
 .marks.anns .stale { stroke-dasharray:4 3; }
 .marks.anns .sel { stroke-width:4; }
-.marks.anns g.lbl.open { color:var(--open); } .marks.anns g.lbl.implemented { color:var(--implemented); } .marks.anns g.lbl.implemented text { fill:#111; } .marks.anns g.lbl.done { color:var(--done); }
 .marks.anns rect.band { fill:rgba(143,126,231,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
+.marks.anns rect.focus-rect { fill:rgba(91,141,239,.10); stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
+/* Handles are interactive; the region's BODY is not, so a drag inside it still pans. */
+.marks.anns circle.focus-handle { fill:var(--acc); stroke:var(--bg0); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
+.marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg0); stroke:var(--acc); stroke-width:2; }
+.marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
+/* The layer segment: Comments off hides the comment shapes and badges, never the focus region. */
+body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body.layer-no-anns .marks.anns rect.band { display:none; }
 .num.open { background:var(--open); } .num.implemented { background:var(--implemented); color:#111; } .num.done { background:var(--done); }
 .row.ann .msg { white-space:pre-wrap; }
 .row.ann.done .msg { color:var(--txt2); text-decoration:line-through; }
@@ -421,29 +513,36 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .detail .actions button { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
 .detail .actions button.primary { border-color:var(--acc); color:var(--acc); }
 .detail .actions button.danger { border-color:var(--critical); color:var(--critical); }
+.detail .actions .hint { color:var(--txt2); font-size:11px; }
 .detail .status { display:inline-block; padding:0 8px; border-radius:999px; font-weight:600; font-size:11px; color:#fff; }
 .detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); }
-/* phone: the page scrolls, the viewer sticks, one side at a time */
-@media (max-width: 900px) {
+/* Between the phone and the comps' 1120px "narrow" width the pair title goes; the layer labels shorten (JS). */
+@media (max-width: 1119px) { .tb-left .pair-title { display:none; } }
+/* phone (the comps' < 760px): the page scrolls, the viewer sticks, one side at a time, the tools float */
+@media (max-width: 759px) {
   html, body { height:auto; }
   body { min-height:100vh; min-height:100svh; }
-  header { gap:4px 10px; padding:8px 12px; }
-  header h1 { font-size:14px; }
-  .hdr-more { display:inline-block; }
-  header #hdr-meta { display:none; }
-  body.hdr-open header #hdr-meta { display:flex; flex-direction:column; gap:4px; width:100%; }
+  .tb-left .brand-name, #seg-layout, #seg-layer { display:none; }
+  .layer-strip { display:flex; }
+  .delta-strip { flex-wrap:wrap; gap:8px; padding:7px 10px; min-height:0; }
+  .delta-strip .regsub { display:none; }
+  .delta-strip .review { margin-left:0; }
   main { display:flex; flex-direction:column; min-height:0; }
   #viewer { order:-1; display:flex; flex-direction:column; position:sticky; top:0; z-index:6; background:var(--bg1); border-bottom:1px solid var(--line); }
-  /* canvas first, its controls directly under it, then the detail panel */
-  .panes { order:1; } .toolbar { order:2; } .detail { order:3; }
-  .toolbar { gap:8px; padding:6px 8px; flex-wrap:nowrap; overflow-x:auto; }
-  .toolbar .hint, .toolbar .sep, .toolbar .tog, #layout-toggle { display:none; }
-  .toolbar label, .toolbar button, .toolbar .pct, .toolbar .annstatus { flex:none; white-space:nowrap; }
   /* A collapsed rail is not a reason to keep the canvas small: it grows into
-     the room the rail gave back (chrome = header + toolbar + summary bar). */
-  .panes { flex:none; height:calc(100vh - 150px); height:calc(100svh - 150px); }
-  body.rail-open .panes { height:52vh; height:52svh; }
-  body.has-detail .panes { height:38vh; height:38svh; }
+     the room the rail gave back (chrome = topbar + layer strip + summary bar). */
+  .work { flex:none; height:calc(100vh - 150px); height:calc(100svh - 150px); }
+  body.rail-open .work { height:52vh; height:52svh; }
+  body.has-detail .work { height:38vh; height:38svh; }
+  .tools { position:absolute; left:8px; bottom:56px; z-index:15; width:auto; flex-direction:row; padding:4px; border:1px solid var(--line); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+  .zoom-pill { left:12px; top:12px; bottom:auto; }
+  .side-fab { bottom:56px; }
+  .side-fab button { padding:10px 16px; font-size:13px; }
+  .op-pill, body.single .op-pill { bottom:107px; gap:8px; padding:5px 10px 5px 8px; }
+  .op-pill input { width:92px; }
+  .align-wrap, body.single .align-wrap { top:10px; right:8px; bottom:auto; }
+  .align-menu { bottom:auto; top:calc(100% + 8px); width:248px; }
+  .pane-label { display:none; }
   .pane + .pane { border-left:0; }
   /* iOS Safari zooms the page when a focused field is under 16px. The note
      textarea needs naming: .detail textarea { font:inherit } outranks a bare
@@ -497,7 +596,7 @@ function readControls() {
 function saveControls() {
   try {
     localStorage.setItem(CONTROLS_KEY, JSON.stringify({
-      align: state.align, showMarks: state.showMarks, showMembers: state.showMembers,
+      align: state.align, lock: state.lock, layer: state.layer, showMembers: state.showMembers,
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
       diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
@@ -509,7 +608,13 @@ const SEV = ['critical', 'major', 'minor'];
 const state = {
   // align: how the design frame is registered onto the impl for display —
   // 'anchors' (the run's measured fit) | 'width' | 'left' | 'right'.
-  view: { z: 1, tx: 0, ty: 0 }, align: 'anchors', showMarks: true, showMembers: true,
+  // view: the shared pan/zoom. viewD: the design pane's own, used only while the lock is off
+  // (gap 22) — locking again snaps it back onto view.
+  view: { z: 1, tx: 0, ty: 0 }, viewD: { z: 1, tx: 0, ty: 0 }, lock: true, align: 'anchors',
+  // layer: what the canvas draws — 'findings' | 'items' (comments) | 'all' | 'none' (clean).
+  // showMembers: every instance of an aggregate marked, or the primary only (the comps' default —
+  // a ×15 aggregate carpets the artboard otherwise, gap 12).
+  layer: 'all', showMarks: true, showMembers: false,
   selected: null, sev: { critical: true, major: true, minor: true }, q: '',
   dprD: 1, dprI: 1, userMoved: false, side: 'design', move: true, single: false,
   // A region of the canvas to work inside (world px). While set, findings whose boxes fall outside
@@ -517,15 +622,19 @@ const state = {
   // chrome's findings burying it.
   focus: null, focusLabel: '', focusing: false,
   showTriaged: { ignore: false, snooze: false },
-  // The diff lab: where the pixels differ (diff), everything else dimmed (dim),
-  // the regions pulsing (strobe), and one superimposition mode over the impl
-  // pane (lab: blink | onion | swipe | difference). labAmount drives the two
-  // modes that have a degree: onion opacity and the swipe's curtain.
-  diff: false, dim: false, strobe: false, lab: 'none', labAmount: 50, diffIndex: -1,
+  // The diff lab: Highlight boxes every listed difference (diff), Dim masks
+  // everything else (dim), Strobe pulses the boxes, and one superimposition
+  // mode over the impl pane (lab: blink | onion | swipe | difference).
+  // labAmount is the opacity of the two blends that have one; wipeX is the
+  // wipe's curtain in world px (per pair — it starts at the frame's middle).
+  diff: false, dim: false, strobe: false, lab: 'none', labAmount: { onion: 55, difference: 100 }, wipeX: 0, diffIndex: -1,
+  // The delta strip (gap 15): its Review button narrows the list to the regressions.
+  regOnly: false, deltaDismissed: false, alignOpen: false,
 };
-// Narrow screens show one side at a time (both panes are laid out side by side
-// above the breakpoint, so state.side only matters below it).
-const narrow = window.matchMedia('(max-width: 900px)');
+// The comps' breakpoints: under 760px the phone layout (one side at a time,
+// the tools float over the canvas), under 1120px the topbar shortens.
+const narrow = window.matchMedia('(max-width: 759px)');
+const narrowish = window.matchMedia('(max-width: 1119px)');
 
 // ---- theme ----------------------------------------------------------------
 // A chrome preference, not per-pair state: dark is the default (the tokens on
@@ -557,6 +666,7 @@ const imgs = { design: $('img-design'), impl: $('img-impl'), ghost: $('img-ghost
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
 const diffLayers = { design: $('diffs-design'), impl: $('diffs-impl') };
 const annLayers = { design: $('anns-design'), impl: $('anns-impl') };
+const markLayers = { design: $('vmarks-design'), impl: $('vmarks-impl') };
 // Human annotations: the set (loaded from the API when served, else this
 // browser, else the embedded copy), the draw mode, the pending draft and the
 // element trees used for snapping (elements.json, both sides in world space).
@@ -625,13 +735,12 @@ let focusDrag = null;   // { handle, pointerId } while a handle is being dragged
 function setFocusing(on) {
   state.focusing = on;
   $('focus-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
-  $('focus-toggle').classList.toggle('on', on || !!state.focus);
   for (const pane of Object.values(panes)) pane.classList.toggle('focusing', on);
   if (on) setAnnMode(null);
+  applyTools();
 }
 function setFocus(rect, persist) {
   state.focus = rect;
-  $('focus-toggle').classList.toggle('on', !!rect);
   renderFocusChip(); renderList(); renderMarks(); renderDetail(); renderRailToggle(); renderFocusBand();
   if (persist !== false) persistFocus();
 }
@@ -663,13 +772,14 @@ async function loadFocus() {
   const parsed = parseFocusSet(raw, report.pair);
   if (parsed.ok) { state.focus = parsed.value.region; state.focusLabel = parsed.value.label; }
 }
+// The comps' chip at the top of the canvas: "Region focus · N of M findings · Clear".
 function renderFocusChip() {
   const chip = $('focus-chip');
-  if (!state.focus) { chip.hidden = true; chip.textContent = ''; return; }
+  chip.hidden = !state.focus;
+  if (!state.focus) return;
   const r = state.focus;
-  chip.hidden = false;
   chip.title = 'region x ' + Math.round(r.x) + ', y ' + Math.round(r.y) + ', ' + Math.round(r.w) + '×' + Math.round(r.h) + ' (impl CSS px) — saved to focus.json / focus.md';
-  chip.innerHTML = 'focused · ' + report.findings.filter(visible).length + ' of ' + report.findings.length + ' <b>clear</b>';
+  $('focus-msg').textContent = 'Region focus · ' + report.findings.filter(visible).length + ' of ' + report.findings.length + ' findings';
 }
 function focusPointerDown(pane, e) {
   focusBand = { pointerId: e.pointerId, start: paneWorld(pane, e), end: paneWorld(pane, e) };
@@ -759,9 +869,9 @@ function visiblePane() { return single() ? panes[state.side] : panes.impl; }
 function paneSize() { const r = visiblePane().getBoundingClientRect(); return { w: r.width, h: r.height }; }
 function applyLayout() {
   document.body.classList.toggle('single', single());
-  $('layout-label').textContent = state.single ? 'Single' : 'Split';
-  $('layout-toggle').setAttribute('aria-pressed', state.single ? 'true' : 'false');
-  $('layout-toggle').title = state.single ? 'one side at a time — switch to the split screen' : 'split screen — switch to one side at a time';
+  for (const b of document.querySelectorAll('#seg-layout [data-layout]')) b.classList.toggle('on', (b.dataset.layout === 'full') === state.single);
+  // With one side and no overlay nothing is registered onto anything, so the align pill goes (the comp's alignShow).
+  $('align-wrap').hidden = single() && !narrow.matches && state.lab === 'none';
 }
 function setLayout(isSingle) {
   state.single = isSingle; applyLayout(); applySide(); saveControls();
@@ -769,24 +879,46 @@ function setLayout(isSingle) {
 }
 function applySide() {
   for (const side of ['design', 'impl']) panes[side].classList.toggle('active', side === state.side);
-  $('side-label').textContent = state.side === 'design' ? 'Design' : 'Impl';
-  $('side-switch').title = 'showing the ' + state.side + ' side — switch to the ' + (state.side === 'design' ? 'implementation' : 'design');
+  for (const b of document.querySelectorAll('#side-switch [data-side]')) b.classList.toggle('on', b.dataset.side === state.side);
 }
 function setSide(side) {
   if (state.side === side) return;
   state.side = side; applySide(); saveControls();
   if (state.userMoved) applyView(); else fit();
 }
-// The corner toggle is the phone's whole annotation UI: move ON = pan/zoom,
-// move OFF = a tap drops a note and a drag marks a region — the same one
-// annotate mode the toolbar button turns on.
-function setMove(on) { setAnnMode(on ? null : 'draw', true); saveControls(); }
+// The tool strip's three modes are exclusive: pan, focus (drag a region), comment (tap = note,
+// drag = region). Pan is the rest state the other two fall back to.
+function setPan() { setFocusing(false); setAnnMode(null); saveControls(); }
+function applyTools() {
+  const pan = !ann.mode && !state.focusing;
+  $('move-toggle').classList.toggle('on', pan);
+  $('move-toggle').setAttribute('aria-pressed', pan ? 'true' : 'false');
+  $('focus-toggle').classList.toggle('on', state.focusing);
+  $('ann-draw').classList.toggle('on', !!ann.mode);
+  $('ann-draw').setAttribute('aria-pressed', ann.mode ? 'true' : 'false');
+}
+// The layer segment (Findings / Comments / All / Clean): what the canvas draws. The focus region
+// is not a layer and stays.
+function applyLayer() {
+  for (const b of document.querySelectorAll('[data-layer]')) b.classList.toggle('on', b.dataset.layer === state.layer);
+  state.showMarks = state.layer === 'findings' || state.layer === 'all';
+  document.body.classList.toggle('layer-no-anns', !(state.layer === 'items' || state.layer === 'all'));
+}
+function setLayer(layer) { state.layer = layer; applyLayer(); saveControls(); renderMarks(); }
+// Between 760 and 1120px the comp shortens the layer labels; the phone strip keeps the full words.
+const LAYER_LABELS = { findings: ['Findings', 'Find.'], items: ['Comments', 'Comm.'], all: ['All', 'All'], none: ['Clean', 'Clean'] };
+function applyNarrow() {
+  const short = narrowish.matches && !narrow.matches;
+  for (const b of document.querySelectorAll('#seg-layer [data-layer]')) b.textContent = LAYER_LABELS[b.dataset.layer][short ? 1 : 0];
+}
 // Restore the saved controls onto both the state and the DOM that shows them.
 function applyControls(saved) {
   // A saved "aligned: false" is the pre-modes preference: it meant "draw the design raw" = top-left 1:1.
   state.align = ALIGN_MODES.includes(saved.align) ? saved.align : (saved.aligned === false ? 'left' : 'anchors');
-  state.showMarks = saved.showMarks !== false;
-  state.showMembers = saved.showMembers !== false;
+  // A pre-layer "marks off" meant the numbered marks only; the layer segment generalises it.
+  state.layer = ['findings', 'items', 'all', 'none'].includes(saved.layer) ? saved.layer : (saved.showMarks === false ? 'items' : 'all');
+  state.lock = saved.lock !== false;
+  state.showMembers = saved.showMembers === true;
   state.single = saved.single === true;
   state.side = saved.side === 'impl' ? 'impl' : 'design';
   state.showTriaged = {
@@ -797,11 +929,14 @@ function applyControls(saved) {
   state.dim = saved.dim === true;
   state.strobe = saved.strobe === true;
   state.lab = ['blink', 'onion', 'swipe', 'difference'].includes(saved.lab) ? saved.lab : 'none';
-  state.labAmount = typeof saved.labAmount === 'number' ? saved.labAmount : 50;
-  applyAlignMode();
-  $('marks').checked = state.showMarks;
+  // A pre-pill number was the onion's opacity; the difference blend got its own (the comps' 55% / 100%).
+  const amount = saved.labAmount;
+  state.labAmount = {
+    onion: amount && typeof amount.onion === 'number' ? amount.onion : (typeof amount === 'number' ? amount : 55),
+    difference: amount && typeof amount.difference === 'number' ? amount.difference : 100,
+  };
+  applyAlignMode(); applyLock(); applyLayer();
   $('members').checked = state.showMembers;
-  $('lab-amount').value = state.labAmount;
   for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
     $(id).classList.toggle('on', on);
     $(id).setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -819,7 +954,7 @@ function applyAspect() {
   const note = off
     ? ' · true aspect (fit ' + (stretch > 1 ? '+' : '') + Math.round((stretch - 1) * 100) + '% vertical)'
     : '';
-  $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + note + '</span>';
+  $('label-design').title = 'Design · ' + report.design.ref + ' · ' + Math.round(report.design.width) + '×' + Math.round(report.design.height) + note;
 }
 // What the current registration DOES, in numbers. "aligned / not aligned" never answered the
 // question a reader actually has — what did it align ON — so the control names the mode and its
@@ -830,32 +965,81 @@ const ALIGN_HINTS = {
   left: '1:1, top-left corners together',
   right: '1:1, top-RIGHT corners together — for frames that differ by a left-hand rail',
 };
+// Confidence is a WARNING STATE, never a number on the chrome (gap 2): under the gate the run's
+// fit could not be verified, so the pixel channel refused to run and every position was computed
+// in a frame it could not trust. Only the Anchors registration depends on that fit.
+const CONF_MIN = 0.5;
+function anchorLow() { return report.alignment.confidence < CONF_MIN; }
+function confWarn() { return anchorLow() && state.lock && state.align === 'anchors'; }
+function confPct() { return Math.round(report.alignment.confidence * 100) + '%'; }
+function confWarnTip() { return 'Anchor confidence ' + confPct() + ' — below the ' + Math.round(CONF_MIN * 100) + '% threshold. Overlay positions may be unreliable; try Width or Top left.'; }
 function applyAlignMode() {
   const a = projection();
   const btn = $('align-mode');
   $('align-label').textContent = ALIGN_LABELS[state.align];
-  btn.classList.toggle('measured', state.align === 'anchors');
-  btn.classList.toggle('manual', state.align !== 'anchors');
+  $('align-icon').textContent = ALIGN_ICONS[state.align];
+  // Desktop: the menu opens UP (chevron up while closed); phone: it opens DOWN.
+  $('align-chev').textContent = state.alignOpen !== narrow.matches ? 'expand_more' : 'expand_less';
+  btn.setAttribute('aria-expanded', state.alignOpen ? 'true' : 'false');
+  $('align-menu').hidden = !state.alignOpen;
+  const warn = confWarn();
+  $('align-pill').classList.toggle('is-warn', warn);
+  $('conf-warn').hidden = !warn;
+  $('conf-warn').title = confWarnTip();
   const run = report.alignment;
-  btn.title = 'align: ' + ALIGN_LABELS[state.align] + ' — ' + ALIGN_HINTS[state.align] +
+  btn.title = 'Align mode: ' + ALIGN_LABELS[state.align] + ' — ' + ALIGN_HINTS[state.align] +
     ' · drawn x' + a.scale.toFixed(3) + ' @(' + Math.round(a.offsetX) + ', ' + Math.round(a.offsetY) + ')' +
     ' · run fit x' + run.scale.toFixed(3) + ' @(' + Math.round(run.offsetX) + ', ' + Math.round(run.offsetY) + ')' +
     ' confidence ' + run.confidence.toFixed(2) + (run.basis ? ' (' + run.basis + ')' : '') +
-    ' · press a to cycle';
+    ' · press a to cycle' + (warn ? ' — anchor confidence ' + confPct() + ', positions unreliable' : '');
+  renderAlignMenu();
+}
+function renderAlignMenu() {
+  $('align-menu').innerHTML = '<h3>Align lock mode</h3>' + ALIGN_MODES.map((m) => {
+    const act = state.align === m, warn = m === 'anchors' && anchorLow();
+    return '<div class="align-opt' + (act ? ' on' : '') + (warn ? ' is-warn' : '') + '" data-align="' + m + '" title="' + esc(ALIGN_DESCRIPTIONS[m] + (warn ? ' Anchor confidence is only ' + confPct() + '.' : '')) + '">' +
+      '<span class="msi" aria-hidden="true">' + ALIGN_ICONS[m] + '</span>' +
+      '<div class="txt"><span class="name">' + esc(ALIGN_LABELS[m]) + '</span><span class="desc">' + esc(ALIGN_DESCRIPTIONS[m]) + '</span>' +
+      (warn ? '<span class="warnline"><span class="msi" aria-hidden="true">warning</span>Only ' + confPct() + ' anchor match — positions unreliable</span>' : '') +
+      '</div>' + (act ? '<span class="msi check" aria-hidden="true">check</span>' : '') + '</div>';
+  }).join('');
+}
+function setAlign(mode) {
+  state.align = mode; state.alignOpen = false;
+  // Choosing a registration re-links the panes: it is a statement about how the frames sit on each other.
+  state.lock = true; state.viewD = state.view;
+  applyAlignMode(); applyLock(); saveControls(); applyLab();
+  if (state.userMoved) applyView(); else fit();
 }
 function cycleAlign(step) {
   const i = ALIGN_MODES.indexOf(state.align);
-  state.align = ALIGN_MODES[(i + (step || 1) + ALIGN_MODES.length) % ALIGN_MODES.length];
-  applyAlignMode(); saveControls(); applyLab();
-  if (state.userMoved) applyView(); else fit();
+  setAlign(ALIGN_MODES[(i + (step || 1) + ALIGN_MODES.length) % ALIGN_MODES.length]);
 }
+function toggleAlignMenu(open) { state.alignOpen = open === undefined ? !state.alignOpen : open; applyAlignMode(); }
+// The lock (gap 22): off, the design pane pans and zooms on its own.
+function applyLock() {
+  const b = $('align-lock');
+  b.classList.toggle('on', state.lock);
+  b.setAttribute('aria-pressed', state.lock ? 'true' : 'false');
+  b.title = state.lock ? 'Lockstep on — panes move together. Click to unlink.' : 'Lockstep off — panes move independently. Click to link.';
+  b.querySelector('.msi').textContent = state.lock ? 'link' : 'link_off';
+}
+function setLock(on) {
+  state.lock = on;
+  if (on) state.viewD = state.view;
+  applyLock(); applyAlignMode(); saveControls(); applyView();
+}
+// Which view a pane is drawn with, and how a pane's gesture writes back.
+function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }
+function setViewOf(side, v) { if (side === 'design' && !state.lock) state.viewD = v; else state.view = v; }
+function setView(v) { state.view = v; state.viewD = v; }
 function updateRailToggle() {
   $('rail-toggle').setAttribute('aria-expanded', document.body.classList.contains('rail-open') ? 'true' : 'false');
 }
 
 function applyView() {
-  const v = state.view;
-  imgs.design.style.transform = designImageTransform(v, projection(), state.dprD);
+  const v = state.view, vd = viewOf('design');
+  imgs.design.style.transform = designImageTransform(vd, projection(), state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI);
   // The ghost is the design drawn with the FULL alignment — per-axis stretch
   // included. The design PANE refuses that distortion on purpose (you cannot
@@ -867,46 +1051,61 @@ function applyView() {
   // Finding boxes and annotation shapes are baked into world space through the RUN's alignment, so
   // the design side re-maps them onto whatever registration is being drawn — otherwise every mark
   // but the fit's own floats off the image it annotates.
-  const designLayer = designLayerTransform(v, report.alignment, projection());
+  const designLayer = designLayerTransform(vd, report.alignment, projection());
   layers.design.style.transform = designLayer;
   annLayers.design.style.transform = designLayer;
   diffLayers.design.style.transform = designLayer;
+  markLayers.design.style.transform = designLayer;
   layers.impl.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
-  diffLayers.impl.style.transform = worldLayerTransform(v);
-  for (const c of document.querySelectorAll('.marks.anns circle.ann')) c.setAttribute('r', 7 / v.z);
-  for (const g of document.querySelectorAll('.marks g.lbl')) {
-    g.setAttribute('transform', 'translate(' + g.dataset.x + ' ' + g.dataset.y + ') scale(' + (1 / v.z) + ')');
+  diffLayers.impl.style.transform = markLayers.impl.style.transform = worldLayerTransform(v);
+  // Badges keep a constant screen size (the comps' scale(min(2.4, 1/s))); the point circles too.
+  for (const side of ['design', 'impl']) {
+    const z = viewOf(side).z, cs = Math.min(2.4, 1 / z);
+    markLayers[side].style.setProperty('--cs', cs);
+    for (const c of panes[side].querySelectorAll('.marks.anns circle.ann, .marks.anns circle.focus-handle')) c.setAttribute('r', (c.classList.contains('ann') ? 7 : FOCUS_HANDLE_PX / 2) / z);
   }
   $('zoom-pct').textContent = Math.round(v.z * 100) + '%';
+  applyWipe();
 }
-function fit() { state.view = fitView(worldBox(), paneSize()); state.userMoved = false; applyView(); }
+function fit() { setView(fitView(worldBox(), paneSize())); state.userMoved = false; applyView(); }
 
-// ---- header -------------------------------------------------------------
+// ---- topbar + delta strip -------------------------------------------------
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
-function renderHeader() {
-  const counts = SEV.map((s) => report.findings.filter((f) => f.severity === s).length);
-  const inst = report.findings.reduce((n, f) => n + (f.instances || 1), 0);
-  const a = report.alignment;
-  const d = report.delta;
-  const q = report.design.quality;
-  const art = report.artifacts;
-  $('hdr').innerHTML =
-    (page.indexHref ? '<a class="back" href="' + esc(page.indexHref) + '" title="all pairs">‹ All pairs</a>' : '') +
-    '<h1>' + esc(report.pair) + '</h1>' +
-    '<span class="pill ' + (report.verdict.pass ? 'pass' : 'fail') + '">' + (report.verdict.pass ? 'PASS' : 'FAIL') + ' · threshold ' + esc(report.verdict.failThreshold) + '</span>' +
-    '<button type="button" class="hdr-more" id="hdr-more" aria-expanded="false" aria-controls="hdr-meta">details</button>' +
-    '<div id="hdr-meta">' +
-    '<span class="kv">' + report.findings.length + ' findings (<b class="c">' + counts[0] + ' critical</b>, <b>' + counts[1] + ' major</b>, <b>' + counts[2] + ' minor</b>) covering ' + inst + ' instances · ' + report.suppressed.length + ' suppressed</span>' +
-    (d ? '<span class="kv">delta vs ' + esc(d.previousRun) + ': <b>+' + d.introduced.length + '</b> introduced / <b>−' + d.resolved.length + '</b> resolved</span>' : '') +
-    '<span class="kv">design <b>' + esc(report.design.source) + '</b> ' + esc(report.design.ref) + ' ' + Math.round(report.design.width) + '×' + Math.round(report.design.height) + (report.design.scope ? ' · scope ' + esc(report.design.scope.mode) : '') + (q ? ' · quality ' + q.score.toFixed(2) : '') + '</span>' +
-    '<span class="kv">impl <b>' + esc(report.impl.source) + '</b> ' + esc(report.impl.ref) + ' ' + report.impl.width + '×' + report.impl.height + '</span>' +
-    '<span class="kv">alignment ×' + a.scale.toFixed(3) + (a.scaleY && Math.abs(a.scaleY - a.scale) > 1e-6 ? '/' + a.scaleY.toFixed(3) : '') + ' @(' + a.offsetX.toFixed(1) + ', ' + a.offsetY.toFixed(1) + ') confidence ' + a.confidence.toFixed(2) + (a.basis ? ' · fitted on ' + esc(a.basis) : '') + '</span>' +
-    '<span class="kv"><a href="' + esc(page.base) + 'findings.json">findings.json</a>' + (art.diffMask ? ' · <a href="' + esc(page.base + art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>' +
-    '</div>' +
-    '<button type="button" class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>';
+// The comps' topbar carries the pair title only (gap 14): PASS/FAIL, the counts, the sources and
+// the run time live on the Library card you came from. The refs stay on the pane labels' titles.
+function renderTopbar() {
+  $('hdr-left').innerHTML =
+    (page.indexHref ? '<a class="back" href="' + esc(page.indexHref) + '" title="Library"><span class="msi" aria-hidden="true">arrow_back</span></a>' : '') +
+    '<span class="brand" aria-hidden="true"></span><span class="brand-name">RefDiff</span>' +
+    '<span class="pair-title">' + esc(report.pair) + '</span>';
   applyTheme(currentTheme());
-  $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + '</span>';
-  $('label-impl').innerHTML = 'Implementation <span>' + esc(report.impl.ref) + '</span>';
+  $('label-impl').title = 'Implementation · ' + report.impl.ref + ' · ' + report.impl.width + '×' + report.impl.height;
+}
+// A regression is a finding an earlier run had fixed and this one brought back — the loop's stop
+// signal, which the fix skill halts on. The strip is the one place it cannot be missed (gap 15).
+function regressionIds() { return new Set(report.delta && report.delta.regressions ? report.delta.regressions : []); }
+function renderDeltaStrip() {
+  const d = report.delta, el = $('delta-strip');
+  const regs = regressionIds().size;
+  const show = !!d && !state.deltaDismissed && (d.introduced.length > 0 || d.resolved.length > 0 || regs > 0);
+  el.hidden = !show;
+  if (!show) { el.innerHTML = ''; return; }
+  el.classList.toggle('reg', regs > 0);
+  el.innerHTML =
+    '<span class="msi" aria-hidden="true">' + (regs ? 'warning' : 'compare_arrows') + '</span>' +
+    '<span class="run" title="the previous run of this pair">vs run ' + esc(d.previousRun.replace('T', ' ').slice(0, 16)) + '</span>' +
+    '<span class="add">+' + d.introduced.length + ' introduced</span>' +
+    '<span class="res">−' + d.resolved.length + ' resolved</span>' +
+    (regs
+      ? '<span class="dsep"></span><span class="regmsg">' + regs + (regs === 1 ? ' regression' : ' regressions') + '</span>' +
+        '<span class="regsub">fixed earlier, back again — fix plan halted</span>' +
+        '<button type="button" class="review' + (state.regOnly ? ' on' : '') + '" id="reg-review">' + (state.regOnly ? 'Show all findings' : 'Review') + '</button>'
+      : '<button type="button" class="dismiss" id="delta-dismiss" title="Dismiss for this run"><span class="msi" aria-hidden="true">close</span></button>');
+}
+function setRegOnly(on) {
+  state.regOnly = on; state.selected = null;
+  document.body.classList.add('rail-open'); updateRailToggle();
+  renderDeltaStrip(); renderList(); renderMarks(); renderDetail();
 }
 
 // ---- list ---------------------------------------------------------------
@@ -932,6 +1131,7 @@ function visible(f) {
   if (!state.sev[f.severity]) return false;
   if (state.q && !(f.message + ' ' + f.type + ' ' + (f.role || '')).toLowerCase().includes(state.q)) return false;
   if (!inFocus(f)) return false;
+  if (state.regOnly && !regressionIds().has(f.id)) return false;
   const verdict = triageStateOf(f);
   if (verdict === 'ignore' && !state.showTriaged.ignore) return false;
   if (verdict === 'snooze' && !state.showTriaged.snooze) return false;
@@ -977,46 +1177,58 @@ function renderRailToggle() {
 
 // ---- marks --------------------------------------------------------------
 const SVG = 'http://www.w3.org/2000/svg';
-function rect(box, cls, id) {
+function rect(box, cls, id, rx) {
   const r = document.createElementNS(SVG, 'rect');
   r.setAttribute('x', box.x); r.setAttribute('y', box.y); r.setAttribute('width', Math.max(box.w, 0.5)); r.setAttribute('height', Math.max(box.h, 0.5));
+  if (rx) r.setAttribute('rx', rx);
   r.setAttribute('class', cls); r.dataset.id = id;
   return r;
 }
-function label(box, f, sel) {
-  const g = document.createElementNS(SVG, 'g');
-  g.setAttribute('class', 'lbl ' + f.severity + (sel ? ' sel' : '')); g.dataset.x = box.x; g.dataset.y = box.y; g.dataset.id = f.id;
-  const w = 10 + 7 * String(f.mark).length;
-  const bg = document.createElementNS(SVG, 'rect'); bg.setAttribute('x', 0); bg.setAttribute('y', -16); bg.setAttribute('width', w); bg.setAttribute('height', 16); bg.setAttribute('rx', 3);
-  const t = document.createElementNS(SVG, 'text'); t.setAttribute('x', w / 2); t.setAttribute('y', -4); t.setAttribute('text-anchor', 'middle'); t.textContent = f.mark;
-  g.append(bg, t);
-  return g;
+function pad(b, p) { return { x: b.x - p, y: b.y - p, w: b.w + 2 * p, h: b.h + 2 * p }; }
+// The comps' badge: a 24px circle in the severity colour whose centre is the box's top-left
+// corner (a repeat instance of an aggregate gets the 18px hollow one). An HTML div, as the comps
+// draw it, so the number is text the extractor sees; its layer keeps it a constant screen size.
+function badge(box, f, cls, member) {
+  const d = document.createElement('div');
+  d.className = 'vmark ' + cls; d.dataset.id = f.id; d.title = f.message + (member ? ' — repeat instance' : '');
+  const r = member ? 9 : 12;
+  d.style.left = (box.x - r) + 'px'; d.style.top = (box.y - r) + 'px';
+  d.textContent = f.mark;
+  return d;
 }
 function renderMarks() {
   for (const side of ['design', 'impl']) {
-    const layer = layers[side];
+    const layer = layers[side], blayer = markLayers[side];
     layer.replaceChildren();
+    for (const b of blayer.querySelectorAll('.vmark:not(.ann)')) b.remove();
+    blayer.classList.toggle('has-sel', !!state.selected);
     if (!state.showMarks) continue;
     const key = side === 'design' ? 'designBox' : 'implBox';
     const draw = (f, suppressed) => {
       if (!visible(f) && state.selected !== f.id) return;
       const sel = state.selected === f.id;
+      const verdict = triageStateOf(f);
+      const cls = f.severity + (sel ? ' sel' : '') + (suppressed ? ' suppressed' : '') + (verdict === 'ignore' || verdict === 'snooze' ? ' triaged' : '');
       // Per-box, so an aggregate listed for its content instance does not redraw the header ones.
       const primary = boxInFocus(f[key]) ? f[key] : undefined;
       if (primary) {
-        layer.append(rect(primary, f.severity + (sel ? ' sel' : '') + (suppressed ? ' suppressed' : ''), f.id));
-        layer.append(label(primary, f, sel));
+        // The box itself only while selected (the comps' 4px-padded outline); Highlight draws the rest.
+        if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel' + (suppressed ? ' suppressed' : ''), f.id, 6));
+        blayer.append(badge(primary, f, cls, false));
       }
       if (state.showMembers && f.members) {
-        f.members.slice(1).forEach((m) => { if (m[key] && boxInFocus(m[key])) layer.append(rect(m[key], f.severity + ' member' + (sel ? ' sel' : ''), f.id)); });
+        f.members.slice(1).forEach((m) => {
+          if (!m[key] || !boxInFocus(m[key])) return;
+          layer.append(rect(m[key], f.severity + ' member', f.id, 3));
+          blayer.append(badge(m[key], f, cls + ' member', true));
+        });
       }
     };
-    // Selected LAST: SVG paints in document order, so anything drawn after would cover it.
+    // Selected LAST: both layers paint in document order, so anything drawn after would cover it.
     report.findings.forEach((f) => { if (state.selected !== f.id) draw(f, false); });
     report.suppressed.forEach((s) => { if (state.selected === s.id) draw(byId.get(s.id), true); });
     const selected = state.selected ? byId.get(state.selected) : null;
     if (selected && !selected.isSuppressed) draw(selected, false);
-    layer.classList.toggle('has-sel', !!state.selected);
   }
   renderDiffs();
   applyView();
@@ -1029,10 +1241,9 @@ function renderMarks() {
 // differing pixel is signal; a comp against an implementation is rasterized at
 // a different scale, where most differing pixels are resampling residue (95.6 %
 // of one measured page pair's raw mask lay inside text). So the regions here
-// are the REPORTED ones: Finding.regions from the pixel channel, plus the
-// presence findings, which the box-scoped pixel diff structurally cannot see —
-// a whole missing illustration is never inside a matched box.
-const PRESENCE = new Set(['missing-element', 'extra-element']);
+// are the REPORTED ones: every listed finding's box (the comps' "Highlight
+// changed parts"), and for a pixel-region finding its connected components
+// (Finding.regions) rather than the whole box.
 // A region is measured in impl space; the design pane needs the same relative
 // patch of the design element (the inverse of what checks.ts did to make it).
 function toDesignRegion(f, box) {
@@ -1053,6 +1264,7 @@ function tooBig(box, world) {
 function diffRegions(side) {
   const out = [];
   const world = worldBox();
+  const key = side === 'design' ? 'designBox' : 'implBox';
   for (const f of report.findings) {
     if (!visible(f)) continue;
     if (f.type === 'pixel-region') {
@@ -1063,9 +1275,14 @@ function diffRegions(side) {
         const box = side === 'impl' ? b : toDesignRegion(f, b);
         if (box && !tooBig(box, world)) out.push({ box: box, id: f.id });
       }
-    } else if (PRESENCE.has(f.type)) {
-      const b = side === 'design' ? (f.designBox || f.implBox) : (f.implBox || f.designBox);
-      if (b && boxInFocus(b) && !tooBig(b, world)) out.push({ box: b, id: f.id });
+      continue;
+    }
+    // A presence finding has a box on one side only; it is drawn on both, since the OTHER side is
+    // where the eye goes looking for the missing thing.
+    const b = f[key] || (side === 'design' ? f.implBox : f.designBox);
+    if (b && boxInFocus(b) && !tooBig(b, world)) out.push({ box: b, id: f.id });
+    if (state.showMembers && f.members) {
+      for (const m of f.members.slice(1)) if (m[key] && boxInFocus(m[key]) && !tooBig(m[key], world)) out.push({ box: m[key], id: f.id });
     }
   }
   return out;
@@ -1100,8 +1317,9 @@ function renderDiffs() {
       const keep = rect({ x: world.x - pad, y: world.y - pad, w: world.w + 2 * pad, h: world.h + 2 * pad }, 'dim-keep', '');
       keep.style.fill = '#fff';
       mask.append(keep);
+      // The comps' holes: 6px round the box, 8px radius.
       for (const r of regions) {
-        const hole = rect(r.box, 'dim-hole', r.id);
+        const hole = rect(pad(r.box, 6), 'dim-hole', r.id, 8);
         hole.style.fill = '#000';
         mask.append(hole);
       }
@@ -1111,7 +1329,7 @@ function renderDiffs() {
       layer.append(defs, sheet);
     }
     regions.forEach((r, i) => {
-      layer.append(rect(r.box, 'region' + (i === state.diffIndex ? ' cur' : ''), r.id));
+      layer.append(rect(r.box, 'region' + (i === state.diffIndex ? ' cur' : ''), r.id, 4));
     });
   }
   document.body.classList.toggle('strobing-mask', state.strobe && state.diff);
@@ -1127,16 +1345,17 @@ function renderLabNote() {
   // other. That distortion is exactly what the design PANE refuses to show, so
   // it has to be stated here rather than left for the eye to misread.
   if (state.lab !== 'none' && off) {
-    note.className = 'labnote warn';
+    note.className = 'lab-note warn'; note.hidden = false;
     note.textContent = 'design stretched ' + (stretch > 1 ? '+' : '') + Math.round((stretch - 1) * 100) + '% vertically to superimpose';
     return;
   }
-  note.className = 'labnote';
-  if (!state.diff) { note.textContent = ''; return; }
+  note.className = 'lab-note';
+  if (!state.diff) { note.textContent = ''; note.hidden = true; return; }
   const n = diffRegions('impl').length;
+  note.hidden = false;
   note.textContent = state.diffIndex >= 0 && n
-    ? 'diff region ' + (state.diffIndex + 1) + ' of ' + n
-    : n + (n === 1 ? ' diff region' : ' diff regions');
+    ? 'highlight ' + (state.diffIndex + 1) + ' of ' + n
+    : n + (n === 1 ? ' highlighted difference' : ' highlighted differences');
 }
 function setDiff(on) {
   state.diff = on;
@@ -1169,7 +1388,7 @@ function stepDiff(delta) {
   if (!state.diff) setDiff(true);
   select(r.id, false);
   const box = { x: r.box.x - 24, y: r.box.y - 24, w: r.box.w + 48, h: r.box.h + 48 };
-  state.view = focusView(box, paneSize(), state.view, 1);
+  setView(focusView(box, paneSize(), state.view, 1));
   state.userMoved = true;
   renderDiffs(); applyView();
 }
@@ -1177,32 +1396,50 @@ function stepDiff(delta) {
 let blinkTimer = null;
 function setLab(mode) {
   state.lab = mode;
-  $('lab-mode').value = mode;
-  $('lab-amount').hidden = !(mode === 'onion' || mode === 'swipe');
+  for (const b of document.querySelectorAll('#seg-variant [data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);
+  // While an overlay is on the panes no longer show one side each, so the pane labels go (the comp's showLabels).
+  document.body.classList.toggle('lab-on', mode !== 'none');
+  const hasAmount = mode === 'onion' || mode === 'difference';
+  $('op-pill').hidden = !hasAmount;
+  $('wipe').hidden = mode !== 'swipe';
+  if (hasAmount) {
+    $('op-label').textContent = mode === 'difference' ? 'Diff' : 'Onion';
+    $('op-pill').title = mode === 'difference' ? 'Opacity of the difference blend' : 'Opacity of the overlaid design';
+    $('lab-amount').value = state.labAmount[mode];
+    $('op-pct').textContent = state.labAmount[mode] + '%';
+  }
   // Only the impl pane carries the ghost, so a phone (or a chosen single view)
   // showing the design side would put the controls on a pane that cannot react.
   if (mode !== 'none' && single() && state.side !== 'impl') setSide('impl');
-  saveControls(); applyLab();
+  applyLayout(); saveControls(); applyLab();
 }
 function applyLab() {
   clearInterval(blinkTimer); blinkTimer = null;
   const ghost = imgs.ghost;
-  const wrap = $('ghost-wrap');
   ghost.classList.toggle('difference', state.lab === 'difference');
-  wrap.style.width = '100%';
+  $('ghost-wrap').style.clipPath = '';
   if (state.lab === 'none') { ghost.style.opacity = 0; }
-  else if (state.lab === 'onion') { ghost.style.opacity = state.labAmount / 100; }
-  else if (state.lab === 'difference') { ghost.style.opacity = 1; }
-  else if (state.lab === 'swipe') { ghost.style.opacity = 1; wrap.style.width = state.labAmount + '%'; }
+  else if (state.lab === 'onion') { ghost.style.opacity = state.labAmount.onion / 100; }
+  else if (state.lab === 'difference') { ghost.style.opacity = state.labAmount.difference / 100; }
+  else if (state.lab === 'swipe') { ghost.style.opacity = 1; }
   else if (state.lab === 'blink') {
     // The blink comparator: the eye is far better at spotting a thing that
     // MOVES between two frames than a thing that is slightly wrong in one.
     let on = true;
     ghost.style.opacity = 1;
-    blinkTimer = setInterval(() => { on = !on; ghost.style.opacity = on ? 1 : 0; }, 620);
+    blinkTimer = setInterval(() => { on = !on; ghost.style.opacity = on ? 1 : 0; }, 650);
   }
   renderLabNote();
   applyView();
+}
+// The wipe: the ghost is clipped at a WORLD x, so the curtain stays on the same spot of the frame
+// while you zoom; the handle is drawn at that x in screen px. Design to the right of the knob.
+function applyWipe() {
+  if (state.lab !== 'swipe') return;
+  const v = state.view;
+  const sx = v.tx + state.wipeX * v.z;
+  $('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)';
+  $('wipe').style.left = (sx - 14) + 'px';
 }
 
 // ---- detail -------------------------------------------------------------
@@ -1260,17 +1497,18 @@ function select(id, focus) {
   renderList(); renderMarks(); renderDetail();
   const f = id ? byId.get(id) : null;
   const box = f && (f.implBox || f.designBox);
-  if (focus && box) { state.view = focusView(box, paneSize(), state.view); state.userMoved = true; applyView(); }
+  if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }
   const row = document.querySelector('.row.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
 // ---- interaction --------------------------------------------------------
 function wire() {
   for (const pane of Object.values(panes)) {
+    const side = pane.dataset.side;
     pane.addEventListener('wheel', (e) => {
       e.preventDefault();
       const r = pane.getBoundingClientRect();
-      state.view = zoomAt(state.view, Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+      setViewOf(side, zoomAt(viewOf(side), Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top));
       state.userMoved = true; applyView();
     }, { passive: false });
     const pointers = new Map();
@@ -1282,7 +1520,7 @@ function wire() {
       if (grabbed) { focusEditDown(pane, e, grabbed); return; }
       if (state.focusing) { focusPointerDown(pane, e); return; }
       if (ann.mode) { annPointerDown(pane, e); return; }
-      if (e.target.closest && (e.target.closest('rect[data-id]') || e.target.closest('.ann[data-ann]'))) return;
+      if (e.target.closest && (e.target.closest('.vmark[data-id]') || e.target.closest('[data-ann]'))) return;
       pane.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); pane.classList.add('dragging'); last = null;
     });
     pane.addEventListener('pointermove', (e) => {
@@ -1291,12 +1529,12 @@ function wire() {
       if (ann.band && ann.band.pointerId === e.pointerId) { annPointerMove(pane, e); return; }
       if (!pointers.has(e.pointerId)) return;
       const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pointers.size === 1) { state.view = panBy(state.view, e.clientX - prev.x, e.clientY - prev.y); }
+      if (pointers.size === 1) { setViewOf(side, panBy(viewOf(side), e.clientX - prev.x, e.clientY - prev.y)); }
       else if (pointers.size === 2) {
         const [a, b] = Array.from(pointers.values());
         const dist = Math.hypot(a.x - b.x, a.y - b.y); const r = pane.getBoundingClientRect();
         const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
-        if (last) { state.view = zoomAt(state.view, dist / last.dist, mid.x, mid.y); state.view = panBy(state.view, mid.x - last.mid.x, mid.y - last.mid.y); }
+        if (last) { setViewOf(side, panBy(zoomAt(viewOf(side), dist / last.dist, mid.x, mid.y), mid.x - last.mid.x, mid.y - last.mid.y)); }
         last = { dist, mid };
       }
       state.userMoved = true; applyView();
@@ -1311,18 +1549,42 @@ function wire() {
     pane.addEventListener('dblclick', (e) => { if (!ann.mode) fit(); });
     pane.addEventListener('click', (e) => {
       if (ann.suppressClick) { ann.suppressClick = false; return; } // the click that ended a draft gesture
-      const a = e.target.closest && e.target.closest('.ann[data-ann]'); if (a) { selectAnn(a.dataset.ann, false); return; }
-      const r = e.target.closest && e.target.closest('rect[data-id]'); if (r) select(r.dataset.id, false);
+      const a = e.target.closest && e.target.closest('[data-ann]'); if (a) { selectAnn(a.dataset.ann, false); return; }
+      const r = e.target.closest && e.target.closest('.vmark[data-id]'); if (r) select(r.dataset.id, false);
     });
   }
-  $('side-switch').addEventListener('click', () => setSide(state.side === 'design' ? 'impl' : 'design'));
-  $('layout-toggle').addEventListener('click', () => setLayout(!state.single));
-  $('move-toggle').addEventListener('click', () => setMove(!state.move));
+  // The wipe handle owns its drag; the pane under it must not pan.
+  const wipe = $('wipe');
+  let wiping = null;
+  wipe.addEventListener('pointerdown', (e) => { e.stopPropagation(); wipe.setPointerCapture(e.pointerId); wiping = e.pointerId; });
+  wipe.addEventListener('pointermove', (e) => {
+    if (wiping !== e.pointerId) return;
+    const r = panes.impl.getBoundingClientRect();
+    const x = (e.clientX - r.left - state.view.tx) / state.view.z;
+    state.wipeX = Math.min(report.impl.width - 20, Math.max(20, x));
+    applyWipe();
+  });
+  const wipeUp = (e) => { if (wiping === e.pointerId) wiping = null; };
+  wipe.addEventListener('pointerup', wipeUp); wipe.addEventListener('pointercancel', wipeUp);
+  wipe.addEventListener('click', (e) => e.stopPropagation());
+  $('side-switch').addEventListener('click', (e) => { const b = e.target.closest('[data-side]'); if (b) setSide(b.dataset.side); });
+  $('seg-layout').addEventListener('click', (e) => { const b = e.target.closest('[data-layout]'); if (b) setLayout(b.dataset.layout === 'full'); });
+  $('seg-variant').addEventListener('click', (e) => { const b = e.target.closest('[data-lab]'); if (b) setLab(b.dataset.lab); });
+  for (const id of ['seg-layer', 'seg-layer-m']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer); });
+  $('move-toggle').addEventListener('click', setPan);
   $('focus-toggle').addEventListener('click', () => {
     if (state.focus) { setFocus(null); setFocusing(false); return; }  // second press clears
     setFocusing(!state.focusing);
   });
-  $('focus-chip').addEventListener('click', () => { setFocus(null); setFocusing(false); });
+  $('focus-clear').addEventListener('click', () => { setFocus(null); setFocusing(false); });
+  $('delta-strip').addEventListener('click', (e) => {
+    if (e.target.closest('#reg-review')) setRegOnly(!state.regOnly);
+    else if (e.target.closest('#delta-dismiss')) { state.deltaDismissed = true; renderDeltaStrip(); }
+  });
+  $('align-mode').addEventListener('click', () => toggleAlignMenu());
+  $('align-lock').addEventListener('click', () => setLock(!state.lock));
+  $('align-menu').addEventListener('click', (e) => { const o = e.target.closest('[data-align]'); if (o) setAlign(o.dataset.align); });
+  document.addEventListener('pointerdown', (e) => { if (state.alignOpen && !(e.target.closest && e.target.closest('.align-wrap'))) toggleAlignMenu(false); });
   $('detail').addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('button[data-triage]');
     if (!b) return;
@@ -1341,12 +1603,11 @@ function wire() {
     updateRailToggle(); saveControls();
     if (!state.userMoved) fit();
   });
-  $('hdr').addEventListener('click', (e) => {
-    const b = e.target.closest('#hdr-more'); if (!b) return;
-    b.setAttribute('aria-expanded', document.body.classList.toggle('hdr-open') ? 'true' : 'false');
-  });
-  narrow.addEventListener('change', () => { applyLayout(); applySide(); if (state.userMoved) applyView(); else fit(); });
-  $('ann-draw').addEventListener('click', () => setAnnMode(ann.mode ? null : 'draw'));
+  narrow.addEventListener('change', () => { applyLayout(); applySide(); applyNarrow(); applyAlignMode(); if (state.userMoved) applyView(); else fit(); });
+  narrowish.addEventListener('change', applyNarrow);
+  // On a phone the comment tool stays on until switched off (a thumb cannot re-pick it per note);
+  // on desktop it is one-shot, like the comps' tool that snaps back to pan after a gesture.
+  $('ann-draw').addEventListener('click', () => { setAnnMode(ann.mode ? null : 'draw', narrow.matches); saveControls(); });
   $('ann-list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) selectAnn(row.dataset.ann === ann.selected ? null : row.dataset.ann, true); });
   $('detail').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) annAction(b.dataset.act, b.dataset.ann); });
   $('list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
@@ -1358,24 +1619,27 @@ function wire() {
     renderList(); renderMarks(); renderFocusChip();
   });
   $('q').addEventListener('input', (e) => { state.q = e.target.value.trim().toLowerCase(); renderList(); renderMarks(); });
-  $('zoom-in').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
-  $('zoom-out').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
+  $('zoom-in').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
+  $('zoom-out').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
   $('fit').addEventListener('click', fit);
-  $('align-mode').addEventListener('click', (e) => cycleAlign(e.shiftKey ? -1 : 1));
-  $('marks').addEventListener('change', (e) => { state.showMarks = e.target.checked; saveControls(); renderMarks(); });
   $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; saveControls(); renderMarks(); });
   $('diff-toggle').addEventListener('click', () => setDiff(!state.diff));
   $('dim-toggle').addEventListener('click', () => setDim(!state.dim));
   $('strobe-toggle').addEventListener('click', () => setStrobe(!state.strobe));
-  $('lab-mode').addEventListener('change', (e) => setLab(e.target.value));
-  $('lab-amount').addEventListener('input', (e) => { state.labAmount = Number(e.target.value); saveControls(); applyLab(); });
+  $('lab-amount').addEventListener('input', (e) => {
+    const k = state.lab === 'difference' ? 'difference' : 'onion';
+    state.labAmount[k] = Number(e.target.value);
+    $('op-pct').textContent = state.labAmount[k] + '%';
+    saveControls(); applyLab();
+  });
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') { e.target.blur(); } return; }
     const p = paneSize();
-    if (e.key === '+' || e.key === '=') { state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
-    else if (e.key === '-') { state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
+    if (e.key === '+' || e.key === '=') { setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
+    else if (e.key === '-') { setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
     else if (e.key === '0') fit();
     else if (e.key === 'n' || e.key === 'r') setAnnMode(ann.mode ? null : 'draw');
+    else if (e.key === 'l') setLock(!state.lock);
     else if (e.key === 'a' || e.key === 'A') cycleAlign(e.key === 'A' ? -1 : 1);
     else if (e.key === 'd') setDiff(!state.diff);
     else if (e.key === 'g') setDim(!state.dim);
@@ -1387,7 +1651,9 @@ function wire() {
     else if (e.key === ']') stepDiff(1);
     else if (e.key === '[') stepDiff(-1);
     else if (e.key === 'Escape') {
-      if (state.lab !== 'none') setLab('none');
+      if (state.alignOpen) toggleAlignMenu(false);
+      else if (state.focusing) setFocusing(false);
+      else if (state.lab !== 'none') setLab('none');
       else if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); }
       else select(null, false);
     }
@@ -1417,10 +1683,9 @@ function setAnnMode(mode, sticky) {
   // annotate until it is switched back, the desktop button is one-shot.
   ann.sticky = !!mode && !!sticky;
   state.move = !mode;
-  $('ann-draw').classList.toggle('on', !!mode);
   for (const pane of Object.values(panes)) pane.classList.toggle('annotating', !!mode);
   document.body.classList.toggle('ann-mode', !!mode);
-  $('move-toggle').setAttribute('aria-pressed', mode ? 'false' : 'true');
+  applyTools();
 }
 function persist() {
   clearTimeout(ann.saveTimer);
@@ -1447,7 +1712,7 @@ function annIndex(id) { return ann.set.annotations.findIndex((a) => a.id === id)
 // the mark reappeared offset from the thing it was pointing at.
 function paneWorld(pane, e) {
   const r = pane.getBoundingClientRect();
-  const p = screenToWorld(state.view, e.clientX - r.left, e.clientY - r.top);
+  const p = screenToWorld(viewOf(pane.dataset.side), e.clientX - r.left, e.clientY - r.top);
   return pane.dataset.side === 'design' ? worldFromShown(p, report.alignment, projection()) : p;
 }
 function annPointerDown(pane, e) {
@@ -1485,7 +1750,7 @@ function selectAnn(id, focus) {
   if (picked && narrow.matches && picked.side !== state.side) setSide(picked.side);
   renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderDetail();
   const a = id ? ann.set.annotations[annIndex(id)] : null;
-  if (focus && a) { state.view = focusView(shapeBox(a.shape).w ? shapeBox(a.shape) : { x: a.shape.x - 20, y: a.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view); state.userMoved = true; applyView(); }
+  if (focus && a) { setView(focusView(shapeBox(a.shape).w ? shapeBox(a.shape) : { x: a.shape.x - 20, y: a.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view)); state.userMoved = true; applyView(); }
   const row = document.querySelector('#ann-list .row.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 function annAction(act, id) {
@@ -1518,19 +1783,20 @@ function renderAnnList() {
   $('ann-list').innerHTML = ann.set.annotations.map(annRowHtml).join('');
   renderRailToggle();
 }
-function annLabel(x, y, n, status, id) {
-  const g = document.createElementNS(SVG, 'g');
-  g.setAttribute('class', 'lbl ann ' + status); g.dataset.x = x; g.dataset.y = y; g.dataset.ann = id;
-  const w = 10 + 7 * String(n).length;
-  const bg = document.createElementNS(SVG, 'rect'); bg.setAttribute('x', 0); bg.setAttribute('y', -16); bg.setAttribute('width', w); bg.setAttribute('height', 16); bg.setAttribute('rx', 3);
-  const t = document.createElementNS(SVG, 'text'); t.setAttribute('x', w / 2); t.setAttribute('y', -4); t.setAttribute('text-anchor', 'middle'); t.textContent = n;
-  g.append(bg, t);
-  return g;
+// The comps' comment badge: a 22px rounded square in the status colour, centred on the shape's
+// top-left corner (a point's badge sits on the point). HTML, like the finding badges.
+function annLabel(x, y, n, status, id, note) {
+  const d = document.createElement('div');
+  d.className = 'vmark ann ' + status; d.dataset.ann = id; d.title = note;
+  d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px';
+  d.textContent = n;
+  return d;
 }
 function renderAnnMarks() {
   for (const side of ['design', 'impl']) {
-    const layer = annLayers[side];
+    const layer = annLayers[side], blayer = markLayers[side];
     layer.replaceChildren();
+    for (const b of blayer.querySelectorAll('.vmark.ann')) b.remove();
     ann.set.annotations.forEach((a, i) => {
       if (a.side !== side) return;
       const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '');
@@ -1538,12 +1804,12 @@ function renderAnnMarks() {
         const r = document.createElementNS(SVG, 'rect');
         r.setAttribute('x', a.shape.x); r.setAttribute('y', a.shape.y); r.setAttribute('width', Math.max(a.shape.w, 0.5)); r.setAttribute('height', Math.max(a.shape.h, 0.5));
         r.setAttribute('class', cls); r.dataset.ann = a.id; layer.append(r);
-        layer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id));
+        blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id, a.note));
       } else {
         const c = document.createElementNS(SVG, 'circle');
         c.setAttribute('cx', a.shape.x); c.setAttribute('cy', a.shape.y); c.setAttribute('r', 7 / state.view.z);
         c.setAttribute('class', cls); c.dataset.ann = a.id; layer.append(c);
-        layer.append(annLabel(a.shape.x + 9 / state.view.z, a.shape.y - 9 / state.view.z, i + 1, a.status, a.id));
+        blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id, a.note));
       }
     });
     const live = ann.band && ann.band.side === side ? ann.band : null;
@@ -1625,14 +1891,15 @@ function openReport(reportData, annotationSet, pageData) {
   state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = '';
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; focusBand = null; focusDrag = null;
-  state.diffIndex = -1;
-  document.body.classList.remove('has-detail', 'ann-mode', 'hdr-open');
+  state.diffIndex = -1; state.regOnly = false; state.deltaDismissed = false; state.alignOpen = false;
+  state.wipeX = report.impl.width / 2;
+  document.body.classList.remove('has-detail', 'ann-mode');
   $('q').value = '';
   applyControls(readControls());
   document.title = report.pair + ' — refdiff';
-  renderHeader(); renderList(); renderDetail(); renderAnnList();
+  renderTopbar(); renderDeltaStrip(); renderList(); renderDetail(); renderAnnList();
   if (!wired) { wire(); wired = true; }
-  applyLayout(); applySide(); updateRailToggle(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
+  applyLayout(); applySide(); applyNarrow(); updateRailToggle(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
   return Promise.all([
     loadImage(imgs.design, page.base + report.artifacts.designPng),
     loadImage(imgs.impl, page.base + report.artifacts.implPng),

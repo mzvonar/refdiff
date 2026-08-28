@@ -47,9 +47,21 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture**: the Library pairs sit
-  at 0.90 / 1.00 since phase 2; the compare pairs stay at 0.13 / 0.25 until
-  phase 4 moves the rail to the comp's side. Do not tune the fixture to raise
-  it — move the markup, and the number follows.
+  at 0.90 / 1.00 since phase 2; the compare pairs sit at 0.36 / 0.93 after
+  phase 3 and stay there until phase 4 moves the rail to the comp's side. Do
+  not tune the fixture to raise it — move the markup, and the number follows.
+- The compare pairs excuse the comp's ARTBOARD vocabulary (`COMPARE_IGNORE.
+  textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
+  draws the run's PNGs), the two screenshots (`accepted`), and the delta
+  strip's copy (the comps disagree with each other and with the fixture's
+  real delta, gaps 23/29). Visible in `findings.json` under `suppressed`.
+- **`showDeltaStrip` defaults to true in the LOCAL Tool comp** (gap 29, flipped
+  2026-08-28). The remote project could not be written through DesignSync;
+  a refetch reverts the flip unless the prop default was changed in the app.
+- **The Tool comp fits its artboard ONCE, on load.** The dc-html adapter
+  therefore reloads a fluid comp at the pair viewport after detecting it;
+  if the comp's zoom pill reads anything but the app's (66% at 1360, 50% at
+  390) the reload did not happen and every badge/canvas finding is noise.
 - **ORDER before anything else on a list page.** refdiff matches card N to
   card N; a list in a different order than the comp reads as a text-content
   and colour finding on every pill, badge and chip (phase 2: 208 → 101

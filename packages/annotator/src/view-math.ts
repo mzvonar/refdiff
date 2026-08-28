@@ -172,11 +172,34 @@ export type AlignMode = "anchors" | "width" | "left" | "right"
 
 export const ALIGN_MODES: readonly AlignMode[] = ["anchors", "width", "left", "right"]
 
+/** The comps' menu labels (RefDiff Comparison Tool, `ALIGN`). */
 export const ALIGN_LABELS: Record<AlignMode, string> = {
-  anchors: "anchors",
+  anchors: "Anchors",
+  width: "Width",
+  left: "Top left",
+  right: "Top right",
+}
+
+/** Material Symbols ligature per mode, as the comps draw them. */
+export const ALIGN_ICONS: Record<AlignMode, string> = {
+  anchors: "hub",
   width: "width",
-  left: "top-left",
-  right: "top-right",
+  left: "north_west",
+  right: "north_east",
+}
+
+/**
+ * The menu's one-line description per mode. The comps' copy, except `width`:
+ * the comp promises "panning stays independent per pane" and this viewer's
+ * width mode is a registration on the one shared view (the lock button is
+ * what makes panning independent), so that clause is not repeated here.
+ */
+export const ALIGN_DESCRIPTIONS: Record<AlignMode, string> = {
+  anchors:
+    "Locks the views on matched UI elements — corresponding parts stay aligned even when sizes drift.",
+  width: "Matches zoom so both refs render at the same width, top-left corners together.",
+  left: "Locks both views to a shared top-left origin — classic overlay for left-aligned layouts.",
+  right: "Locks views by the top-right corner — useful for right-aligned or RTL layouts.",
 }
 
 /**
@@ -275,10 +298,12 @@ export function worldFromShown(
 }
 
 /** Zoom so `world` fits inside a pane of `pane` px with `pad` px of margin, centred. */
-export function fitView(world: VBox, pane: Size, pad = 16): View {
+export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6): View {
+  // The comps' fit: 24px of air round the artboard, never blown up past 1.6× —
+  // a small component fitted at 4× is a blur, not a reference.
   const availW = Math.max(1, pane.w - 2 * pad)
   const availH = Math.max(1, pane.h - 2 * pad)
-  const z = Math.min(availW / Math.max(1e-6, world.w), availH / Math.max(1e-6, world.h))
+  const z = Math.min(maxZoom, availW / Math.max(1e-6, world.w), availH / Math.max(1e-6, world.h))
   return {
     z,
     tx: pad + (availW - world.w * z) / 2 - world.x * z,
