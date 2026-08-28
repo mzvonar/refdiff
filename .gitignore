@@ -14,10 +14,6 @@ out/
 .env
 .env.*
 
-# annotator runtime state
-annotations/
-assets/
-
 # OS / editor
 .DS_Store
 .idea/
