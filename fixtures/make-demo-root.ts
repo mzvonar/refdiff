@@ -13,6 +13,10 @@
  * hand-rolled), so the model reading `findings.json` sees a real report.
  *
  *   node fixtures/make-demo-root.ts             # JSON only (offline)
+ *   node fixtures/make-demo-root.ts --now       # timestamps relative to the wall
+ *                                              # clock, so the Library's "12 min
+ *                                              # ago" reads as the comp's while a
+ *                                              # measure runs (never commit that)
  *   node fixtures/make-demo-root.ts --capture   # also design.png / impl.png /
  *                                               # elements.json for the opened
  *                                               # pair (needs the network: the
@@ -82,7 +86,12 @@ interface DemoItem {
   /** `+add new / −res resolved` on the card — becomes `delta`. */
   add: number
   res: number
-  /** ms before DEMO_NOW; `undefined` = no "when" (the broken card). */
+  /**
+   * ms before the clock. The broken run has one too: `createdAt` is the second
+   * key of findings.json and survives the truncation, which is how the
+   * degraded card keeps its slot in the newest-first list (the comp draws it
+   * between the queued modal and yesterday's errors page).
+   */
   ago?: number
   /** Written with a truncated findings.json on purpose — the degraded card. */
   broken?: true
@@ -92,21 +101,31 @@ interface DemoItem {
 export const ITEMS: readonly DemoItem[] = [
   { slug: OPENED_PAIR, name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 2, major: 2, minor: 2, comments: 3, confidence: 0.42, add: 3, res: 1, ago: 12 * MIN },
   { slug: "onboarding-selfie-step", name: "Onboarding — Selfie step", route: "/onboarding/selfie", src: "figma", state: "analyzed", critical: 1, major: 3, minor: 0, comments: 1, confidence: 0.91, add: 1, res: 4, ago: 25 * MIN },
-  { slug: "onboarding-review-step", name: "Onboarding — Review step", route: "/onboarding/review", src: "dc-html", state: "processing", critical: 0, major: 0, minor: 0, comments: 2, confidence: 0.88, add: 0, res: 0, ago: 0 },
+  { slug: "onboarding-review-step", name: "Onboarding — Review step", route: "/onboarding/review", src: "dc-html", state: "processing", critical: 0, major: 0, minor: 0, comments: 2, confidence: 0.88, add: 0, res: 0, ago: 30 * MIN },
   { slug: "button", name: "Button", route: "ds/Button", src: "dc-html", state: "analyzed", critical: 1, major: 0, minor: 1, comments: 0, confidence: 0.96, add: 1, res: 2, ago: 40 * MIN },
   { slug: "selection-card", name: "Selection card", route: "ds/SelectionCard", src: "figma", state: "analyzed", critical: 0, major: 2, minor: 0, comments: 1, confidence: 0.61, add: 2, res: 0, ago: 40 * MIN },
   { slug: "stepper", name: "Stepper", route: "ds/Stepper", src: "figma", state: "clean", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.94, add: 0, res: 3, ago: 40 * MIN },
   { slug: "login", name: "Login", route: "/auth/login", src: "dc-html", state: "clean", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.97, add: 0, res: 2, ago: 1 * HOUR },
   { slug: "verification-dashboard", name: "Verification dashboard", route: "/dashboard", src: "dc-html", state: "analyzed", critical: 0, major: 4, minor: 3, comments: 5, confidence: 0.55, add: 5, res: 1, ago: 2 * HOUR },
-  { slug: "result-detail", name: "Result detail", route: "/results/:id", src: "figma", state: "analyzed", critical: 3, major: 1, minor: 2, comments: 0, confidence: 0.83, add: 2, res: 6, ago: 2 * HOUR },
-  { slug: "confirm-modal", name: "Confirm modal", route: "ds/ConfirmModal", src: "dc-html", state: "queued", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.9, add: 0, res: 0, ago: 0 },
-  { slug: "onboarding-liveness-step", name: "Onboarding — Liveness step", route: "/onboarding/liveness", src: "figma", state: "analyzed", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0, add: 0, res: 0, broken: true },
+  { slug: "result-detail", name: "Result detail", route: "/results/:id", src: "figma", state: "analyzed", critical: 3, major: 1, minor: 2, comments: 0, confidence: 0.83, add: 2, res: 6, ago: 2 * HOUR + 5 * MIN },
+  { slug: "confirm-modal", name: "Confirm modal", route: "ds/ConfirmModal", src: "dc-html", state: "queued", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.9, add: 0, res: 0, ago: 3 * HOUR },
+  { slug: "onboarding-liveness-step", name: "Onboarding — Liveness step", route: "/onboarding/liveness", src: "figma", state: "analyzed", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0, add: 0, res: 0, broken: true, ago: 5 * HOUR },
   { slug: "error-empty-states", name: "Error & empty states", route: "/onboarding/errors", src: "figma", state: "analyzed", critical: 0, major: 1, minor: 4, comments: 1, confidence: 0.68, add: 1, res: 1, ago: 24 * HOUR },
 ]
 
 /* ------------------------------------------------------------ builders -- */
 
-const iso = (msBefore: number): string => new Date(Date.parse(DEMO_NOW) - msBefore).toISOString()
+// `ago` reproduces the comp's card ORDER under the Library's newest-first
+// sort (phase 2): the comp gives its Processing / Queued items no time at all
+// ("running" / "waiting"), so they take the slot the comp draws them in —
+// review between selfie and button, modal between detail and the broken
+// liveness — and the 2 h tie is broken the way the comp lists it (dash, then
+// detail; both still print "2 h ago"). The broken run has no readable time
+// and sorts last, one slot after where the comp draws it.
+// The clock every timestamp hangs off: the comps' fixed one, so the committed
+// files are stable — or the wall clock under --now, for a measure run.
+let clock = DEMO_NOW
+const iso = (msBefore: number): string => new Date(Date.parse(clock) - msBefore).toISOString()
 
 const box = (x: number, y: number, w: number, h: number): Box => ({ x, y, w, h })
 
@@ -217,17 +236,20 @@ export function reportFor(item: DemoItem): ComparisonReport {
   const { findings, suppressed } = opened ? openedFindings() : { findings: genericFindings(item), suppressed: [] }
   const createdAt = iso(item.ago ?? 0)
   const failing = findings.some((f) => f.severity === "critical" || f.severity === "major")
-  // The opened pair has NO previous run: the Comparison Tool comp's
-  // `showDeltaStrip` defaults to false (plan, section C), so a delta there
-  // would be a phantom. Every other item keeps the card's `+add / −res`.
-  const delta =
-    !opened && (item.add > 0 || item.res > 0)
-      ? {
-          previousRun: iso((item.ago ?? 0) + 6 * HOUR),
-          resolved: Array.from({ length: item.res }, (_, i) => `prev-${i + 1}`),
-          introduced: findings.slice(0, item.add).map((f) => f.id),
-        }
-      : undefined
+  // Every item has a previous run: the card's `+add / −res` (a `Steady
+  // +0 new / −0 resolved` is still a delta). For the opened pair the Library
+  // card AND the Comparison Tool's `Regression` tags on f1 / g2 say so; only
+  // the Tool's `showDeltaStrip` prop (default false) disagrees, so phase 3
+  // accepts the strip rather than the fixture pretending there was no run
+  // before (plan, gap 23, decided in phase 2). The broken run has none.
+  const delta = item.broken
+    ? undefined
+    : {
+        previousRun: iso((item.ago ?? 0) + 6 * HOUR),
+        resolved: Array.from({ length: item.res }, (_, i) => `prev-${i + 1}`),
+        introduced: opened ? ["f1", "f2", "g2"] : findings.slice(0, item.add).map((f) => f.id),
+        ...(opened ? { regressions: ["f1", "g2"] } : {}),
+      }
   return {
     pair: item.name,
     createdAt,
@@ -379,6 +401,7 @@ async function captureOpened(dir: string): Promise<void> {
 
 async function main(): Promise<void> {
   const capture = process.argv.includes("--capture")
+  if (process.argv.includes("--now")) clock = new Date().toISOString()
   await mkdir(ROOT, { recursive: true })
   for (const item of ITEMS) {
     const dir = join(ROOT, item.slug)

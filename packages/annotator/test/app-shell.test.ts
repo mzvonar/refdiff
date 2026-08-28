@@ -57,6 +57,31 @@ describe("renderAppShell", () => {
     }
   })
 
+  it("draws the Library's chrome: brand-only topbar, head row, search + chip groups, the card grid", () => {
+    expect(html).toContain('<header class="lib-top">')
+    expect(html).toContain('<span class="brand-name">RefDiff</span>')
+    expect(html).toContain("<h1>Library</h1>")
+    expect(html).toContain('placeholder="Search comparisons…"')
+    expect(html).toContain('id="src-chips"')
+    expect(html).toContain('id="state-chips"')
+    expect(html).toContain('<div class="cards" id="cards"></div>')
+    // The comp's Library topbar is brand only (gap 8): no breadcrumb, no root path in the chrome.
+    expect(html).not.toContain('class="kv root"')
+  })
+
+  it("keeps the list-load failure typed: the server-gone box knows the root and the port to restart on", () => {
+    expect(html).toContain('data-root="/root/uctoinak2/out"')
+    expect(html).toContain("kind: classifyListError(e)")
+    expect(html).toContain("'refdiff-annotator ' + root + ' --serve --port ' + port")
+    expect(html).toContain("setInterval(tickRetry, 1000)")
+  })
+
+  it("switches layouts by width or by the topbar toggle, re-rendering the cards for the layout", () => {
+    expect(html).toContain('class="layout-toggle" id="lib-layout-toggle"')
+    expect(html).toContain("window.innerWidth < MOBILE_BREAKPOINT")
+    expect(html).toContain("mobile ? 'mobile' : 'desktop'")
+  })
+
   it("gives the index its own theme toggle, driven by the report client's shared handler", () => {
     expect(html).toContain('class="theme-toggle" id="index-theme-toggle"')
     expect(html).toContain("e.target.closest('.theme-toggle')")
@@ -65,7 +90,7 @@ describe("renderAppShell", () => {
     expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic/)
   })
 
-  it("names the served root without letting it become markup", () => {
-    expect(renderAppShell({ ...sources, root: "/a<b" })).toContain("/a&lt;b")
+  it("carries the served root for the error state without letting it become markup", () => {
+    expect(renderAppShell({ ...sources, root: '/a<b"' })).toContain('data-root="/a&lt;b&quot;"')
   })
 })

@@ -17,7 +17,29 @@ import type { ComparisonReport } from "@refdiff/core"
 
 export type ReportParse =
   | { ok: true; value: ComparisonReport }
-  | { ok: false; reason: string }
+  | { ok: false; reason: string; pair?: string; createdAt?: string; implRef?: string }
+
+/**
+ * What a broken file still says. `pair`, `createdAt` and `impl.ref` are
+ * written near the top of findings.json, so a report cut off mid-write
+ * usually keeps them — the degraded card can then show the pair's name and
+ * route instead of only the directory, and the run keeps its place in the
+ * newest-first list. Best effort: anything unreadable is simply absent.
+ */
+export function salvage(text: string): { pair?: string; createdAt?: string; implRef?: string } {
+  const str = (m: RegExpMatchArray | null): string | undefined => {
+    if (!m) return undefined
+    try {
+      return JSON.parse('"' + m[1] + '"') as string
+    } catch {
+      return undefined
+    }
+  }
+  const pair = str(text.match(/"pair"\s*:\s*"((?:[^"\\]|\\.)*)"/))
+  const createdAt = str(text.match(/"createdAt"\s*:\s*"((?:[^"\\]|\\.)*)"/))
+  const implRef = str(text.match(/"impl"\s*:\s*\{[^}]*?"ref"\s*:\s*"((?:[^"\\]|\\.)*)"/))
+  return { ...(pair ? { pair } : {}), ...(createdAt ? { createdAt } : {}), ...(implRef ? { implRef } : {}) }
+}
 
 /** What a report must carry before the annotator can draw it. */
 const REQUIRED = ["pair", "findings", "alignment", "design", "impl", "artifacts"] as const
@@ -31,7 +53,7 @@ export function parseReport(text: string): ReportParse {
   try {
     parsed = JSON.parse(text)
   } catch (e) {
-    return { ok: false, reason: `findings.json · ${(e as Error).message}` }
+    return { ok: false, reason: `findings.json · ${(e as Error).message}`, ...salvage(text) }
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
     return { ok: false, reason: "findings.json · not an object" }

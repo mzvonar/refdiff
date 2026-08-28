@@ -1,6 +1,6 @@
 {
   "pair": "Onboarding — Review step",
-  "createdAt": "2026-08-28T14:22:05.000Z",
+  "createdAt": "2026-08-28T13:52:05.000Z",
   "design": {
     "source": "dc-html",
     "ref": "onboarding-review-step.dc.html#Onboarding — Review step",
@@ -31,6 +31,11 @@
   "verdict": {
     "pass": true,
     "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-28T07:52:05.000Z",
+    "resolved": [],
+    "introduced": []
   },
   "artifacts": {
     "designPng": "design.png",

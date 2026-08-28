@@ -1,6 +1,6 @@
 {
   "pair": "Confirm modal",
-  "createdAt": "2026-08-28T14:22:05.000Z",
+  "createdAt": "2026-08-28T11:22:05.000Z",
   "design": {
     "source": "dc-html",
     "ref": "confirm-modal.dc.html#Confirm modal",
@@ -31,6 +31,11 @@
   "verdict": {
     "pass": true,
     "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-28T05:22:05.000Z",
+    "resolved": [],
+    "introduced": []
   },
   "artifacts": {
     "designPng": "design.png",

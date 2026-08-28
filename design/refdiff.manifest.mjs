@@ -20,6 +20,44 @@
 // OPENED_PAIR). A missing dir renders the index instead and compares "fine"
 // against the wrong comp.
 
+// What the Library pairs excuse, and why (docs/plan-annotator-redesign.md,
+// phase 2). Suppressions stay in findings.json under `suppressed`.
+const LIBRARY_IGNORE = {
+  textPatterns: [
+    // gap 24: refdiff has no run-in-progress state — a run dir exists once
+    // `compare` wrote it — so the comp's Pending verdict / Processing and
+    // Queued pills / "running" and "waiting" times are designer data.
+    "^(Pending|Processing|Queued|running|waiting)$",
+    // gap 27: the relative "when" is rendered against the wall clock; the
+    // fixture's clock is fixed (regenerate with --now before a measure and
+    // the strings agree, but the minutes still tick during the run).
+    "^(just now|\\d+ (min|h|d) ago|yesterday)$",
+    // The degraded card quotes the real parser message; the comp a sample.
+    "^findings\\.json · ",
+  ],
+  accepted: [
+    {
+      type: "extra-element",
+      role: "image",
+      reason: "decision D6: the card thumbnail is the run's own impl.png; the comp's grey plate is the designer's stand-in for that screenshot",
+    },
+    {
+      type: "text-content",
+      text: "Major 2",
+      expected: { text: "Major 2" },
+      actual: { text: "Major 3" },
+      reason: "gap 23: the Library comp's card counts the opened pair's f1–f6 only; refdiff also counts the Tool comp's aggregates g1 (major) and g2 (minor)",
+    },
+    {
+      type: "text-content",
+      text: "Minor 2",
+      expected: { text: "Minor 2" },
+      actual: { text: "Minor 3" },
+      reason: "gap 23: see Major 2 — g2 is the minor aggregate",
+    },
+  ],
+}
+
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
 const COMPARE_ROUTE = "/#/onboarding-document-step"
@@ -30,6 +68,7 @@ export const manifest = [
     title: "RefDiff · Library (desktop)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
     app: { source: "live", route: "/", viewport: { width: 1180, height: 800 }, waitFor: "#cards .card" },
+    ignore: LIBRARY_IGNORE,
   },
   {
     id: "refdiff-compare-desktop",
@@ -42,6 +81,7 @@ export const manifest = [
     title: "RefDiff · Library (mobile)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
     app: { source: "live", route: "/", viewport: mobile, waitFor: "#cards .card" },
+    ignore: LIBRARY_IGNORE,
   },
   {
     id: "refdiff-compare-mobile",

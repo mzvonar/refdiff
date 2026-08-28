@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseReport } from "../src/report-file.js"
+import { parseReport, salvage } from "../src/report-file.js"
 
 const report = {
   pair: "onboarding-document-step",
@@ -32,6 +32,25 @@ describe("parseReport", () => {
     if (r.ok) return
     expect(r.reason).toMatch(/^findings\.json · /)
     expect(r.reason.toLowerCase()).toContain("json")
+  })
+
+  it("salvages the pair name and impl route off a file cut off mid-write — the degraded card shows them", () => {
+    // pair and impl.ref sit near the top of findings.json, so a truncated
+    // file usually keeps them (the demo root's onboarding-liveness-step does).
+    const cut = JSON.stringify(report, null, 2).slice(0, 300)
+    const r = parseReport(cut)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.pair).toBe("onboarding-document-step")
+    expect(r.createdAt).toBe("2026-08-28T14:10:05.000Z")
+    expect(r.implRef).toBe("/onboarding/document")
+    // Cut before impl.ref: the name alone; cut before pair: nothing, no throw.
+    expect(salvage('{"pair": "a \\"quoted\\" name", "createdAt": "x", "impl": {"source": "live-url", "re')).toEqual({
+      pair: 'a "quoted" name',
+      createdAt: "x",
+    })
+    expect(salvage('{"pai')).toEqual({})
+    expect(parseReport("[]")).not.toHaveProperty("pair")
   })
 
   it("names the fields a wrong-shaped file is missing instead of drawing garbage", () => {

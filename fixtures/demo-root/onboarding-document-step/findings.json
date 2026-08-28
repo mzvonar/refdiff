@@ -646,6 +646,21 @@
     "pass": false,
     "failThreshold": "major"
   },
+  "delta": {
+    "previousRun": "2026-08-28T08:10:05.000Z",
+    "resolved": [
+      "prev-1"
+    ],
+    "introduced": [
+      "f1",
+      "f2",
+      "g2"
+    ],
+    "regressions": [
+      "f1",
+      "g2"
+    ]
+  },
   "artifacts": {
     "designPng": "design.png",
     "implPng": "impl.png"

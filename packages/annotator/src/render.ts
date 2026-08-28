@@ -257,10 +257,11 @@ details[open] .list { max-height:30vh; }
 .toolbar label { color:var(--txt2); display:flex; gap:4px; align-items:center; }
 .toolbar .pct { min-width:48px; text-align:center; }
 .toolbar .hint { margin-left:auto; color:var(--txt2); font-size:11px; }
-.theme-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+/* The topbar icon buttons (theme, and on the Library the layout toggle): the comps' 32px / radius 7 square. */
+.theme-toggle, .layout-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
   background:transparent; color:var(--txt2); cursor:pointer; }
-.theme-toggle:hover { background:var(--bg3); }
-.theme-toggle .msi { font-size:19px; }
+.theme-toggle:hover, .layout-toggle:hover { background:var(--bg3); }
+.theme-toggle .msi, .layout-toggle .msi { font-size:19px; }
 header .theme-toggle { margin-left:auto; }
 .hdr-more { display:none; background:var(--bg0); color:var(--txt2); border:1px solid var(--line); border-radius:999px; padding:2px 10px; cursor:pointer; }
 /* One side at a time — always on a phone, on demand on desktop (#layout-toggle).

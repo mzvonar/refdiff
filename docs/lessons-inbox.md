@@ -6,6 +6,26 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-08-28 — on a list page, check ORDER before reading a single finding
+- **Context:** annotator redesign phase 2 (the Library), `docs/plan-annotator-redesign.md`
+- **Lesson:** refdiff pairs card N with card N by position. When the impl lists the same items in a different order than the comp, every pill, badge, chip and label becomes a `text-content` / `color` / `typography` finding that looks like drift (phase 2: 208 → 101 findings from the sort alone, confidence 0.20 → 0.76). Before fixing any "colour is wrong on Fail" row on a list/grid page, compare the ORDER of the shared anchors on both sides; if it differs, fix the order (or the fixture's sort key) first and re-measure.
+- **Candidate home:** skill:refdiff ("Order of attack") · `refdiff.bindings.md` Traps (done)
+
+## 2026-08-28 — the comp's runtime renders every `{{interpolation}}` as its own text leaf
+- **Context:** phase 2, the source chip ("Figma" reported border 1 / radius 10 vs the comp's 0) and the confidence line ("42%" a separate leaf)
+- **Lesson:** In a `.dc.html` capture, `<span style="border…"><span class="msi">icon</span>{{label}}</span>` yields a text leaf for `label` with NO border (the interpolation is its own node), and `Positions unreliable · {{pct}} anchor match` yields three leaves. An impl that writes the same markup by hand gets the container's border attributed to the text and one merged string — a phantom `border` / `border-radius` / `missing-element` per instance. When mirroring a comp, put each interpolated value in its own `<span>` (harmless markup) so the leaf structure matches.
+- **Candidate home:** skill:refdiff ("Reading the measurements" — a phantom border on a label next to an icon) · `docs/architecture.md` Open decisions (the capture could treat a styled parent's text run the way the DC runtime does)
+
+## 2026-08-28 — the comp's SOURCE and its RENDER can disagree; the render is the design
+- **Context:** phase 2, the Library search field: `max-width:340px` in the comp's markup, 226px at 1180 and the full 358px row at 390 in its capture
+- **Lesson:** refdiff measures the captured render. When a rule in the comp's source visibly does not apply in `elements.json`, match the RENDER, and write the discrepancy down for the designer (the plan's phase notes) instead of coding the source and eating the finding. Do not assume the source is what the designer approved — they saw the render.
+- **Candidate home:** skill:refdiff ("Reading the measurements") · plan phase notes (done)
+
+## 2026-08-28 — one-page shells need route-prefixed ids
+- **Context:** phase 2, the Library's layout toggle rendered as `display:none` at 390px
+- **Lesson:** the served app is ONE document holding both routes; the report toolbar already owned `#layout-toggle` and its narrow-screen rule (`@media (max-width:900px) { #layout-toggle { display:none } }`) hid the Library's button of the same id. New index-route elements must use a route prefix (`lib-…`) and a quick `grep -n 'id="<name>"' src/render.ts src/app-shell.ts` before choosing one; the same goes for class names (`.row` collided too).
+- **Candidate home:** CLAUDE.md (a one-liner under Tests or a new "Annotator shell" note) · `docs/architecture.md` Annotator section
+
 ## 2026-08-28 — a rebuilt `dist` is invisible to the annotator that is already running
 - **Context:** annotator redesign phase 1, the measure step (`svc up annotator` + `refdiff compare`)
 - **Lesson:** `pnpm dev` keeps `dist` current, but the served annotator loaded its modules at start and never re-reads them — an "after" measure taken without `svc restart annotator` (or restarting the `refdiff-annotator … --serve` process) measures the OLD app and reads as "the edit had no effect". Before every measure of the annotator itself: confirm the served page contains the change (`curl <app-url>/ | grep <new-rule>`), not just `dist`. The loop rules only say "keep `pnpm dev` running".

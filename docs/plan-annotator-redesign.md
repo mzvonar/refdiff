@@ -72,9 +72,12 @@ app's real run dirs, i.e. DATA, not drift. 6+ `typography` causes are the
 ```bash
 pnpm dev                                                   # keep running
 svc up annotator   # = refdiff-annotator fixtures/demo-root --serve; 7378 or the next free port (svc ports)
+svc restart annotator            # after ANY annotator edit: the shell is rendered at start, dist is not re-read
+node fixtures/make-demo-root.ts --now   # the Library's "12 min ago" is wall-clock relative (gap 27)
 refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
-  --app-url http://127.0.0.1:7379 --out out/refdiff       # the port svc printed
+  --app-url http://127.0.0.1:7379 --out out/refdiff       # the port svc printed; --pair a,b is comma-separated
 refdiff summary out/refdiff
+node fixtures/make-demo-root.ts         # put the committed clock back (never commit --now output)
 ```
 
 Network + servers need the Bash sandbox disabled (handoff "Env gotchas").
@@ -332,10 +335,11 @@ for a contrast blunder, none found — that is not a parity claim.
 
 ---
 
-## 2. Library route to the comp — TODO
+## 2. Library route to the comp — DONE (2026-08-28)
 
 `app-shell.ts` (`#view-index`, `INDEX_CSS`, `APP_BOOT`) + `index-view.ts`
-(`pairCard`, `pairCards`, `pairsSummaryLine`) + `index-view.test.ts`.
+(`pairCard`, `pairCards`, `sortEntries`, `filterEntries`, `errorBox`) +
+`index-view.test.ts`.
 
 - Sticky 46px topbar: accent rounded square, "RefDiff", `chevron_right`, the
   root/project name, spacer, layout toggle (`computer`/`smartphone`), theme
@@ -357,7 +361,128 @@ for a contrast blunder, none found — that is not a parity claim.
 **Exit:** `refdiff-library-desktop` + `refdiff-library-mobile` measured;
 remaining findings are a short list of genuine deltas.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+What shipped: `index-view.ts` rewritten to the comp — the thumbnail card
+(verdict pill top-left, state pill top-right, name + source chip, mono route,
+severity dot-badges + comment count, trend / `+N new / −M resolved` / when
+footer, the confidence WARNING line under the 0.5 gate) and the mobile row
+(44×56 tile, name + verdict, source + badges + comments, trend + delta);
+`sortEntries` (newest first, ties in dir order, no readable time last);
+`filterEntries` (search over name + route, source chips Both / Figma / Claude
+Design, state chips Any / Failing / Critical / Diverging / Low confidence /
+Has comments); `errorBox` + auto-retry (section C states A and B, from spec,
+unmeasured); the degraded card with the comp's copy. `app-shell.ts`: brand-only
+46px topbar with the layout toggle (`computer`/`smartphone`, forces the row
+list, not persisted — the comp's preview aid) and the theme toggle; the head
+row `N of M comparisons`; `INDEX_CSS` to the comp's values;
+`line-height:normal` on the Library (the comp sets none; the report's 1.4 made
+every row taller). `/api/pairs` gained `implRef`, `implPng` (only when the
+file exists), `delta {introduced, resolved, regressions}`; `parseReport`
+gained `salvage` — a `findings.json` cut mid-write still yields `pair`,
+`createdAt`, `impl.ref`, so the degraded card shows the name and route and
+keeps its slot in the list (that IS the comp's broken card; no gap).
+Manifest: `LIBRARY_IGNORE` on both Library pairs — three `textPatterns`
+(the run-state vocabulary, the relative-time vocabulary, the parser message)
+and three `accepted` (the D6 thumbnail image, the `Major 2`/`Minor 2` counts).
+Fixture: every item carries a delta (`+0/−0` is one), the opened pair's with
+`regressions: [f1, g2]` (gap 23, below); the two timeless items and the broken
+run got times that reproduce the comp's order; `--now` shifts every timestamp
+to the wall clock for a measure. The one comp-vs-render call: the search
+field's `max-width:340px` is in the comp's SOURCE but not in its RENDER (226px
+at 1180, the full 358px row at 390) — the render is what refdiff measures, so
+the app has no cap; Mato may want to know.
+
+| pair | before findings (c/M/m) / inst / supp / conf | after findings (c/M/m) / inst / supp / conf |
+| --- | --- | --- |
+| refdiff-library-desktop | 390 (133/177/80) / 457 / 0 / 0.08 | **9** (2/5/2) / 16 / 21 / **0.90** |
+| refdiff-library-mobile | 323 (56/168/99) / 492 / 0 / 0.00 | **5** (0/3/2) / 5 / 10 / **1.00** |
+| refdiff-compare-desktop | 339 (118/133/88) / 459 / 0 / 0.13 | 342 (118/136/88) / 462 / 0 / 0.13 — the opened pair's new delta strip (+3 texts; phase 3 accepts or matches it) |
+| refdiff-compare-mobile | 116 (57/29/30) / 124 / 0 / 0.25 | 116 (57/29/30) / 124 / 0 / 0.25 — unchanged |
+
+Total 1168 / 1532 → **472 / 607**, 31 suppressed, every one visible in
+`findings.json` (26 `text-pattern`, 5 `accepted`). Confidence went UP with
+every step; the pixel channel now RUNS on both Library pairs (it found the
+search placeholder colour, fixed).
+
+The staircase, each step measured (desktop / mobile):
+
+1. markup to the comp: 390 → 208 (conf 0.20) / 323 → 156 (0.41).
+2. ORDER — newest first, plus fixture times for the comp's two timeless
+   items: 208 → **101** (0.76) / 156 → **54** (0.89). The single largest
+   cause: refdiff matches card N to card N, so a different list order reads
+   as a text-content / colour finding on every pill, badge and chip.
+3. the gap decisions as policy + the opened pair's delta + `--now` + the
+   interpolation spans + the curly apostrophe: 101 → 42 / 54 → 22.
+4. the broken run's salvaged `createdAt` (its slot in the list): 42 → 9 /
+   22 → 6.
+5. the search input as the comp has it (UA placeholder colour, UA padding,
+   `appearance:none`): mobile 6 → 5.
+
+**The short list of genuine deltas that remain** (all read from
+`findings.json`, none suppressed on purpose):
+
+- desktop f2–f4, mobile f1–f5: decision D6 — the opened pair's REAL
+  `impl.png` where the comp draws three grey plate bars. Boxes carry no text,
+  so no content-shaped rule can name them; `{type, role}` alone would accept
+  every missing box in the pair and a `regions` entry has no `reason` field.
+  Left visible on purpose (5 + 3 findings).
+- desktop f1, f5–f9: the dropped `Pending` chip's 78px — the search field is
+  `flex:1` and absorbs it, so every chip after it shifts and the nearest-box
+  pairing reads `Figma`↔`Claude Design` (gap 24, below). Six findings.
+
+`REGRESSION` lines appeared on three intermediate runs (R1, R9, R6, R7, R2);
+every one was the text-keyed reshuffle shape from phase 1 (same-text
+candidates — "1", "5", "Major 2", `chat_bubble`, `trending_flat` — re-paired
+as every box moved), present by the same id in the run before. The final runs
+report none.
+
+Causes that closed: the copy-vs-chrome split (chips, pills, badges, the
+footer), `IBM Plex Mono` on routes and delta labels, the chip geometry
+(11.5/600 vs 13/400, radius 999), `Material Symbols` where the comp draws an
+icon, the muted-vs-ink colour rows, the amber badge with `#111` text. Causes
+that did not: none the Library owns — what is left is the two lists above.
+
+Decided in this phase (gap numbers in section E):
+
+- **23 → (b).** The opened pair HAS a previous run: the Library card
+  (`+3 new / −1 resolved`, Diverging) and the Tool's `Regression` tags on
+  `f1` / `g2` both say so; only the Tool's `showDeltaStrip` prop (default
+  false) does not, so section C's "no previous run" is REVERSED and the
+  fixture writes `delta { resolved: 1, introduced: [f1, f2, g2],
+  regressions: [f1, g2] }`. Cost: the compare-desktop pair shows the strip
+  (+3 texts) that the comp capture hides — phase 3 accepts it with this
+  reason, or Mato flips the prop default. Option (a) was measured first: the
+  card's one-line `first run` footer made the doc card 15px shorter than the
+  comp's two-line footer and shifted every card below it (a ×39 position
+  finding), which is why (b) won.
+- **24 → no pending state.** `collectRunDirs` lists only dirs that HAVE a
+  `findings.json`, and the list is fixed at startup, so "a dir without a
+  report" cannot be a Pending source without rescanning the root per request
+  — not this phase. The two zero-finding runs render `Pass · Clean`; the
+  comp's `Pending` verdict, `Processing` / `Queued` pills and `running` /
+  `waiting` times are excused by a content-shaped `textPatterns` rule that
+  expires the moment the comp stops using those words. The `Pending` chip
+  is NOT drawn: a filter that can never match is worse than a missing one.
+- **25 → the plate.** A run without `impl.png` shows the comp's grey plate
+  (desktop band and mobile tile); the opened pair shows its real capture.
+- **27 → wall clock, and `--now` for a measure.** "12 min ago" means 12
+  minutes before the reader's now, nothing else. The fixture keeps its fixed
+  clock in git; `node fixtures/make-demo-root.ts --now` shifts it to the wall
+  clock right before a measure (the strings agree for an hour; the minute
+  drift within a run is excused by the relative-time `textPatterns` rule),
+  and a plain regeneration puts the committed clock back.
+- **3 (suppressed count) and 4 (regressions) are not on the card**: the
+  refetched comp has no slot for them (STATUS says the design is complete),
+  so they live in the rail (phase 4) and the strip (phase 3). The card's
+  `delta` is the trend + `+N / −M` label, as drawn.
+- **Broken card**: what the cut file still says (name, route, time) is shown;
+  the dir name is the fallback. The comp's dashed card with name + route is
+  therefore matched, not a gap.
+
+Light theme, the error states, the forced-mobile layout and the empty state
+ship UNMEASURED by decision (gap 20, section C).
+
 
 ---
 
@@ -615,7 +740,11 @@ by where they surface.
   `anchorConfidence` prop defaults to **0.42**, so it renders the low-confidence
   warning — the demo fixture must record `confidence: 0.42`. `showDeltaStrip`
   defaults to **false**, so the demo pair must have no previous run and hide the
-  strip. Otherwise both produce phantom findings.
+  strip. Otherwise both produce phantom findings. **REVERSED for the delta on
+  2026-08-28 (phase 2, gap 23 → b):** the opened pair now carries a delta with
+  two regressions, because the Library card and the Tool's `Regression` tags
+  both require one; the strip the app draws is +3 texts on
+  `refdiff-compare-desktop` for phase 3 to accept.
 
 ### D. Decisions 2026-08-28 (second round)
 
@@ -652,6 +781,8 @@ with Mato where the two comps disagree.
     contradicts gap 15 "impossible to miss"); (c) Mato reconciles the comps.
     The generator is a one-line switch either way (`reportFor`, the `delta`
     branch). Phase 2 hits the card label, phase 4 the tags.
+    **DECIDED 2026-08-28 (phase 2): (b)** — see phase 2 "Decided in this
+    phase". The Tool comp's `showDeltaStrip` default is now the outlier.
 24. **Pending run states.** The comp's `Processing` (`Onboarding — Review
     step`, "running") and `Queued` (`Confirm modal`, "waiting") have no refdiff
     representation — a run dir exists once `compare` wrote it. The fixture
@@ -659,12 +790,14 @@ with Mato where the two comps disagree.
     comment counts. Phase 2: either a `Pending` verdict needs a source (a dir
     without `findings.json`? a marker `compare` writes while running?) or the
     two cards render `Pass · Clean` and the state pill is `accept`ed as
-    designer data.
+    designer data. **DECIDED 2026-08-28 (phase 2): the latter**, as a
+    `textPatterns` rule; no `Pending` chip.
 25. **Thumbnails for pairs without a PNG.** Decision D6 makes the card
     thumbnail the real `impl.png`; only the opened pair has one. The other 10
     demo runs (and any real run whose capture hard-stopped) need a no-image
     state — the comp's grey plate is the obvious candidate, but that is
-    phase 2's call, not a fixture problem.
+    phase 2's call, not a fixture problem. **DECIDED 2026-08-28 (phase 2):
+    the plate.**
 26. **Aggregate `cause` line.** The comp's `g1` / `g2` show a second line
     ("Muted label token resolves to the wrong grey"). `Finding` has no such
     field — `message` is the title. Either the aggregator writes a cause (core
@@ -675,6 +808,8 @@ with Mato where the two comps disagree.
     never match the comp's text. Phase 2 either renders relative time against
     the newest run in the root (deterministic, and arguably right: "12 min
     before the latest run") or accepts the eleven `when` strings as data.
+    **DECIDED 2026-08-28 (phase 2): wall clock; `make-demo-root.ts --now`
+    before a measure; the strings excused by a `textPatterns` rule.**
 28. **`reply` on the fixture's comments.** `annotations.json` for the opened
     pair already carries the comps' two model replies (gap 19), but
     `parseAnnotationSet` drops unknown fields, so a PUT from the browser

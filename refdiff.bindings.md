@@ -14,7 +14,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | impl | the annotator app itself serving the demo root: `refdiff-annotator fixtures/demo-root --serve` (default port 7378; on the Linux devbox `svc up annotator` — `services.toml` — which hands out the next free port, 7379 while another worktree's annotator holds 7378) |
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
 | run dir | `out/refdiff/<pair>/` (gitignored results; never served) |
-| demo root | `fixtures/demo-root/` — COMMITTED. Regenerate the JSON with `node fixtures/make-demo-root.ts`; add `--capture` to re-shoot `design.png` / `impl.png` / `elements.json` for the opened pair from `design/refdiff/parts/` (needs the network) |
+| demo root | `fixtures/demo-root/` — COMMITTED. Regenerate the JSON with `node fixtures/make-demo-root.ts`; `--now` shifts every timestamp to the wall clock for a measure (the Library's relative "when" — regenerate WITHOUT it afterwards, never commit `--now` output); `--capture` re-shoots `design.png` / `impl.png` / `elements.json` for the opened pair from `design/refdiff/parts/` (needs the network) |
 | auth | none |
 
 ## Run
@@ -22,9 +22,12 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 ```bash
 pnpm dev                                                  # keep tsc --watch running; CLIs run from dist
 svc up annotator                                          # or: refdiff-annotator fixtures/demo-root --serve --port 7378 &
+svc restart annotator                                     # after any annotator edit — the served shell is rendered at start
+node fixtures/make-demo-root.ts --now                     # fixture clock = now, so "12 min ago" reads as the comp's
 refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
-  --app-url http://127.0.0.1:7379 --out out/refdiff       # the port svc allocated
+  --app-url http://127.0.0.1:7379 --out out/refdiff       # the port svc allocated; --pair a,b is ONE comma-separated flag
 refdiff summary out/refdiff
+node fixtures/make-demo-root.ts                           # the committed clock back before you commit anything
 ```
 
 ## Traps
@@ -43,11 +46,21 @@ refdiff summary out/refdiff
 - The comps hydrate the `dc-runtime` from `support.js` and React from unpkg —
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
-- **Confidence 0.00 is the layout, not the fixture** (phase 0 numbers in the
-  plan): the card names and finding titles ARE shared anchors now, but they
-  sit in a different grid / order (Library) and on the other side of the
-  screen (the rail, compare). Do not tune the fixture to raise it — phases 2
-  and 4 move the markup, and the number follows.
+- **Low confidence is the layout, not the fixture**: the Library pairs sit
+  at 0.90 / 1.00 since phase 2; the compare pairs stay at 0.13 / 0.25 until
+  phase 4 moves the rail to the comp's side. Do not tune the fixture to raise
+  it — move the markup, and the number follows.
+- **ORDER before anything else on a list page.** refdiff matches card N to
+  card N; a list in a different order than the comp reads as a text-content
+  and colour finding on every pill, badge and chip (phase 2: 208 → 101
+  findings from the sort alone). The Library sorts newest first; the fixture's
+  times reproduce the comp's hand order (`make-demo-root.ts`, `ago`).
+- The `Pending` / `Processing` / `Queued` / `running` / `waiting` words, the
+  relative times and the parser message on the broken card are excused by
+  `LIBRARY_IGNORE.textPatterns` in the manifest — visible in `findings.json`
+  under `suppressed`. What the Library pairs still report is listed in the
+  plan's phase 2 Numbers (the D6 thumbnail boxes, the dropped Pending chip's
+  width) and is deliberate.
 - Both comps are full-bleed pages, so the design line must say `scope
   screen-label fluid` and the same css px as the pair viewport (1180×800 /
   1360×820 / 390×844). If it reports the viewport +120 instead, the fluid-frame
@@ -56,8 +69,9 @@ refdiff summary out/refdiff
   layout by `window.innerWidth`; `RefDiff Mobile.dc.html` is a showcase wrapper,
   not a pair.
 - The fixture's timestamps are fixed to the comps' clock (`DEMO_NOW`,
-  2026-08-28T14:22:05Z), so a relative "12 min ago" rendered against the wall
-  clock will never match the comp's — see the plan's design gaps.
+  2026-08-28T14:22:05Z) in git; the Library renders "12 min ago" against the
+  wall clock, so measure after `node fixtures/make-demo-root.ts --now` (the
+  strings agree for an hour) and regenerate without it before committing.
 - **The served app WRITES into the fixture.** Placing a note, a triage verdict
   or a focus region in the served demo root PUTs `annotations.json` /
   `triage.json` / `focus.json` (+ digests) into `fixtures/demo-root/<pair>/`.

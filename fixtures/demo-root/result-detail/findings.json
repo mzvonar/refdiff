@@ -1,6 +1,6 @@
 {
   "pair": "Result detail",
-  "createdAt": "2026-08-28T12:22:05.000Z",
+  "createdAt": "2026-08-28T12:17:05.000Z",
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/result-detail",
@@ -112,7 +112,7 @@
     "failThreshold": "major"
   },
   "delta": {
-    "previousRun": "2026-08-28T06:22:05.000Z",
+    "previousRun": "2026-08-28T06:17:05.000Z",
     "resolved": [
       "prev-1",
       "prev-2",

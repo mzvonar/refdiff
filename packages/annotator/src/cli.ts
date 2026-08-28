@@ -34,7 +34,7 @@ import {
   type ComparisonReport,
   type ElementNode,
 } from "@refdiff/core"
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises"
+import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises"
 import { networkInterfaces } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
@@ -535,6 +535,15 @@ function appApi(options: AppApiOptions) {
   }
 }
 
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
  * One card's worth of numbers per run dir, read fresh (a set is ~40 files).
  * A run dir whose findings.json cannot be read — mid-write, truncated, not a
@@ -547,12 +556,26 @@ async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | Br
   for (const run of options.runs) {
     const loaded = await loadReport(run.dir)
     if (!loaded.ok) {
-      out.push({ dir: run.name, broken: true, reason: loaded.reason })
+      out.push({
+        dir: run.name,
+        broken: true,
+        reason: loaded.reason,
+        ...(loaded.pair ? { pair: loaded.pair } : {}),
+        ...(loaded.createdAt ? { createdAt: loaded.createdAt } : {}),
+        ...(loaded.implRef ? { implRef: loaded.implRef } : {}),
+      })
       continue
     }
     const report = loaded.value
     if (!report.verdict) {
-      out.push({ dir: run.name, broken: true, reason: "findings.json · no verdict (written by an older refdiff)" })
+      out.push({
+        dir: run.name,
+        broken: true,
+        reason: "findings.json · no verdict (written by an older refdiff)",
+        pair: report.pair,
+        createdAt: report.createdAt,
+        implRef: report.impl.ref,
+      })
       continue
     }
     const notes = await readAnnotations(run.dir, report.pair)
@@ -571,6 +594,21 @@ async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | Br
       createdAt: report.createdAt,
       designSource: report.design.source,
       implSource: report.impl.source,
+      implRef: report.impl.ref,
+      // The card's thumbnail is the run's own capture (decision D6) — only
+      // when the file is really there; a hard-stopped capture has none.
+      ...((await fileExists(join(run.dir, report.artifacts.implPng)))
+        ? { implPng: run.name + "/" + report.artifacts.implPng }
+        : {}),
+      ...(report.delta
+        ? {
+            delta: {
+              introduced: report.delta.introduced.length,
+              resolved: report.delta.resolved.length,
+              regressions: (report.delta.regressions ?? []).length,
+            },
+          }
+        : {}),
       openNotes: c.open + c.implemented,
       notes: notes.annotations.length,
     })
