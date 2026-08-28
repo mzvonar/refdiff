@@ -14,8 +14,10 @@
  * and 500, both in the `latin` and `latin-ext` subsets (Slovak diacritics
  * live in latin-ext). Material Symbols Outlined is Google's own subset of
  * the 52 glyphs the comps use (`icon_names=` — regenerate the list from the
- * comps if one changes), variable on FILL / wght / GRAD / opsz like the
- * original, so the comps' `font-variation-settings` apply unchanged.
+ * comps if one changes: the static `class="msi"` markup AND the quoted names
+ * in the comps' script arrays, which hold a third of them; a missed glyph
+ * renders as its name in letters), variable on FILL / wght / GRAD / opsz like
+ * the original, so the comps' `font-variation-settings` apply unchanged.
  *
  * The emitted (`--emit`) report.html has no server behind it: its `fonts/`
  * URLs resolve to nothing on disk and the stacks below fall through to the

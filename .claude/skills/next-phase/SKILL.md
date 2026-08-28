@@ -55,6 +55,11 @@ are no memory files. Read it first, every time.
 
 - The CLIs run from `dist` — without `pnpm dev` (or `pnpm build`) a source edit
   is invisible and you will chase a phantom.
+- A rebuilt `dist` is invisible to the annotator that is ALREADY running: it
+  rendered its shell at start and never re-reads its modules. `svc restart
+  annotator` after every annotator edit, and before an "after" measure confirm
+  the served page carries the change (`curl <app-url>/ | grep <new-rule>`),
+  or the measure reads as "the edit had no effect".
 - The Bash sandbox blocks outbound network and kills backgrounded servers; run
   captures, font downloads and `--serve` with it disabled.
 - `out/demo/` is a committed fixture, `out/refdiff/` is where results land.
