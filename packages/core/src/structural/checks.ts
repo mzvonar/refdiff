@@ -11,6 +11,7 @@ import { differenceCiede2000, parse, rgb, type Rgb } from "culori";
 
 import type { ElementMatch, MatchResult } from "../pipeline.js";
 import type { Box, ElementNode, Finding, FindingType, Severity } from "../types.js";
+import { normalizeForComparison } from "./text.js"
 
 export interface CheckOptions {
   /** CSS px tolerance for position and size deltas (GVT calibration). */
@@ -73,7 +74,7 @@ function colorDelta(a: string, b: string): number | undefined {
   return deltaE(flattenOverWhite(ca), flattenOverWhite(cb));
 }
 
-const normText = (t: string): string => t.replace(/\s+/g, " ").trim();
+const normText = (t: string): string => normalizeForComparison(t);
 const normFamily = (f: string): string => f.trim().replace(/^["']|["']$/g, "").toLowerCase();
 
 const elementLabel = (el: ElementNode): string =>

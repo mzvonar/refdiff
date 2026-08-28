@@ -22,10 +22,11 @@ opinion.
 Core pipeline implemented and proven on real pairs (`.dc.html` + Figma
 design adapters, Storybook + live-URL impl adapters, structural + pixel
 channels, ignore policies, aggregation, delta, agent packaging, CLI);
-the annotator renders a split-screen `report.html` per run with
-element-anchored human annotations (`open → implemented → done`) and a
-digest for the model. The bounded fix loop that consumes all of this is
-[`skills/design-fix-loop/SKILL.md`](skills/design-fix-loop/SKILL.md)
+the annotator serves the whole out root as one app (pair list → split-screen
+pair view, switchable to one side at a time, which is what a phone always gets)
+with element-anchored human annotations (`open → implemented → done`), a digest
+for the model, and `--emit` for self-contained `report.html` files. The bounded fix loop that consumes all of this is
+[`skills/visual-compare/SKILL.md`](skills/visual-compare/SKILL.md)
 (regression ledger + accepted deviations in the CLI); one Figma manifest
 entry expands a COMPONENT_SET into per-variant pairs
 ([`examples/population-registry-ds.manifest.mjs`](examples/population-registry-ds.manifest.mjs)).

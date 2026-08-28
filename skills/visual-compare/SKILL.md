@@ -1,9 +1,9 @@
 ---
-name: design-fix-loop
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the visual-compare CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run the visual-compare loop", or to verify a UI change against its design — and when asked to "set up visual-compare / design-fix-loop in dev mode", "install the visual-compare CLI", or the `visual-compare` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
+name: visual-compare
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the visual-compare CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run visual-compare", "work in the focused region", or to verify a UI change against its design — and when asked to "set up visual-compare in dev mode", "install the visual-compare CLI", or the `visual-compare` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
 ---
 
-# design-fix-loop — the bounded fix loop over visual-compare reports
+# visual-compare — the bounded fix loop over its reports
 
 This skill is THIN on purpose: the harness measures, you act. `visual-compare
 compare` produces `findings.json` (typed, bbox-grounded, severity-ranked
@@ -17,22 +17,21 @@ times, and stop on diminishing returns.
 ## Repo bindings
 
 This skill is a USER-level skill (symlinked from
-`~/.claude-shared/skills/design-fix-loop` → the visual-compare checkout; both
+`~/.claude-shared/skills/visual-compare` → the visual-compare checkout; both
 profiles link it), so it is available in every project. Nothing of it lives
 in a consuming repo — the repo only carries its manifest and a bindings file.
-**Read the bindings first**; they are the source of truth for paths, ports,
-seeds and gotchas:
+**Read the bindings first** — they are the source of truth for paths, ports,
+seeds and gotchas. Each repo keeps the file wherever its visual tooling lives,
+so locate it rather than assuming a path:
 
-```
-<repo>/tools/design-compare/design-fix-loop.bindings.md          # uctoinak-bmad
-<repo>/frontend/ds/tooling/visual/design-fix-loop.bindings.md    # population-registry
+```bash
+find . -name 'visual-compare.bindings.md' -not -path '*/node_modules/*'
 ```
 
-(`find . -name 'design-fix-loop.bindings.md' -not -path '*/node_modules/*'`
-if the repo moved it.) A bindings file names: the manifest, the design dir /
-Figma file, how the impl is served (Storybook dir or URL, live app + auth),
-the run dir convention, and the repo's environment traps. If none exists,
-stop and write one with the user before running anything.
+A bindings file names: the manifest, the design dir / Figma file, how the impl
+is served (Storybook dir or URL, live app + auth), the run dir convention, and
+the repo's environment traps. If none exists, stop and write one with the user
+before running anything.
 
 The CLIs are on PATH via `pnpm link --global` from the visual-compare
 checkout: `visual-compare` (core) and `visual-compare-annotator`. They run
@@ -46,7 +45,7 @@ not on PATH, run the bundled script — it is idempotent and touches no
 consuming repo:
 
 ```bash
-bash "$(dirname "$(readlink -f ~/.claude/skills/design-fix-loop/SKILL.md)")/setup-dev.sh" --watch
+bash "$(dirname "$(readlink -f ~/.claude/skills/visual-compare/SKILL.md)")/setup-dev.sh" --watch
 # options: --checkout <dir> (default ~/Development/visual-compare, cloned from
 #          github.com/mzvonar/visual-compare if missing)  --no-browser  (skip Playwright Chromium)
 ```
@@ -55,7 +54,7 @@ It makes these true, then verifies (`visual-compare --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages
 built; `pnpm link --global` so `visual-compare` / `visual-compare-annotator`
 resolve (it tells you the PATH line to add if pnpm's global bin is not on
-PATH yet); the skill is user-level — `~/.claude/skills/design-fix-loop` (and
+PATH yet); the skill is user-level — `~/.claude/skills/visual-compare` (and
 `~/.claude-personal` if present) → the checkout, through
 `~/.claude-shared/skills` only when that dir already exists (a plain machine
 with just `~/.claude` links directly; nothing is created that was not in use);
@@ -64,7 +63,7 @@ edits to `packages/*/src` reach the linked CLIs without a manual build. Edits
 to `SKILL.md` are live immediately (symlink). Needs Node ≥22, pnpm, git, and
 network for the clone / Chromium download (in a sandboxed shell, run it with
 the sandbox off). Then the repo you are in needs only its manifest and a
-`design-fix-loop.bindings.md` — write the bindings with the user if absent.
+`visual-compare.bindings.md` — write the bindings with the user if absent.
 
 ## The rules (non-negotiable)
 
@@ -79,13 +78,26 @@ the sandbox off). Then the repo you are in needs only its manifest and a
 2. **The model is never the comparator.** You do not decide whether the two
    sides match; the verdict and the delta do. You decide what each measured
    difference IS (see the classification) and what to change.
-3. **Separate data from drift before anything else.** Demo data in the comp
-   (names, amounts, dates, which rows exist) differs from the story fixture /
-   seed. Matched pairs with differing text are already suppressed as
-   `data-slot`; unmatched rows show up as `missing-element` /
-   `extra-element`. A data difference is fixed in the fixture or seed (make
-   the story render the comp's data), or declared with `ignore.textPatterns`
-   — never by touching component code.
+3. **Separate data from drift before anything else — the harness will not do
+   it for you.** Demo data in the comp (names, amounts, dates, which rows
+   exist) differs from the story fixture / seed. Text differences on matched
+   pairs are **reported by default**, because which strings are data is a
+   per-pair judgement and guessing it centrally hides copy regressions. So the
+   first pass over `text-content` findings is yours: each one is either data
+   (fix the fixture or seed so the story renders the comp's data — never touch
+   component code for it) or a real copy drift to fix.
+   Once you know the corpus, declare the rule on the pair rather than
+   re-judging every run: `ignore.dataSlots: { patterns: [...] }` (or
+   `--data-slot-text`) masks each declared shape out of BOTH strings and
+   compares the remainder — so `"Blok · 12. 7. 2026"` vs `"Doklad · 12. 7.
+   2026"` is still reported (the label drifted) while `"Blok · 12. 7. 2026"`
+   vs `"Blok · 11. 7. 2026"` is not (only the date moved), and position, size,
+   colour and typography stay compared on the data pairs. Reach for
+   `ignore.textPatterns` only when you also want the geometry and colour
+   findings about that string gone — it suppresses every finding type.
+   `ignore.dataSlots: true` drops EVERY differing-text pair; it is blind to
+   copy regressions, so use it only for a deliberately data-only comparison.
+   Unmatched rows show up as `missing-element` / `extra-element` instead.
 4. **A comp frame can contradict its siblings — encode the axis, not the
    frame.** Before changing a shared token or rule because one comp says so,
    measure the other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l`
@@ -129,10 +141,18 @@ while iteration < 5:
 ### 1. Run
 
 ```bash
-visual-compare compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $RUN_DIR
+visual-compare compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
-visual-compare summary $RUN_ROOT      # sets / many pairs: one table + causes across pairs (see 1b)
+visual-compare summary $OUT_ROOT      # sets / many pairs: one table + causes across pairs (see 1b)
 ```
+
+`--out` is a ROOT, always: the run dir is `$OUT_ROOT/<pair>/`, for one pair and
+for forty. In **manifest mode the per-pair capture flags are rejected** —
+`--viewport`, `--selector`, `--wait-for`, `--full-page`, `--story`, `--url`,
+`--design-file/-frame`, `--figma` all belong on the manifest entry, and passing
+one is a usage error naming the field to set. Policy flags (`--ignore-text`,
+`--accept`, `--data-slot-text`, `--data-slots`, `--scope`) DO apply run-wide and
+merge under each pair's own `ignore`.
 
 Read the console summary (`N findings (c critical, m major, k minor) covering
 I instances, S suppressed`, `delta vs …: +introduced / −resolved`,
@@ -142,6 +162,38 @@ I instances, S suppressed`, `delta vs …: +introduced / −resolved`,
 lists every place), `message`, `expected`, `actual`, `role`, the boxes
 (impl CSS px, world space). Skim `suppressed` once per run so you know what
 the policy is hiding and why.
+
+### 1a. Read the ALIGNMENT before you read a single finding
+
+`alignment.confidence` decides whether any of the findings mean anything.
+Below **0.5** the pixel channel does not run and element matching degrades, so
+a low-confidence pair's `position` / `size` / `missing-element` findings are
+mostly artefacts. **Fix the alignment first; never "fix" code against a
+low-confidence report.**
+
+Confidence is `(agreeing / anchors) × min(1, anchors / 8)`, where an ANCHOR is a
+string occurring exactly once on each side that matches after normalisation, and
+"agreeing" means the fitted transform lands it within 10px. Two consequences:
+
+- **Anchor supply is content, not code.** If the comp's demo data differs from
+  the fixture/seed, there is nothing to fit. `min(1, anchors/8)` also caps the
+  score outright: 3 anchors can never exceed 0.375 however well they fit. The
+  fix is to make the fixture render the comp's data — this is usually the single
+  biggest lever on a page pair, worth more than any number of policy tweaks.
+- **A low score names its own cause.** The run line prints `x <n> / y <n>`
+  whenever one axis fits much better than the pair, because `confidence` counts
+  an anchor only when BOTH axes land it. Read that split:
+
+| reading | means | do |
+| --- | --- | --- |
+| `confidence 0.00`, `basis: none` | fewer than 3 shared anchors | seed/fixture the comp's data |
+| high `y`, low `x` | lines up vertically, packs differently across | a row's content width differs, or a control moved side to side — check the widest row and the nav |
+| high `x`, low `y` | columns agree, vertical rhythm does not | a section is taller/shorter, or the capture height ≠ the comp height (`app.viewport.height`, `app.fullPage`) |
+| both low, anchors ≥ 8 | the two layouts genuinely disagree | pin `ignore.scope` to the region that DOES correspond, then re-read |
+
+To see the anchors yourself, intersect the unique texts in `elements.json`
+(`design` / `impl`): the ones that match are your anchors, and the design-only
+list is the shopping list for the fixture.
 
 ### 1b. Sets — a component set or a whole manifest is ONE loop
 
@@ -172,7 +224,8 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 
 | class | how it looks | what you do |
 |---|---|---|
-| **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); `text-content` already under `suppressed: data-slot` | make the fixture / seed render the comp's data (or `ignore.textPatterns` for genuinely dynamic values) |
+| **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
+| **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
 | **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
 | **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | add `accepted: [{ type, expected, actual, reason: "<evidence>" }]` to the pair's `ignore` (or `--accept`) — the reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind` (`{ type: "pixel-region", role: "icon", changeKind: "shape", reason }`), never accept "any pixel difference" |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
@@ -241,6 +294,62 @@ the measurement that proved it: the delta), **accepted** (each with its
 reason), **needs a human** (each with its measurement and the question).
 Never describe a screenshot; quote `expected` / `actual`.
 
+## Configuring a pair — the `ignore` block
+
+Every pair in a manifest may carry an `ignore` block. It is the durable place
+for a judgement you have already made; making it once beats re-judging the same
+findings every run. **Nothing here deletes a finding** — suppressed findings
+travel in `findings.json` under `suppressed`, tagged with the rule that hit
+them, so a wrong policy is auditable rather than invisible.
+
+```js
+{
+  id: "docs-owner-desktop",
+  design: { file: "documents.dc.html", frame: "8a" },
+  app: { source: "live", role: "owner", route: "/…/docs", viewport: { width: 1280, height: 900 } },
+  ignore: {
+    scope: "[data-testid=doc-list]",                      // compare this design node, not the artboard
+    dataSlots: { patterns: ["\\d{1,2}\\. \\d{1,2}\\. \\d{4}"] },
+    roles: ["backdrop"],
+    accepted: [{ type: "color", expected: { color: "rgb(26,26,26)" }, actual: { color: "rgb(44,36,25)" }, reason: "…" }],
+  },
+}
+```
+
+Pick the narrowest tool that covers the case:
+
+| you want to ignore | use | what it costs you |
+| --- | --- | --- |
+| a volatile VALUE (amount, date, id, name) while still checking the copy around it | `dataSlots: { patterns }` | nothing else — geometry, colour, typography still compared on that pair |
+| every text difference on matched pairs (a deliberately data-only comparison) | `dataSlots: true` | blind to ALL copy drift; it cannot expire, so it hides tomorrow's regression too |
+| an element entirely — geometry, colour and text alike | `textPatterns` | every finding type about a matching string, geometry included; reach for it last |
+| a kind of element (backdrops, focus rings) | `roles` | that role everywhere in the pair |
+| artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
+| a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]` | nothing — it lapses automatically when either value changes |
+
+**`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
+from BOTH strings and the remainder compared: equal remainder = data churn
+(suppressed), different remainder = copy drift (reported). So a mixed slot
+works — `"Blok · 12. 7. 2026"` vs `"Doklad · 12. 7. 2026"` is reported (the
+label drifted) while `"Blok · 12. 7. 2026"` vs `"Blok · 11. 7. 2026"` is not.
+Anchors in the regex are optional; only the match is removed.
+
+**Default is noisy on purpose.** Text differences on matched pairs are REPORTED
+unless you say otherwise, because which strings are data is a per-pair judgement
+and a harness that guesses it goes quiet about copy regressions. Read the
+`text-content` findings, then declare the shapes you actually saw.
+
+**Order of attack** — do not skip down the list:
+
+1. **Capture** — fonts loaded? whole frame captured? soft 404? (`environment`
+   findings, or every `typography` finding naming the same fallback family).
+2. **Data** — make the fixture/seed render the comp's data. This is what lifts
+   alignment confidence; policy cannot.
+3. **Alignment** — `ignore.scope`, viewport/height, using the per-axis split.
+4. **Only then** the real drift, and only then write policy for what is left.
+
+Doing 4 before 1–3 means fixing artefacts, and the delta will not stick.
+
 ## Reading the measurements (the ported "what to compare" checklist)
 
 The old checklist sampled pixels and computed styles by hand. Each of its
@@ -274,11 +383,29 @@ items is now a typed finding — read it there:
   shows where. Runs only when alignment confidence ≥ 0.5 — a boxless minor
   note says it was skipped.
 - **Alignment** → `alignment` in the report (`scale`, `offsetX/Y`,
-  `confidence`). Confidence 0.00 means no unique shared text: everything
-  positional is unreliable until the fixture shares text with the comp.
+  `confidence`, plus `confidenceX` / `confidenceY`). Read it FIRST, before any
+  finding — see §1a. Confidence 0.00 means too little unique shared text:
+  everything positional is unreliable until the fixture shares text with the
+  comp, and no policy tweak substitutes for that.
 
 ## Environment pre-flight (fill in per repo)
 
+The repo's `visual-compare.bindings.md` holds the specifics; these are the
+failure shapes that recur everywhere and impersonate product bugs.
+
+- **A cold route can blow the 30 s navigation budget.** A dev server compiling a
+  route on first hit fails as `navigation-failed` / `Timeout 30000ms exceeded`,
+  which reads exactly like a broken page. Warm the route once (`curl -L`), then
+  re-run before believing it.
+- **A direct DB seed does not invalidate the app's caches.** Insert a row with
+  SQL and a cached read still serves the old answer — typically as a soft 404
+  (HTTP **200** with a not-found body, so only a content check catches it).
+  Restart the app after seeding, then re-capture.
+- **CSS variables set on a decorator wrapper do not reach portalled content.**
+  Dialogs and sheets portal to `<body>`; if the font/theme variables live on a
+  Storybook decorator `<div>`, overlay stories render in the browser default and
+  EVERY `typography` finding names the same fallback family. Put the variables
+  where the app puts them (`<html>`), not on a wrapper.
 - Storybook: token / global-CSS edits may not HMR — restart before trusting
   a re-run; confirm a color via the `color` finding, not the screenshot.
 - Live app: seeds present? auth working? A soft 404 compares "fine".

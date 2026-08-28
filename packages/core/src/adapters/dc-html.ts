@@ -11,87 +11,124 @@
  * (the old uctoinak harness shipped exactly that failure).
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import type { Capture, CaptureError, DcHtmlSource } from "../pipeline.js"
+import type { CaptureScope } from "../types.js"
+import type { Browser, Page } from "playwright"
 
-import type { Browser, Page } from "playwright";
+import { mkdir, writeFile } from "node:fs/promises"
+import { dirname } from "node:path"
 
-import type { Capture, CaptureError, DcHtmlSource } from "../pipeline.js";
-import { err, ok, type Result } from "../result.js";
+import { err, ok, type Result } from "../result.js"
 import {
   captureUntilStable,
+  closeQuietly,
   FREEZE_CSS,
+  openPage,
   serveDir,
   waitForFonts,
-} from "./browser.js";
-import { extractElementTree } from "./extract.js";
-import { pickLargestChild, type ScopeCandidate } from "./scope.js";
-import type { CaptureScope } from "../types.js";
+} from "./browser.js"
+import { extractElementTree } from "./extract.js"
+import { pickLargestChild, type ScopeCandidate } from "./scope.js"
 
 /**
- * Resolve the node to capture inside the frame. Explicit selector → must
- * exist (typed error otherwise); none → largest child by area; a childless
- * frame → the frame itself. The chosen node is tagged with `data-vc-scope`
- * so a stable selector addresses it afterwards.
+ * Resolve the node to capture inside the frame, in priority order:
+ *
+ *  1. an explicit selector (typed error when it matches nothing),
+ *  2. the element carrying `data-screen-label` — the comp author's own
+ *     "this is the screen" marker, which sits either on the frame or on its
+ *     single child depending on how the comp was written,
+ *  3. the largest direct child by area,
+ *  4. the frame itself when nothing is big enough to be UI.
+ *
+ * (2) exists because (3) cannot tell "the frame WRAPS the screen" from "the
+ * frame IS the screen": on the latter it descends one level too far and keeps
+ * only the biggest column. On uctoinak's set that silently cropped the app's
+ * 232px sidebar out of three desktop comps — the design pane simply had no
+ * sidebar, and every element to its right was offset by a third of the frame.
+ * The chosen node is tagged with `data-vc-scope` so a stable selector
+ * addresses it afterwards.
  */
-async function resolveScope(
+export async function resolveScope(
   page: Page,
   frameSelector: string,
   scope: string | undefined,
 ): Promise<Result<CaptureScope, "scope-not-found">> {
   if (scope !== undefined) {
-    const selector = `${frameSelector} ${scope}`;
-    if ((await page.locator(selector).count()) === 0) return err("scope-not-found");
-    await page.locator(selector).first().evaluate((el) => el.setAttribute("data-vc-scope", ""));
-    return ok({ mode: "explicit", selector: `${frameSelector} [data-vc-scope]` });
+    const selector = `${frameSelector} ${scope}`
+    if ((await page.locator(selector).count()) === 0) return err("scope-not-found")
+    await page
+      .locator(selector)
+      .first()
+      .evaluate((el) => el.setAttribute("data-vc-scope", ""))
+    return ok({ mode: "explicit", selector: `${frameSelector} [data-vc-scope]` })
+  }
+
+  // The screen marker beats the area heuristic: it is authored, not inferred.
+  const labelled = await page.evaluate((sel: string) => {
+    const frame = document.querySelector(sel)
+    if (!frame) return "none"
+    if (frame.hasAttribute("data-screen-label")) return "frame"
+    const inner = frame.querySelectorAll("[data-screen-label]")
+    // Two labelled screens in one frame is ambiguous — let the area rule decide.
+    return inner.length === 1 ? "descendant" : "none"
+  }, frameSelector)
+  if (labelled === "frame") {
+    return ok({ mode: "screen-label", selector: frameSelector })
+  }
+  if (labelled === "descendant") {
+    await page
+      .locator(`${frameSelector} [data-screen-label]`)
+      .first()
+      .evaluate((el) => el.setAttribute("data-vc-scope", ""))
+    return ok({ mode: "screen-label", selector: `${frameSelector} [data-vc-scope]` })
   }
 
   const candidates: ScopeCandidate[] = await page.evaluate((sel: string) => {
-    const frame = document.querySelector(sel);
-    if (!frame) return [];
+    const frame = document.querySelector(sel)
+    if (!frame) return []
     return Array.from(frame.children).flatMap((child, index) => {
-      const tag = child.tagName.toLowerCase();
-      if (tag === "script" || tag === "style" || tag === "template") return [];
-      const r = child.getBoundingClientRect();
-      return [{ index, w: r.width, h: r.height }];
-    });
-  }, frameSelector);
+      const tag = child.tagName.toLowerCase()
+      if (tag === "script" || tag === "style" || tag === "template") return []
+      const r = child.getBoundingClientRect()
+      return [{ index, w: r.width, h: r.height }]
+    })
+  }, frameSelector)
 
-  const best = pickLargestChild(candidates);
-  if (!best) return ok({ mode: "frame", selector: frameSelector, candidates: candidates.length });
+  const best = pickLargestChild(candidates)
+  if (!best) return ok({ mode: "frame", selector: frameSelector, candidates: candidates.length })
 
   await page.evaluate(
     ({ sel, index }: { sel: string; index: number }) => {
-      document.querySelector(sel)?.children[index]?.setAttribute("data-vc-scope", "");
+      document.querySelector(sel)?.children[index]?.setAttribute("data-vc-scope", "")
     },
     { sel: frameSelector, index: best.index },
-  );
+  )
   return ok({
     mode: "largest-child",
     selector: `${frameSelector} > [data-vc-scope]`,
     candidates: candidates.length,
-  });
+  })
 }
 
 /** Attribute-selector value: only the quote and the backslash need escaping. */
 function attrValue(raw: string): string {
-  return raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return raw.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
 
 /** A frame is addressed by element id first, data-screen-label second. */
 export function frameSelectors(frame: string): [string, string] {
-  const value = attrValue(frame);
-  return [`[id="${value}"]`, `[data-screen-label="${value}"]`];
+  const value = attrValue(frame)
+  return [`[id="${value}"]`, `[data-screen-label="${value}"]`]
 }
 
-const HYDRATION_TIMEOUT_MS = 8_000;
-const DPR = 2;
+const HYDRATION_TIMEOUT_MS = 8_000
+const DPR = 2
 
 export interface DcHtmlCaptureOptions {
   /** Where to write the frame screenshot. */
-  pngPath: string;
+  pngPath: string
   /** Provenance string for the capture/report; defaults to file#frame. */
-  ref?: string;
+  ref?: string
 }
 
 /**
@@ -103,38 +140,43 @@ export async function captureDcHtml(
   source: DcHtmlSource,
   { pngPath, ref }: DcHtmlCaptureOptions,
 ): Promise<Result<Capture, CaptureError>> {
-  const identity = ref ?? `${source.file}#${source.frame}`;
-  const server = await serveDir(source.dir);
-  const viewportWidth = source.viewport?.width ?? 1440;
-  const ctx = await browser.newContext({
+  const identity = ref ?? `${source.file}#${source.frame}`
+  const server = await serveDir(source.dir)
+  const viewportWidth = source.viewport?.width ?? 1440
+  const opened = await openPage(browser, {
     // Wider than the frame so the canvas never reflows the target frame.
     viewport: { width: viewportWidth + 120, height: source.viewport?.height ?? 1000 },
     deviceScaleFactor: DPR,
-  });
-  const page = await ctx.newPage();
-  const url = `${server.origin}/${encodeURIComponent(source.file)}`;
+  })
+  if ("error" in opened) {
+    // The static server is already up; releasing its port is this path's job.
+    await closeQuietly(() => server.close())
+    return err({ kind: "capture-failed", ref: identity, detail: opened.error })
+  }
+  const { ctx, page } = opened
+  const url = `${server.origin}/${encodeURIComponent(source.file)}`
 
   try {
     try {
-      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 })
     } catch (e) {
       return err({
         kind: "navigation-failed",
         ref: identity,
         url,
         detail: e instanceof Error ? e.message : String(e),
-      });
+      })
     }
 
     // Fonts must be ready or serif text reflows after the shot.
-    await waitForFonts(page);
+    await waitForFonts(page)
 
     // Resolve the frame by id, then by screen label.
-    let selector: string | null = null;
+    let selector: string | null = null
     for (const candidate of frameSelectors(source.frame)) {
       if ((await page.locator(candidate).count()) > 0) {
-        selector = candidate;
-        break;
+        selector = candidate
+        break
       }
     }
     if (!selector) {
@@ -143,7 +185,7 @@ export async function captureDcHtml(
         ref: identity,
         frame: source.frame,
         file: source.file,
-      });
+      })
     }
 
     // Hydration gate: template mustaches still present after the timeout
@@ -152,56 +194,56 @@ export async function captureDcHtml(
     try {
       await page.waitForFunction(
         (sel: string) => {
-          const el = document.querySelector(sel);
-          if (!el) return false;
-          return !/\{\{[^}]*\}\}/.test((el as HTMLElement).innerText);
+          const el = document.querySelector(sel)
+          if (!el) return false
+          return !/\{\{[^}]*\}\}/.test((el as HTMLElement).innerText)
         },
         selector,
         { timeout: HYDRATION_TIMEOUT_MS },
-      );
+      )
     } catch {
       return err({
         kind: "hydration-failed",
         ref: identity,
         detail: `template mustaches still present in "${selector}" after ${HYDRATION_TIMEOUT_MS}ms — dc-runtime did not hydrate (network/CDN?)`,
-      });
+      })
     }
 
-    await page.addStyleTag({ content: FREEZE_CSS });
+    await page.addStyleTag({ content: FREEZE_CSS })
 
     // Scope: the component inside the artboard, not the artboard.
-    const scoped = await resolveScope(page, selector, source.scope);
+    const scoped = await resolveScope(page, selector, source.scope)
     if (!scoped.ok) {
       return err({
         kind: "scope-not-found",
         ref: identity,
         frame: source.frame,
         scope: source.scope ?? "",
-      });
+      })
     }
-    const scope = scoped.value;
+    const scope = scoped.value
 
-    const locator = page.locator(scope.selector).first();
-    await locator.scrollIntoViewIfNeeded();
+    const locator = page.locator(scope.selector).first()
+    await locator.scrollIntoViewIfNeeded()
 
     // Settle the pixels first, then extract, so the element tree describes
     // exactly the state the screenshot shows.
-    const { png } = await captureUntilStable(() => locator.screenshot());
+    const { png } = await captureUntilStable(() => locator.screenshot())
 
-    const extraction = await extractElementTree(page, scope.selector);
+    const extraction = await extractElementTree(page, scope.selector)
     if (!extraction) {
-      return err({ kind: "frame-not-found", ref: identity, frame: source.frame, file: source.file });
+      return err({ kind: "frame-not-found", ref: identity, frame: source.frame, file: source.file })
     }
     if (extraction.elements.length === 0 || extraction.height < 8) {
       return err({
         kind: "blank-render",
         ref: identity,
         detail: `frame "${source.frame}" scope "${scope.selector}" (${scope.mode}) rendered no visible leaf elements (${extraction.width}x${extraction.height})`,
-      });
+      })
     }
 
-    await mkdir(dirname(pngPath), { recursive: true });
-    await writeFile(pngPath, png);
+    await mkdir(dirname(pngPath), { recursive: true })
+    await writeFile(pngPath, png)
 
     return ok({
       side: "design",
@@ -213,15 +255,17 @@ export async function captureDcHtml(
       dpr: DPR,
       elements: extraction.elements,
       scope,
-    });
+    })
   } catch (e) {
     return err({
       kind: "capture-failed",
       ref: identity,
       detail: e instanceof Error ? e.message : String(e),
-    });
+    })
   } finally {
-    await ctx.close();
-    await server.close();
+    // Independently guarded: an unguarded ctx.close() throw would also skip
+    // server.close(), leaking the static server's port for the rest of the run.
+    await closeQuietly(() => ctx.close())
+    await closeQuietly(() => server.close())
   }
 }

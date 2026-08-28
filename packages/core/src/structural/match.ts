@@ -9,6 +9,7 @@
 
 import type { ElementMatch, MatchResult } from "../pipeline.js";
 import type { ElementNode } from "../types.js";
+import { normalizeForMatching } from "./text.js"
 
 export interface MatchOptions {
   /**
@@ -43,7 +44,7 @@ export function slotGamma(a: ElementNode, b: ElementNode): number {
 }
 
 const normText = (t: string | undefined): string | undefined =>
-  t === undefined ? undefined : t.replace(/\s+/g, " ").trim().toLowerCase();
+  t === undefined ? undefined : normalizeForMatching(t);
 
 /** Indices of elements whose normalized text appears exactly once. */
 function uniqueTextIndices(elements: readonly ElementNode[]): Map<string, number> {

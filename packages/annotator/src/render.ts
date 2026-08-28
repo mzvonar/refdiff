@@ -13,56 +13,119 @@
  * (design.png, impl.png, crops/…), so it must be written INTO the run dir
  * (or served from it). No network, no dependencies: the view math is the
  * compiled `view-math.js` embedded verbatim into an inline module script.
+ *
+ * On a phone (≤900px) the split screen would leave each pane ~50px tall, so
+ * the layout switches: the page scrolls, the header's metadata collapses
+ * behind a "details" toggle, the viewer sticks to the top showing ONE side at
+ * a time (a Design/Impl switch over the shared pan/zoom, so flipping compares
+ * the same spot), and the finding list flows underneath.
  */
 
-import type { ComparisonReport } from "@visual-compare/core";
+import type { ComparisonReport } from "@visual-compare/core"
 
-import { emptySet, type AnnotationSet } from "./annotations.js";
+import { emptySet, type AnnotationSet } from "./annotations.js"
 
 export interface RenderOptions {
   /** Compiled source of view-math.js (an ESM module with no imports). */
-  viewMathSource: string;
+  viewMathSource: string
   /** Compiled source of annotations.js (an ESM module with no imports). */
-  annotationsSource: string;
+  annotationsSource: string
   /** Annotations to embed (the page prefers the live API when served). */
-  annotations?: AnnotationSet;
+  annotations?: AnnotationSet
+  /**
+   * Relative link back to the run root's index (`../index.html`) when this
+   * report is one pair of a set; omitted for a lone run dir, which has no
+   * index to go back to.
+   */
+  indexHref?: string | undefined
   /** Page title; default "<pair> — visual-compare". */
-  title?: string;
+  title?: string
 }
 
+/** Four-arrow "move" glyph: the canvas is in pan/zoom mode. */
+const MOVE_ICON = `<svg class="i i-move" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 10.4 4 8.9 4 8.9 7.1 12 7.1 12 5.6 15 8 12 10.4 12 8.9 8.9 8.9 8.9 12 10.4 12 8 15 5.6 12 7.1 12 7.1 8.9 4 8.9 4 10.4 1 8 4 5.6 4 7.1 7.1 7.1 7.1 4 5.6 4Z"/></svg>`
+
+/** Two frames snapped onto each other: the design projected through the run's Alignment. */
+const ALIGN_ICON = `<svg class="i i-align" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 1h9v1.6H2.6V10H1Z"/><path d="M6 6h9v9H6Zm1.6 1.6v5.8h5.8V7.6Z"/></svg>`
+
+/** Crop-marks glyph: drag a region and the list narrows to what is inside it. */
+const FOCUS_ICON = `<svg class="i i-focus" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 4.6V1h3.6v1.5H2.5v2.1ZM11.4 1H15v3.6h-1.5V2.5h-2.1ZM1 11.4h1.5v2.1h2.1V15H1ZM13.5 11.4H15V15h-3.6v-1.5h2.1ZM5.4 5.4h5.2v5.2H5.4Z"/></svg>`
+
+/** Pencil glyph: the canvas is in annotate mode (tap = note, drag = region). */
+const NOTE_ICON = `<svg class="i i-note" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 14.4 5.2 13.3 12.7 5.8 10.2 3.3 2.7 10.8Z"/><path d="M11.2 2.3 12.2 1.3 14.7 3.8 13.7 4.8Z"/></svg>`
+
 const escapeHtml = (s: string): string =>
-  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
+  s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+  )
 
 /** JSON safe to embed in a <script> block: `<` never appears literally. */
 export const embedJson = (value: unknown): string =>
-  JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+  JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
 
 export function renderReport(report: ComparisonReport, options: RenderOptions): string {
-  const title = options.title ?? `${report.pair} — visual-compare`;
-  if (options.viewMathSource.includes("</script") || options.annotationsSource.includes("</script")) {
-    throw new Error("embedded module sources must not contain a closing script tag");
+  const title = options.title ?? `${report.pair} — visual-compare`
+  if (
+    options.viewMathSource.includes("</script") ||
+    options.annotationsSource.includes("</script")
+  ) {
+    throw new Error("embedded module sources must not contain a closing script tag")
   }
-  const annotations = options.annotations ?? emptySet(report.pair);
+  const annotations = options.annotations ?? emptySet(report.pair)
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+${VIEWPORT_META}
 <title>${escapeHtml(title)}</title>
 <style>${CSS}</style>
 </head>
 <body>
-<header id="hdr"></header>
+${REPORT_BODY}
+<script type="application/json" id="report-data">${embedJson(report)}</script>
+<script type="application/json" id="annotations-data">${embedJson(annotations)}</script>
+<script type="application/json" id="page-data">${embedJson({ indexHref: options.indexHref ?? null })}</script>
+<script type="module">
+${options.viewMathSource}
+${options.annotationsSource}
+${CLIENT}
+${EMBEDDED_BOOT}
+</script>
+</body>
+</html>
+`
+}
+
+/**
+ * Viewport for both deliveries. `user-scalable=no` stops the page zooming on
+ * every engine but iOS Safari, which ignores it — hence the `gesturestart`
+ * handler in the client. Pinching must reach the canvas, not the document.
+ */
+export const VIEWPORT_META =
+  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'
+
+/**
+ * The report markup, shared by the emitted report.html and the served app
+ * shell — one DOM, so the client never branches on how it was delivered.
+ */
+export const REPORT_BODY = `<header id="hdr"></header>
 <main>
   <aside id="side">
-    <div class="filters">
-      <input id="q" type="search" placeholder="filter findings…" aria-label="filter findings">
-      <div class="chips" id="sev-chips"></div>
+    <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="false" aria-controls="rail-body"></button>
+    <div class="rail-body" id="rail-body">
+      <div class="filters">
+        <input id="q" type="search" placeholder="filter findings…" aria-label="filter findings">
+        <div class="chips" id="sev-chips"></div>
+      </div>
+      <div id="count" class="count"></div>
+      <ol id="list" class="list"></ol>
+      <details id="suppressed-box"><summary id="suppressed-summary"></summary><ol id="suppressed" class="list"></ol></details>
+      <details id="ann-box" open><summary id="ann-summary"></summary><ol id="ann-list" class="list"></ol></details>
     </div>
-    <div id="count" class="count"></div>
-    <ol id="list" class="list"></ol>
-    <details id="suppressed-box"><summary id="suppressed-summary"></summary><ol id="suppressed" class="list"></ol></details>
-    <details id="ann-box" open><summary id="ann-summary"></summary><ol id="ann-list" class="list"></ol></details>
   </aside>
   <section id="viewer">
     <div class="toolbar">
@@ -70,12 +133,14 @@ export function renderReport(report: ComparisonReport, options: RenderOptions): 
       <span id="zoom-pct" class="pct">100%</span>
       <button id="zoom-in" title="zoom in (+)">+</button>
       <button id="fit" title="fit both (0)">Fit</button>
-      <label><input type="checkbox" id="aligned" checked> align design through Alignment</label>
+      <button type="button" id="layout-toggle" aria-pressed="false" title="split screen — switch to one side at a time"><span id="layout-label">Split</span></button>
+      <button type="button" id="aligned" class="icon-toggle on" aria-pressed="true" title="align design through Alignment (project the design onto the impl)">${ALIGN_ICON}</button>
       <label><input type="checkbox" id="marks" checked> marks</label>
       <label><input type="checkbox" id="members" checked> all instances</label>
       <span class="sep"></span>
       <button id="ann-point" class="tog" title="drop a note on an element (n)">+ note</button>
       <button id="ann-rect" class="tog" title="mark a region (r)">+ region</button>
+      <button type="button" id="focus-chip" class="chip focus-chip" hidden></button>
       <span id="ann-status" class="annstatus"></span>
       <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · n/r = annotate · Esc = deselect</span>
     </div>
@@ -88,32 +153,41 @@ export function renderReport(report: ComparisonReport, options: RenderOptions): 
         <div class="pane-label" id="label-impl"></div>
         <div class="stage"><img class="shot" id="img-impl" alt="implementation"><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg></div>
       </div>
+      <div class="canvas-controls" id="canvas-controls">
+        <button type="button" class="cbtn" id="side-switch" title="switch side"><span aria-hidden="true">⇄</span><span id="side-label">Design</span></button>
+        <button type="button" class="cbtn" id="move-toggle" aria-pressed="true" title="move: pan and zoom (off = tap to note, drag to mark a region)">${MOVE_ICON}${NOTE_ICON}</button>
+        <button type="button" class="cbtn" id="focus-toggle" aria-pressed="false" title="focus a region: drag a box, and only findings inside it are listed">${FOCUS_ICON}</button>
+      </div>
     </div>
     <div id="detail" class="detail"></div>
   </section>
-</main>
-<script type="application/json" id="report-data">${embedJson(report)}</script>
-<script type="application/json" id="annotations-data">${embedJson(annotations)}</script>
-<script type="module">
-${options.viewMathSource}
-${options.annotationsSource}
-${CLIENT}
-</script>
-</body>
-</html>
-`;
-}
+</main>`
 
-const CSS = `
+/** Boot for an emitted file: the data is already in the page. */
+export const EMBEDDED_BOOT = String.raw`
+openReport(
+  JSON.parse(document.getElementById('report-data').textContent),
+  JSON.parse(document.getElementById('annotations-data').textContent),
+  JSON.parse(document.getElementById('page-data').textContent),
+);
+`
+
+export const CSS = `
 :root { --bg:#0b1020; --panel:#111a2e; --line:#243047; --ink:#e6ecf5; --muted:#8b98ad; --accent:#60a5fa;
   --critical:#e11d48; --major:#f59e0b; --minor:#3b82f6; --ok:#22c55e; }
 * { box-sizing:border-box; }
 html,body { margin:0; height:100%; background:var(--bg); color:var(--ink);
   font:13px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+/* The canvas owns zooming; the chrome must not double-tap-zoom or rubber-band
+   under it (the panes keep touch-action:none for their own pan/pinch). */
+html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
 body { display:flex; flex-direction:column; }
 header { display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; padding:8px 14px;
   border-bottom:1px solid var(--line); background:var(--panel); }
 header h1 { font-size:15px; margin:0; }
+header #hdr-meta { display:contents; }
+header .back { flex:none; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--ink); text-decoration:none; }
+header .back:hover { border-color:var(--accent); color:var(--accent); }
 header .kv { color:var(--muted); }
 header .kv b { color:var(--ink); font-weight:500; }
 header a { color:var(--accent); text-decoration:none; }
@@ -126,6 +200,8 @@ aside { border-right:1px solid var(--line); display:flex; flex-direction:column;
 .chips { display:flex; gap:6px; }
 .chip { cursor:pointer; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); user-select:none; }
 .chip.on { color:var(--ink); border-color:currentColor; }
+.chip.triage-chip.on.ignore { color:var(--ink); border-color:var(--ignore); }
+.chip.triage-chip.on.snooze { color:var(--snooze); border-color:var(--snooze); }
 .chip.critical.on { color:var(--critical); } .chip.major.on { color:var(--major); } .chip.minor.on { color:var(--minor); }
 .count { padding:4px 10px; color:var(--muted); font-size:12px; }
 .list { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
@@ -145,7 +221,66 @@ details[open] .list { max-height:30vh; }
 .toolbar label { color:var(--muted); display:flex; gap:4px; align-items:center; }
 .toolbar .pct { min-width:48px; text-align:center; }
 .toolbar .hint { margin-left:auto; color:var(--muted); font-size:11px; }
-.panes { flex:1; display:flex; min-height:0; }
+.hdr-more { display:none; background:var(--bg); color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; cursor:pointer; }
+/* One side at a time — always on a phone, on demand on desktop (#layout-toggle).
+   The corner controls replace the pane label: they name the side being shown. */
+body.single .pane { display:none; }
+body.single .pane.active { display:block; }
+body.single .pane-label { display:none; }
+/* Move and focus are useful in every layout; only the side SWITCH is meaningless when both panes
+   are on screen, so the controls show always and that one button hides itself. */
+.canvas-controls { display:flex; }
+#side-switch { display:none; }
+body.single #side-switch { display:inline-flex; }
+/* corner controls over the canvas: which side, and move vs annotate. Bottom-right, where a thumb
+   reaches them and they cover no content — the top-right is where page headers live. */
+.canvas-controls { position:absolute; z-index:3; bottom:8px; right:8px; gap:6px; }
+.cbtn { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--line); border-radius:8px;
+  background:rgba(11,16,32,.88); color:var(--ink); font:inherit; line-height:1; cursor:pointer; }
+.cbtn .i { width:15px; height:15px; fill:currentColor; display:block; }
+.cbtn .i-note, body.ann-mode .cbtn .i-move { display:none; }
+body.ann-mode .cbtn .i-note { display:block; }
+#move-toggle { color:var(--accent); border-color:var(--accent); }
+body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
+/* findings rail disclosure (phone only): the rail is collapsed until asked for */
+.rail-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px; padding:9px 12px;
+  background:var(--panel); color:var(--ink); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
+.rail-toggle .chev { color:var(--muted); }
+.rail-toggle .num { display:inline-block; padding:0 6px; border-radius:5px; font-weight:700; font-size:11px; color:#fff; }
+/* triage — a verdict on a finding, and the region filter */
+:root { --fix:#38bdf8; --ignore:#64748b; --snooze:#a78bfa; }
+.verdict { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; font-weight:600; color:#0b1020; }
+.verdict.fix { background:var(--fix); } .verdict.ignore { background:var(--ignore); color:#fff; } .verdict.snooze { background:var(--snooze); }
+.row.triaged-ignore .msg, .row.triaged-snooze .msg { color:var(--muted); }
+.triage { margin-top:8px; border-top:1px solid var(--line); padding-top:8px; }
+.triage .actions { gap:6px; align-items:center; }
+.verdict-btn.on.fix { border-color:var(--fix); color:var(--fix); }
+.verdict-btn.on.ignore { border-color:var(--ignore); color:var(--ink); }
+.verdict-btn.on.snooze { border-color:var(--snooze); color:var(--snooze); }
+.triage-none { color:var(--muted); font-style:italic; }
+.focus-chip { border-color:var(--accent); color:var(--accent); background:transparent; font:inherit; }
+.focus-chip b { text-decoration:underline; margin-left:4px; }
+.pane.focusing { cursor:crosshair; }
+.marks.anns rect.focus-rect { fill:rgba(96,165,250,.10); stroke:var(--accent); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
+/* Handles are interactive; the region's BODY is not, so a drag inside it still pans. */
+.marks.anns circle.focus-handle { fill:var(--accent); stroke:#0b1020; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
+.marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg); stroke:var(--accent); stroke-width:2; }
+.marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
+#focus-toggle.on { color:var(--accent); border-color:var(--accent); }
+/* Icon toggle in the toolbar: "align design through Alignment" as words ate a third of the phone's
+   toolbar row, and that row is horizontally scrollable — the long label pushed the rest off. */
+.icon-toggle { display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; color:var(--muted); }
+.icon-toggle .i { width:15px; height:15px; fill:currentColor; display:block; }
+.icon-toggle.on { color:var(--accent); border-color:var(--accent); }
+body.rail-open .rail-toggle .chev { transform:rotate(180deg); }
+.panes { flex:1; display:flex; min-height:0; position:relative; }
+aside .rail-body { display:contents; }
+/* Collapsed on DESKTOP: the rail becomes a strip and the canvas takes the width. Phone keeps its
+   own rules (the rail is a section of a scrolling page there, not a column). */
+body:not(.rail-open) main { grid-template-columns:38px 1fr; }
+body:not(.rail-open) aside .rail-body { display:none; }
+body:not(.rail-open) .rail-toggle { writing-mode:vertical-rl; height:100%; width:38px; padding:12px 0; justify-content:flex-start; gap:12px; }
+body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab;
   background-color:#1a2338;
   background-image:linear-gradient(45deg,#1f2a42 25%,transparent 25%,transparent 75%,#1f2a42 75%),linear-gradient(45deg,#1f2a42 25%,transparent 25%,transparent 75%,#1f2a42 75%);
@@ -164,6 +299,12 @@ details[open] .list { max-height:30vh; }
 .marks rect.sel { stroke-width:3; fill:rgba(96,165,250,.14); }
 .marks rect.suppressed { stroke:var(--muted); stroke-dasharray:2 3; }
 .marks g.lbl rect { fill:currentColor; stroke:none; } .marks g.lbl text { fill:#fff; font:700 11px system-ui,sans-serif; }
+/* Findings cluster: three marks can share a box, and the neighbour drawn last used to sit on top
+   of the one you just selected — you clicked 1 and read 95. While something is selected its mark
+   is drawn LAST and everything else steps back. */
+.marks.has-sel g.lbl:not(.sel) { opacity:.25; }
+.marks.has-sel rect:not(.sel) { opacity:.35; }
+.marks g.lbl.sel rect { stroke:#fff; stroke-width:1.5; }
 .marks g.lbl.critical { color:var(--critical); } .marks g.lbl.major { color:var(--major); } .marks g.lbl.major text { fill:#111; } .marks g.lbl.minor { color:var(--minor); }
 .detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--panel); }
 .detail:empty { display:none; }
@@ -201,22 +342,100 @@ details[open] .list { max-height:30vh; }
 .detail .actions button.danger { border-color:var(--critical); color:var(--critical); }
 .detail .status { display:inline-block; padding:0 8px; border-radius:999px; font-weight:600; font-size:11px; color:#fff; }
 .detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); color:#052e16; }
-@media (max-width: 900px) { main { grid-template-columns:1fr; grid-template-rows:38vh 1fr; } aside { border-right:0; border-bottom:1px solid var(--line); }
-  .panes { flex-direction:column; } .pane + .pane { border-left:0; border-top:1px solid var(--line); } }
-`;
+/* phone: the page scrolls, the viewer sticks, one side at a time */
+@media (max-width: 900px) {
+  html, body { height:auto; }
+  body { min-height:100vh; min-height:100svh; }
+  header { gap:4px 10px; padding:8px 12px; }
+  header h1 { font-size:14px; }
+  .hdr-more { display:inline-block; }
+  header #hdr-meta { display:none; }
+  body.hdr-open header #hdr-meta { display:flex; flex-direction:column; gap:4px; width:100%; }
+  main { display:flex; flex-direction:column; min-height:0; }
+  #viewer { order:-1; display:flex; flex-direction:column; position:sticky; top:0; z-index:6; background:var(--panel); border-bottom:1px solid var(--line); }
+  /* canvas first, its controls directly under it, then the detail panel */
+  .panes { order:1; } .toolbar { order:2; } .detail { order:3; }
+  .toolbar { gap:8px; padding:6px 8px; flex-wrap:nowrap; overflow-x:auto; }
+  .toolbar .hint, .toolbar .sep, .toolbar .tog, #layout-toggle { display:none; }
+  .toolbar label, .toolbar button, .toolbar .pct, .toolbar .annstatus { flex:none; white-space:nowrap; }
+  /* A collapsed rail is not a reason to keep the canvas small: it grows into
+     the room the rail gave back (chrome = header + toolbar + summary bar). */
+  .panes { flex:none; height:calc(100vh - 150px); height:calc(100svh - 150px); }
+  body.rail-open .panes { height:52vh; height:52svh; }
+  body.has-detail .panes { height:38vh; height:38svh; }
+  .pane + .pane { border-left:0; }
+  /* iOS Safari zooms the page when a focused field is under 16px. The note
+     textarea needs naming: .detail textarea { font:inherit } outranks a bare
+     element selector, and it is the field the phone actually focuses. */
+  input, textarea, select, .detail textarea, .filters input { font-size:16px; }
+  .detail { max-height:30vh; max-height:30svh; }
+  aside { border-right:0; border-top:1px solid var(--line); flex:1; }
+  body:not(.rail-open) main { grid-template-columns:1fr; }
+  /* Pinned to the BOTTOM while the rail is open: selecting a finding scrolls the list, and the
+     summary bar used to end up UNDER the sticky canvas — visible by coordinates, untappable, so
+     the rail could not be closed again. At the bottom it is always reachable. */
+  .rail-toggle { position:sticky; bottom:0; z-index:5; border-top:1px solid var(--line); writing-mode:horizontal-tb; height:auto; width:100%; padding:9px 12px; }
+  /* scrollIntoView knows nothing about the sticky canvas above; this keeps a focused row clear of it. */
+  .row { scroll-margin-top:calc(52vh + 96px); scroll-margin-top:calc(52svh + 96px); scroll-margin-bottom:56px; }
+  body.has-detail .row { scroll-margin-top:calc(38vh + 96px); scroll-margin-top:calc(38svh + 96px); }
+  aside .rail-body { display:none; }
+  body.rail-open aside .rail-body { display:block; }
+  .list { overflow:visible; flex:none; }
+  details { max-height:none; }
+  details[open] .list { max-height:none; }
+}
+`
 
 // The client. Plain JS, kept free of template literals so it can live inside
 // this TypeScript template string. It shares the module scope with the
 // embedded view-math.js (fitView, zoomAt, designImageTransform, …).
-const CLIENT = String.raw`
-const report = JSON.parse(document.getElementById('report-data').textContent);
+//
+// It is delivered two ways and knows about neither: an emitted report.html
+// embeds the data and calls openReport() once, the served app fetches a pair
+// and calls openReport() again on every route change. Hence `let`, and hence
+// `page.base` in front of every artifact URL — under the app shell the run
+// dir is one path segment down.
+export const CLIENT = String.raw`
+let report = null;
+let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations' };
 const $ = (id) => document.getElementById(id);
+
+// iOS Safari ignores user-scalable=no, so page pinch-zoom has to be refused
+// here. The panes run their own pinch through pointer events, which these
+// gesture events do not carry.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+
+// View controls are a preference, not per-pair state: they survive a reload
+// and follow you from pair to pair.
+const CONTROLS_KEY = 'vc-controls';
+function readControls() {
+  try { return JSON.parse(localStorage.getItem(CONTROLS_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveControls() {
+  try {
+    localStorage.setItem(CONTROLS_KEY, JSON.stringify({
+      aligned: state.aligned, showMarks: state.showMarks, showMembers: state.showMembers,
+      single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
+      rail: document.body.classList.contains('rail-open'),
+    }));
+  } catch (e) { /* private mode: the controls just do not persist */ }
+}
 const SEV = ['critical', 'major', 'minor'];
 const state = {
   view: { z: 1, tx: 0, ty: 0 }, aligned: true, showMarks: true, showMembers: true,
   selected: null, sev: { critical: true, major: true, minor: true }, q: '',
-  dprD: 1, dprI: 1, userMoved: false,
+  dprD: 1, dprI: 1, userMoved: false, side: 'design', move: true, single: false,
+  // A region of the canvas to work inside (world px). While set, findings whose boxes fall outside
+  // it are hidden from the list AND the marks — the way to read one column of a screen without the
+  // chrome's findings burying it.
+  focus: null, focusLabel: '', focusing: false,
+  showTriaged: { ignore: false, snooze: false },
 };
+// Narrow screens show one side at a time (both panes are laid out side by side
+// above the breakpoint, so state.side only matters below it).
+const narrow = window.matchMedia('(max-width: 900px)');
 const panes = { design: $('pane-design'), impl: $('pane-impl') };
 const imgs = { design: $('img-design'), impl: $('img-impl') };
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
@@ -225,29 +444,265 @@ const annLayers = { design: $('anns-design'), impl: $('anns-impl') };
 // browser, else the embedded copy), the draw mode, the pending draft and the
 // element trees used for snapping (elements.json, both sides in world space).
 const ann = {
-  set: JSON.parse(document.getElementById('annotations-data').textContent),
+  set: { version: 1, pair: '', annotations: [] },
   mode: null, draft: null, selected: null, band: null,
   elements: { design: [], impl: [] }, elementsLoaded: false,
   storage: location.protocol.startsWith('http') ? 'api' : 'local', saveTimer: null, status: '',
 };
-const all = report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s)));
-const byId = new Map(all.map((f) => [f.id, f]));
+let byId = new Map();
+
+// ---- triage --------------------------------------------------------------
+// A verdict on a FINDING (fix / ignore / snooze + note), filed against Finding.key — the
+// run-stable identity — so it survives the renumbering every capture does to ids and marks. Reports
+// written before that field existed carry no key; those findings cannot be triaged (the panel says
+// so) rather than being filed against an id that will mean something else tomorrow.
+const TRIAGE_LABELS = { fix: 'to fix', ignore: 'ignored', snooze: 'snoozed' };
+const triage = { set: { version: 1, pair: '', entries: [] }, saveTimer: null };
+const nowIso = () => new Date().toISOString();
+function triageStateOf(f) { return effectiveState(findTriage(triage.set, f.key), nowIso()); }
+function persistTriage() {
+  clearTimeout(triage.saveTimer);
+  triage.saveTimer = setTimeout(async () => {
+    const body = JSON.stringify(triage.set);
+    if (page.triageUrl) {
+      try {
+        const res = await fetch(page.triageUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
+        if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
+        setAnnStatus('triage saved · triage.json', false);
+      } catch (e) { setAnnStatus('triage save failed: ' + e.message, true); }
+    } else {
+      try { localStorage.setItem('vc-triage:' + report.pair, body); setAnnStatus('triage saved in this browser only', false); }
+      catch (e) { setAnnStatus('cannot save triage: ' + e.message, true); }
+    }
+  }, 250);
+}
+async function loadTriage() {
+  triage.set = { version: 1, pair: report.pair, entries: [] };
+  if (page.triageUrl) {
+    try {
+      const res = await fetch(page.triageUrl);
+      if (res.ok) { const parsed = parseTriageSet(await res.json(), report.pair); if (parsed.ok) { triage.set = parsed.value; return; } }
+    } catch (e) { /* fall through to this browser's copy */ }
+  }
+  try {
+    const raw = localStorage.getItem('vc-triage:' + report.pair);
+    if (raw) { const parsed = parseTriageSet(JSON.parse(raw), report.pair); if (parsed.ok) triage.set = parsed.value; }
+  } catch (e) { /* the empty set stays */ }
+}
+function applyTriage(verdict, note) {
+  const f = state.selected ? byId.get(state.selected) : null;
+  if (!f || !f.key) return;
+  triage.set = verdict === null
+    ? clearTriage(triage.set, f.key)
+    : setTriage(triage.set, f.key, verdict, Object.assign({ now: nowIso() }, note === undefined ? {} : { note }));
+  persistTriage();
+  renderList(); renderMarks(); renderDetail(); renderRailToggle();
+}
+
+// ---- focus region --------------------------------------------------------
+// Drag a box; the list and the marks narrow to the findings inside it. Not a filter over a property
+// of a finding but over WHERE it is, which is how a person actually reads a busy screen: "the
+// content column — never mind the sidebar and the header".
+let focusBand = null;
+let focusDrag = null;   // { handle, pointerId } while a handle is being dragged
+function setFocusing(on) {
+  state.focusing = on;
+  $('focus-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('focus-toggle').classList.toggle('on', on || !!state.focus);
+  for (const pane of Object.values(panes)) pane.classList.toggle('focusing', on);
+  if (on) setAnnMode(null);
+}
+function setFocus(rect, persist) {
+  state.focus = rect;
+  $('focus-toggle').classList.toggle('on', !!rect);
+  renderFocusChip(); renderList(); renderMarks(); renderDetail(); renderRailToggle(); renderFocusBand();
+  if (persist !== false) persistFocus();
+}
+// The region is the handover: it lands in focus.json + focus.md so "work in the focused region"
+// means the same rectangle to the agent as it does on the phone.
+function persistFocus() {
+  clearTimeout(focusSaveTimer);
+  focusSaveTimer = setTimeout(async () => {
+    const body = JSON.stringify({ version: 1, pair: report.pair, region: state.focus, label: state.focusLabel || '', updatedAt: nowIso() });
+    if (!page.focusUrl) { try { localStorage.setItem('vc-focus:' + report.pair, body); } catch (e) { /* private mode */ } return; }
+    try {
+      const res = await fetch(page.focusUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
+      if (!res.ok) throw new Error(res.status);
+      setAnnStatus(state.focus ? 'focus saved · focus.md' : 'focus cleared', false);
+    } catch (e) { setAnnStatus('focus save failed: ' + e.message, true); }
+  }, 250);
+}
+let focusSaveTimer = null;
+async function loadFocus() {
+  state.focus = null; state.focusLabel = '';
+  let raw = null;
+  if (page.focusUrl) {
+    try { const res = await fetch(page.focusUrl); if (res.ok) raw = await res.json(); } catch (e) { /* fall through */ }
+  }
+  if (!raw) {
+    try { const stored = localStorage.getItem('vc-focus:' + report.pair); if (stored) raw = JSON.parse(stored); } catch (e) { /* none */ }
+  }
+  if (!raw) return;
+  const parsed = parseFocusSet(raw, report.pair);
+  if (parsed.ok) { state.focus = parsed.value.region; state.focusLabel = parsed.value.label; }
+}
+function renderFocusChip() {
+  const chip = $('focus-chip');
+  if (!state.focus) { chip.hidden = true; chip.textContent = ''; return; }
+  const r = state.focus;
+  chip.hidden = false;
+  chip.title = 'region x ' + Math.round(r.x) + ', y ' + Math.round(r.y) + ', ' + Math.round(r.w) + '×' + Math.round(r.h) + ' (impl CSS px) — saved to focus.json / focus.md';
+  chip.innerHTML = 'focused · ' + report.findings.filter(visible).length + ' of ' + report.findings.length + ' <b>clear</b>';
+}
+function focusPointerDown(pane, e) {
+  focusBand = { pointerId: e.pointerId, start: paneWorld(pane, e), end: paneWorld(pane, e) };
+  pane.setPointerCapture(e.pointerId);
+  renderFocusBand();
+}
+function focusPointerMove(pane, e) { focusBand.end = paneWorld(pane, e); renderFocusBand(); }
+function focusPointerUp(pane, e) {
+  const b = focusBand; focusBand = null; ann.suppressClick = true;
+  const rect = rectFromCorners(b.start, b.end);
+  setFocusing(false);
+  // A tap rather than a drag means "never mind": focusing a 1px region would hide every finding,
+  // which reads as the app breaking.
+  setFocus(rect.w * state.view.z >= 12 && rect.h * state.view.z >= 12 ? rect : null);
+}
+// ---- editing a drawn region ---------------------------------------------
+// Drawing a rectangle precisely with a thumb is not realistic, so the region is adjustable
+// afterwards: four corner handles resize, the centre grip moves. The BODY of the region stays
+// inert so a drag inside it still pans the canvas.
+const FOCUS_HANDLE_PX = 13;
+function focusHandleAt(pane, e) {
+  if (!state.focus || state.focusing) return null;
+  return handleAt(state.focus, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z);
+}
+function focusEditDown(pane, e, handle) {
+  focusDrag = { handle: handle, pointerId: e.pointerId };
+  pane.setPointerCapture(e.pointerId);
+  ann.suppressClick = true;
+}
+function focusEditMove(pane, e) {
+  state.focus = resizeRect(state.focus, focusDrag.handle, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z);
+  renderFocusChip(); renderList(); renderMarks(); renderFocusBand();
+}
+function focusEditUp() { focusDrag = null; persistFocus(); }
+// World-space, so it lives in the same layers as the marks and appears on both sides at once.
+function renderFocusBand() {
+  for (const side of ['design', 'impl']) {
+    const layer = annLayers[side];
+    for (const old of layer.querySelectorAll('.focus-rect, .focus-handle')) old.remove();
+    const live = focusBand ? rectFromCorners(focusBand.start, focusBand.end) : state.focus;
+    if (!live) continue;
+    const r = document.createElementNS(SVG, 'rect');
+    r.setAttribute('x', live.x); r.setAttribute('y', live.y);
+    r.setAttribute('width', Math.max(live.w, 0.5)); r.setAttribute('height', Math.max(live.h, 0.5));
+    r.setAttribute('class', 'focus-rect');
+    layer.append(r);
+    if (focusBand) continue;   // handles only once the drag has settled
+    for (const h of handlePoints(live)) {
+      const dot = document.createElementNS(SVG, 'circle');
+      dot.setAttribute('cx', h.x); dot.setAttribute('cy', h.y);
+      dot.setAttribute('r', FOCUS_HANDLE_PX / 2 / state.view.z);
+      dot.setAttribute('class', 'focus-handle ' + h.handle);
+      dot.dataset.handle = h.handle;
+      layer.append(dot);
+    }
+  }
+  applyView();
+}
 
 function alignment() { return state.aligned ? report.alignment : IDENTITY_ALIGNMENT; }
+// What the design is DRAWN with: the alignment with its per-axis stretch REMOVED, always.
+//
+// align() fits x and y independently, so the projection it returns can be anisotropic — on this
+// corpus by up to +53 % vertically. That is fine for locating elements (the finding boxes use it)
+// and unacceptable for looking at the reference: a person cannot judge proportion or type against a
+// distorted image, and would have no way to know it was distorted. The stretch therefore stays in
+// the DATA and never reaches the screen; the pane label states the fit so the number is not hidden.
+function projection() { return projectionAlignment(alignment(), true); }
 function worldBox() {
+  // The design's world extent is its RAW capture size through the CURRENT
+  // alignment — report.design.width already has the run's scale in it.
   return unionBoxes([
     { x: 0, y: 0, w: report.impl.width, h: report.impl.height },
-    designWorldBox({ w: report.design.width, h: report.design.height }, alignment()),
+    designWorldBox(rawDesignSize(report.design, report.alignment), projection()),
   ]);
 }
-function paneSize() { const r = panes.impl.getBoundingClientRect(); return { w: r.width, h: r.height }; }
+// One pane or two: forced below the breakpoint, a choice above it.
+function single() { return narrow.matches || state.single; }
+function visiblePane() { return single() ? panes[state.side] : panes.impl; }
+function paneSize() { const r = visiblePane().getBoundingClientRect(); return { w: r.width, h: r.height }; }
+function applyLayout() {
+  document.body.classList.toggle('single', single());
+  $('layout-label').textContent = state.single ? 'Single' : 'Split';
+  $('layout-toggle').setAttribute('aria-pressed', state.single ? 'true' : 'false');
+  $('layout-toggle').title = state.single ? 'one side at a time — switch to the split screen' : 'split screen — switch to one side at a time';
+}
+function setLayout(isSingle) {
+  state.single = isSingle; applyLayout(); applySide(); saveControls();
+  if (state.userMoved) applyView(); else fit();
+}
+function applySide() {
+  for (const side of ['design', 'impl']) panes[side].classList.toggle('active', side === state.side);
+  $('side-label').textContent = state.side === 'design' ? 'Design' : 'Impl';
+  $('side-switch').title = 'showing the ' + state.side + ' side — switch to the ' + (state.side === 'design' ? 'implementation' : 'design');
+}
+function setSide(side) {
+  if (state.side === side) return;
+  state.side = side; applySide(); saveControls();
+  if (state.userMoved) applyView(); else fit();
+}
+// The corner toggle is the phone's whole annotation UI: move ON = pan/zoom,
+// move OFF = a tap drops a note and a drag marks a region (the same gesture
+// split the desktop + region button already makes).
+function setMove(on) { setAnnMode(on ? null : 'rect', true); saveControls(); }
+// Restore the saved controls onto both the state and the DOM that shows them.
+function applyControls(saved) {
+  state.aligned = saved.aligned !== false;
+  state.showMarks = saved.showMarks !== false;
+  state.showMembers = saved.showMembers !== false;
+  state.single = saved.single === true;
+  state.side = saved.side === 'impl' ? 'impl' : 'design';
+  state.showTriaged = {
+    ignore: saved.showTriaged ? saved.showTriaged.ignore === true : false,
+    snooze: saved.showTriaged ? saved.showTriaged.snooze === true : false,
+  };
+  applyAligned();
+  $('marks').checked = state.showMarks;
+  $('members').checked = state.showMembers;
+  // No saved preference: desktop has always shown the rail beside the canvas, a phone has not.
+  document.body.classList.toggle('rail-open', saved.rail === undefined ? !narrow.matches : saved.rail === true);
+  setAnnMode(saved.move === false ? 'rect' : null, true);
+}
+// The design is always shown at its true aspect, so the label reports the fit the DATA uses rather
+// than describing the picture: the reader should know the alignment is anisotropic without having
+// to look at a distorted reference to find out.
+function applyAspect() {
+  const stretch = aspectStretch(report.alignment);
+  const off = Math.abs(stretch - 1) >= 0.02;
+  const note = off
+    ? ' · true aspect (fit ' + (stretch > 1 ? '+' : '') + Math.round((stretch - 1) * 100) + '% vertical)'
+    : '';
+  $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + note + '</span>';
+}
+function applyAligned() {
+  $('aligned').classList.toggle('on', state.aligned);
+  $('aligned').setAttribute('aria-pressed', state.aligned ? 'true' : 'false');
+}
+function updateRailToggle() {
+  $('rail-toggle').setAttribute('aria-expanded', document.body.classList.contains('rail-open') ? 'true' : 'false');
+}
 
 function applyView() {
   const v = state.view;
-  imgs.design.style.transform = designImageTransform(v, alignment(), state.dprD);
+  imgs.design.style.transform = designImageTransform(v, projection(), state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI);
-  layers.design.style.transform = layers.impl.style.transform = worldLayerTransform(v);
-  annLayers.design.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
+  // The design side carries the aspect correction so its marks stay on its image.
+  const designLayer = designLayerTransform(v, alignment(), true);
+  layers.design.style.transform = designLayer;
+  annLayers.design.style.transform = designLayer;
+  layers.impl.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
   for (const c of document.querySelectorAll('.marks.anns circle.ann')) c.setAttribute('r', 7 / v.z);
   for (const g of document.querySelectorAll('.marks g.lbl')) {
     g.setAttribute('transform', 'translate(' + g.dataset.x + ' ' + g.dataset.y + ') scale(' + (1 / v.z) + ')');
@@ -266,30 +721,58 @@ function renderHeader() {
   const q = report.design.quality;
   const art = report.artifacts;
   $('hdr').innerHTML =
+    (page.indexHref ? '<a class="back" href="' + esc(page.indexHref) + '" title="all pairs">‹ All pairs</a>' : '') +
     '<h1>' + esc(report.pair) + '</h1>' +
     '<span class="pill ' + (report.verdict.pass ? 'pass' : 'fail') + '">' + (report.verdict.pass ? 'PASS' : 'FAIL') + ' · threshold ' + esc(report.verdict.failThreshold) + '</span>' +
+    '<button type="button" class="hdr-more" id="hdr-more" aria-expanded="false" aria-controls="hdr-meta">details</button>' +
+    '<div id="hdr-meta">' +
     '<span class="kv">' + report.findings.length + ' findings (<b class="c">' + counts[0] + ' critical</b>, <b>' + counts[1] + ' major</b>, <b>' + counts[2] + ' minor</b>) covering ' + inst + ' instances · ' + report.suppressed.length + ' suppressed</span>' +
     (d ? '<span class="kv">delta vs ' + esc(d.previousRun) + ': <b>+' + d.introduced.length + '</b> introduced / <b>−' + d.resolved.length + '</b> resolved</span>' : '') +
     '<span class="kv">design <b>' + esc(report.design.source) + '</b> ' + esc(report.design.ref) + ' ' + Math.round(report.design.width) + '×' + Math.round(report.design.height) + (report.design.scope ? ' · scope ' + esc(report.design.scope.mode) : '') + (q ? ' · quality ' + q.score.toFixed(2) : '') + '</span>' +
     '<span class="kv">impl <b>' + esc(report.impl.source) + '</b> ' + esc(report.impl.ref) + ' ' + report.impl.width + '×' + report.impl.height + '</span>' +
     '<span class="kv">alignment ×' + a.scale.toFixed(3) + (a.scaleY && Math.abs(a.scaleY - a.scale) > 1e-6 ? '/' + a.scaleY.toFixed(3) : '') + ' @(' + a.offsetX.toFixed(1) + ', ' + a.offsetY.toFixed(1) + ') confidence ' + a.confidence.toFixed(2) + '</span>' +
-    '<span class="kv"><a href="findings.json">findings.json</a> · <a href="' + esc(art.overlay) + '">overlay</a>' + (art.diffMask ? ' · <a href="' + esc(art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>';
+    '<span class="kv"><a href="' + esc(page.base) + 'findings.json">findings.json</a> · <a href="' + esc(page.base + art.overlay) + '">overlay</a>' + (art.diffMask ? ' · <a href="' + esc(page.base + art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>' +
+    '</div>';
   $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + '</span>';
   $('label-impl').innerHTML = 'Implementation <span>' + esc(report.impl.ref) + '</span>';
 }
 
 // ---- list ---------------------------------------------------------------
+// Focus is per BOX, not per finding. An aggregated finding ("×26 rows") can have instances in the
+// content AND in the header, so admitting the whole finding drew its header marks straight back
+// onto the canvas — you focused the content and the chrome still lit up.
+function boxInFocus(box) {
+  if (!state.focus) return true;
+  if (!box) return false;
+  const r = state.focus;
+  return box.x < r.x + r.w && box.x + box.w > r.x && box.y < r.y + r.h && box.y + box.h > r.y;
+}
+// A finding is LISTED when at least one of its boxes is inside; the canvas then draws only the
+// boxes that actually are (renderMarks).
+function inFocus(f) {
+  if (!state.focus) return true;
+  const boxes = [];
+  for (const side of ['designBox', 'implBox']) if (f[side]) boxes.push(f[side]);
+  if (f.members) for (const m of f.members) for (const side of ['designBox', 'implBox']) if (m[side]) boxes.push(m[side]);
+  return boxes.some(boxInFocus);
+}
 function visible(f) {
   if (!state.sev[f.severity]) return false;
   if (state.q && !(f.message + ' ' + f.type + ' ' + (f.role || '')).toLowerCase().includes(state.q)) return false;
+  if (!inFocus(f)) return false;
+  const verdict = triageStateOf(f);
+  if (verdict === 'ignore' && !state.showTriaged.ignore) return false;
+  if (verdict === 'snooze' && !state.showTriaged.snooze) return false;
   return true;
 }
 function rowHtml(f) {
   const n = f.instances && f.instances > 1 ? '×' + f.instances : '';
-  return '<li class="row' + (state.selected === f.id ? ' sel' : '') + '" data-id="' + f.id + '">' +
+  const verdict = triageStateOf(f);
+  return '<li class="row' + (state.selected === f.id ? ' sel' : '') + (verdict ? ' triaged-' + verdict : '') + '" data-id="' + f.id + '">' +
     '<span class="num ' + f.severity + '">' + f.mark + '</span>' +
     '<span><div class="msg">' + esc(f.message) + '</div><div class="meta"><span class="tag">' + esc(f.type) + '</span>' +
     (f.role ? '<span class="tag">' + esc(f.role) + '</span>' : '') + (n ? '<span class="tag">' + n + '</span>' : '') +
+    (verdict ? '<span class="verdict ' + verdict + '">' + TRIAGE_LABELS[verdict] + '</span>' : '') +
     (f.isSuppressed ? '<span class="tag">suppressed: ' + esc(f.suppressedBy) + ' ' + esc(f.rule) + '</span>' : '') +
     '</div></span></li>';
 }
@@ -300,7 +783,24 @@ function renderList() {
   const sup = report.suppressed.filter(visible);
   $('suppressed').innerHTML = sup.map((s) => rowHtml(byId.get(s.id))).join('');
   $('suppressed-summary').textContent = report.suppressed.length + ' suppressed (' + sup.length + ' shown) — still reported, not part of the verdict';
-  $('sev-chips').innerHTML = SEV.map((s) => '<span class="chip ' + s + (state.sev[s] ? ' on' : '') + '" data-sev="' + s + '">' + s + '</span>').join('');
+  // Triage chips sit with the severity chips because they do the same job — decide what the list
+  // shows. A verdict HIDES its finding, so without these there would be no way back to it.
+  const triaged = triageCounts(triage.set, nowIso());
+  $('sev-chips').innerHTML = SEV.map((s) => '<span class="chip ' + s + (state.sev[s] ? ' on' : '') + '" data-sev="' + s + '">' + s + '</span>').join('') +
+    (triaged.ignore ? '<span class="chip triage-chip ignore' + (state.showTriaged.ignore ? ' on' : '') + '" data-triaged="ignore">ignored ' + triaged.ignore + '</span>' : '') +
+    (triaged.snooze ? '<span class="chip triage-chip snooze' + (state.showTriaged.snooze ? ' on' : '') + '" data-triaged="snooze">snoozed ' + triaged.snooze + '</span>' : '');
+  renderRailToggle();
+}
+// The collapsed rail has to say what it is hiding, so the summary carries the
+// severity counts and the note count the lists would otherwise show.
+function renderRailToggle() {
+  const counts = SEV.map((s) => report.findings.filter((f) => f.severity === s).length);
+  const notes = ann.set.annotations.length;
+  const shown = report.findings.filter(visible).length;
+  const scope = shown === report.findings.length ? String(report.findings.length) : shown + ' of ' + report.findings.length;
+  $('rail-toggle').innerHTML =
+    '<span>' + scope + ' findings <span class="num critical">' + counts[0] + '</span> <span class="num major">' + counts[1] + '</span> <span class="num minor">' + counts[2] + '</span>' +
+    (notes ? ' · ' + notes + (notes === 1 ? ' note' : ' notes') : '') + '</span><span class="chev">▾</span>';
 }
 
 // ---- marks --------------------------------------------------------------
@@ -311,9 +811,9 @@ function rect(box, cls, id) {
   r.setAttribute('class', cls); r.dataset.id = id;
   return r;
 }
-function label(box, f) {
+function label(box, f, sel) {
   const g = document.createElementNS(SVG, 'g');
-  g.setAttribute('class', 'lbl ' + f.severity); g.dataset.x = box.x; g.dataset.y = box.y; g.dataset.id = f.id;
+  g.setAttribute('class', 'lbl ' + f.severity + (sel ? ' sel' : '')); g.dataset.x = box.x; g.dataset.y = box.y; g.dataset.id = f.id;
   const w = 10 + 7 * String(f.mark).length;
   const bg = document.createElementNS(SVG, 'rect'); bg.setAttribute('x', 0); bg.setAttribute('y', -16); bg.setAttribute('width', w); bg.setAttribute('height', 16); bg.setAttribute('rx', 3);
   const t = document.createElementNS(SVG, 'text'); t.setAttribute('x', w / 2); t.setAttribute('y', -4); t.setAttribute('text-anchor', 'middle'); t.textContent = f.mark;
@@ -329,37 +829,66 @@ function renderMarks() {
     const draw = (f, suppressed) => {
       if (!visible(f) && state.selected !== f.id) return;
       const sel = state.selected === f.id;
-      const primary = f[key];
+      // Per-box, so an aggregate listed for its content instance does not redraw the header ones.
+      const primary = boxInFocus(f[key]) ? f[key] : undefined;
       if (primary) {
         layer.append(rect(primary, f.severity + (sel ? ' sel' : '') + (suppressed ? ' suppressed' : ''), f.id));
-        layer.append(label(primary, f));
+        layer.append(label(primary, f, sel));
       }
       if (state.showMembers && f.members) {
-        f.members.slice(1).forEach((m) => { if (m[key]) layer.append(rect(m[key], f.severity + ' member' + (sel ? ' sel' : ''), f.id)); });
+        f.members.slice(1).forEach((m) => { if (m[key] && boxInFocus(m[key])) layer.append(rect(m[key], f.severity + ' member' + (sel ? ' sel' : ''), f.id)); });
       }
     };
-    report.findings.forEach((f) => draw(f, false));
+    // Selected LAST: SVG paints in document order, so anything drawn after would cover it.
+    report.findings.forEach((f) => { if (state.selected !== f.id) draw(f, false); });
     report.suppressed.forEach((s) => { if (state.selected === s.id) draw(byId.get(s.id), true); });
+    const selected = state.selected ? byId.get(state.selected) : null;
+    if (selected && !selected.isSuppressed) draw(selected, false);
+    layer.classList.toggle('has-sel', !!state.selected);
   }
   applyView();
 }
 
 // ---- detail -------------------------------------------------------------
 function kv(obj) { return obj ? Object.entries(obj).map(([k, v]) => k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v)).join(', ') : '—'; }
+// The panel shares the sticky viewer with the panes on a phone, so its
+// presence shrinks them (body.has-detail) instead of pushing them off screen.
+function setDetail(html) {
+  $('detail').innerHTML = html;
+  document.body.classList.toggle('has-detail', html !== '');
+}
 function renderDetail() {
   if (ann.draft || ann.selected) { renderAnnDetail(); return; }
   const f = state.selected ? byId.get(state.selected) : null;
-  if (!f) { $('detail').innerHTML = ''; return; }
+  if (!f) { setDetail(''); return; }
   const keys = Array.from(new Set(Object.keys(f.expected || {}).concat(Object.keys(f.actual || {}))));
   const table = keys.length ? '<table><tr><th></th><th>design (expected)</th><th>impl (actual)</th></tr>' +
     keys.map((k) => '<tr><th>' + esc(k) + '</th><td>' + esc(kv({ [k]: (f.expected || {})[k] }).replace(k + ': ', '')) + '</td><td>' + esc(kv({ [k]: (f.actual || {})[k] }).replace(k + ': ', '')) + '</td></tr>').join('') + '</table>' : '';
   const box = (b) => b ? Math.round(b.x) + ',' + Math.round(b.y) + ' ' + Math.round(b.w) + '×' + Math.round(b.h) : '—';
-  $('detail').innerHTML =
+  setDetail(
     '<h2><span class="num ' + f.severity + '" style="padding:0 6px;border-radius:5px">' + f.mark + '</span> ' + esc(f.message) + '</h2>' +
     '<div class="meta"><span class="tag">' + esc(f.type) + '</span> <span class="tag">' + esc(f.severity) + '</span>' + (f.role ? ' <span class="tag">' + esc(f.role) + '</span>' : '') +
     (f.instances ? ' <span class="tag">×' + f.instances + ' instances</span>' : '') + (f.isSuppressed ? ' <span class="tag">suppressed by ' + esc(f.suppressedBy) + ': ' + esc(f.rule) + '</span>' : '') +
     ' · design box ' + box(f.designBox) + ' · impl box ' + box(f.implBox) + ' (impl CSS px)</div>' + table +
-    (f.crops ? '<div class="crops"><figure><img src="' + esc(f.crops.design) + '" alt=""><figcaption>design crop</figcaption></figure><figure><img src="' + esc(f.crops.impl) + '" alt=""><figcaption>impl crop</figcaption></figure></div>' : '');
+    triageHtml(f) +
+    (f.crops ? '<div class="crops"><figure><img src="' + esc(page.base + f.crops.design) + '" alt=""><figcaption>design crop</figcaption></figure><figure><img src="' + esc(page.base + f.crops.impl) + '" alt=""><figcaption>impl crop</figcaption></figure></div>' : ''),
+  );
+}
+// The verdict row: what to do about this finding, and why. Filed against f.key, so a report
+// captured before that field existed can only say so.
+function triageHtml(f) {
+  if (!f.key) {
+    return '<div class="meta triage-none">no stable key on this finding — re-run the compare to triage it</div>';
+  }
+  const entry = findTriage(triage.set, f.key);
+  const verdict = triageStateOf(f);
+  const button = (value, label) =>
+    '<button data-triage="' + value + '" class="verdict-btn ' + value + (verdict === value ? ' on' : '') + '">' + label + '</button>';
+  const until = entry && entry.snoozeUntil && verdict === 'snooze' ? ' <span class="kv">until ' + esc(entry.snoozeUntil.slice(0, 10)) + '</span>' : '';
+  return '<div class="triage"><div class="actions">' +
+    button('fix', 'To fix') + button('ignore', 'Ignore') + button('snooze', 'Snooze') +
+    (verdict ? '<button data-triage="clear">Clear</button>' : '') + until +
+    '</div><textarea id="triage-note" placeholder="why — stored with the verdict, read by the fix loop">' + esc(entry ? entry.note : '') + '</textarea></div>';
 }
 
 function select(id, focus) {
@@ -384,12 +913,18 @@ function wire() {
     const pointers = new Map();
     let last = null;
     pane.addEventListener('pointerdown', (e) => {
-      // Annotate mode wins over finding marks (a backdrop finding can cover the whole pane).
+      // Focus and annotate modes both own the drag; they beat finding marks, because a backdrop
+      // finding can cover the whole pane and would swallow the gesture.
+      const grabbed = focusHandleAt(pane, e);
+      if (grabbed) { focusEditDown(pane, e, grabbed); return; }
+      if (state.focusing) { focusPointerDown(pane, e); return; }
       if (ann.mode) { annPointerDown(pane, e); return; }
       if (e.target.closest && (e.target.closest('rect[data-id]') || e.target.closest('.ann[data-ann]'))) return;
       pane.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); pane.classList.add('dragging'); last = null;
     });
     pane.addEventListener('pointermove', (e) => {
+      if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditMove(pane, e); return; }
+      if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerMove(pane, e); return; }
       if (ann.band && ann.band.pointerId === e.pointerId) { annPointerMove(pane, e); return; }
       if (!pointers.has(e.pointerId)) return;
       const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -404,6 +939,8 @@ function wire() {
       state.userMoved = true; applyView();
     });
     const up = (e) => {
+      if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditUp(); return; }
+      if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerUp(pane, e); return; }
       if (ann.band && ann.band.pointerId === e.pointerId) { annPointerUp(pane, e); return; }
       pointers.delete(e.pointerId); if (!pointers.size) pane.classList.remove('dragging'); last = null;
     };
@@ -415,20 +952,59 @@ function wire() {
       const r = e.target.closest && e.target.closest('rect[data-id]'); if (r) select(r.dataset.id, false);
     });
   }
+  $('side-switch').addEventListener('click', () => setSide(state.side === 'design' ? 'impl' : 'design'));
+  $('layout-toggle').addEventListener('click', () => setLayout(!state.single));
+  $('move-toggle').addEventListener('click', () => setMove(!state.move));
+  $('focus-toggle').addEventListener('click', () => {
+    if (state.focus) { setFocus(null); setFocusing(false); return; }  // second press clears
+    setFocusing(!state.focusing);
+  });
+  $('focus-chip').addEventListener('click', () => { setFocus(null); setFocusing(false); });
+  $('detail').addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('button[data-triage]');
+    if (!b) return;
+    const note = document.getElementById('triage-note');
+    applyTriage(b.dataset.triage === 'clear' ? null : b.dataset.triage, note ? note.value : undefined);
+  });
+  $('detail').addEventListener('change', (e) => {
+    if (e.target.id !== 'triage-note') return;
+    const f = state.selected ? byId.get(state.selected) : null;
+    if (!f || !f.key) return;
+    triage.set = setTriageNote(triage.set, f.key, e.target.value, nowIso());
+    persistTriage(); renderList(); renderRailToggle();
+  });
+  $('rail-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('rail-open');
+    updateRailToggle(); saveControls();
+    if (!state.userMoved) fit();
+  });
+  $('hdr').addEventListener('click', (e) => {
+    const b = e.target.closest('#hdr-more'); if (!b) return;
+    b.setAttribute('aria-expanded', document.body.classList.toggle('hdr-open') ? 'true' : 'false');
+  });
+  narrow.addEventListener('change', () => { applyLayout(); applySide(); if (state.userMoved) applyView(); else fit(); });
   $('ann-point').addEventListener('click', () => setAnnMode(ann.mode === 'point' ? null : 'point'));
   $('ann-rect').addEventListener('click', () => setAnnMode(ann.mode === 'rect' ? null : 'rect'));
   $('ann-list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) selectAnn(row.dataset.ann === ann.selected ? null : row.dataset.ann, true); });
   $('detail').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) annAction(b.dataset.act, b.dataset.ann); });
   $('list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
   $('suppressed').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
-  $('sev-chips').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (!c) return; state.sev[c.dataset.sev] = !state.sev[c.dataset.sev]; renderList(); renderMarks(); });
+  $('sev-chips').addEventListener('click', (e) => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    if (c.dataset.triaged) { state.showTriaged[c.dataset.triaged] = !state.showTriaged[c.dataset.triaged]; saveControls(); }
+    else state.sev[c.dataset.sev] = !state.sev[c.dataset.sev];
+    renderList(); renderMarks(); renderFocusChip();
+  });
   $('q').addEventListener('input', (e) => { state.q = e.target.value.trim().toLowerCase(); renderList(); renderMarks(); });
   $('zoom-in').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
   $('zoom-out').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
   $('fit').addEventListener('click', fit);
-  $('aligned').addEventListener('change', (e) => { state.aligned = e.target.checked; if (state.userMoved) applyView(); else fit(); });
-  $('marks').addEventListener('change', (e) => { state.showMarks = e.target.checked; renderMarks(); });
-  $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; renderMarks(); });
+  $('aligned').addEventListener('click', () => {
+    state.aligned = !state.aligned; applyAligned(); saveControls();
+    if (state.userMoved) applyView(); else fit();
+  });
+  $('marks').addEventListener('change', (e) => { state.showMarks = e.target.checked; saveControls(); renderMarks(); });
+  $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; saveControls(); renderMarks(); });
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') { e.target.blur(); } return; }
     const p = paneSize();
@@ -445,7 +1021,8 @@ function wire() {
       select(next.id, true);
     }
   });
-  new ResizeObserver(() => { if (!state.userMoved) fit(); else applyView(); }).observe(panes.impl);
+  // The panes container is laid out on both breakpoints; the impl pane is not.
+  new ResizeObserver(() => { if (!state.userMoved) fit(); else applyView(); }).observe($('panes'));
 }
 
 // ---- annotations --------------------------------------------------------
@@ -453,13 +1030,18 @@ function wire() {
 // is the element of that side under/around the shape (snapToElement over
 // elements.json). Status: open → implemented (agent) → done (designer).
 const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const nowIso = () => new Date().toISOString();
 
 function setAnnStatus(text, isError) { ann.status = text; const el = $('ann-status'); el.textContent = text; el.className = 'annstatus' + (isError ? ' err' : ''); }
-function setAnnMode(mode) {
+function setAnnMode(mode, sticky) {
   ann.mode = mode;
+  // A sticky mode survives drawing a shape: the corner toggle stays in
+  // annotate until it is switched back, the desktop buttons are one-shot.
+  ann.sticky = !!mode && !!sticky;
+  state.move = !mode;
   $('ann-point').classList.toggle('on', mode === 'point'); $('ann-rect').classList.toggle('on', mode === 'rect');
   for (const pane of Object.values(panes)) pane.classList.toggle('annotating', !!mode);
+  document.body.classList.toggle('ann-mode', !!mode);
+  $('move-toggle').setAttribute('aria-pressed', mode ? 'false' : 'true');
 }
 function persist() {
   clearTimeout(ann.saveTimer);
@@ -467,7 +1049,7 @@ function persist() {
     const body = JSON.stringify(ann.set);
     if (ann.storage === 'api') {
       try {
-        const res = await fetch('api/annotations', { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
+        const res = await fetch(page.annotationsUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
         if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
         setAnnStatus('saved · annotations.json', false);
       } catch (e) { setAnnStatus('save failed: ' + e.message, true); }
@@ -482,6 +1064,10 @@ function annIndex(id) { return ann.set.annotations.findIndex((a) => a.id === id)
 
 function paneWorld(pane, e) { const r = pane.getBoundingClientRect(); return screenToWorld(state.view, e.clientX - r.left, e.clientY - r.top); }
 function annPointerDown(pane, e) {
+  // A sticky mode keeps drawing after each shape, so an unsaved draft with
+  // text in it must not be thrown away by the next tap.
+  const ta = document.querySelector('#detail textarea');
+  if (ann.draft && ta && ta.value.trim()) { setAnnStatus('save or cancel the open note first', true); return; }
   const p = paneWorld(pane, e);
   ann.band = { pointerId: e.pointerId, side: pane.dataset.side, start: p, end: p };
   pane.setPointerCapture(e.pointerId);
@@ -491,16 +1077,21 @@ function annPointerMove(pane, e) { ann.band.end = paneWorld(pane, e); renderAnnM
 function annPointerUp(pane, e) {
   const b = ann.band; ann.band = null; ann.suppressClick = true;
   const x = Math.min(b.start.x, b.end.x), y = Math.min(b.start.y, b.end.y), w = Math.abs(b.end.x - b.start.x), h = Math.abs(b.end.y - b.start.y);
-  const shape = ann.mode === 'rect' && w >= 3 && h >= 3 ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
+  // The threshold is in SCREEN px: at a fit-to-phone zoom a 3-world-px wobble
+  // is under two real pixels, which turned taps into slivers of a region.
+  const drawn = w * state.view.z >= 10 && h * state.view.z >= 10;
+  const shape = ann.mode === 'rect' && drawn ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
   ann.draft = { side: b.side, shape, anchor: anchorFor(shape, ann.elements[b.side]) };
   ann.selected = null; state.selected = null;
-  setAnnMode(null);
+  if (!ann.sticky) setAnnMode(null);
   renderList(); renderMarks(); renderAnnMarks(); renderDetail();
   const ta = document.querySelector('#detail textarea'); if (ta) ta.focus();
 }
 function selectAnn(id, focus) {
   ann.selected = id; ann.draft = null;
   if (id) state.selected = null;
+  const picked = id ? ann.set.annotations[annIndex(id)] : null;
+  if (picked && narrow.matches && picked.side !== state.side) setSide(picked.side);
   renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderDetail();
   const a = id ? ann.set.annotations[annIndex(id)] : null;
   if (focus && a) { state.view = focusView(shapeBox(a.shape).w ? shapeBox(a.shape) : { x: a.shape.x - 20, y: a.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view); state.userMoved = true; applyView(); }
@@ -534,6 +1125,7 @@ function renderAnnList() {
   const c = counts(ann.set);
   $('ann-summary').textContent = ann.set.annotations.length + ' annotations — ' + c.open + ' open · ' + c.implemented + ' implemented · ' + c.done + ' done';
   $('ann-list').innerHTML = ann.set.annotations.map(annRowHtml).join('');
+  renderRailToggle();
 }
 function annLabel(x, y, n, status, id) {
   const g = document.createElementNS(SVG, 'g');
@@ -581,16 +1173,16 @@ function renderAnnMarks() {
 function renderAnnDetail() {
   const d = ann.draft;
   if (d) {
-    $('detail').innerHTML = '<h2>New ' + (d.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + d.side + '</b> side</h2>' +
+    setDetail('<h2>New ' + (d.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + d.side + '</b> side</h2>' +
       '<div class="meta">anchored to ' + esc(describeAnchor(d.anchor)) + (ann.elementsLoaded ? '' : ' (elements.json not loaded — no snapping)') + ' · world ' + Math.round(d.shape.x) + ',' + Math.round(d.shape.y) + '</div>' +
       '<textarea placeholder="what should change here?"></textarea>' +
-      '<div class="actions"><button class="primary" data-act="save-draft">Save note</button><button data-act="cancel-draft">Cancel</button></div>';
+      '<div class="actions"><button class="primary" data-act="save-draft">Save note</button><button data-act="cancel-draft">Cancel</button></div>');
     return;
   }
   const i = annIndex(ann.selected); const a = ann.set.annotations[i];
-  if (!a) { $('detail').innerHTML = ''; return; }
+  if (!a) { setDetail(''); return; }
   const when = (k) => (a[k] ? ' · ' + k.replace('At', '') + ' ' + esc(a[k]) : '');
-  $('detail').innerHTML = '<h2><span class="num ' + a.status + '" style="padding:0 6px;border-radius:5px">' + (i + 1) + '</span> <span class="status ' + a.status + '">' + a.status + '</span> ' +
+  setDetail('<h2><span class="num ' + a.status + '" style="padding:0 6px;border-radius:5px">' + (i + 1) + '</span> <span class="status ' + a.status + '">' + a.status + '</span> ' +
     (a.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + a.side + '</b> side' + (a.stale ? ' · <b>stale</b>: its element is not in the current capture' : '') + '</h2>' +
     '<div class="meta">anchored to ' + esc(describeAnchor(a.anchor)) + ' · created ' + esc(a.createdAt) + when('implementedAt') + when('doneAt') + ' · id ' + a.id + '</div>' +
     '<textarea>' + esc(a.note) + '</textarea>' +
@@ -599,12 +1191,12 @@ function renderAnnDetail() {
     (a.status !== 'open' ? '<button data-act="reopen" data-ann="' + a.id + '">Reopen</button>' : '') +
     (a.status === 'open' ? '<button data-act="implement" data-ann="' + a.id + '" title="normally the agent does this via --mark-implemented">Mark implemented</button>' : '') +
     '<button class="danger" data-act="delete" data-ann="' + a.id + '">Delete</button>' +
-    '<span class="hint">editing the text of an implemented note reopens it</span></div>';
+    '<span class="hint">editing the text of an implemented note reopens it</span></div>');
 }
 async function loadAnnotations() {
   if (ann.storage === 'api') {
     try {
-      const res = await fetch('api/annotations');
+      const res = await fetch(page.annotationsUrl);
       if (res.ok) { const p = parseAnnotationSet(await res.json(), report.pair); if (p.ok) { ann.set = p.value; setAnnStatus('annotations.json · ' + ann.set.annotations.length + ' loaded', false); return; } }
       else if (res.status === 404) { ann.storage = 'local'; }
       else throw new Error('HTTP ' + res.status);
@@ -618,7 +1210,7 @@ async function loadAnnotations() {
 }
 async function loadElements() {
   try {
-    const res = await fetch('elements.json'); if (!res.ok) throw new Error(res.status);
+    const res = await fetch(page.base + 'elements.json'); if (!res.ok) throw new Error(res.status);
     const j = await res.json(); ann.elements = { design: j.design || [], impl: j.impl || [] }; ann.elementsLoaded = true;
   } catch (e) { ann.elementsLoaded = false; }
 }
@@ -627,13 +1219,42 @@ async function loadElements() {
 function loadImage(img, src) {
   return new Promise((resolve) => { img.addEventListener('load', () => resolve(true), { once: true }); img.addEventListener('error', () => resolve(false), { once: true }); img.src = src; });
 }
-renderHeader(); renderList(); renderDetail(); renderAnnList(); wire();
-Promise.all([loadImage(imgs.design, report.artifacts.designPng), loadImage(imgs.impl, report.artifacts.implPng), loadAnnotations(), loadElements()]).then(([okD, okI]) => {
-  // DPR = PNG native px / CSS px the capture reported; a missing image keeps 1.
-  if (okD) state.dprD = imgs.design.naturalWidth / report.design.width;
-  if (okI) state.dprI = imgs.impl.naturalWidth / report.impl.width;
-  if (!okD) $('label-design').textContent += ' — image missing';
-  if (!okI) $('label-impl').textContent += ' — image missing';
-  renderMarks(); renderAnnList(); renderAnnMarks(); fit();
-});
-`;
+let wired = false;
+// Open a pair. Called once by an emitted file and once per route by the app
+// shell, so every piece of per-pair state is reset here, not at load.
+function openReport(reportData, annotationSet, pageData) {
+  report = reportData;
+  page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null }, pageData || {});
+  byId = new Map(report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s))).map((f) => [f.id, f]));
+  ann.set = annotationSet || { version: 1, pair: report.pair, annotations: [] };
+  ann.mode = null; ann.draft = null; ann.selected = null; ann.band = null; ann.sticky = false;
+  ann.elements = { design: [], impl: [] }; ann.elementsLoaded = false;
+  state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = '';
+  state.sev = { critical: true, major: true, minor: true };
+  state.focus = null; state.focusLabel = ''; state.focusing = false; focusBand = null; focusDrag = null;
+  document.body.classList.remove('has-detail', 'ann-mode', 'hdr-open');
+  $('q').value = '';
+  applyControls(readControls());
+  document.title = report.pair + ' — visual-compare';
+  renderHeader(); renderList(); renderDetail(); renderAnnList();
+  if (!wired) { wire(); wired = true; }
+  applyLayout(); applySide(); updateRailToggle(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
+  return Promise.all([
+    loadImage(imgs.design, page.base + report.artifacts.designPng),
+    loadImage(imgs.impl, page.base + report.artifacts.implPng),
+    loadAnnotations(),
+    loadElements(),
+    loadTriage(),
+    loadFocus(),
+  ]).then(([okD, okI]) => {
+    // DPR = PNG native px per CAPTURE CSS px; a missing image keeps 1. The
+    // design side cannot infer it from report.design.width — see
+    // designCaptureDpr, which this used to get wrong on 40 of 41 pairs.
+    state.dprD = okD ? designCaptureDpr(imgs.design.naturalWidth, report.design, report.alignment.scale) : 1;
+    state.dprI = okI ? (report.impl.dpr || imgs.impl.naturalWidth / report.impl.width) : 1;
+    if (!okD) $('label-design').textContent += ' — image missing';
+    if (!okI) $('label-impl').textContent += ' — image missing';
+    renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderRailToggle(); renderDetail(); fit();
+  });
+}
+`

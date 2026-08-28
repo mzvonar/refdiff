@@ -3,14 +3,20 @@
  * visual-compare-annotator — human view of a comparison run + the annotation
  * loop back to the agent.
  *
- *   visual-compare-annotator <run-dir> [--out report.html] [--serve] [--port 7378] [--host 0.0.0.0]
- *                                      [--mark-implemented <id,…|all>] [--digest]
+ *   visual-compare-annotator <run-dir|out-root> [--out report.html] [--serve] [--port 7378]
+ *                                      [--host 0.0.0.0] [--mark-implemented <id,…|all>] [--digest]
  *
  * Reads <run-dir>/findings.json (a ComparisonReport written by `visual-compare
  * compare`), writes a self-contained report.html INTO the run dir (it links
  * design.png / impl.png / crops relatively) and, with --serve, serves the run
  * dir with a zero-dependency JSON API (`GET/PUT /api/annotations`) so notes
  * placed in the page persist to <run-dir>/annotations.json.
+ *
+ * Given an OUT ROOT instead (a directory whose children hold findings.json —
+ * a whole set), it does that for every pair and writes an index.html listing
+ * them; each report links back to it. Serving the root then puts the set one
+ * tap away from any pair, which is the only way to move between pairs on a
+ * phone (the alternative was restarting the server per pair).
  *
  * Annotations are re-projected against the CURRENT elements.json on every
  * start (a recapture moves them with their element; orphans are marked
@@ -20,15 +26,19 @@
  * effectful edge: files, HTTP, sharp.
  */
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import type { IncomingMessage, ServerResponse } from "node:http";
-import { networkInterfaces } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
-import { parseArgs } from "node:util";
+import type { IncomingMessage, ServerResponse } from "node:http"
 
-import sharp, { type Sharp } from "sharp";
-
-import { serveDir, type Alignment, type ComparisonReport, type ElementNode } from "@visual-compare/core";
+import {
+  serveDir,
+  type Alignment,
+  type ComparisonReport,
+  type ElementNode,
+} from "@visual-compare/core"
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises"
+import { networkInterfaces } from "node:os"
+import { basename, dirname, join, resolve } from "node:path"
+import { parseArgs } from "node:util"
+import sharp, { type Sharp } from "sharp"
 
 import {
   counts,
@@ -39,17 +49,36 @@ import {
   reprojectAll,
   transition,
   type AnnotationSet,
-} from "./annotations.js";
-import { renderReport } from "./render.js";
-import { worldToDesign } from "./view-math.js";
+} from "./annotations.js"
+import { renderAppShell } from "./app-shell.js"
+import { type PairSummary } from "./index-view.js"
+import { renderReport } from "./render.js"
+import {
+  emptyFocus,
+  focusDigest,
+  parseFocusSet,
+  type FocusSet,
+} from "./focus.js"
+import {
+  emptyTriage,
+  parseTriageSet,
+  triageCounts,
+  triageDigest,
+  type TriageSet,
+} from "./triage.js"
+import { worldToDesign } from "./view-math.js"
 
-const USAGE = `Usage: visual-compare-annotator <run-dir> [options]
+const USAGE = `Usage: visual-compare-annotator <run-dir|out-root> [options]
 
 Writes <run-dir>/report.html: the FULL design and FULL implementation side by
 side, one shared pan/zoom (the design pane is projected through the run's
 Alignment), numbered finding marks on both panes, the finding list with
 expected/actual and crops, suppressed findings and the delta — plus human
 annotations (notes/regions anchored to elements, open → implemented → done).
+
+Point it at an OUT ROOT (the parent of many run dirs) instead and it renders
+every pair plus <out-root>/index.html — one card per pair, each report linking
+back to it. With --serve that is the whole set on one port.
 
 Annotations live in <run-dir>/annotations.json. On every start they are
 re-projected against the current elements.json (a recapture moves a note with
@@ -58,41 +87,48 @@ the model into annotations.md + annotations-design.png / annotations-impl.png.
 
 Options:
   --out <file>     where to write the HTML (default <run-dir>/report.html;
-                   must stay inside the run dir for the relative image links)
-  --serve          serve the run dir (static + GET/PUT /api/annotations) and keep running
+                   must stay inside the run dir for the relative image links).
+                   Single run dir only — a set writes each report in place.
+  --serve          run the app: one page at /, the pair list from /api/pairs
+                   and each pair's findings.json loaded at request time
+                   (nothing is written; add --emit to also write the files)
+  --emit           write the self-contained report.html files (and index.html
+                   for a set) — the default when not serving. Needed only to
+                   read a report off disk with no server
   --port <n>       port for --serve (default 7378)
   --host <addr>    bind address for --serve (default 127.0.0.1; 0.0.0.0 for
                    other devices on the network)
   --mark-implemented <id,…|all>
                    the agent acted on these open notes: open → implemented
-                   ("all" = every open note); rewrites annotations.json + digest
+                   ("all" = every open note); rewrites annotations.json + digest.
+                   Single run dir only — note ids are per pair
   --digest         (re)write the digest files even when nothing changed
   -h, --help
 
-Exit codes: 0 ok, 2 usage error, unreadable findings.json or invalid annotations.json.`;
+Exit codes: 0 ok, 2 usage error, unreadable findings.json or invalid annotations.json.`
 
 function usageError(message: string): never {
-  console.error(message);
-  console.error();
-  console.error(USAGE);
-  process.exit(2);
+  console.error(message)
+  console.error()
+  console.error(USAGE)
+  process.exit(2)
 }
 
 async function readReport(runDir: string): Promise<ComparisonReport> {
-  const path = join(runDir, "findings.json");
-  let text: string;
+  const path = join(runDir, "findings.json")
+  let text: string
   try {
-    text = await readFile(path, "utf8");
+    text = await readFile(path, "utf8")
   } catch {
-    return usageError(`cannot read ${path}`);
+    return usageError(`cannot read ${path}`)
   }
-  let parsed: unknown;
+  let parsed: unknown
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text)
   } catch (e) {
-    return usageError(`${path} is not valid JSON: ${(e as Error).message}`);
+    return usageError(`${path} is not valid JSON: ${(e as Error).message}`)
   }
-  const r = parsed as Partial<ComparisonReport>;
+  const r = parsed as Partial<ComparisonReport>
   if (
     typeof r !== "object" ||
     r === null ||
@@ -103,264 +139,649 @@ async function readReport(runDir: string): Promise<ComparisonReport> {
     !r.impl ||
     !r.artifacts
   ) {
-    return usageError(`${path} is not a ComparisonReport (pair, findings, alignment, design, impl, artifacts required)`);
+    return usageError(
+      `${path} is not a ComparisonReport (pair, findings, alignment, design, impl, artifacts required)`,
+    )
   }
-  return { ...r, suppressed: r.suppressed ?? [], policy: r.policy ?? {} } as ComparisonReport;
+  return { ...r, suppressed: r.suppressed ?? [], policy: r.policy ?? {} } as ComparisonReport
 }
 
 /* ------------------------------------------------------- annotations I/O -- */
 
-const ANNOTATIONS_FILE = "annotations.json";
-const DIGEST = { text: "annotations.md", design: "annotations-design.png", impl: "annotations-impl.png" } as const;
+const ANNOTATIONS_FILE = "annotations.json"
+const DIGEST = {
+  text: "annotations.md",
+  design: "annotations-design.png",
+  impl: "annotations-impl.png",
+} as const
 
 async function readAnnotations(runDir: string, pair: string): Promise<AnnotationSet> {
-  const path = join(runDir, ANNOTATIONS_FILE);
-  let text: string;
+  const path = join(runDir, ANNOTATIONS_FILE)
+  let text: string
   try {
-    text = await readFile(path, "utf8");
+    text = await readFile(path, "utf8")
   } catch {
-    return emptySet(pair);
+    return emptySet(pair)
   }
-  let raw: unknown;
+  let raw: unknown
   try {
-    raw = JSON.parse(text);
+    raw = JSON.parse(text)
   } catch (e) {
-    return usageError(`${path} is not valid JSON: ${(e as Error).message}`);
+    return usageError(`${path} is not valid JSON: ${(e as Error).message}`)
   }
-  const parsed = parseAnnotationSet(raw, pair);
-  if (!parsed.ok) return usageError(`${path}: ${parsed.error}`);
-  return parsed.value;
+  const parsed = parseAnnotationSet(raw, pair)
+  if (!parsed.ok) return usageError(`${path}: ${parsed.error}`)
+  return parsed.value
+}
+
+const TRIAGE_FILE = "triage.json"
+const TRIAGE_DIGEST = "triage.md"
+const FOCUS_FILE = "focus.json"
+const FOCUS_DIGEST = "focus.md"
+
+/**
+ * The region a person is working inside, so "work in the focused region" survives leaving the
+ * browser. Same tolerance as triage: unreadable means "no region", never a failed request.
+ */
+async function readFocus(runDir: string, pair: string): Promise<FocusSet> {
+  try {
+    const parsed = parseFocusSet(JSON.parse(await readFile(join(runDir, FOCUS_FILE), "utf8")), pair)
+    return parsed.value
+  } catch {
+    return emptyFocus(pair)
+  }
+}
+
+/**
+ * Triage decisions keyed by `Finding.key`. A malformed file degrades to "nothing triaged" rather
+ * than killing the request: these are convenience verdicts, and refusing to serve a pair because
+ * one row is bad would be the worse failure.
+ */
+async function readTriage(runDir: string, pair: string): Promise<TriageSet> {
+  try {
+    const parsed = parseTriageSet(
+      JSON.parse(await readFile(join(runDir, TRIAGE_FILE), "utf8")),
+      pair,
+    )
+    return parsed.value
+  } catch {
+    return emptyTriage(pair)
+  }
 }
 
 /** Atomic write: never leave a half-written set for the page or the agent to read. */
 async function writeAtomic(path: string, body: string | Buffer): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile(tmp, body);
-  await rename(tmp, path);
+  await mkdir(dirname(path), { recursive: true })
+  const tmp = `${path}.${process.pid}.tmp`
+  await writeFile(tmp, body)
+  await rename(tmp, path)
 }
 
-async function readElements(runDir: string): Promise<{ design: ElementNode[]; impl: ElementNode[] } | undefined> {
+async function readElements(
+  runDir: string,
+): Promise<{ design: ElementNode[]; impl: ElementNode[] } | undefined> {
   try {
-    const j = JSON.parse(await readFile(join(runDir, "elements.json"), "utf8")) as { design?: ElementNode[]; impl?: ElementNode[] };
-    return { design: j.design ?? [], impl: j.impl ?? [] };
+    const j = JSON.parse(await readFile(join(runDir, "elements.json"), "utf8")) as {
+      design?: ElementNode[]
+      impl?: ElementNode[]
+    }
+    return { design: j.design ?? [], impl: j.impl ?? [] }
   } catch {
-    return undefined;
+    return undefined
   }
 }
 
 /** The digest: text + the two full PNGs with numbered markers (side-native resolution). */
-async function writeDigest(runDir: string, report: ComparisonReport, set: AnnotationSet): Promise<void> {
-  await writeAtomic(join(runDir, DIGEST.text), digestText(set, { runCreatedAt: report.createdAt, designPng: DIGEST.design, implPng: DIGEST.impl }));
-  const a: Alignment = report.alignment;
+async function writeDigest(
+  runDir: string,
+  report: ComparisonReport,
+  set: AnnotationSet,
+): Promise<void> {
+  await writeAtomic(
+    join(runDir, DIGEST.text),
+    digestText(set, {
+      runCreatedAt: report.createdAt,
+      designPng: DIGEST.design,
+      implPng: DIGEST.impl,
+    }),
+  )
+  const a: Alignment = report.alignment
   for (const side of ["design", "impl"] as const) {
-    const src = join(runDir, side === "design" ? report.artifacts.designPng : report.artifacts.implPng);
-    let image: Sharp;
-    let w: number;
-    let h: number;
+    const src = join(
+      runDir,
+      side === "design" ? report.artifacts.designPng : report.artifacts.implPng,
+    )
+    let image: Sharp
+    let w: number
+    let h: number
     try {
-      image = sharp(src);
-      const meta = await image.metadata();
-      w = meta.width ?? 0;
-      h = meta.height ?? 0;
-      if (w === 0 || h === 0) continue;
+      image = sharp(src)
+      const meta = await image.metadata()
+      w = meta.width ?? 0
+      h = meta.height ?? 0
+      if (w === 0 || h === 0) continue
     } catch {
-      continue; // no PNG for this side — the text digest still says where the notes are
+      continue // no PNG for this side — the text digest still says where the notes are
     }
-    const cssWidth = side === "design" ? report.design.width : report.impl.width;
-    const dpr = w / cssWidth;
+    const cssWidth = side === "design" ? report.design.width : report.impl.width
+    const dpr = w / cssWidth
     const toNative =
       side === "design"
         ? (p: { x: number; y: number }) => {
-            const d = worldToDesign(p, a);
-            return { x: d.x * dpr, y: d.y * dpr };
+            const d = worldToDesign(p, a)
+            return { x: d.x * dpr, y: d.y * dpr }
           }
-        : (p: { x: number; y: number }) => ({ x: p.x * dpr, y: p.y * dpr });
-    const svg = digestSvg(set, side, { w, h }, toNative, Math.max(1, Math.round(dpr)));
-    const out = await image.composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).png().toBuffer();
-    await writeAtomic(join(runDir, DIGEST[side]), out);
+        : (p: { x: number; y: number }) => ({ x: p.x * dpr, y: p.y * dpr })
+    const svg = digestSvg(set, side, { w, h }, toNative, Math.max(1, Math.round(dpr)))
+    const out = await image
+      .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+      .png()
+      .toBuffer()
+    await writeAtomic(join(runDir, DIGEST[side]), out)
   }
 }
 
 /* ------------------------------------------------------------------ API -- */
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-  res.end(JSON.stringify(body));
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  })
+  res.end(JSON.stringify(body))
 }
 
 function readBody(req: IncomingMessage, limit = 5 * 1024 * 1024): Promise<string | undefined> {
   return new Promise((resolveBody) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
+    const chunks: Buffer[] = []
+    let size = 0
     req.on("data", (c: Buffer) => {
-      size += c.length;
+      size += c.length
       if (size > limit) {
-        resolveBody(undefined);
-        req.destroy();
-        return;
+        resolveBody(undefined)
+        req.destroy()
+        return
       }
-      chunks.push(c);
-    });
-    req.on("end", () => resolveBody(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", () => resolveBody(undefined));
-  });
+      chunks.push(c)
+    })
+    req.on("end", () => resolveBody(Buffer.concat(chunks).toString("utf8")))
+    req.on("error", () => resolveBody(undefined))
+  })
+}
+
+interface AppApiOptions {
+  root: string
+  runs: { name: string; dir: string }[]
+  /** A lone run dir is served AS the root, so its artifacts sit at `/`. */
+  single: boolean
+  shell: string
 }
 
 /**
- * `GET /api/annotations` → the current set; `PUT /api/annotations` → validate,
- * persist atomically, refresh the digest, echo the stored set. Last write
- * wins — one reviewer at a time is the use case.
+ * The app's server half. Everything is read from disk per request, so a
+ * `compare` run finished after the server started shows up on reload:
+ *
+ *   GET  /                          the shell (no data)
+ *   GET  /api/pairs                 the list, summarised from each findings.json
+ *   GET  /api/pairs/<dir>/annotations
+ *   PUT  /api/pairs/<dir>/annotations  validate, persist atomically, refresh digest
+ *
+ * Anything else falls through to static serving of the root.
  */
-function annotationsApi(runDir: string, report: ComparisonReport, state: { set: AnnotationSet }) {
+function appApi(options: AppApiOptions) {
+  const byName = new Map(options.runs.map((r) => [r.name, r.dir]))
+  // A lone run dir is its own root: the shell still lists exactly one pair, and
+  // its artifacts are addressed by the dir name that serveDir cannot see.
+  const dirFor = (name: string): string | undefined =>
+    options.single ? (name === options.runs[0]!.name ? options.root : undefined) : byName.get(name)
   return async (req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
-    const path = new URL(req.url ?? "/", "http://localhost").pathname;
-    if (path !== "/api/annotations") return false;
+    const path = new URL(req.url ?? "/", "http://localhost").pathname
+    if (path === "/" || path === "/index.html") {
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      })
+      res.end(options.shell)
+      return true
+    }
+    if (path === "/api/pairs") {
+      sendJson(res, 200, { root: options.root, pairs: await summarisePairs(options) })
+      return true
+    }
+    // GET/PUT the pair's focus region. On write the digest is rebuilt, because the digest — not the
+    // JSON — is what makes the region legible to the agent.
+    const focusMatch = /^\/api\/pairs\/([^/]+)\/focus$/.exec(path)
+    if (focusMatch) {
+      const focusName = decodeURIComponent(focusMatch[1]!)
+      const focusDir = dirFor(focusName)
+      if (!focusDir) {
+        sendJson(res, 404, { error: `unknown pair ${focusName}` })
+        return true
+      }
+      const focusReport = await readReport(focusDir)
+      if (req.method === "GET") {
+        sendJson(res, 200, await readFocus(focusDir, focusReport.pair))
+        return true
+      }
+      if (req.method === "PUT") {
+        const body = await readBody(req)
+        if (body === undefined) {
+          sendJson(res, 413, { error: "body too large" })
+          return true
+        }
+        let raw: unknown
+        try {
+          raw = JSON.parse(body)
+        } catch (e) {
+          sendJson(res, 400, { error: `invalid JSON: ${(e as Error).message}` })
+          return true
+        }
+        const parsed = parseFocusSet(raw, focusReport.pair)
+        if (!parsed.ok) {
+          sendJson(res, 400, { error: parsed.error })
+          return true
+        }
+        await writeAtomic(join(focusDir, FOCUS_FILE), JSON.stringify(parsed.value, null, 2))
+        await writeAtomic(
+          join(focusDir, FOCUS_DIGEST),
+          focusDigest(parsed.value, focusReport.findings),
+        )
+        const r = parsed.value.region
+        console.log(
+          r
+            ? `focus saved: x ${Math.round(r.x)}, y ${Math.round(r.y)}, ${Math.round(r.w)}×${Math.round(r.h)} → ${FOCUS_DIGEST}`
+            : `focus cleared → ${FOCUS_DIGEST}`,
+        )
+        sendJson(res, 200, parsed.value)
+        return true
+      }
+      res.writeHead(405, { Allow: "GET, PUT" })
+      res.end()
+      return true
+    }
+    // GET/PUT the pair's triage verdicts (fix / ignore / snooze + note), keyed by Finding.key.
+    const triageMatch = /^\/api\/pairs\/([^/]+)\/triage$/.exec(path)
+    if (triageMatch) {
+      const triageName = decodeURIComponent(triageMatch[1]!)
+      const triageDir = dirFor(triageName)
+      if (!triageDir) {
+        sendJson(res, 404, { error: `unknown pair ${triageName}` })
+        return true
+      }
+      const triageReport = await readReport(triageDir)
+      if (req.method === "GET") {
+        sendJson(res, 200, await readTriage(triageDir, triageReport.pair))
+        return true
+      }
+      if (req.method === "PUT") {
+        const body = await readBody(req)
+        if (body === undefined) {
+          sendJson(res, 413, { error: "body too large" })
+          return true
+        }
+        let raw: unknown
+        try {
+          raw = JSON.parse(body)
+        } catch (e) {
+          sendJson(res, 400, { error: `invalid JSON: ${(e as Error).message}` })
+          return true
+        }
+        const parsed = parseTriageSet(raw, triageReport.pair)
+        if (!parsed.ok) {
+          sendJson(res, 400, { error: parsed.error })
+          return true
+        }
+        await writeAtomic(join(triageDir, TRIAGE_FILE), JSON.stringify(parsed.value, null, 2))
+        // The digest is what the fix loop reads: what a human already refused or deferred.
+        await writeAtomic(
+          join(triageDir, TRIAGE_DIGEST),
+          triageDigest(parsed.value, new Date().toISOString()),
+        )
+        const counts = triageCounts(parsed.value, new Date().toISOString())
+        console.log(
+          `triage saved: ${parsed.value.entries.length} (${counts.fix} fix · ${counts.ignore} ignore · ${counts.snooze} snoozed)`,
+        )
+        sendJson(res, 200, parsed.value)
+        return true
+      }
+      res.writeHead(405, { Allow: "GET, PUT" })
+      res.end()
+      return true
+    }
+    // The app calls /api/pairs/<dir>/annotations; an EMITTED report.html sits
+    // in the run dir and calls ./api/annotations, so both shapes answer here.
+    const match =
+      /^\/api\/pairs\/([^/]+)\/annotations$/.exec(path) ??
+      /^\/([^/]+)\/api\/annotations$/.exec(path) ??
+      (options.single && path === "/api/annotations"
+        ? ([path, options.runs[0]!.name] as unknown as RegExpExecArray)
+        : null)
+    if (!match) return false
+    const name = decodeURIComponent(match[1]!)
+    const runDir = dirFor(name)
+    if (!runDir) {
+      sendJson(res, 404, { error: `unknown pair ${name}` })
+      return true
+    }
+    const report = await readReport(runDir)
+    const stored = await readAnnotations(runDir, report.pair)
+    const elements = await readElements(runDir)
+    const state = { set: elements ? reprojectAll(stored, elements) : stored }
     if (req.method === "GET") {
-      sendJson(res, 200, state.set);
-      return true;
+      sendJson(res, 200, state.set)
+      return true
     }
     if (req.method === "PUT") {
-      const body = await readBody(req);
+      const body = await readBody(req)
       if (body === undefined) {
-        sendJson(res, 413, { error: "body too large" });
-        return true;
+        sendJson(res, 413, { error: "body too large" })
+        return true
       }
-      let raw: unknown;
+      let raw: unknown
       try {
-        raw = JSON.parse(body);
+        raw = JSON.parse(body)
       } catch (e) {
-        sendJson(res, 400, { error: `invalid JSON: ${(e as Error).message}` });
-        return true;
+        sendJson(res, 400, { error: `invalid JSON: ${(e as Error).message}` })
+        return true
       }
-      const parsed = parseAnnotationSet(raw, report.pair);
+      const parsed = parseAnnotationSet(raw, report.pair)
       if (!parsed.ok) {
-        sendJson(res, 400, { error: parsed.error });
-        return true;
+        sendJson(res, 400, { error: parsed.error })
+        return true
       }
-      state.set = parsed.value;
-      await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(state.set, null, 2));
-      await writeDigest(runDir, report, state.set);
-      const c = counts(state.set);
-      console.log(`annotations saved: ${state.set.annotations.length} (${c.open} open · ${c.implemented} implemented · ${c.done} done)`);
-      sendJson(res, 200, state.set);
-      return true;
+      state.set = parsed.value
+      await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(state.set, null, 2))
+      await writeDigest(runDir, report, state.set)
+      const c = counts(state.set)
+      console.log(
+        `annotations saved: ${state.set.annotations.length} (${c.open} open · ${c.implemented} implemented · ${c.done} done)`,
+      )
+      sendJson(res, 200, state.set)
+      return true
     }
-    res.writeHead(405, { Allow: "GET, PUT" });
-    res.end();
-    return true;
-  };
+    res.writeHead(405, { Allow: "GET, PUT" })
+    res.end()
+    return true
+  }
+}
+
+/** One card's worth of numbers per run dir, read fresh (a set is ~40 files). */
+async function summarisePairs(options: AppApiOptions): Promise<PairSummary[]> {
+  const out: PairSummary[] = []
+  for (const run of options.runs) {
+    let report: ComparisonReport
+    try {
+      report = JSON.parse(
+        await readFile(join(run.dir, "findings.json"), "utf8"),
+      ) as ComparisonReport
+    } catch {
+      continue // a run dir mid-write is not a reason to fail the whole list
+    }
+    const notes = await readAnnotations(run.dir, report.pair)
+    const c = counts(notes)
+    const sev = (s: string) => report.findings.filter((f) => f.severity === s).length
+    out.push({
+      dir: run.name,
+      pair: report.pair,
+      pass: report.verdict.pass,
+      critical: sev("critical"),
+      major: sev("major"),
+      minor: sev("minor"),
+      findings: report.findings.length,
+      suppressed: report.suppressed.length,
+      confidence: report.alignment.confidence,
+      createdAt: report.createdAt,
+      designSource: report.design.source,
+      implSource: report.impl.source,
+      openNotes: c.open + c.implemented,
+      notes: notes.annotations.length,
+    })
+  }
+  return out
+}
+
+/**
+ * The target is either ONE run dir (it has findings.json) or an out root whose
+ * children are run dirs. Anything else is a usage error — a silent "0 pairs"
+ * would look like an empty set instead of a wrong path.
+ */
+async function collectRunDirs(target: string): Promise<{ name: string; dir: string }[]> {
+  const hasReport = async (dir: string): Promise<boolean> => {
+    try {
+      await readFile(join(dir, "findings.json"), "utf8")
+      return true
+    } catch {
+      return false
+    }
+  }
+  if (await hasReport(target)) return [{ name: basename(target), dir: target }]
+  let names: string[]
+  try {
+    names = (await readdir(target, { withFileTypes: true }))
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort()
+  } catch (e) {
+    return usageError(`cannot read ${target}: ${(e as Error).message}`)
+  }
+  const runs: { name: string; dir: string }[] = []
+  for (const name of names) {
+    const dir = join(target, name)
+    if (await hasReport(dir)) runs.push({ name, dir })
+  }
+  if (runs.length === 0) return usageError(`no findings.json in ${target} or its subdirectories`)
+  return runs
 }
 
 function lanAddresses(): string[] {
   return Object.values(networkInterfaces())
     .flat()
     .filter((i) => i && i.family === "IPv4" && !i.internal)
-    .map((i) => i!.address);
+    .map((i) => i!.address)
 }
 
 /* ----------------------------------------------------------------- main -- */
 
 async function main(): Promise<void> {
   let values: {
-    out?: string;
-    serve?: boolean;
-    port?: string;
-    host?: string;
-    "mark-implemented"?: string;
-    digest?: boolean;
-    help?: boolean;
-  };
-  let positionals: string[];
+    out?: string
+    serve?: boolean
+    emit?: boolean
+    port?: string
+    host?: string
+    "mark-implemented"?: string
+    digest?: boolean
+    help?: boolean
+  }
+  let positionals: string[]
   try {
-    ({ values, positionals } = parseArgs({
+    ;({ values, positionals } = parseArgs({
       args: process.argv.slice(2),
       allowPositionals: true,
       options: {
         out: { type: "string" },
         serve: { type: "boolean" },
+        emit: { type: "boolean" },
         port: { type: "string" },
         host: { type: "string" },
         "mark-implemented": { type: "string" },
         digest: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
-    }));
+    }))
   } catch (e) {
-    return usageError((e as Error).message);
+    return usageError((e as Error).message)
   }
   if (values.help) {
-    console.log(USAGE);
-    return;
+    console.log(USAGE)
+    return
   }
-  const runDirArg = positionals[0];
-  if (!runDirArg) return usageError("missing <run-dir>");
-  const runDir = resolve(runDirArg);
+  const targetArg = positionals[0]
+  if (!targetArg) return usageError("missing <run-dir|out-root>")
+  const target = resolve(targetArg)
+  const found = await collectRunDirs(target)
+  const set_ = found.length > 1 || found[0]!.dir !== target
+  if (set_ && values.out)
+    return usageError("--out takes a single run dir; a set writes each report into its own dir")
+  if (set_ && values["mark-implemented"] !== undefined)
+    return usageError("--mark-implemented takes a single run dir — note ids are per pair")
 
-  const report = await readReport(runDir);
+  const sources = await readEmbeddedSources()
+
+  // --emit is the old behaviour: a self-contained report.html per run dir (and
+  // an index for a set), for reading off disk with no server. Serving does NOT
+  // need it — the app shell loads findings.json at runtime.
+  if (values.emit || !values.serve) {
+    for (const run of found) {
+      await renderRun(run, {
+        values,
+        viewMathSource: sources.viewMath,
+        annotationsSource: sources.annotations,
+        indexHref: set_ ? "../index.html" : undefined,
+        quiet: set_,
+      })
+    }
+    if (set_) {
+      const indexPath = join(target, "index.html")
+      await writeFile(indexPath, renderAppShell({ ...shellSources(sources), root: target }), "utf8")
+      console.log(`wrote ${indexPath} (${found.length} pairs)`)
+    }
+  }
+
+  if (!values.serve) return
+  const port = values.port ? Number(values.port) : 7378
+  if (!Number.isInteger(port) || port < 0 || port > 65535)
+    return usageError(`bad --port ${values.port}`)
+  const host = values.host ?? "127.0.0.1"
+  const shell = renderAppShell({ ...shellSources(sources), root: target })
+  const server = await serveDir(target, {
+    port,
+    host,
+    handle: appApi({ root: target, runs: found, single: !set_, shell }),
+  })
+  const actualPort = new URL(server.origin).port
+  console.log(
+    `serving ${target} — ${found.length} pair${found.length === 1 ? "" : "s"}, loaded at request time`,
+  )
+  console.log(`  ${server.origin}/`)
+  if (host === "0.0.0.0")
+    for (const ip of lanAddresses()) console.log(`  http://${ip}:${actualPort}/`)
+  console.log("Ctrl-C to stop")
+  const stop = () => {
+    void server.close().then(() => process.exit(0))
+  }
+  process.on("SIGINT", stop)
+  process.on("SIGTERM", stop)
+}
+
+interface EmbeddedSources {
+  viewMath: string
+  annotations: string
+  indexView: string
+  triage: string
+  focus: string
+}
+
+/** The three import-free modules the page embeds verbatim. */
+async function readEmbeddedSources(): Promise<EmbeddedSources> {
+  const [viewMath, annotations, indexView, triage, focus] = await Promise.all([
+    readFile(new URL("./view-math.js", import.meta.url), "utf8"),
+    readFile(new URL("./annotations.js", import.meta.url), "utf8"),
+    readFile(new URL("./index-view.js", import.meta.url), "utf8"),
+    readFile(new URL("./triage.js", import.meta.url), "utf8"),
+    readFile(new URL("./focus.js", import.meta.url), "utf8"),
+  ])
+  return { viewMath, annotations, indexView, triage, focus }
+}
+
+function shellSources(sources: EmbeddedSources) {
+  return {
+    viewMathSource: sources.viewMath,
+    annotationsSource: sources.annotations,
+    indexViewSource: sources.indexView,
+    triageSource: sources.triage,
+    focusSource: sources.focus,
+  }
+}
+
+interface RenderRunOptions {
+  values: { out?: string; digest?: boolean; serve?: boolean; "mark-implemented"?: string }
+  viewMathSource: string
+  annotationsSource: string
+  indexHref?: string | undefined
+  /** A set prints one line per pair, not the single-run paragraph. */
+  quiet: boolean
+}
+
+/** One run dir: load + re-project notes, apply --mark-implemented, write report.html. */
+async function renderRun(
+  run: { name: string; dir: string },
+  options: RenderRunOptions,
+): Promise<{ report: ComparisonReport; set: AnnotationSet }> {
+  const { values, quiet } = options
+  const runDir = run.dir
+  const report = await readReport(runDir)
 
   // Annotations: load, re-project against the current capture, apply --mark-implemented.
-  const stored = await readAnnotations(runDir, report.pair);
-  const elements = await readElements(runDir);
-  let set = elements ? reprojectAll(stored, elements) : stored;
-  if (set !== stored) {
-    const stale = set.annotations.filter((a) => a.stale).length;
-    console.log(`re-projected ${set.annotations.length} annotations against the current elements.json${stale ? ` (${stale} stale — element not found)` : ""}`);
+  const stored = await readAnnotations(runDir, report.pair)
+  const elements = await readElements(runDir)
+  let set = elements ? reprojectAll(stored, elements) : stored
+  if (set !== stored && !quiet) {
+    const stale = set.annotations.filter((a) => a.stale).length
+    console.log(
+      `re-projected ${set.annotations.length} annotations against the current elements.json${stale ? ` (${stale} stale — element not found)` : ""}`,
+    )
   }
   if (values["mark-implemented"] !== undefined) {
-    const now = new Date().toISOString();
-    const wanted = values["mark-implemented"] === "all" ? null : new Set(values["mark-implemented"].split(",").map((s) => s.trim()).filter(Boolean));
-    if (wanted && wanted.size === 0) return usageError("--mark-implemented needs ids or 'all'");
-    const known = new Set(set.annotations.map((a) => a.id));
-    for (const id of wanted ?? []) if (!known.has(id)) return usageError(`--mark-implemented: no annotation ${id}`);
-    let n = 0;
+    const now = new Date().toISOString()
+    const wanted =
+      values["mark-implemented"] === "all"
+        ? null
+        : new Set(
+            values["mark-implemented"]
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          )
+    if (wanted && wanted.size === 0) return usageError("--mark-implemented needs ids or 'all'")
+    const known = new Set(set.annotations.map((a) => a.id))
+    for (const id of wanted ?? [])
+      if (!known.has(id)) return usageError(`--mark-implemented: no annotation ${id}`)
+    let n = 0
     set = {
       ...set,
       annotations: set.annotations.map((a) => {
-        if (wanted && !wanted.has(a.id)) return a;
-        const next = transition(a, "implement", now);
-        if (next !== a) n++;
-        return next;
+        if (wanted && !wanted.has(a.id)) return a
+        const next = transition(a, "implement", now)
+        if (next !== a) n++
+        return next
       }),
-    };
-    console.log(`marked ${n} annotation${n === 1 ? "" : "s"} implemented`);
+    }
+    console.log(`marked ${n} annotation${n === 1 ? "" : "s"} implemented`)
   }
-  const changed = set !== stored;
-  if (changed) await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(set, null, 2));
+  const changed = set !== stored
+  if (changed) await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(set, null, 2))
   if (changed || values.digest || (set.annotations.length > 0 && values.serve)) {
-    await writeDigest(runDir, report, set);
-    console.log(`digest: ${DIGEST.text}, ${DIGEST.design}, ${DIGEST.impl}`);
+    await writeDigest(runDir, report, set)
+    if (!quiet) console.log(`digest: ${DIGEST.text}, ${DIGEST.design}, ${DIGEST.impl}`)
   }
 
-  const [viewMathSource, annotationsSource] = await Promise.all([
-    readFile(new URL("./view-math.js", import.meta.url), "utf8"),
-    readFile(new URL("./annotations.js", import.meta.url), "utf8"),
-  ]);
-  const html = renderReport(report, { viewMathSource, annotationsSource, annotations: set });
-  const outPath = values.out ? resolve(values.out) : join(runDir, "report.html");
-  await writeFile(outPath, html, "utf8");
-  const c = counts(set);
+  const html = renderReport(report, {
+    viewMathSource: options.viewMathSource,
+    annotationsSource: options.annotationsSource,
+    annotations: set,
+    indexHref: options.indexHref,
+  })
+  const outPath = values.out ? resolve(values.out) : join(runDir, "report.html")
+  await writeFile(outPath, html, "utf8")
+  const c = counts(set)
+  const notes = `${set.annotations.length} annotations: ${c.open} open · ${c.implemented} implemented · ${c.done} done`
   console.log(
-    `wrote ${outPath} (${report.findings.length} findings, ${report.suppressed.length} suppressed, ${set.annotations.length} annotations: ${c.open} open · ${c.implemented} implemented · ${c.done} done)`,
-  );
-
-  if (!values.serve) return;
-  const port = values.port ? Number(values.port) : 7378;
-  if (!Number.isInteger(port) || port < 0 || port > 65535) return usageError(`bad --port ${values.port}`);
-  const host = values.host ?? "127.0.0.1";
-  const live = { set };
-  const server = await serveDir(runDir, { port, host, handle: annotationsApi(runDir, report, live) });
-  const page = basename(outPath);
-  const actualPort = new URL(server.origin).port;
-  console.log(`serving ${runDir} (+ GET/PUT /api/annotations → ${ANNOTATIONS_FILE})`);
-  console.log(`  ${server.origin}/${page}`);
-  if (host === "0.0.0.0") for (const ip of lanAddresses()) console.log(`  http://${ip}:${actualPort}/${page}`);
-  console.log("Ctrl-C to stop");
-  const stop = () => {
-    void server.close().then(() => process.exit(0));
-  };
-  process.on("SIGINT", stop);
-  process.on("SIGTERM", stop);
+    quiet
+      ? `  ${run.name} — ${report.findings.length} findings, ${report.suppressed.length} suppressed, confidence ${report.alignment.confidence.toFixed(2)}${set.annotations.length ? `, ${c.open} open notes` : ""}`
+      : `wrote ${outPath} (${report.findings.length} findings, ${report.suppressed.length} suppressed, ${notes})`,
+  )
+  return { report, set }
 }
 
-void main();
+void main()

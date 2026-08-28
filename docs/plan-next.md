@@ -44,8 +44,8 @@ PASS in a reverted trial). Details: handoff "What's DONE (session 11)".
 
 ## 8. The skill — bounded fix loop consuming reports — DONE (session 10)
 
-Built as `skills/design-fix-loop/SKILL.md` (canonical) + an installed copy
-with repo bindings in `uctoinak-bmad/.claude/skills/design-fix-loop/`. Two
+Built as `skills/visual-compare/SKILL.md` (canonical) + an installed copy
+with repo bindings in `uctoinak-bmad/.claude/skills/visual-compare/`. Two
 harness additions the loop needed: a **regression ledger**
 (`resolved-ledger.json` per run dir, pure `recordResolved` /
 `findRegressions` in `package/delta.ts`, `delta.regressions` + a loud

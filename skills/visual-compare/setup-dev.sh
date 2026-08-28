@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# design-fix-loop — dev-mode setup for a new machine / VM. Idempotent; re-run any time.
+# visual-compare — dev-mode setup for a new machine / VM. Idempotent; re-run any time.
 #
-#   bash ~/.claude-shared/skills/design-fix-loop/setup-dev.sh [--checkout <dir>] [--watch] [--no-browser]
+#   bash ~/.claude-shared/skills/visual-compare/setup-dev.sh [--checkout <dir>] [--watch] [--no-browser]
 #
 # What it makes true:
 #   1. a visual-compare checkout exists (default ~/Development/visual-compare; cloned if missing)
 #   2. deps installed, Playwright Chromium present, both packages built
 #   3. `visual-compare` and `visual-compare-annotator` on PATH via `pnpm link --global` (run from dist)
-#   4. the skill is USER-level: ~/.claude/skills/design-fix-loop (and ~/.claude-personal if present) →
-#      <checkout>/skills/design-fix-loop, via ~/.claude-shared/skills when that dir already exists
+#   4. the skill is USER-level: ~/.claude/skills/visual-compare (and ~/.claude-personal if present) →
+#      <checkout>/skills/visual-compare, via ~/.claude-shared/skills when that dir already exists
 #   5. --watch: `pnpm dev` (tsc --watch, both packages) running in the background so dist follows edits
-# Nothing is written into consuming repos; they only carry a manifest + design-fix-loop.bindings.md.
+# Nothing is written into consuming repos; they only carry a manifest + visual-compare.bindings.md.
 set -euo pipefail
 
 REPO_URL="https://github.com/mzvonar/visual-compare.git"
@@ -56,45 +56,76 @@ fi
 say "pnpm build"
 pnpm build >/dev/null
 
-# 3. global bins (pnpm needs a global bin dir; `pnpm setup` creates one on a fresh machine)
-if ! pnpm bin -g >/dev/null 2>&1; then
+# 3. global bins. Two pnpm behaviours make this fiddly, and both bite on a fresh machine:
+#      - `pnpm setup` only appends the PATH line to the shell PROFILE; it does not change
+#        THIS shell, so the very next `pnpm link --global` in this script still fails.
+#      - `pnpm bin -g` does not report the dir when the dir is not already on PATH: it
+#        prints NOTHING and (in pnpm 10) still exits 0. So it cannot be used to discover
+#        the dir — querying it is the chicken-and-egg, not the answer.
+#    Hence: derive the dir ourselves, put it on PATH, and only then trust `pnpm bin -g`.
+pnpm_bin_candidate() {
+  if [ -n "${PNPM_HOME:-}" ]; then echo "$PNPM_HOME"; return; fi
+  cfg="$(pnpm config get global-bin-dir 2>/dev/null || true)"
+  if [ -n "$cfg" ] && [ "$cfg" != "undefined" ] && [ "$cfg" != "null" ]; then echo "$cfg"; return; fi
+  case "$(uname)" in
+    Darwin) echo "$HOME/Library/pnpm" ;;
+    *) echo "${XDG_DATA_HOME:-$HOME/.local/share}/pnpm" ;;
+  esac
+}
+add_to_path() {
+  case ":$PATH:" in
+    *":$1:"*) ;;
+    *) export PATH="$1:$PATH" ;;
+  esac
+}
+add_to_path "$(pnpm_bin_candidate)"
+GBIN="$(pnpm bin -g 2>/dev/null || true)"
+if [ -z "$GBIN" ]; then
   say "pnpm setup (global bin dir)"
   pnpm setup >/dev/null 2>&1 || true
+  export PNPM_HOME="${PNPM_HOME:-$(pnpm_bin_candidate)}"
+  add_to_path "$PNPM_HOME"
+  GBIN="$(pnpm bin -g 2>/dev/null || true)"
 fi
+[ -n "$GBIN" ] && add_to_path "$GBIN"
+# A link failure must not cost the skill symlinks (step 4) — they are independent.
 say "pnpm link --global (core, annotator)"
-( cd packages/core && pnpm link --global >/dev/null )
-( cd packages/annotator && pnpm link --global >/dev/null )
-GBIN="$(pnpm bin -g 2>/dev/null || true)"
-if ! command -v visual-compare >/dev/null 2>&1; then
-  echo "note: $GBIN is not on PATH in this shell — add it to your profile:  export PATH=\"$GBIN:\$PATH\""
+linked_bins=1
+( cd packages/core && pnpm link --global >/dev/null ) || linked_bins=0
+( cd packages/annotator && pnpm link --global >/dev/null ) || linked_bins=0
+if [ "$linked_bins" = 0 ]; then
+  echo "warn: pnpm link --global failed — the CLIs are not on PATH. Run them from the checkout" >&2
+  echo "      (node $CHECKOUT/packages/core/dist/cli.js) or fix pnpm's global bin dir and re-run." >&2
+elif ! command -v visual-compare >/dev/null 2>&1; then
+  echo "note: $GBIN is not on PATH in your profile — add it:  export PATH=\"$GBIN:\$PATH\""
 fi
 
 # 4. user-level skill symlinks. With the two-profile setup (~/.claude-shared exists) follow its
 #    convention: shared → checkout, profiles → shared. On a plain machine (only ~/.claude) link the
 #    profile straight to the checkout — never create ~/.claude-shared where it is not in use.
-SKILL_SRC="$CHECKOUT/skills/design-fix-loop"
+SKILL_SRC="$CHECKOUT/skills/visual-compare"
 LINK_TARGET="$SKILL_SRC"
 if [ -d "$HOME/.claude-shared" ]; then
   mkdir -p "$HOME/.claude-shared/skills"
-  ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/design-fix-loop"
-  LINK_TARGET="$HOME/.claude-shared/skills/design-fix-loop"
+  ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/visual-compare"
+  LINK_TARGET="$HOME/.claude-shared/skills/visual-compare"
 fi
 linked=0
 for profile in "$HOME/.claude" "$HOME/.claude-personal"; do
   [ -d "$profile" ] || continue
   mkdir -p "$profile/skills"
-  if [ -e "$profile/skills/design-fix-loop" ] && [ ! -L "$profile/skills/design-fix-loop" ]; then
-    echo "note: $profile/skills/design-fix-loop is a real directory, not replacing it (remove it to link the checkout)"
+  if [ -e "$profile/skills/visual-compare" ] && [ ! -L "$profile/skills/visual-compare" ]; then
+    echo "note: $profile/skills/visual-compare is a real directory, not replacing it (remove it to link the checkout)"
     continue
   fi
-  ln -sfn "$LINK_TARGET" "$profile/skills/design-fix-loop"
-  say "skill: $profile/skills/design-fix-loop → $LINK_TARGET"
+  ln -sfn "$LINK_TARGET" "$profile/skills/visual-compare"
+  say "skill: $profile/skills/visual-compare → $LINK_TARGET"
   linked=1
 done
 if [ "$linked" = 0 ]; then
   mkdir -p "$HOME/.claude/skills"
-  ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/design-fix-loop"
-  say "skill: ~/.claude/skills/design-fix-loop → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
+  ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/visual-compare"
+  say "skill: ~/.claude/skills/visual-compare → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
 fi
 
 # 5. watcher
@@ -114,4 +145,4 @@ say "verify"
 echo "tests: $(pnpm -r test 2>&1 | grep -oE 'Tests +[0-9]+ passed' | awk '{s+=$2} END {print s+0}') passing"
 echo
 echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."
-echo "A consuming repo needs only: its manifest + a design-fix-loop.bindings.md (see SKILL.md 'Repo bindings')."
+echo "A consuming repo needs only: its manifest + a visual-compare.bindings.md (see SKILL.md 'Repo bindings')."
