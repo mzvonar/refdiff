@@ -61,7 +61,7 @@ export interface Finding {
   id: string
   type: FindingType
   severity: Severity
-  /** Set-of-marks number rendered on the overlay image. */
+  /** Set-of-marks number the annotator draws on both panes. Renumbered every run. */
   mark: number
   /**
    * Stable across runs, unlike `id`/`mark` which are renumbered every time. It is the delta's
@@ -94,6 +94,18 @@ export interface Finding {
    */
   instances?: number
   members?: FindingMember[]
+  /**
+   * `pixel-region` only: where inside `implBox` the pixels actually differ —
+   * the diff's connected components in impl CSS px, largest first. `implBox`
+   * is their union, which on a sparse element (a glyph, a dashed rule) is
+   * mostly empty space; a viewer that highlights, dims or steps through
+   * differences wants these, not the union, and vector boxes stay crisp at
+   * any zoom where a raster mask does not. Deliberately NOT part of
+   * `expected`/`actual`: those two are the finding's identity across runs
+   * (`identityKey`), and a region that moves a pixel must not orphan a
+   * human's triage decision.
+   */
+  regions?: Box[]
 }
 
 /** One location of an aggregated finding. */
@@ -158,6 +170,14 @@ export interface AcceptedDeviation {
   role?: string
   /** `pixel-region` only: the classified change kind the finding must carry (`actual.changeKind`). */
   changeKind?: string
+  /**
+   * The finding's element text (whitespace-normalized, exact). The scoping tool
+   * for findings whose `expected`/`actual` cannot identify WHICH element is
+   * meant: a `missing-element` carries no values at all, so `{ type, role }`
+   * alone would accept every missing element of that role in the pair. With
+   * the text it accepts one.
+   */
+  text?: string
   expected?: Record<string, string | number>
   actual?: Record<string, string | number>
   reason: string
@@ -254,9 +274,13 @@ export interface ComparisonReport {
    */
   delta?: { previousRun: string; resolved: string[]; introduced: string[]; regressions?: string[] }
   artifacts: {
-    overlay: string
     designPng: string
     implPng: string
+    /**
+     * Pixel evidence the structural channel could NOT explain: the diffs that
+     * became `pixel-region` findings, painted on the impl canvas. Absent when
+     * the pixel channel did not run, or ran and reported nothing.
+     */
     diffMask?: string
   }
 }

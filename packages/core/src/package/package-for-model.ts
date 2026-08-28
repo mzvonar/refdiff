@@ -2,11 +2,14 @@
  * Agent packaging — the comprehension layer (effectful edge: fs via sharp).
  *
  * Produces exactly what the evidence says a model consumes well
- * (research.md §4): findings.json with typed, bbox-grounded findings; a
- * set-of-marks overlay (numbered marks, never raw coordinates); per-finding
- * native-resolution crop pairs as SEPARATE files (never concatenated
- * side-by-side images); and both element trees so the model compares data
- * first and confirms visually second.
+ * (research.md §4): findings.json with typed, bbox-grounded findings;
+ * per-finding native-resolution crop pairs as SEPARATE files (never
+ * concatenated side-by-side images); and both element trees so the model
+ * compares data first and confirms visually second.
+ *
+ * Marks are NOT baked into an image here. The annotator draws them live on
+ * both panes from `Finding.mark`, filterable and zoomable; a static
+ * impl-only snapshot of the same numbers had no reader.
  */
 
 import type { AlignedPair } from "../pipeline.js"
@@ -19,15 +22,15 @@ import type {
   SuppressedFinding,
 } from "../types.js"
 
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, rm, writeFile } from "node:fs/promises"
 import { join, relative } from "node:path"
 import sharp from "sharp"
 
-import { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "../geometry.js"
+import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
 
 export interface PackageOptions {
-  /** Run directory: findings.json, overlay and crops land here. */
+  /** Run directory: findings.json, crops and element trees land here. */
   outDir: string
   /** Lowest severity that fails the deterministic gate. Default "major". */
   failThreshold?: Severity
@@ -46,11 +49,6 @@ export interface PackageOptions {
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
-const MARK_COLORS: Record<Severity, string> = {
-  critical: "#e11d48",
-  major: "#f59e0b",
-  minor: "#3b82f6",
-}
 
 const atOrAbove = (s: Severity, threshold: Severity): boolean =>
   SEVERITY_RANK[s] <= SEVERITY_RANK[threshold]
@@ -63,45 +61,6 @@ async function cropTo(srcPng: string, box: Box, outPath: string): Promise<boolea
     .extract({ left: clamped.x, top: clamped.y, width: clamped.w, height: clamped.h })
     .toFile(outPath)
   return true
-}
-
-/** Set-of-marks overlay: impl screenshot + numbered severity-colored marks. */
-async function renderOverlay(
-  implPng: string,
-  findings: readonly Finding[],
-  dpr: number,
-  outPath: string,
-): Promise<void> {
-  const meta = await sharp(implPng).metadata()
-  const width = meta.width ?? 0
-  const height = meta.height ?? 0
-  const parts: string[] = []
-  for (const f of findings) {
-    // An aggregated finding marks every member location with the same number.
-    const locations = f.members ?? [{ designBox: f.designBox, implBox: f.implBox }]
-    for (const loc of locations) {
-      const cssBox = loc.implBox ?? loc.designBox
-      if (!cssBox) continue
-      const box = clampBox(scaleBox(cssBox, dpr), width, height)
-      if (!box) continue
-      const color = MARK_COLORS[f.severity]
-      const sw = Math.max(2, Math.round(dpr))
-      const fontSize = 13 * dpr
-      const r = 11 * dpr
-      // Badge sits at the box's top-left corner, nudged inside the image.
-      const cx = Math.max(r, box.x)
-      const cy = Math.max(r, box.y)
-      parts.push(
-        `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="${color}" stroke-width="${sw}"/>`,
-        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}"/>`,
-        `<text x="${cx}" y="${cy}" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${f.mark}</text>`,
-      )
-    }
-  }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${parts.join("")}</svg>`
-  await sharp(implPng)
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .toFile(outPath)
 }
 
 /**
@@ -124,13 +83,16 @@ export async function packageForModel(
   }: PackageOptions,
 ): Promise<ComparisonReport> {
   await mkdir(join(outDir, "crops"), { recursive: true })
+  // Run dirs are reused across iterations: drop the overlay a pre-annotator
+  // version of this function wrote there, so nobody reads last week's marks.
+  await rm(join(outDir, "overlay.png"), { force: true })
 
   const rel = (p: string): string => relative(outDir, p)
   const { design, impl, alignment } = pair
 
   // Native-res crop pairs: same normalized region from both sides, so the
   // model sees directly comparable patches. Aggregates crop the primary
-  // member only; the other locations are in `members` and on the overlay.
+  // member only; the other locations are in `members`.
   const withCrops: Finding[] = []
   for (const f of findings) {
     const cssBox = f.implBox ?? f.designBox
@@ -153,9 +115,6 @@ export async function packageForModel(
       dOk && iOk ? { ...f, crops: { design: rel(designCrop), impl: rel(implCrop) } } : f,
     )
   }
-
-  const overlayPath = join(outDir, "overlay.png")
-  await renderOverlay(impl.pngPath, withCrops, impl.dpr, overlayPath)
 
   // Both element trees — the model compares data first, pixels second.
   await writeFile(
@@ -202,7 +161,6 @@ export async function packageForModel(
       ? { delta: diffReports(previous, { findings: withCrops }, {}, ledger) }
       : {}),
     artifacts: {
-      overlay: rel(overlayPath),
       designPng: rel(design.pngPath),
       implPng: rel(impl.pngPath),
       ...(diffMaskPath !== undefined ? { diffMask: rel(diffMaskPath) } : {}),

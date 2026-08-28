@@ -100,7 +100,7 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
 const isValues = (v: unknown): v is Record<string, string | number> =>
   isRecord(v) && Object.values(v).every((x) => typeof x === "string" || typeof x === "number")
 
-/** `{ type, role?, changeKind?, expected?, actual?, reason }` — anything else is not an accepted deviation. */
+/** `{ type, role?, changeKind?, text?, expected?, actual?, reason }` — anything else is not an accepted deviation. */
 export function readAccepted(a: unknown): AcceptedDeviation | undefined {
   if (!isRecord(a) || typeof a["type"] !== "string" || typeof a["reason"] !== "string")
     return undefined
@@ -108,10 +108,12 @@ export function readAccepted(a: unknown): AcceptedDeviation | undefined {
   if (a["actual"] !== undefined && !isValues(a["actual"])) return undefined
   if (a["role"] !== undefined && typeof a["role"] !== "string") return undefined
   if (a["changeKind"] !== undefined && typeof a["changeKind"] !== "string") return undefined
+  if (a["text"] !== undefined && typeof a["text"] !== "string") return undefined
   return {
     type: a["type"] as AcceptedDeviation["type"],
     ...(typeof a["role"] === "string" ? { role: a["role"] } : {}),
     ...(typeof a["changeKind"] === "string" ? { changeKind: a["changeKind"] } : {}),
+    ...(typeof a["text"] === "string" ? { text: a["text"] } : {}),
     ...(isValues(a["expected"]) ? { expected: a["expected"] } : {}),
     ...(isValues(a["actual"]) ? { actual: a["actual"] } : {}),
     reason: a["reason"],

@@ -148,7 +148,10 @@ boxless minor finding says the channel was skipped. The whole-frame diff
 is intentionally not run (it would only re-report structural shifts).
 Pixel findings are merged with the structural ones through the same
 `finalize` numbering before the policy/aggregation stages;
-`artifacts.diffMask` (all masks painted on the impl canvas) is written.
+`artifacts.diffMask` is written from the REPORTED diffs only (the masks
+behind the findings, painted on the impl canvas) and omitted entirely when
+none reported — an all-diffs mask measured 95.6 % text-rasterisation residue
+on a page pair: pixels no finding explains and no reader can act on.
 NCC translation refinement stays unbuilt until residue is measured.
 
 ### Agent packaging (the comprehension layer)
@@ -185,6 +188,21 @@ What the model receives — every item evidence-backed (research §4):
   loop iterations on doc-detail never needed a closer look than
   `expected/actual` + the crop pair.
 
+**Decisions are policy, not comp edits (2026-08-28).** `visual-compare accept
+<run-dir> --manifest <file>` turns reviewed findings into `accepted` entries in
+an `accepted.json` beside the manifest, which `compare` merges per pair (and
+`--no-accepted` re-opens). Its input is either the annotator's triage — every
+finding a person marked `ignore`, with the note as the reason — or one
+`--finding <id> --reason "…"`. Two properties are the point: the rule is built
+from the MEASUREMENT, so it lapses by itself when either value changes (an
+edited comp would agree forever, including after a regression), and the finding
+stays visible under `suppressed` carrying its reason. The command refuses what
+it cannot record honestly: `position`/`spacing` (coordinates move every capture),
+a finding with neither values nor text (the rule would forgive its whole role),
+and an empty reason. `AcceptedDeviation.text` was added for the second case —
+a `missing-element` carries no values, so text is the only thing that scopes it
+to one element.
+
 The **skill** — `skills/visual-compare/SKILL.md` (canonical; installed per
 consuming repo with a "Repo bindings" section, first in
 `uctoinak-bmad/.claude/skills/visual-compare/`) — enforces loop discipline:
@@ -205,10 +223,26 @@ annotations through element identity instead of fragile geometry
 migration. Rendered annotation digests (marked PNG + text) remain the
 model-facing output.
 
+**The diff lab (2026-08-28).** Over the split screen sit Chromatic's reading
+aids, driven by our channel rather than a raw pixel diff: **Diff** highlights
+the reported regions (`Finding.regions` + the presence findings, which a
+box-scoped pixel diff structurally cannot see) on BOTH panes plus the coloured
+raster mask on the impl; **Focus** punches those regions out of a dark sheet;
+**Strobe** pulses and wiggles them; `[` / `]` step through them; and one
+superimposition mode (**blink / onion / swipe / difference**) draws the design
+over the impl pane. Why it cannot simply mirror Chromatic: Chromatic compares
+two renders of the same code, so every differing pixel is signal, while a comp
+against an implementation is rasterised at a different scale — 95.6 % of one
+page pair's raw mask lay inside text. Regions therefore come from the reported
+findings, never from the raw diff. The superimposed ghost uses the run's FULL
+alignment (per-axis stretch included) because a blink against a frame that does
+not land on the impl compares nothing; the design PANE keeps refusing that
+distortion, and the lab states it in words instead.
+
 **Human view requirement (Mato, 2026-08-26):** the annotator/report must
 show the FULL design and the FULL implementation side by side in a split
-screen (synchronized pan/zoom, aligned through `Alignment`) — the crops and
-set-of-marks overlay serve the model, a person compares whole pages/
+screen (synchronized pan/zoom, aligned through `Alignment`) — the crops
+serve the model, a person compares whole pages/
 components. Consequently every capture adapter stores the complete
 reference image (`artifacts.designPng` / `implPng`, native resolution),
 never only the per-finding crops; the Figma adapter keeps the full node
@@ -229,6 +263,35 @@ both unit-tested to land a design point at the same world y). The impl side is u
 is honest and stated: the design no longer lines up vertically with the impl, which is why the pane
 label reads `· true aspect (fit +16% vertical)` — the fit's number is disclosed without anyone
 having to look at a warped image to discover it.
+
+**Registration IS a preference, though — four align modes (Mato, 2026-08-28).** The stretch is not
+negotiable; WHERE the frame is registered is, and the old "aligned / not aligned" toggle answered
+neither "what did it align on" nor "line these up the other way". `state.align` now cycles
+`anchors` (the run's fit, aspect-locked — the default) → `width` (frame scaled onto the impl's
+width, corners at the origin) → `left` (1:1, top-left) → `right` (1:1, top-RIGHT, for frames that
+differ by a left-hand rail); the control carries the mode's NAME and states both transforms in its
+title, and every mode is isotropic. The fit is a regression over matched text, so on a page whose
+two sides differ structurally it lands the whole frame tens of px off (`client-pending-…-desktop`:
+`@(15.6, −67.9)` under a 15 % stretch, an intercept the isotropic projection then inherits) — the
+corner modes are the manual answer to that, not a second opinion about the stretch.
+
+Everything the design side draws goes through ONE re-map, `alignRemap(run, display)`: per axis
+`k = display.scale / run.scale`, `t = display.offset − k·run.offset`. The aspect lock is just its
+`display = projectionAlignment(run, true)` case, so marks stay glued to the image in every mode
+rather than only in the fit's own. It runs in reverse (`worldFromShown`) on every pointer that lands
+on the design pane, because shapes are stored in RUN world space: without the inverse, a note drawn
+on the design side under any other registration saved itself elsewhere and reappeared offset from
+the thing it pointed at.
+
+**One annotate mode, and a strobe that actually strobes (2026-08-28).** `+ note` and `+ region` were
+one gesture asked twice: the pointer-up already decided the shape by drag distance, so the buttons
+collapsed into one (`#ann-draw`, `n`) — click = point, drag = region, with the live band appearing
+exactly when the drag crosses the same threshold that will save a rect. And Strobe had never
+strobed: `animation: … steps(1) infinite alternate` looks like the classic two-state flip, but a
+reversed iteration flips the step POSITION too, so Chrome sampled the same keyframe in both
+directions — `getAnimations()` said `running` while the computed `stroke` never moved. It is hard
+stops at 50 % now, and the second state changes `stroke-width` as well as `translate`, because
+`translate` is world px: fit-to-page zoom made the 1px wiggle sub-pixel even when it did run.
 
 **The canvas controls are not phone-only either.** Move/annotate and focus show in every layout;
 only the Design/Impl SWITCH hides itself when both panes are already on screen (`body.single
@@ -384,8 +447,9 @@ both and the same UI lands at the same screen point. Marks are drawn from
 `designBox`/`implBox` (+ aggregated members) on both panes; the list
 filters by severity/text, selection focuses both panes and shows
 expected/actual + the crop pair; `suppressed` and `delta` are visible;
-"align design through Alignment" can be switched off for a raw
-side-by-side. DPRs are read at load time from PNG natural width ÷ reported
+the align control cycles how the design is registered onto the impl
+(`anchors` / `width` / `left` / `right` — see "Registration IS a preference"
+above). DPRs are read at load time from PNG natural width ÷ reported
 CSS width.
 
 **Built (session 9) — the annotation half.** Pure model in

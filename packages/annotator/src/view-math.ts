@@ -154,6 +154,55 @@ export function projectionAlignment(a: VAlignment, aspectLock: boolean): VAlignm
   return { scale: a.scale, scaleY: a.scale, offsetX: a.offsetX, offsetY: a.offsetY }
 }
 
+/**
+ * How the design frame is REGISTERED onto the impl for display.
+ *
+ * `anchors` is the run's own measured fit — where the matched strings say the design landed. It is
+ * the truth about the comparison and the wrong answer surprisingly often: the fit is a regression
+ * over anchors, so on a page whose two sides differ structurally it can offset the whole frame by
+ * tens of px (and its intercept is fitted against a per-axis STRETCH the display refuses to show,
+ * which drags the isotropic projection further off). The corner modes are the manual fallback a
+ * person reaches for when the fit reads wrong: register the frames by an edge instead, and read the
+ * difference off the other edge.
+ *
+ * Every mode is isotropic — none of them reintroduces the stretch (architecture.md, "The UI never
+ * stretches the reference").
+ */
+export type AlignMode = "anchors" | "width" | "left" | "right"
+
+export const ALIGN_MODES: readonly AlignMode[] = ["anchors", "width", "left", "right"]
+
+export const ALIGN_LABELS: Record<AlignMode, string> = {
+  anchors: "anchors",
+  width: "width",
+  left: "top-left",
+  right: "top-right",
+}
+
+/**
+ * The display alignment for `mode`: design RAW CSS px → world (impl CSS px).
+ *
+ * - `anchors` — the run's fit, aspect-locked.
+ * - `width`   — scale the frame to the impl's width, corners at the origin (the two corner modes
+ *               coincide once the widths match, so this is the one "scaled" registration).
+ * - `left`    — 1:1, top-left corner.
+ * - `right`   — 1:1, top-RIGHT corner: what you want when the frames differ by a left-hand rail.
+ */
+export function displayAlignment(
+  mode: AlignMode,
+  run: VAlignment,
+  rawDesign: Size,
+  impl: Size,
+): VAlignment {
+  if (mode === "anchors") return projectionAlignment(run, true)
+  if (mode === "width") {
+    const scale = rawDesign.w > 0 ? impl.w / rawDesign.w : 1
+    return { scale, scaleY: scale, offsetX: 0, offsetY: 0 }
+  }
+  const offsetX = mode === "right" ? impl.w - rawDesign.w : 0
+  return { scale: 1, scaleY: 1, offsetX, offsetY: 0 }
+}
+
 /** How much the run's fit stretches the design vertically; 1 = not at all. */
 export function aspectStretch(a: VAlignment): number {
   const sy = a.scaleY ?? a.scale
@@ -161,16 +210,68 @@ export function aspectStretch(a: VAlignment): number {
 }
 
 /**
- * CSS `transform` for the DESIGN mark layer. Finding boxes are baked into world space through the
- * run's own (possibly anisotropic) alignment, so locking the aspect has to undo that stretch on the
- * design side only — otherwise the marks float off the image they annotate.
+ * Per-axis map from RUN world space (where every finding box and annotation shape lives, baked
+ * through the run's alignment) into the world space the design is DRAWN in.
+ *
+ * `world_run = run(d)` and `world_shown = display(d)`, so `world_shown = k·world_run + t` with
+ * `k = display.scale / run.scale` and `t = display.offset − k·run.offset`. Identity when the two
+ * agree; identity too when a degenerate run scale would divide by zero.
  */
-export function designLayerTransform(view: View, a: VAlignment, aspectLock: boolean): string {
+export function alignRemap(
+  run: VAlignment,
+  display: VAlignment,
+): { kx: number; tx: number; ky: number; ty: number } {
+  const axis = (
+    runScale: number,
+    runOffset: number,
+    dispScale: number,
+    dispOffset: number,
+  ): [number, number] => {
+    if (runScale === 0) return [1, 0]
+    const k = dispScale / runScale
+    return [k, dispOffset - k * runOffset]
+  }
+  const [kx, tx] = axis(run.scale, run.offsetX, display.scale, display.offsetX)
+  const [ky, ty] = axis(
+    run.scaleY ?? run.scale,
+    run.offsetY,
+    display.scaleY ?? display.scale,
+    display.offsetY,
+  )
+  return { kx, tx, ky, ty }
+}
+
+/**
+ * CSS `transform` for the DESIGN mark layer. Finding boxes are baked into world space through the
+ * run's own (possibly anisotropic) alignment, so any display alignment that differs from it — the
+ * aspect lock, or a corner registration the reader chose — has to be applied to the design side's
+ * marks as well, otherwise they float off the image they annotate.
+ */
+export function designLayerTransform(view: View, run: VAlignment, display: VAlignment): string {
   const base = worldLayerTransform(view)
-  const sy = a.scaleY ?? a.scale
-  if (!aspectLock || sy === a.scale || sy === 0) return base
-  const k = a.scale / sy
-  return `${base} translate(0px, ${a.offsetY * (1 - k)}px) scale(1, ${k})`
+  const { kx, tx, ky, ty } = alignRemap(run, display)
+  if (kx === 1 && ky === 1 && tx === 0 && ty === 0) return base
+  return `${base} translate(${tx}px, ${ty}px) scale(${kx}, ${ky})`
+}
+
+/** RUN world point → the point the design layer draws it at (the inverse is `worldFromShown`). */
+export function shownFromWorld(
+  p: { x: number; y: number },
+  run: VAlignment,
+  display: VAlignment,
+): { x: number; y: number } {
+  const { kx, tx, ky, ty } = alignRemap(run, display)
+  return { x: p.x * kx + tx, y: p.y * ky + ty }
+}
+
+/** Where the design layer draws → RUN world: what a pointer on the design pane means. */
+export function worldFromShown(
+  p: { x: number; y: number },
+  run: VAlignment,
+  display: VAlignment,
+): { x: number; y: number } {
+  const { kx, tx, ky, ty } = alignRemap(run, display)
+  return { x: kx === 0 ? p.x : (p.x - tx) / kx, y: ky === 0 ? p.y : (p.y - ty) / ky }
 }
 
 /** Zoom so `world` fits inside a pane of `pane` px with `pad` px of margin, centred. */

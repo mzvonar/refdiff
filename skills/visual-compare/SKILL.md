@@ -7,8 +7,8 @@ description: Close the gap between a design frame (Claude Design .dc.html or Fig
 
 This skill is THIN on purpose: the harness measures, you act. `visual-compare
 compare` produces `findings.json` (typed, bbox-grounded, severity-ranked
-findings with machine-readable `expected` / `actual`), a set-of-marks overlay,
-per-finding crop pairs, both element trees, and — from the second run on — a
+findings with machine-readable `expected` / `actual`), per-finding crop pairs,
+both element trees, and — from the second run on — a
 `delta` against the previous run plus a `resolved-ledger.json` that turns a
 re-introduced finding into a loud `REGRESSION`. Your job is the loop
 discipline: read → classify → fix → re-run → read the delta, at most five
@@ -102,9 +102,9 @@ the sandbox off). Then the repo you are in needs only its manifest and a
    frame.** Before changing a shared token or rule because one comp says so,
    measure the other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l`
    per file, or the other frames of the same component). If the comp you
-   are comparing is the outlier, the implementation is right: record an
-   `accepted` deviation with the evidence as its `reason`. If the siblings
-   agree with it, fix the token.
+   are comparing is the outlier, the implementation is right: record the
+   decision with `visual-compare accept` (§3a), evidence as its `reason`. If the
+   siblings agree with it, fix the token.
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
    `regions`, `accepted: [{ type, expected?, actual?, reason }]`) or the CLI
@@ -227,7 +227,7 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
 | **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
 | **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
-| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | add `accepted: [{ type, expected, actual, reason: "<evidence>" }]` to the pair's `ignore` (or `--accept`) — the reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind` (`{ type: "pixel-region", role: "icon", changeKind: "shape", reason }`), never accept "any pixel difference" |
+| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `visual-compare accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference" |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
 
@@ -244,6 +244,48 @@ the element's text/role/box, marker numbers on `annotations-design.png` /
 `annotations-impl.png`). Act on them before the findings they overlap; when
 a note contradicts a finding, the note wins — and you say so in the report.
 `stale` notes lost their element: read them, do not guess.
+
+A note may well come from the annotator's **diff lab** (Diff / Focus / Strobe,
+`[` `]` to step regions, and blink / onion / swipe / difference over the impl
+pane). Those views are built from the SAME reported findings you are reading,
+plus `Finding.regions` — the connected components inside a `pixel-region`'s
+box, largest first. When a note points at "the green box", `regions` is where
+it points.
+
+### 3a. Record the decisions — never edit the comp to agree
+
+When the verdict is "we looked, and the IMPLEMENTATION is right", the decision
+belongs in policy, not in the design file:
+
+```bash
+visual-compare accept $RUN_DIR --manifest $MANIFEST                 # every finding triaged "ignore" in the annotator
+visual-compare accept $RUN_DIR --manifest $MANIFEST --finding f7 --reason "…"   # one, straight from the CLI
+visual-compare accept $RUN_DIR --manifest $MANIFEST --dry-run       # what it would record
+```
+
+It writes `accepted.json` beside the manifest; the next `compare` merges each
+pair's entries (printing `accepted decisions: N for <pair>`) and the finding
+travels under `suppressed` with the reason as its rule. `--no-accepted` re-opens
+every past decision when you want to re-review them.
+
+Why not just fix the comp so the two agree: an edited comp agrees **forever**,
+including on the day the implementation regresses. A decision is built from the
+MEASUREMENT and therefore lapses by itself the moment either value changes.
+
+The command refuses what it cannot record honestly, and says so per finding:
+`position`/`spacing` (coordinates move every capture — the rule would lapse
+immediately; fix the comp, the alignment or the fixture instead), a finding with
+neither values nor text (the rule would forgive its whole role), and any verdict
+whose note is empty (a suppression nobody can audit).
+
+**Never write to the upstream design project on your own initiative — ASK.**
+The comps are the designer's source of truth and their editing surface; a push
+replaces a whole artboard file (many frames) and can collide with work in the
+canvas. "The implementation is correct" is NOT authorisation to update the comp:
+it is authorisation to record a decision. Updating the comp is a separate,
+explicitly-requested act, and it is right only when the comp is genuinely stale
+as a DESIGN (an element deliberately dropped, a label renamed) — never as a way
+to make a finding go away.
 
 ### 4. Fix, re-run, read the delta
 
@@ -325,7 +367,7 @@ Pick the narrowest tool that covers the case:
 | an element entirely — geometry, colour and text alike | `textPatterns` | every finding type about a matching string, geometry included; reach for it last |
 | a kind of element (backdrops, focus rings) | `roles` | that role everywhere in the pair |
 | artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
-| a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]` | nothing — it lapses automatically when either value changes |
+| a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `visual-compare accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
 
 **`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
 from BOTH strings and the remainder compared: equal remainder = data churn
@@ -379,9 +421,13 @@ items is now a typed finding — read it there:
   `stroke` (outline differs), `color` / `hue-rotation` (same shape,
   recolored), `noise` (resample residue along shared edges, < 10 %, ignore).
   The message says which; boxes within the 5 px size tolerance are compared
-  scale-normalized ("design 24×24 resampled onto 21×21"). `diff-mask.png`
-  shows where. Runs only when alignment confidence ≥ 0.5 — a boxless minor
-  note says it was skipped.
+  scale-normalized ("design 24×24 resampled onto 21×21"). `regions` lists the
+  connected components inside the box, largest first (`implBox` is their union,
+  mostly empty space on a sparse element) — read those to say WHERE, not just
+  how much. `diff-mask.png` paints the same regions coloured by `changeKind`,
+  and ONLY the reported diffs, so no mask file means no unexplained pixel
+  evidence. Runs only when alignment confidence ≥ 0.5 — a boxless minor note
+  says it was skipped.
 - **Alignment** → `alignment` in the report (`scale`, `offsetX/Y`,
   `confidence`, plus `confidenceX` / `confidenceY`). Read it FIRST, before any
   finding — see §1a. Confidence 0.00 means too little unique shared text:

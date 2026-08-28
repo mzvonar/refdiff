@@ -42,7 +42,7 @@ const report: ComparisonReport = {
   policy: { dataSlots: true },
   verdict: { pass: false, failThreshold: "major" },
   delta: { previousRun: "2026-08-26T17:00:00.000Z", resolved: [], introduced: [] },
-  artifacts: { overlay: "overlay.png", designPng: "design.png", implPng: "impl.png" },
+  artifacts: { designPng: "design.png", implPng: "impl.png" },
 }
 
 const viewMathSource = "export const IDENTITY_ALIGNMENT = { scale: 1, offsetX: 0, offsetY: 0 };"
@@ -84,6 +84,54 @@ describe("renderReport", () => {
     )
     expect(html).toContain(viewMathSource)
     expect(html).toContain(annotationsSource)
+  })
+
+  it("carries the diff lab: region layers on both panes, a ghost over the impl, no baked overlay", () => {
+    for (const id of ["diff-toggle", "dim-toggle", "strobe-toggle", "lab-mode", "lab-amount"]) {
+      expect(html).toContain(`id="${id}"`)
+    }
+    expect(html).toContain('id="diffs-design"')
+    expect(html).toContain('id="diffs-impl"')
+    // The ghost and the raster mask belong to the impl pane only: superimposing
+    // means drawing the design ONTO the implementation.
+    expect(html).toContain('id="ghost-wrap"')
+    expect(html).toContain('id="img-ghost"')
+    expect(html).toContain('id="img-mask"')
+    // The set-of-marks PNG is gone — the panes draw the marks live.
+    expect(html).not.toContain("overlay.png")
+    expect(html).not.toContain(">overlay<")
+  })
+
+  it("strobes on hard keyframe stops, never `steps(1) … alternate`", () => {
+    // A reversed iteration flips the step position as well as the direction, so Chrome sampled the
+    // SAME keyframe going both ways: the animation ran and nothing on the page ever changed.
+    expect(html).not.toMatch(/animation:vc-(mask-)?strobe[^;]*alternate/)
+    expect(html).toContain(".marks.diffs.strobing rect.region { animation:vc-strobe .84s linear")
+    expect(html).toContain(".strobing-mask .mask { animation:vc-mask-strobe .84s linear")
+    // Both halves of the cycle are stated, and the second one differs in more than position:
+    // `translate` is world px, so at fit-to-page zoom the wiggle alone is sub-pixel.
+    expect(html).toMatch(/0%,49\.99% \{ stroke:var\(--diff\); stroke-width:2; translate:0 0; \}/)
+    expect(html).toMatch(/50%,100% \{ stroke:#ff2bd6; stroke-width:4; translate:1px 1px; \}/)
+  })
+
+  it("offers the align MODES as one cycling control, not an on/off toggle", () => {
+    expect(html).toContain('id="align-mode"')
+    expect(html).toContain('id="align-label"')
+    // "aligned / not aligned" never said what it aligned ON; the control names the mode instead.
+    expect(html).not.toContain('id="aligned"')
+    expect(html).toContain("cycleAlign(")
+    expect(html).toContain("displayAlignment(state.align")
+    expect(html).toContain("a = align mode")
+  })
+
+  it("has ONE annotate control: click = note, drag = region", () => {
+    expect(html).toContain('id="ann-draw"')
+    expect(html).not.toContain('id="ann-point"')
+    expect(html).not.toContain('id="ann-rect"')
+    expect(html).toContain(">+ note</button>")
+    expect(html).not.toContain(">+ region</button>")
+    // The gesture decides the shape, in one place, so the preview cannot disagree with what is saved.
+    expect(html).toContain("const shape = drawn ? { kind: 'rect'")
   })
 
   it("embeds the whole report — findings, suppressed, delta, alignment — as data", () => {

@@ -22,9 +22,19 @@ export type {
   Severity,
   SuppressedFinding,
   SuppressionReason,
-} from "./types.js";
+} from "./types.js"
 
-export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js";
+export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js"
+export {
+  acceptedFor,
+  acceptedFromFinding,
+  emptyAcceptedFile,
+  parseAcceptedFile,
+  removeAcceptedByKey,
+  upsertAccepted,
+  type AcceptedFile,
+  type AcceptedRecord,
+} from "./accepted.js"
 export {
   parseManifest,
   type DesignSpec,
@@ -33,8 +43,8 @@ export {
   type ManifestError,
   type ManifestParse,
   type PairSpec,
-} from "./manifest.js";
-export { pickLargestChild, MIN_SCOPE_AREA, type ScopeCandidate } from "./adapters/scope.js";
+} from "./manifest.js"
+export { pickLargestChild, MIN_SCOPE_AREA, type ScopeCandidate } from "./adapters/scope.js"
 
 export {
   all,
@@ -49,7 +59,7 @@ export {
   type Err,
   type Ok,
   type Result,
-} from "./result.js";
+} from "./result.js"
 
 export {
   defaultDesignScale,
@@ -72,7 +82,7 @@ export {
   type SourceConfig,
   type StorybookSource,
   type Viewport,
-} from "./pipeline.js";
+} from "./pipeline.js"
 
 export {
   captureUntilStable,
@@ -83,10 +93,10 @@ export {
   waitForFonts,
   type ServeDirOptions,
   type StaticServer,
-} from "./adapters/browser.js";
-export { extractElementTree } from "./adapters/extract.js";
-export { captureDcHtml, frameSelectors, type DcHtmlCaptureOptions } from "./adapters/dc-html.js";
-export { captureStorybook, type StorybookCaptureOptions } from "./adapters/storybook.js";
+} from "./adapters/browser.js"
+export { extractElementTree } from "./adapters/extract.js"
+export { captureDcHtml, frameSelectors, type DcHtmlCaptureOptions } from "./adapters/dc-html.js"
+export { captureStorybook, type StorybookCaptureOptions } from "./adapters/storybook.js"
 export {
   captureLiveUrl,
   classifyPage,
@@ -94,8 +104,8 @@ export {
   type LiveUrlCaptureOptions,
   type PageSignals,
   type PageVerdict,
-} from "./adapters/live-url.js";
-export { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js";
+} from "./adapters/live-url.js"
+export { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
 export {
   expandVariants,
   parseVariantName,
@@ -104,7 +114,7 @@ export {
   type VariantExpandError,
   type VariantExpansion,
   type VariantPair,
-} from "./adapters/figma-variants.js";
+} from "./adapters/figma-variants.js"
 export {
   FigmaClient,
   chunk,
@@ -120,26 +130,22 @@ export {
   type FigmaNodesResponse,
   type FigmaPaint,
   type FigmaVariablesResponse,
-} from "./adapters/figma-api.js";
+} from "./adapters/figma-api.js"
 export {
   figmaTreeToElements,
   indexVariables,
   paintToCss,
   type FigmaMapping,
   type VariableIndex,
-} from "./adapters/figma-tree.js";
+} from "./adapters/figma-tree.js"
 export {
   ensureStorybook,
   type StorybookServer,
   type StorybookServerError,
   type StorybookServerOptions,
-} from "./adapters/storybook-server.js";
+} from "./adapters/storybook-server.js"
 
-export {
-  alignStructural,
-  estimateTransform,
-  type TransformEstimate,
-} from "./structural/align.js";
+export { alignStructural, estimateTransform, type TransformEstimate } from "./structural/align.js"
 export {
   DEFAULT_MAX_GAMMA,
   DEFAULT_SLOT_MAX_GAMMA,
@@ -147,18 +153,23 @@ export {
   slotGamma,
   matchElements,
   type MatchOptions,
-} from "./structural/match.js";
-export { finalize, runTypedChecks, type CheckOptions, type RawFinding } from "./structural/checks.js";
-export { aggregate, type AggregateOptions } from "./structural/aggregate.js";
+} from "./structural/match.js"
+export {
+  finalize,
+  runTypedChecks,
+  type CheckOptions,
+  type RawFinding,
+} from "./structural/checks.js"
+export { aggregate, type AggregateOptions } from "./structural/aggregate.js"
 
-export { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "./geometry.js";
+export { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "./geometry.js"
 export {
   clusterMask,
   unionBox,
   type Cluster,
   type ClusterOptions,
   type DiffMask,
-} from "./pixel/cluster.js";
+} from "./pixel/cluster.js"
 export {
   isPixelEligible,
   lowConfidenceFinding,
@@ -167,8 +178,8 @@ export {
   severityForRatio,
   type MatchDiff,
   type PixelCheckOptions,
-} from "./pixel/checks.js";
-export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js";
+} from "./pixel/checks.js"
+export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js"
 export {
   CLASSIFY_DEFAULTS,
   classifyChange,
@@ -179,9 +190,9 @@ export {
   type ClassifyOptions,
   type RawImage,
   type RegionSignals,
-} from "./pixel/classify.js";
+} from "./pixel/classify.js"
 
-export { packageForModel, type PackageOptions } from "./package/package-for-model.js";
+export { packageForModel, type PackageOptions } from "./package/package-for-model.js"
 export {
   boxDistance,
   diffFindings,
@@ -195,7 +206,7 @@ export {
   type LedgerEntry,
   type ReportDelta,
   type ResolvedLedger,
-} from "./package/delta.js";
+} from "./package/delta.js"
 export {
   renderSummary,
   runRow,
@@ -204,4 +215,4 @@ export {
   type RunRow,
   type SetGroup,
   type SetSummary,
-} from "./package/summary.js";
+} from "./package/summary.js"

@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  ALIGN_LABELS,
+  ALIGN_MODES,
   IDENTITY_ALIGNMENT,
+  alignRemap,
   aspectStretch,
+  displayAlignment,
+  shownFromWorld,
+  worldFromShown,
   designCaptureDpr,
   designImageTransform,
   designLayerTransform,
@@ -143,9 +149,10 @@ describe("aspect lock", () => {
 
   it("moves the design MARKS by the same correction, so they stay on the image", () => {
     const view = { z: 2, tx: 10, ty: 20 }
-    // Unlocked, the design layer is the plain world layer — boxes are already in world space.
-    expect(designLayerTransform(view, ANISO, false)).toBe(worldLayerTransform(view))
-    const locked = designLayerTransform(view, ANISO, true)
+    // Drawn with the run's own fit, the design layer is the plain world layer — boxes are already
+    // in world space.
+    expect(designLayerTransform(view, ANISO, ANISO)).toBe(worldLayerTransform(view))
+    const locked = designLayerTransform(view, ANISO, projectionAlignment(ANISO, true))
     const k = ANISO.scale / ANISO.scaleY
     expect(locked).toContain(`scale(1, ${k})`)
 
@@ -160,13 +167,89 @@ describe("aspect lock", () => {
   it("is a no-op when the fit was already isotropic", () => {
     const iso = { scale: 1.2, scaleY: 1.2, offsetX: 3, offsetY: 4 }
     const view = { z: 1, tx: 0, ty: 0 }
-    expect(designLayerTransform(view, iso, true)).toBe(worldLayerTransform(view))
+    expect(designLayerTransform(view, iso, projectionAlignment(iso, true))).toBe(
+      worldLayerTransform(view),
+    )
   })
 
   it("survives a degenerate scale instead of dividing by zero", () => {
     const view = { z: 1, tx: 0, ty: 0 }
-    expect(designLayerTransform(view, { scale: 1, scaleY: 0, offsetX: 0, offsetY: 0 }, true)).toBe(
+    const degenerate = { scale: 1, scaleY: 0, offsetX: 0, offsetY: 0 }
+    expect(designLayerTransform(view, degenerate, projectionAlignment(degenerate, true))).toBe(
       worldLayerTransform(view),
+    )
+  })
+})
+
+describe("align modes", () => {
+  // client-pending-accountant-desktop again: a 1181×962 raw frame fitted onto a 1182×900 impl.
+  const RUN = { scale: 0.985, scaleY: 1.153, offsetX: 15.6, offsetY: -67.9 }
+  const RAW = { w: 1181, h: 962 }
+  const IMPL = { w: 1182, h: 900 }
+
+  it("names every mode it offers, so the control can cycle them", () => {
+    expect([...ALIGN_MODES]).toEqual(["anchors", "width", "left", "right"])
+    expect(ALIGN_MODES.every((m) => ALIGN_LABELS[m])).toBe(true)
+  })
+
+  it("anchors = the run's fit with the stretch dropped", () => {
+    expect(displayAlignment("anchors", RUN, RAW, IMPL)).toEqual(projectionAlignment(RUN, true))
+  })
+
+  it("width scales the frame onto the impl's width from the origin", () => {
+    const a = displayAlignment("width", RUN, RAW, IMPL)
+    expect(a.scale).toBeCloseTo(IMPL.w / RAW.w, 9)
+    expect(a.scaleY).toBe(a.scale)
+    expect([a.offsetX, a.offsetY]).toEqual([0, 0])
+    // The design's right edge lands exactly on the impl's — that is what "width" means.
+    expect(RAW.w * a.scale + a.offsetX).toBeCloseTo(IMPL.w, 9)
+  })
+
+  it("the corner modes are 1:1 and differ only in WHICH edge they register", () => {
+    expect(displayAlignment("left", RUN, RAW, IMPL)).toEqual({
+      scale: 1,
+      scaleY: 1,
+      offsetX: 0,
+      offsetY: 0,
+    })
+    const right = displayAlignment("right", RUN, RAW, IMPL)
+    expect(right.scale).toBe(1)
+    expect(right.offsetX).toBe(IMPL.w - RAW.w)
+    expect(RAW.w + right.offsetX).toBe(IMPL.w)
+    expect(right.offsetY).toBe(0)
+  })
+
+  it("never reintroduces the stretch, whatever the run fitted", () => {
+    for (const mode of ALIGN_MODES) {
+      const a = displayAlignment(mode, RUN, RAW, IMPL)
+      expect(aspectStretch(a)).toBe(1)
+    }
+  })
+
+  it("a pointer on the design pane round-trips to the space the shapes live in", () => {
+    // What the reader clicks is on the DRAWN frame; what gets saved must be run-world, or the mark
+    // reappears somewhere else. Both directions, in every mode.
+    for (const mode of ALIGN_MODES) {
+      const display = displayAlignment(mode, RUN, RAW, IMPL)
+      const worldPoint = designToWorld({ x: 300, y: 640 }, RUN)
+      const shown = shownFromWorld(worldPoint, RUN, display)
+      // The drawn position of a design point IS that point through the display alignment.
+      expect(shown.x).toBeCloseTo(300 * display.scale + display.offsetX, 6)
+      expect(shown.y).toBeCloseTo(640 * (display.scaleY ?? display.scale) + display.offsetY, 6)
+      const back = worldFromShown(shown, RUN, display)
+      expect(back.x).toBeCloseTo(worldPoint.x, 6)
+      expect(back.y).toBeCloseTo(worldPoint.y, 6)
+    }
+  })
+
+  it("a degenerate run scale leaves the re-map at identity", () => {
+    expect(alignRemap({ scale: 0, scaleY: 0, offsetX: 9, offsetY: 9 }, IDENTITY_ALIGNMENT)).toEqual(
+      {
+        kx: 1,
+        tx: 0,
+        ky: 1,
+        ty: 0,
+      },
     )
   })
 })

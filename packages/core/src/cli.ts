@@ -7,19 +7,29 @@
  *             or for every storybook pair of a manifest (--manifest)
  *   summary   one table over every run dir under an out root (a component
  *             set's cells, a manifest's pairs) + the causes shared across them
+ *   accept    record "the implementation is right" for reported findings —
+ *             from the annotator's triage, or one finding by id
  *
  * Planned (docs/architecture.md): inspect, explore, report.
  */
 
 import type { Capture, CaptureError, LiveAuth } from "./pipeline.js"
-import type { ComparisonReport, IgnorePolicy, Severity } from "./types.js"
+import type { ComparisonReport, Finding, IgnorePolicy, Severity } from "./types.js"
 import type { Browser } from "playwright"
 
-import { readdir, readFile, writeFile } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
 
+import {
+  acceptedFor,
+  acceptedFromFinding,
+  emptyAcceptedFile,
+  parseAcceptedFile,
+  upsertAccepted,
+  type AcceptedFile,
+} from "./accepted.js"
 import { launchBrowser } from "./adapters/browser.js"
 import { captureDcHtml } from "./adapters/dc-html.js"
 import { FigmaClient, parseFigmaRef, readToken } from "./adapters/figma-api.js"
@@ -44,6 +54,25 @@ import { matchElements } from "./structural/match.js"
 
 const USAGE = `Usage: visual-compare compare [options]
        visual-compare summary <out-root> [--json]
+       visual-compare accept <run-dir> [options]
+
+accept — record "we looked, and the implementation is right" for findings of
+one run, so the next run suppresses them visibly instead of re-reporting them.
+Each decision is built from the MEASUREMENT and lapses by itself when either
+value changes, which is what an edited comp would never do.
+
+  (default)               take every finding the annotator marked "ignore"
+                          and use its note as the reason
+  --finding <id>          accept one finding by id (needs --reason)
+  --reason <text>         why the implementation is right (required with --finding)
+  --manifest <file>       write accepted.json beside this manifest — where
+                          compare reads it and where it is version-controlled
+  --accepted <file>       decisions file, instead of deriving it from --manifest
+  --dry-run               print what would be recorded, write nothing
+
+A verdict with no note is refused: a suppression nobody can audit is how a
+suite goes quiet. position/spacing findings are refused too — their values move
+with every capture, so the rule would lapse immediately.
 
 Compare a design frame (Claude Design .dc.html or Figma) against an
 implementation (Storybook story or live URL).
@@ -108,7 +137,15 @@ Ignore policy (both modes):
                           "role":"box","reason":"focus ring …"}); for pixel-region,
                           "changeKind" narrows to shape|color|hue-rotation|added|
                           removed|stroke|noise ({"type":"pixel-region","role":"icon",
-                          "changeKind":"shape","reason":"placeholder icon …"})
+                          "changeKind":"shape","reason":"placeholder icon …"});
+                          "text" narrows to one element ({"type":"missing-element",
+                          "role":"text","text":"Pripomenúť","reason":"…"})
+  --accepted <file>       decisions file to merge (default: accepted.json next
+                          to the manifest, when one exists). Written by
+                          \`visual-compare accept\` — see that command.
+  --no-accepted           ignore the decisions file for this run: every accepted
+                          deviation is reported again, which is how you re-review
+                          what past runs decided
   --data-slots            treat EVERY matched pair with differing text as demo
                           data and drop its text-content finding. Blind: it
                           cannot tell an amount from a button label, so it hides
@@ -192,6 +229,8 @@ interface RunOptions {
   maxGamma?: number
   /** CLI-level policy, merged over the pair's own. */
   policy: IgnorePolicy
+  /** Decisions recorded by `visual-compare accept`, keyed by pair. */
+  decisions?: AcceptedFile
   /** Collapse systematic findings (default true). */
   aggregate: boolean
   /** Run the scoped pixel channel inside matched boxes (default true). */
@@ -327,7 +366,15 @@ async function runPair(
 ): Promise<Result<ComparisonReport, PairError>> {
   const previous = await readPreviousReport(o.outDir)
   const ledger = await readLedger(o.outDir, spec.id)
-  const policy = mergePolicies(spec.ignore, o.policy)
+  // Past decisions ride in as ordinary accepted deviations — same suppression,
+  // same visibility under `suppressed`, same automatic lapse when a measured
+  // value moves. The count is printed because a policy nobody can see is how a
+  // suite goes quiet without anyone choosing that.
+  const decided = o.decisions ? acceptedFor(o.decisions, spec.id) : []
+  if (decided.length > 0) {
+    console.log(`accepted decisions: ${decided.length} for ${spec.id}`)
+  }
+  const policy = mergePolicies(spec.ignore, { accepted: decided }, o.policy)
 
   const design = await captureDesign(browser, spec, policy.scope, o)
   if (!design.ok) return err({ side: "design", error: design.error })
@@ -397,14 +444,25 @@ async function runPair(
       )
     } else {
       const diffs = await diffMatches(aligned, match.matches)
-      pixel = runPixelChecks(diffs, structural)
-      diffMaskPath = join(o.outDir, "diff-mask.png")
-      await writeDiffMask(aligned, diffs, diffMaskPath)
+      const { findings: pixelFindings, reported } = runPixelChecks(diffs, structural)
+      pixel = pixelFindings
+      // Only the REPORTED diffs are painted: an all-diffs mask is dominated by
+      // the residue of two correct rasterizations at different scales (95.6 %
+      // of one measured page pair's mask lay inside text), which no finding
+      // explains and a reader cannot act on. Nothing reported → no mask file,
+      // so its absence means "no unexplained pixel evidence".
+      if (reported.length > 0) {
+        diffMaskPath = join(o.outDir, "diff-mask.png")
+        await writeDiffMask(aligned, reported, diffMaskPath)
+      }
       console.log(
         `pixel channel: diffed ${diffs.length} matched boxes, ${pixel.length} pixel-region findings`,
       )
     }
   }
+  // A run dir is reused across iterations: a mask left by an earlier run would
+  // otherwise outlive the findings that justified it.
+  if (diffMaskPath === undefined) await rm(join(o.outDir, "diff-mask.png"), { force: true })
 
   const { kept, suppressed } = applyPolicy(finalize([...structural, ...pixel]), policy)
   const findings = o.aggregate ? aggregate(kept) : kept
@@ -593,6 +651,8 @@ async function compare(argv: string[]): Promise<void> {
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
       accept: { type: "string", multiple: true },
+      accepted: { type: "string" },
+      "no-accepted": { type: "boolean" },
       "data-slots": { type: "boolean" },
       "data-slot-text": { type: "string", multiple: true },
       "no-aggregate": { type: "boolean" },
@@ -778,6 +838,27 @@ async function compare(argv: string[]): Promise<void> {
 
   const outRoot = values.out
 
+  // Decisions recorded by `visual-compare accept`. Default location is next to
+  // the manifest, because that is where the pairs are defined and a decision is
+  // about a pair; an explicit --accepted overrides, --no-accepted re-opens every
+  // past decision for review.
+  const decisionsPath = values["no-accepted"]
+    ? undefined
+    : (values.accepted ??
+      (values.manifest !== undefined
+        ? join(dirname(resolve(values.manifest)), "accepted.json")
+        : undefined))
+  let decisions: AcceptedFile | undefined
+  if (decisionsPath !== undefined) {
+    const loaded = await readAcceptedFile(decisionsPath)
+    if (!loaded.ok) fail(`--accepted ${decisionsPath}: ${loaded.error}`)
+    decisions = loaded.value
+    // An explicitly named file that is not there is a typo, not "no decisions".
+    if (decisions === undefined && values.accepted !== undefined) {
+      fail(`--accepted ${decisionsPath}: file not found`)
+    }
+  }
+
   // Component sets → one pair per variant (typed errors keep the other entries running).
   const prefetched = new Map<string, Prefetched>()
   let anyError = false
@@ -845,6 +926,7 @@ async function compare(argv: string[]): Promise<void> {
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),
         policy,
+        ...(decisions !== undefined ? { decisions } : {}),
         aggregate: !values["no-aggregate"],
         pixels: !values["no-pixels"],
         ...(prefetched.has(spec.id) ? { prefetched: prefetched.get(spec.id)! } : {}),
@@ -910,6 +992,149 @@ async function readRunDirs(root: string): Promise<{ dir: string; report: Compari
   return runs.sort((a, b) => a.report.createdAt.localeCompare(b.report.createdAt))
 }
 
+/** The decisions file at `path`; `undefined` when there is none yet. */
+async function readAcceptedFile(path: string): Promise<Result<AcceptedFile | undefined, string>> {
+  let raw: string
+  try {
+    raw = await readFile(path, "utf8")
+  } catch {
+    return ok(undefined)
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch (e) {
+    return err(`not valid JSON (${e instanceof Error ? e.message : String(e)})`)
+  }
+  return parseAcceptedFile(parsed)
+}
+
+/** The annotator's verdicts for a run dir, or an empty list when it was never served. */
+async function readTriageStates(
+  runDir: string,
+): Promise<{ key: string; state: string; note: string }[]> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(join(runDir, "triage.json"), "utf8"))
+    const entries = (parsed as { entries?: unknown }).entries
+    if (!Array.isArray(entries)) return []
+    return entries.filter(
+      (e): e is { key: string; state: string; note: string } =>
+        typeof e === "object" &&
+        e !== null &&
+        typeof (e as { key?: unknown }).key === "string" &&
+        typeof (e as { state?: unknown }).state === "string",
+    )
+  } catch {
+    return []
+  }
+}
+
+/**
+ * `accept` — turn reviewed findings into durable decisions.
+ *
+ * Two inputs, one output. From the annotator: every finding a person marked
+ * `ignore` with a note ("this is intended, the comp is the outlier") becomes an
+ * accepted deviation carrying that note as its reason. From the command line:
+ * one finding by id with `--reason`. Either way the rule is built FROM the
+ * measurement, so it lapses when the measurement changes.
+ *
+ * A verdict without a note is REFUSED, loudly: `suppressed` entries carry their
+ * rule so a reader can audit them, and "ignored, no reason given" is not
+ * something a reader can audit.
+ */
+async function accept(argv: string[]): Promise<void> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      accepted: { type: "string" },
+      manifest: { type: "string" },
+      finding: { type: "string" },
+      reason: { type: "string" },
+      "dry-run": { type: "boolean" },
+      help: { type: "boolean" },
+    },
+  })
+  if (values.help || positionals.length !== 1) {
+    console.log(USAGE)
+    if (!values.help) process.exit(2)
+    return
+  }
+  const runDir = resolve(positionals[0]!)
+  const report = await readPreviousReport(runDir)
+  if (!report) fail(`accept: no readable findings.json in ${runDir}`)
+  // Decisions live NEXT TO THE MANIFEST, which is where compare looks for them
+  // and the only place they are version-controlled — an out root is disposable.
+  // No default: writing them where the next run will not read them is worse
+  // than asking.
+  const path =
+    values.accepted ??
+    (values.manifest !== undefined
+      ? join(dirname(resolve(values.manifest)), "accepted.json")
+      : fail(
+          "accept: pass --manifest <file> (decisions go beside it, where compare reads them) or --accepted <file>",
+        ))
+  const loaded = await readAcceptedFile(path)
+  if (!loaded.ok) fail(`accept: ${path}: ${loaded.error}`)
+  let file = loaded.value ?? emptyAcceptedFile()
+
+  // findings.json holds only KEPT findings; a finding already suppressed by a
+  // past decision is in `suppressed`, and re-accepting it must be a no-op
+  // rather than "unknown finding".
+  const all: Finding[] = [...report.findings, ...report.suppressed]
+  const wanted: { finding: Finding; reason: string }[] = []
+  if (values.finding !== undefined) {
+    const finding = all.find((f) => f.id === values.finding)
+    if (!finding) fail(`accept: no finding "${values.finding}" in ${runDir}/findings.json`)
+    if (values.reason === undefined) fail("accept --finding needs --reason")
+    wanted.push({ finding: finding!, reason: values.reason! })
+  } else {
+    const triaged = await readTriageStates(runDir)
+    const ignored = triaged.filter((t) => t.state === "ignore")
+    if (ignored.length === 0) {
+      console.log(
+        `no ignored findings in ${runDir}/triage.json — mark the ones the implementation wins in the annotator (with a note), or pass --finding <id> --reason "…"`,
+      )
+      return
+    }
+    for (const entry of ignored) {
+      const finding = all.find((f) => f.key === entry.key)
+      if (!finding) {
+        console.log(`skipped: triaged key no longer in this run (${entry.key})`)
+        continue
+      }
+      wanted.push({ finding, reason: entry.note ?? "" })
+    }
+  }
+
+  const now = new Date().toISOString()
+  let added = 0
+  let updated = 0
+  let refused = 0
+  for (const { finding, reason } of wanted) {
+    const record = acceptedFromFinding(finding, reason, now)
+    if (!record.ok) {
+      refused++
+      console.log(`refused ${finding.id} (${finding.type}): ${record.error}`)
+      continue
+    }
+    const next = upsertAccepted(file, report.pair, record.value)
+    file = next.file
+    if (next.added) added++
+    else updated++
+    console.log(`${next.added ? "accepted" : "updated"} ${finding.id}: ${finding.message}`)
+  }
+  if (values["dry-run"]) {
+    console.log(`\ndry run — ${added} to add, ${updated} to update, ${refused} refused (${path})`)
+    return
+  }
+  if (added + updated > 0) await writeFile(path, `${JSON.stringify(file, null, 2)}\n`)
+  console.log(
+    `\n${added} accepted, ${updated} updated, ${refused} refused → ${path}` +
+      `\n${acceptedFor(file, report.pair).length} decisions now stand for ${report.pair}; they are applied on the next compare and reported under "suppressed".`,
+  )
+}
+
 async function summary(argv: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args: argv,
@@ -937,6 +1162,9 @@ switch (command) {
     break
   case "summary":
     await summary(rest)
+    break
+  case "accept":
+    await accept(rest)
     break
   case undefined:
   case "--help":

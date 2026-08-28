@@ -5,9 +5,16 @@
  * (split screen) with one shared pan/zoom, the design pane projected through
  * the run's `Alignment` so the same UI lands at the same place on both
  * sides. Findings are listed and drawn as numbered marks on both panes;
- * suppressed findings and the delta stay visible. The crops and the
- * set-of-marks overlay remain the model's view — a person compares whole
- * frames, which is why every adapter stores the full PNGs.
+ * suppressed findings and the delta stay visible. The crops remain the
+ * model's view — a person compares whole frames, which is why every adapter
+ * stores the full PNGs.
+ *
+ * On top of that sits the diff lab: highlight the reported diff regions, mute
+ * everything else, strobe them, step through them, and superimpose the design
+ * on the impl pane (blink / onion skin / swipe / difference blend). The
+ * superimposed ghost uses the run's FULL alignment, stretch included — the
+ * design pane deliberately does not — so the lab states the distortion it
+ * introduces instead of letting the eye read it as drift.
  *
  * The HTML references the run directory's artifacts by relative path
  * (design.png, impl.png, crops/…), so it must be written INTO the run dir
@@ -134,24 +141,38 @@ export const REPORT_BODY = `<header id="hdr"></header>
       <button id="zoom-in" title="zoom in (+)">+</button>
       <button id="fit" title="fit both (0)">Fit</button>
       <button type="button" id="layout-toggle" aria-pressed="false" title="split screen — switch to one side at a time"><span id="layout-label">Split</span></button>
-      <button type="button" id="aligned" class="icon-toggle on" aria-pressed="true" title="align design through Alignment (project the design onto the impl)">${ALIGN_ICON}</button>
+      <button type="button" id="align-mode" class="icon-toggle align-mode" title="how the design is registered onto the impl (a)">${ALIGN_ICON}<span id="align-label">anchors</span></button>
       <label><input type="checkbox" id="marks" checked> marks</label>
       <label><input type="checkbox" id="members" checked> all instances</label>
       <span class="sep"></span>
-      <button id="ann-point" class="tog" title="drop a note on an element (n)">+ note</button>
-      <button id="ann-rect" class="tog" title="mark a region (r)">+ region</button>
+      <button type="button" id="diff-toggle" class="tog lab" aria-pressed="false" title="highlight where the pixels differ (d) — [ and ] step through the regions">Diff</button>
+      <button type="button" id="dim-toggle" class="tog lab" aria-pressed="false" title="dim everything except the diff regions (g)">Focus</button>
+      <button type="button" id="strobe-toggle" class="tog lab" aria-pressed="false" title="pulse and wiggle the diff regions (s)">Strobe</button>
+      <label class="labsel">over impl
+        <select id="lab-mode" title="superimpose the design on the implementation pane">
+          <option value="none">—</option>
+          <option value="blink">blink (b)</option>
+          <option value="onion">onion (o)</option>
+          <option value="swipe">swipe (w)</option>
+          <option value="difference">difference (x)</option>
+        </select>
+      </label>
+      <input type="range" id="lab-amount" class="labrange" min="0" max="100" value="50" aria-label="lab amount" hidden>
+      <span id="lab-note" class="labnote"></span>
+      <span class="sep"></span>
+      <button id="ann-draw" class="tog" title="annotate: click = note on an element, drag = region (n)">+ note</button>
       <button type="button" id="focus-chip" class="chip focus-chip" hidden></button>
       <span id="ann-status" class="annstatus"></span>
-      <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · n/r = annotate · Esc = deselect</span>
+      <span class="hint">wheel = zoom · drag = pan · j/k = next/prev · [ ] = next/prev diff · a = align mode · d/g/s = diff/focus/strobe · b/o/w/x = blink/onion/swipe/difference · n = annotate (click = note, drag = region) · Esc = deselect</span>
     </div>
     <div class="panes" id="panes">
       <div class="pane" id="pane-design" data-side="design">
         <div class="pane-label" id="label-design"></div>
-        <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg></div>
+        <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg></div>
       </div>
       <div class="pane" id="pane-impl" data-side="impl">
         <div class="pane-label" id="label-impl"></div>
-        <div class="stage"><img class="shot" id="img-impl" alt="implementation"><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg></div>
+        <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg></div>
       </div>
       <div class="canvas-controls" id="canvas-controls">
         <button type="button" class="cbtn" id="side-switch" title="switch side"><span aria-hidden="true">⇄</span><span id="side-label">Design</span></button>
@@ -258,6 +279,7 @@ body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
 .verdict-btn.on.ignore { border-color:var(--ignore); color:var(--ink); }
 .verdict-btn.on.snooze { border-color:var(--snooze); color:var(--snooze); }
 .triage-none { color:var(--muted); font-style:italic; }
+.triage .meta code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
 .focus-chip { border-color:var(--accent); color:var(--accent); background:transparent; font:inherit; }
 .focus-chip b { text-decoration:underline; margin-left:4px; }
 .pane.focusing { cursor:crosshair; }
@@ -272,6 +294,11 @@ body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
 .icon-toggle { display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; color:var(--muted); }
 .icon-toggle .i { width:15px; height:15px; fill:currentColor; display:block; }
 .icon-toggle.on { color:var(--accent); border-color:var(--accent); }
+/* The align control cycles registrations rather than switching one on and off, so it carries the
+   current mode's NAME: "aligned / not aligned" never said what it aligned on. */
+.icon-toggle.align-mode { gap:5px; }
+.icon-toggle.align-mode.measured { color:var(--accent); border-color:var(--accent); }
+.icon-toggle.align-mode.manual { color:var(--major); border-color:var(--major); }
 body.rail-open .rail-toggle .chev { transform:rotate(180deg); }
 .panes { flex:1; display:flex; min-height:0; position:relative; }
 aside .rail-body { display:contents; }
@@ -306,6 +333,45 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .marks.has-sel rect:not(.sel) { opacity:.35; }
 .marks g.lbl.sel rect { stroke:#fff; stroke-width:1.5; }
 .marks g.lbl.critical { color:var(--critical); } .marks g.lbl.major { color:var(--major); } .marks g.lbl.major text { fill:#111; } .marks g.lbl.minor { color:var(--minor); }
+/* ---- diff lab -----------------------------------------------------------
+   Chromatic-style reading aids over OUR signal. The regions are the reported
+   pixel diffs (Finding.regions) plus the presence findings the pixel channel
+   structurally cannot see, so nothing here lights up residue: boxes say WHERE,
+   the raster mask (coloured by changeKind) says WHAT. */
+:root { --diff:#00ff9c; }
+.toolbar button.tog.lab.on { border-color:var(--diff); color:var(--diff); box-shadow:0 0 0 1px var(--diff) inset; }
+.toolbar .labsel { color:var(--muted); gap:6px; }
+.toolbar .labsel select { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 6px; font:inherit; }
+.toolbar .labrange { width:120px; accent-color:var(--diff); }
+.toolbar .labnote { color:var(--muted); font-size:11px; white-space:nowrap; }
+.toolbar .labnote.warn { color:var(--major); }
+.marks.diffs { z-index:1; }
+.marks.diffs rect.region { fill:rgba(0,255,156,.16); stroke:var(--diff); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:none; }
+.marks.diffs rect.region.cur { fill:rgba(0,255,156,.32); stroke-width:3; }
+.marks.diffs rect.dim { fill:rgba(6,10,20,.72); stroke:none; pointer-events:none; }
+/* The wiggle is 1 world px on the CSS translate property, which composes with
+   the layer's own transform instead of fighting it — a hard-to-see 1px
+   difference announces itself by moving, the way a blink comparator makes a
+   moving star pop. The stroke WIDTH swings too, because translate is in world
+   px: zoomed out to fit a page, 1 world px is half a screen pixel and the
+   wiggle alone is invisible (non-scaling-stroke makes the width screen px).
+   Hard stops at 50%, never steps(1) + alternate: a reversed iteration flips
+   the step position too, so Chrome sampled the SAME keyframe in both
+   directions and nothing on the page ever moved. */
+@keyframes vc-strobe {
+  0%,49.99% { stroke:var(--diff); stroke-width:2; translate:0 0; }
+  50%,100% { stroke:#ff2bd6; stroke-width:4; translate:1px 1px; }
+}
+.marks.diffs.strobing rect.region { animation:vc-strobe .84s linear infinite; }
+.mask { mix-blend-mode:screen; image-rendering:pixelated; opacity:.95; }
+@keyframes vc-mask-strobe { 0%,49.99% { opacity:.95; } 50%,100% { opacity:.15; } }
+.strobing-mask .mask { animation:vc-mask-strobe .84s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .marks.diffs.strobing rect.region, .strobing-mask .mask { animation-duration:1.6s; }
+}
+.ghost-wrap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:hidden; pointer-events:none; }
+.ghost { opacity:0; transition:opacity .08s linear; }
+.ghost.difference { mix-blend-mode:difference; }
 .detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--panel); }
 .detail:empty { display:none; }
 .detail h2 { margin:0 0 4px; font-size:13px; }
@@ -416,15 +482,18 @@ function readControls() {
 function saveControls() {
   try {
     localStorage.setItem(CONTROLS_KEY, JSON.stringify({
-      aligned: state.aligned, showMarks: state.showMarks, showMembers: state.showMembers,
+      align: state.align, showMarks: state.showMarks, showMembers: state.showMembers,
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
+      diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
     }));
   } catch (e) { /* private mode: the controls just do not persist */ }
 }
 const SEV = ['critical', 'major', 'minor'];
 const state = {
-  view: { z: 1, tx: 0, ty: 0 }, aligned: true, showMarks: true, showMembers: true,
+  // align: how the design frame is registered onto the impl for display —
+  // 'anchors' (the run's measured fit) | 'width' | 'left' | 'right'.
+  view: { z: 1, tx: 0, ty: 0 }, align: 'anchors', showMarks: true, showMembers: true,
   selected: null, sev: { critical: true, major: true, minor: true }, q: '',
   dprD: 1, dprI: 1, userMoved: false, side: 'design', move: true, single: false,
   // A region of the canvas to work inside (world px). While set, findings whose boxes fall outside
@@ -432,13 +501,19 @@ const state = {
   // chrome's findings burying it.
   focus: null, focusLabel: '', focusing: false,
   showTriaged: { ignore: false, snooze: false },
+  // The diff lab: where the pixels differ (diff), everything else dimmed (dim),
+  // the regions pulsing (strobe), and one superimposition mode over the impl
+  // pane (lab: blink | onion | swipe | difference). labAmount drives the two
+  // modes that have a degree: onion opacity and the swipe's curtain.
+  diff: false, dim: false, strobe: false, lab: 'none', labAmount: 50, diffIndex: -1,
 };
 // Narrow screens show one side at a time (both panes are laid out side by side
 // above the breakpoint, so state.side only matters below it).
 const narrow = window.matchMedia('(max-width: 900px)');
 const panes = { design: $('pane-design'), impl: $('pane-impl') };
-const imgs = { design: $('img-design'), impl: $('img-impl') };
+const imgs = { design: $('img-design'), impl: $('img-impl'), ghost: $('img-ghost'), mask: $('img-mask') };
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
+const diffLayers = { design: $('diffs-design'), impl: $('diffs-impl') };
 const annLayers = { design: $('anns-design'), impl: $('anns-impl') };
 // Human annotations: the set (loaded from the API when served, else this
 // browser, else the embedded copy), the draw mode, the pending draft and the
@@ -612,21 +687,28 @@ function renderFocusBand() {
   applyView();
 }
 
-function alignment() { return state.aligned ? report.alignment : IDENTITY_ALIGNMENT; }
-// What the design is DRAWN with: the alignment with its per-axis stretch REMOVED, always.
+function rawDesign() { return rawDesignSize(report.design, report.alignment); }
+function implSize() { return { w: report.impl.width, h: report.impl.height }; }
+// What the design is DRAWN with: the CHOSEN registration, always isotropic.
 //
 // align() fits x and y independently, so the projection it returns can be anisotropic — on this
 // corpus by up to +53 % vertically. That is fine for locating elements (the finding boxes use it)
 // and unacceptable for looking at the reference: a person cannot judge proportion or type against a
 // distorted image, and would have no way to know it was distorted. The stretch therefore stays in
 // the DATA and never reaches the screen; the pane label states the fit so the number is not hidden.
-function projection() { return projectionAlignment(alignment(), true); }
+// The corner modes ('width' / 'left' / 'right') are the manual answer to the OTHER half of the same
+// problem: when the fit's offset reads wrong, register the frames by an edge and judge from there.
+function projection() { return displayAlignment(state.align, report.alignment, rawDesign(), implSize()); }
+// The superimposed ghost has to LAND on the impl, which is what the run's full fit (stretch
+// included) is for; under a manual registration it follows that registration instead, so blink and
+// difference show what the panes show.
+function ghostAlignment() { return state.align === 'anchors' ? report.alignment : projection(); }
 function worldBox() {
   // The design's world extent is its RAW capture size through the CURRENT
   // alignment — report.design.width already has the run's scale in it.
   return unionBoxes([
     { x: 0, y: 0, w: report.impl.width, h: report.impl.height },
-    designWorldBox(rawDesignSize(report.design, report.alignment), projection()),
+    designWorldBox(rawDesign(), projection()),
   ]);
 }
 // One pane or two: forced below the breakpoint, a choice above it.
@@ -654,12 +736,13 @@ function setSide(side) {
   if (state.userMoved) applyView(); else fit();
 }
 // The corner toggle is the phone's whole annotation UI: move ON = pan/zoom,
-// move OFF = a tap drops a note and a drag marks a region (the same gesture
-// split the desktop + region button already makes).
-function setMove(on) { setAnnMode(on ? null : 'rect', true); saveControls(); }
+// move OFF = a tap drops a note and a drag marks a region — the same one
+// annotate mode the toolbar button turns on.
+function setMove(on) { setAnnMode(on ? null : 'draw', true); saveControls(); }
 // Restore the saved controls onto both the state and the DOM that shows them.
 function applyControls(saved) {
-  state.aligned = saved.aligned !== false;
+  // A saved "aligned: false" is the pre-modes preference: it meant "draw the design raw" = top-left 1:1.
+  state.align = ALIGN_MODES.includes(saved.align) ? saved.align : (saved.aligned === false ? 'left' : 'anchors');
   state.showMarks = saved.showMarks !== false;
   state.showMembers = saved.showMembers !== false;
   state.single = saved.single === true;
@@ -668,12 +751,22 @@ function applyControls(saved) {
     ignore: saved.showTriaged ? saved.showTriaged.ignore === true : false,
     snooze: saved.showTriaged ? saved.showTriaged.snooze === true : false,
   };
-  applyAligned();
+  state.diff = saved.diff === true;
+  state.dim = saved.dim === true;
+  state.strobe = saved.strobe === true;
+  state.lab = ['blink', 'onion', 'swipe', 'difference'].includes(saved.lab) ? saved.lab : 'none';
+  state.labAmount = typeof saved.labAmount === 'number' ? saved.labAmount : 50;
+  applyAlignMode();
   $('marks').checked = state.showMarks;
   $('members').checked = state.showMembers;
+  $('lab-amount').value = state.labAmount;
+  for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
+    $(id).classList.toggle('on', on);
+    $(id).setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
   // No saved preference: desktop has always shown the rail beside the canvas, a phone has not.
   document.body.classList.toggle('rail-open', saved.rail === undefined ? !narrow.matches : saved.rail === true);
-  setAnnMode(saved.move === false ? 'rect' : null, true);
+  setAnnMode(saved.move === false ? 'draw' : null, true);
 }
 // The design is always shown at its true aspect, so the label reports the fit the DATA uses rather
 // than describing the picture: the reader should know the alignment is anisotropic without having
@@ -686,9 +779,33 @@ function applyAspect() {
     : '';
   $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + note + '</span>';
 }
-function applyAligned() {
-  $('aligned').classList.toggle('on', state.aligned);
-  $('aligned').setAttribute('aria-pressed', state.aligned ? 'true' : 'false');
+// What the current registration DOES, in numbers. "aligned / not aligned" never answered the
+// question a reader actually has — what did it align ON — so the control names the mode and its
+// title states both the drawn transform and the run's own fit behind it.
+const ALIGN_HINTS = {
+  anchors: 'the run fit over text matched on both sides, aspect-locked',
+  width: 'design scaled to the impl width, top-left corners together',
+  left: '1:1, top-left corners together',
+  right: '1:1, top-RIGHT corners together — for frames that differ by a left-hand rail',
+};
+function applyAlignMode() {
+  const a = projection();
+  const btn = $('align-mode');
+  $('align-label').textContent = ALIGN_LABELS[state.align];
+  btn.classList.toggle('measured', state.align === 'anchors');
+  btn.classList.toggle('manual', state.align !== 'anchors');
+  const run = report.alignment;
+  btn.title = 'align: ' + ALIGN_LABELS[state.align] + ' — ' + ALIGN_HINTS[state.align] +
+    ' · drawn x' + a.scale.toFixed(3) + ' @(' + Math.round(a.offsetX) + ', ' + Math.round(a.offsetY) + ')' +
+    ' · run fit x' + run.scale.toFixed(3) + ' @(' + Math.round(run.offsetX) + ', ' + Math.round(run.offsetY) + ')' +
+    ' confidence ' + run.confidence.toFixed(2) + (run.basis ? ' (' + run.basis + ')' : '') +
+    ' · press a to cycle';
+}
+function cycleAlign(step) {
+  const i = ALIGN_MODES.indexOf(state.align);
+  state.align = ALIGN_MODES[(i + (step || 1) + ALIGN_MODES.length) % ALIGN_MODES.length];
+  applyAlignMode(); saveControls(); applyLab();
+  if (state.userMoved) applyView(); else fit();
 }
 function updateRailToggle() {
   $('rail-toggle').setAttribute('aria-expanded', document.body.classList.contains('rail-open') ? 'true' : 'false');
@@ -698,11 +815,22 @@ function applyView() {
   const v = state.view;
   imgs.design.style.transform = designImageTransform(v, projection(), state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI);
-  // The design side carries the aspect correction so its marks stay on its image.
-  const designLayer = designLayerTransform(v, alignment(), true);
+  // The ghost is the design drawn with the FULL alignment — per-axis stretch
+  // included. The design PANE refuses that distortion on purpose (you cannot
+  // judge type against a stretched reference); superimposing needs the opposite
+  // trade, because a blink or a difference blend against a frame that does not
+  // land on the impl compares nothing. #lab-note states the stretch.
+  imgs.ghost.style.transform = designImageTransform(v, ghostAlignment(), state.dprD);
+  imgs.mask.style.transform = implImageTransform(v, state.dprI);
+  // Finding boxes and annotation shapes are baked into world space through the RUN's alignment, so
+  // the design side re-maps them onto whatever registration is being drawn — otherwise every mark
+  // but the fit's own floats off the image it annotates.
+  const designLayer = designLayerTransform(v, report.alignment, projection());
   layers.design.style.transform = designLayer;
   annLayers.design.style.transform = designLayer;
+  diffLayers.design.style.transform = designLayer;
   layers.impl.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
+  diffLayers.impl.style.transform = worldLayerTransform(v);
   for (const c of document.querySelectorAll('.marks.anns circle.ann')) c.setAttribute('r', 7 / v.z);
   for (const g of document.querySelectorAll('.marks g.lbl')) {
     g.setAttribute('transform', 'translate(' + g.dataset.x + ' ' + g.dataset.y + ') scale(' + (1 / v.z) + ')');
@@ -730,8 +858,8 @@ function renderHeader() {
     (d ? '<span class="kv">delta vs ' + esc(d.previousRun) + ': <b>+' + d.introduced.length + '</b> introduced / <b>−' + d.resolved.length + '</b> resolved</span>' : '') +
     '<span class="kv">design <b>' + esc(report.design.source) + '</b> ' + esc(report.design.ref) + ' ' + Math.round(report.design.width) + '×' + Math.round(report.design.height) + (report.design.scope ? ' · scope ' + esc(report.design.scope.mode) : '') + (q ? ' · quality ' + q.score.toFixed(2) : '') + '</span>' +
     '<span class="kv">impl <b>' + esc(report.impl.source) + '</b> ' + esc(report.impl.ref) + ' ' + report.impl.width + '×' + report.impl.height + '</span>' +
-    '<span class="kv">alignment ×' + a.scale.toFixed(3) + (a.scaleY && Math.abs(a.scaleY - a.scale) > 1e-6 ? '/' + a.scaleY.toFixed(3) : '') + ' @(' + a.offsetX.toFixed(1) + ', ' + a.offsetY.toFixed(1) + ') confidence ' + a.confidence.toFixed(2) + '</span>' +
-    '<span class="kv"><a href="' + esc(page.base) + 'findings.json">findings.json</a> · <a href="' + esc(page.base + art.overlay) + '">overlay</a>' + (art.diffMask ? ' · <a href="' + esc(page.base + art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>' +
+    '<span class="kv">alignment ×' + a.scale.toFixed(3) + (a.scaleY && Math.abs(a.scaleY - a.scale) > 1e-6 ? '/' + a.scaleY.toFixed(3) : '') + ' @(' + a.offsetX.toFixed(1) + ', ' + a.offsetY.toFixed(1) + ') confidence ' + a.confidence.toFixed(2) + (a.basis ? ' · fitted on ' + esc(a.basis) : '') + '</span>' +
+    '<span class="kv"><a href="' + esc(page.base) + 'findings.json">findings.json</a>' + (art.diffMask ? ' · <a href="' + esc(page.base + art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>' +
     '</div>';
   $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + '</span>';
   $('label-impl').innerHTML = 'Implementation <span>' + esc(report.impl.ref) + '</span>';
@@ -846,6 +974,190 @@ function renderMarks() {
     if (selected && !selected.isSuppressed) draw(selected, false);
     layer.classList.toggle('has-sel', !!state.selected);
   }
+  renderDiffs();
+  applyView();
+}
+
+// ---- diff lab -----------------------------------------------------------
+// Chromatic's reading aids (highlight the change, mute everything else, strobe
+// it, superimpose the two frames) driven by OUR channel rather than by a raw
+// pixel diff. Chromatic compares two renders of the same code, so every
+// differing pixel is signal; a comp against an implementation is rasterized at
+// a different scale, where most differing pixels are resampling residue (95.6 %
+// of one measured page pair's raw mask lay inside text). So the regions here
+// are the REPORTED ones: Finding.regions from the pixel channel, plus the
+// presence findings, which the box-scoped pixel diff structurally cannot see —
+// a whole missing illustration is never inside a matched box.
+const PRESENCE = new Set(['missing-element', 'extra-element']);
+// A region is measured in impl space; the design pane needs the same relative
+// patch of the design element (the inverse of what checks.ts did to make it).
+function toDesignRegion(f, box) {
+  if (!f.designBox || !f.implBox || !f.implBox.w || !f.implBox.h) return null;
+  const sx = f.designBox.w / f.implBox.w;
+  const sy = f.designBox.h / f.implBox.h;
+  return { x: f.designBox.x + (box.x - f.implBox.x) * sx, y: f.designBox.y + (box.y - f.implBox.y) * sy, w: box.w * sx, h: box.h * sy };
+}
+// A region that covers most of the frame locates nothing — and one always
+// exists: the backdrop element behind a dialog is a legitimate presence
+// finding whose box IS the frame. Highlighting it lights the whole pane green
+// and dimming around it dims nothing.
+const REGION_AREA_LIMIT = 0.5;
+function tooBig(box, world) {
+  const area = world.w * world.h;
+  return area > 0 && (box.w * box.h) / area > REGION_AREA_LIMIT;
+}
+function diffRegions(side) {
+  const out = [];
+  const world = worldBox();
+  for (const f of report.findings) {
+    if (!visible(f)) continue;
+    if (f.type === 'pixel-region') {
+      // Older runs carry no regions: the union box is still where it is.
+      const boxes = f.regions && f.regions.length ? f.regions : (f.implBox ? [f.implBox] : []);
+      for (const b of boxes) {
+        if (!boxInFocus(b)) continue;
+        const box = side === 'impl' ? b : toDesignRegion(f, b);
+        if (box && !tooBig(box, world)) out.push({ box: box, id: f.id });
+      }
+    } else if (PRESENCE.has(f.type)) {
+      const b = side === 'design' ? (f.designBox || f.implBox) : (f.implBox || f.designBox);
+      if (b && boxInFocus(b) && !tooBig(b, world)) out.push({ box: b, id: f.id });
+    }
+  }
+  return out;
+}
+function renderDiffs() {
+  const world = worldBox();
+  const pad = 4000;   // the dim sheet must outlast a panned view, not just the frame
+  for (const side of ['design', 'impl']) {
+    const layer = diffLayers[side];
+    layer.replaceChildren();
+    layer.classList.toggle('strobing', state.strobe && state.diff);
+    if (!state.diff) continue;
+    const regions = diffRegions(side);
+    if (state.dim) {
+      // Punch the regions out of a dark sheet: SVG masks read white as "keep".
+      const defs = document.createElementNS(SVG, 'defs');
+      const mask = document.createElementNS(SVG, 'mask');
+      const maskId = 'vc-dim-' + side;
+      mask.setAttribute('id', maskId);
+      // The mask REGION must be stated in user space too. Its default is
+      // -10%..120% of the SVG viewport, and this layer's viewport is the 1×1px
+      // box the mark layers use — so an unstated region masks everything away
+      // and the sheet renders as nothing at all.
+      mask.setAttribute('maskUnits', 'userSpaceOnUse');
+      mask.setAttribute('x', world.x - pad);
+      mask.setAttribute('y', world.y - pad);
+      mask.setAttribute('width', world.w + 2 * pad);
+      mask.setAttribute('height', world.h + 2 * pad);
+      // Inline style, not a fill ATTRIBUTE: the stylesheet's .marks rect
+      // fill:none outranks a presentation attribute, which silently makes the
+      // whole mask black — i.e. dims nothing at all.
+      const keep = rect({ x: world.x - pad, y: world.y - pad, w: world.w + 2 * pad, h: world.h + 2 * pad }, 'dim-keep', '');
+      keep.style.fill = '#fff';
+      mask.append(keep);
+      for (const r of regions) {
+        const hole = rect(r.box, 'dim-hole', r.id);
+        hole.style.fill = '#000';
+        mask.append(hole);
+      }
+      defs.append(mask);
+      const sheet = rect({ x: world.x - pad, y: world.y - pad, w: world.w + 2 * pad, h: world.h + 2 * pad }, 'dim', '');
+      sheet.setAttribute('mask', 'url(#' + maskId + ')');
+      layer.append(defs, sheet);
+    }
+    regions.forEach((r, i) => {
+      layer.append(rect(r.box, 'region' + (i === state.diffIndex ? ' cur' : ''), r.id));
+    });
+  }
+  document.body.classList.toggle('strobing-mask', state.strobe && state.diff);
+  imgs.mask.hidden = !(state.diff && report.artifacts.diffMask);
+  renderLabNote();
+}
+function renderLabNote() {
+  const note = $('lab-note');
+  const stretch = aspectStretch(report.alignment);
+  const off = Math.abs(stretch - 1) >= 0.02;
+  // The superimposed design is drawn with the run's FULL fit, stretch included:
+  // blink and difference are meaningless unless the two frames land on each
+  // other. That distortion is exactly what the design PANE refuses to show, so
+  // it has to be stated here rather than left for the eye to misread.
+  if (state.lab !== 'none' && off) {
+    note.className = 'labnote warn';
+    note.textContent = 'design stretched ' + (stretch > 1 ? '+' : '') + Math.round((stretch - 1) * 100) + '% vertically to superimpose';
+    return;
+  }
+  note.className = 'labnote';
+  if (!state.diff) { note.textContent = ''; return; }
+  const n = diffRegions('impl').length;
+  note.textContent = state.diffIndex >= 0 && n
+    ? 'diff region ' + (state.diffIndex + 1) + ' of ' + n
+    : n + (n === 1 ? ' diff region' : ' diff regions');
+}
+function setDiff(on) {
+  state.diff = on;
+  if (!on) { state.diffIndex = -1; setStrobe(false, true); }
+  $('diff-toggle').classList.toggle('on', on);
+  $('diff-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
+  saveControls(); renderDiffs(); applyView();
+}
+function setDim(on) {
+  state.dim = on;
+  $('dim-toggle').classList.toggle('on', on);
+  $('dim-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
+  // Dimming with nothing highlighted is a black screen, so it turns Diff on.
+  if (on && !state.diff) { setDiff(true); return; }
+  saveControls(); renderDiffs(); applyView();
+}
+function setStrobe(on, quiet) {
+  state.strobe = on;
+  $('strobe-toggle').classList.toggle('on', on);
+  $('strobe-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (on && !state.diff) { setDiff(true); return; }
+  if (!quiet) saveControls();
+  renderDiffs();
+}
+function stepDiff(delta) {
+  const regions = diffRegions('impl');
+  if (!regions.length) return;
+  state.diffIndex = (state.diffIndex + delta + regions.length) % regions.length;
+  const r = regions[state.diffIndex];
+  if (!state.diff) setDiff(true);
+  select(r.id, false);
+  const box = { x: r.box.x - 24, y: r.box.y - 24, w: r.box.w + 48, h: r.box.h + 48 };
+  state.view = focusView(box, paneSize(), state.view, 1);
+  state.userMoved = true;
+  renderDiffs(); applyView();
+}
+// ---- superimposition modes ----------------------------------------------
+let blinkTimer = null;
+function setLab(mode) {
+  state.lab = mode;
+  $('lab-mode').value = mode;
+  $('lab-amount').hidden = !(mode === 'onion' || mode === 'swipe');
+  // Only the impl pane carries the ghost, so a phone (or a chosen single view)
+  // showing the design side would put the controls on a pane that cannot react.
+  if (mode !== 'none' && single() && state.side !== 'impl') setSide('impl');
+  saveControls(); applyLab();
+}
+function applyLab() {
+  clearInterval(blinkTimer); blinkTimer = null;
+  const ghost = imgs.ghost;
+  const wrap = $('ghost-wrap');
+  ghost.classList.toggle('difference', state.lab === 'difference');
+  wrap.style.width = '100%';
+  if (state.lab === 'none') { ghost.style.opacity = 0; }
+  else if (state.lab === 'onion') { ghost.style.opacity = state.labAmount / 100; }
+  else if (state.lab === 'difference') { ghost.style.opacity = 1; }
+  else if (state.lab === 'swipe') { ghost.style.opacity = 1; wrap.style.width = state.labAmount + '%'; }
+  else if (state.lab === 'blink') {
+    // The blink comparator: the eye is far better at spotting a thing that
+    // MOVES between two frames than a thing that is slightly wrong in one.
+    let on = true;
+    ghost.style.opacity = 1;
+    blinkTimer = setInterval(() => { on = !on; ghost.style.opacity = on ? 1 : 0; }, 620);
+  }
+  renderLabNote();
   applyView();
 }
 
@@ -885,10 +1197,17 @@ function triageHtml(f) {
   const button = (value, label) =>
     '<button data-triage="' + value + '" class="verdict-btn ' + value + (verdict === value ? ' on' : '') + '">' + label + '</button>';
   const until = entry && entry.snoozeUntil && verdict === 'snooze' ? ' <span class="kv">until ' + esc(entry.snoozeUntil.slice(0, 10)) + '</span>' : '';
+  // An "ignore" only hides the finding from THIS view; the next run reports it
+  // again. Saying so here is the difference between a decision that sticks and
+  // one that is re-taken every run — and the note is what becomes its reason,
+  // so an empty one is refused at harvest time.
+  const stick = verdict === 'ignore'
+    ? '<div class="meta">hidden here only — <code>visual-compare accept ' + esc(report.pair) + '</code> turns this into a policy rule that suppresses it in every run (and lapses if the measurement changes). Needs the note below.</div>'
+    : '';
   return '<div class="triage"><div class="actions">' +
     button('fix', 'To fix') + button('ignore', 'Ignore') + button('snooze', 'Snooze') +
     (verdict ? '<button data-triage="clear">Clear</button>' : '') + until +
-    '</div><textarea id="triage-note" placeholder="why — stored with the verdict, read by the fix loop">' + esc(entry ? entry.note : '') + '</textarea></div>';
+    '</div><textarea id="triage-note" placeholder="why — stored with the verdict, read by the fix loop">' + esc(entry ? entry.note : '') + '</textarea>' + stick + '</div>';
 }
 
 function select(id, focus) {
@@ -983,8 +1302,7 @@ function wire() {
     b.setAttribute('aria-expanded', document.body.classList.toggle('hdr-open') ? 'true' : 'false');
   });
   narrow.addEventListener('change', () => { applyLayout(); applySide(); if (state.userMoved) applyView(); else fit(); });
-  $('ann-point').addEventListener('click', () => setAnnMode(ann.mode === 'point' ? null : 'point'));
-  $('ann-rect').addEventListener('click', () => setAnnMode(ann.mode === 'rect' ? null : 'rect'));
+  $('ann-draw').addEventListener('click', () => setAnnMode(ann.mode ? null : 'draw'));
   $('ann-list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) selectAnn(row.dataset.ann === ann.selected ? null : row.dataset.ann, true); });
   $('detail').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) annAction(b.dataset.act, b.dataset.ann); });
   $('list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
@@ -999,21 +1317,36 @@ function wire() {
   $('zoom-in').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
   $('zoom-out').addEventListener('click', () => { const p = paneSize(); state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); });
   $('fit').addEventListener('click', fit);
-  $('aligned').addEventListener('click', () => {
-    state.aligned = !state.aligned; applyAligned(); saveControls();
-    if (state.userMoved) applyView(); else fit();
-  });
+  $('align-mode').addEventListener('click', (e) => cycleAlign(e.shiftKey ? -1 : 1));
   $('marks').addEventListener('change', (e) => { state.showMarks = e.target.checked; saveControls(); renderMarks(); });
   $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; saveControls(); renderMarks(); });
+  $('diff-toggle').addEventListener('click', () => setDiff(!state.diff));
+  $('dim-toggle').addEventListener('click', () => setDim(!state.dim));
+  $('strobe-toggle').addEventListener('click', () => setStrobe(!state.strobe));
+  $('lab-mode').addEventListener('change', (e) => setLab(e.target.value));
+  $('lab-amount').addEventListener('input', (e) => { state.labAmount = Number(e.target.value); saveControls(); applyLab(); });
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') { e.target.blur(); } return; }
     const p = paneSize();
     if (e.key === '+' || e.key === '=') { state.view = zoomAt(state.view, 1.25, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
     else if (e.key === '-') { state.view = zoomAt(state.view, 0.8, p.w / 2, p.h / 2); state.userMoved = true; applyView(); }
     else if (e.key === '0') fit();
-    else if (e.key === 'n') setAnnMode(ann.mode === 'point' ? null : 'point');
-    else if (e.key === 'r') setAnnMode(ann.mode === 'rect' ? null : 'rect');
-    else if (e.key === 'Escape') { if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); } else select(null, false); }
+    else if (e.key === 'n' || e.key === 'r') setAnnMode(ann.mode ? null : 'draw');
+    else if (e.key === 'a' || e.key === 'A') cycleAlign(e.key === 'A' ? -1 : 1);
+    else if (e.key === 'd') setDiff(!state.diff);
+    else if (e.key === 'g') setDim(!state.dim);
+    else if (e.key === 's') setStrobe(!state.strobe);
+    else if (e.key === 'b') setLab(state.lab === 'blink' ? 'none' : 'blink');
+    else if (e.key === 'o') setLab(state.lab === 'onion' ? 'none' : 'onion');
+    else if (e.key === 'w') setLab(state.lab === 'swipe' ? 'none' : 'swipe');
+    else if (e.key === 'x') setLab(state.lab === 'difference' ? 'none' : 'difference');
+    else if (e.key === ']') stepDiff(1);
+    else if (e.key === '[') stepDiff(-1);
+    else if (e.key === 'Escape') {
+      if (state.lab !== 'none') setLab('none');
+      else if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); }
+      else select(null, false);
+    }
     else if (e.key === 'j' || e.key === 'k') {
       const kept = report.findings.filter(visible); if (!kept.length) return;
       const i = kept.findIndex((f) => f.id === state.selected);
@@ -1032,13 +1365,15 @@ function wire() {
 const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 function setAnnStatus(text, isError) { ann.status = text; const el = $('ann-status'); el.textContent = text; el.className = 'annstatus' + (isError ? ' err' : ''); }
+// One annotate mode, not two: the gesture already said which shape was meant — a click is a note on
+// the element under it, a drag is a region — so a second button only made you declare it twice.
 function setAnnMode(mode, sticky) {
   ann.mode = mode;
   // A sticky mode survives drawing a shape: the corner toggle stays in
-  // annotate until it is switched back, the desktop buttons are one-shot.
+  // annotate until it is switched back, the desktop button is one-shot.
   ann.sticky = !!mode && !!sticky;
   state.move = !mode;
-  $('ann-point').classList.toggle('on', mode === 'point'); $('ann-rect').classList.toggle('on', mode === 'rect');
+  $('ann-draw').classList.toggle('on', !!mode);
   for (const pane of Object.values(panes)) pane.classList.toggle('annotating', !!mode);
   document.body.classList.toggle('ann-mode', !!mode);
   $('move-toggle').setAttribute('aria-pressed', mode ? 'false' : 'true');
@@ -1062,7 +1397,15 @@ function persist() {
 function replaceAnn(next) { ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.map((a) => (a.id === next.id ? next : a)) }); }
 function annIndex(id) { return ann.set.annotations.findIndex((a) => a.id === id); }
 
-function paneWorld(pane, e) { const r = pane.getBoundingClientRect(); return screenToWorld(state.view, e.clientX - r.left, e.clientY - r.top); }
+// A pointer lands on what is DRAWN; shapes are stored in RUN world space (the space the finding
+// boxes use), and on the design side those two differ by the registration re-map. Without the
+// inverse, a note drawn on a design pane under any non-fit alignment saved itself somewhere else —
+// the mark reappeared offset from the thing it was pointing at.
+function paneWorld(pane, e) {
+  const r = pane.getBoundingClientRect();
+  const p = screenToWorld(state.view, e.clientX - r.left, e.clientY - r.top);
+  return pane.dataset.side === 'design' ? worldFromShown(p, report.alignment, projection()) : p;
+}
 function annPointerDown(pane, e) {
   // A sticky mode keeps drawing after each shape, so an unsaved draft with
   // text in it must not be thrown away by the next tap.
@@ -1074,13 +1417,17 @@ function annPointerDown(pane, e) {
   renderAnnMarks();
 }
 function annPointerMove(pane, e) { ann.band.end = paneWorld(pane, e); renderAnnMarks(); }
+// Click or drag — the one thing that decides which SHAPE the gesture meant, so the preview and the
+// saved annotation can never disagree. The threshold is in SCREEN px: at a fit-to-phone zoom a
+// 3-world-px wobble is under two real pixels, which turned taps into slivers of a region.
+function dragged(b) {
+  return Math.abs(b.end.x - b.start.x) * state.view.z >= 10 && Math.abs(b.end.y - b.start.y) * state.view.z >= 10;
+}
 function annPointerUp(pane, e) {
   const b = ann.band; ann.band = null; ann.suppressClick = true;
   const x = Math.min(b.start.x, b.end.x), y = Math.min(b.start.y, b.end.y), w = Math.abs(b.end.x - b.start.x), h = Math.abs(b.end.y - b.start.y);
-  // The threshold is in SCREEN px: at a fit-to-phone zoom a 3-world-px wobble
-  // is under two real pixels, which turned taps into slivers of a region.
-  const drawn = w * state.view.z >= 10 && h * state.view.z >= 10;
-  const shape = ann.mode === 'rect' && drawn ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
+  const drawn = dragged(b);
+  const shape = drawn ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
   ann.draft = { side: b.side, shape, anchor: anchorFor(shape, ann.elements[b.side]) };
   ann.selected = null; state.selected = null;
   if (!ann.sticky) setAnnMode(null);
@@ -1157,7 +1504,9 @@ function renderAnnMarks() {
     });
     const live = ann.band && ann.band.side === side ? ann.band : null;
     const d = ann.draft && ann.draft.side === side ? ann.draft : null;
-    if (live && ann.mode === 'rect') {
+    // The band appears the moment the gesture becomes a drag — that IS the feedback telling you
+    // this one is a region and not a note; a click never flashes a sliver of one.
+    if (live && dragged(live)) {
       const r = document.createElementNS(SVG, 'rect');
       r.setAttribute('x', Math.min(live.start.x, live.end.x)); r.setAttribute('y', Math.min(live.start.y, live.end.y));
       r.setAttribute('width', Math.abs(live.end.x - live.start.x)); r.setAttribute('height', Math.abs(live.end.y - live.start.y)); r.setAttribute('class', 'band'); layer.append(r);
@@ -1232,6 +1581,7 @@ function openReport(reportData, annotationSet, pageData) {
   state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = '';
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; focusBand = null; focusDrag = null;
+  state.diffIndex = -1;
   document.body.classList.remove('has-detail', 'ann-mode', 'hdr-open');
   $('q').value = '';
   applyControls(readControls());
@@ -1246,6 +1596,10 @@ function openReport(reportData, annotationSet, pageData) {
     loadElements(),
     loadTriage(),
     loadFocus(),
+    // The ghost is the same PNG as the design pane's, drawn with a different
+    // transform; the mask exists only when the pixel channel reported.
+    loadImage(imgs.ghost, page.base + report.artifacts.designPng),
+    report.artifacts.diffMask ? loadImage(imgs.mask, page.base + report.artifacts.diffMask) : Promise.resolve(false),
   ]).then(([okD, okI]) => {
     // DPR = PNG native px per CAPTURE CSS px; a missing image keeps 1. The
     // design side cannot infer it from report.design.width — see
@@ -1254,6 +1608,7 @@ function openReport(reportData, annotationSet, pageData) {
     state.dprI = okI ? (report.impl.dpr || imgs.impl.naturalWidth / report.impl.width) : 1;
     if (!okD) $('label-design').textContent += ' — image missing';
     if (!okI) $('label-impl').textContent += ' — image missing';
+    setLab(state.lab);
     renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderRailToggle(); renderDetail(); fit();
   });
 }
