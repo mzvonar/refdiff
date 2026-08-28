@@ -14,7 +14,8 @@ Dogfooding: the annotator app IS the implementation under test, the comps in
 | --- | --- |
 | how faithful | **Full adoption** — build the comps' affordances for real, AND keep every feature the annotator already has. Nothing gets dropped to make a finding go away. |
 | fonts / icons | **Self-host** IBM Plex Sans + IBM Plex Mono + a subsetted Material Symbols Outlined as woff2 under `packages/annotator/assets/`, served on a `/fonts/` route. The app must look right offline; the comps do not (they hydrate from unpkg + Google Fonts) but the app is not allowed that excuse. |
-| fixture data | **Build a matching demo out root** (`out/demo/`) whose run dirs mirror the comps' demo data exactly, and point the manifest at it. Without shared text there are no alignment anchors, and every position/size finding is noise. |
+| fixture data | **Build a matching demo out root** whose run dirs mirror the comps' demo data exactly, and point the manifest at it. Without shared text there are no alignment anchors, and every position/size finding is noise. |
+| where the fixture lives | **`fixtures/demo-root/`**, NOT `out/demo/` (corrected 2026-08-28). `.gitignore:9` ignores `out/` wholesale — "comparison run artifacts (never commit captures/diffs)" — so a fixture under `out/` could never be committed and would never reach another machine. Keeping the ignore rule absolute also keeps it meaningful: nothing under `out/` is ever source. |
 | features the comps never drew | listed in "Design gaps" below — Mato updates the design; the phase that needs one stops and asks rather than inventing. |
 
 ## Baseline (2026-08-28, before any redesign work)
@@ -32,6 +33,13 @@ Total 1398 findings / 1584 instances, 0 suppressed. **Confidence 0.00 on all
 four** — there are almost no unique text anchors shared between comp and app,
 so today's `position` / `size` findings carry no information. Phase 0 exists to
 fix that before anything is "improved".
+
+The run dirs behind these numbers live under `out/`, which is gitignored — the
+baseline is REPRODUCIBLE ONLY ON THE MACHINE THAT RAN IT, and the table above is
+the durable record. Do not try to regenerate it on another machine: phase 0
+changes the served root, so phase 0's "after" is measured against the fixture
+root and is not comparable to this table anyway. Compare within a phase, not
+across phase 0.
 
 Top causes at baseline (`summary.md`): 323 critical `missing-element` and 614
 major `extra-element` on text — overwhelmingly the comps' demo copy vs the
@@ -63,7 +71,7 @@ app's real run dirs, i.e. DATA, not drift. 6+ `typography` causes are the
 
 ```bash
 pnpm dev                                                   # keep running
-refdiff-annotator out/demo --serve --port 7378 &           # the impl under test
+refdiff-annotator fixtures/demo-root --serve --port 7378 &  # the impl under test
 refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
   --app-url http://127.0.0.1:7378 --out out/refdiff
 refdiff summary out/refdiff
@@ -80,12 +88,15 @@ Network + servers need the Bash sandbox disabled (handoff "Env gotchas").
 dirs. Give the app the same content the comp draws and the alignment gets real
 anchors.
 
-Build `out/demo/` — a committed fixture out root, separate from `out/` where
-real results land (this also kills the bindings' "card count changes with every
-run" trap, because the served root stops being the results root).
+Build `fixtures/demo-root/` — a COMMITTED fixture out root, separate from
+`out/` where real results land (this also kills the bindings' "card count
+changes with every run" trap, because the served root stops being the results
+root). It must not live under `out/`: that path is gitignored as run artifacts,
+so a fixture there would be uncommittable and invisible to every other machine.
 
-- A generator `design/refdiff/make-demo-root.mjs` (pure-ish, effects at the
-  edge) that writes `out/demo/<slug>/` for each of the comps' 11 Library items:
+- A generator `fixtures/make-demo-root.mjs` (pure-ish, effects at the
+  edge) that writes `fixtures/demo-root/<slug>/` for each of the comps' Library
+  items:
   `doc`, `selfie`, `review`, `button`, `card`, `stepper`, `login`, `dash`,
   `detail`, `modal`, `errors` — names, routes, severity counts, comment counts
   and "when" exactly as `RefDiff Library.dc.html`'s `ITEMS`.
@@ -113,9 +124,16 @@ run" trap, because the served root stops being the results root).
 
 Then: repoint `design/refdiff.manifest.mjs` — `COMPARE_ROUTE =
 "/#/onboarding-document-step"` — and update `refdiff.bindings.md` (impl is now
-`refdiff-annotator out/demo --serve`; the results root `out/refdiff` is no
-longer served, so drop the trap note and add "the demo root is a committed
-fixture; regenerate with `node design/refdiff/make-demo-root.mjs`").
+`refdiff-annotator fixtures/demo-root --serve`; the results root `out/refdiff`
+is no longer served, so drop the trap note and add "the demo root is a
+committed fixture; regenerate with `node fixtures/make-demo-root.mjs`").
+
+NOTE the comps hardcode `ROOT = '~/Development/refdiff/out/demo'` in the error
+state's copy. That costs nothing: the error box only renders when `loadState`
+is `server`/`endpoint`, and the prop defaults to `ready`, so the captured comp
+never shows that string. It also means **the error states, like the light
+theme, ship UNMEASURED** — `DcHtmlSource` cannot set a prop when capturing
+(see gap 20). Build them from the spec in section C; do not expect a number.
 
 **Exit:** the measure step run, numbers recorded here, and **alignment
 confidence above 0.5 on at least the two compare pairs** (or, if not, the
@@ -448,7 +466,9 @@ by where they surface.
   3. the canvas mark: a red halo (`box-shadow 0 0 0 3px rgba(229,72,77,.6)`);
   4. the mobile rail summary gains "· N unsaved", so it shows through a
      COLLAPSED rail.
-  IMPLEMENTATION NOTES: the comp's sample detail reads `PUT /api/comments 403`
+  IMPLEMENTATION NOTES: like the error states, this cannot be captured (no prop
+  support), so it ships unmeasured — build it from this spec. The comp's sample
+  detail reads `PUT /api/comments 403`
   — the real endpoints are `PUT /api/pairs/<dir>/annotations` (and `/triage`,
   `/focus`), so show the REAL one, never the demo string. And the design marks
   only comments; **triage verdicts and the focus region also `PUT`** and can

@@ -1,5 +1,10 @@
 # refdiff bindings — this repo (dogfooding the annotator redesign)
 
+> **Being rewritten by the redesign.** `docs/plan-annotator-redesign.md` phase 0
+> moves the impl under test from the live `out/` root to the committed fixture
+> root `fixtures/demo-root/`. Until that phase lands, the table below still
+> describes the OLD setup — trust the plan over this file where they disagree.
+
 The annotator (`packages/annotator`) is redesigned against the **RefDiff** comps
 and measured with this repo's own CLI.
 
