@@ -115,6 +115,8 @@ ${APP_BOOT}
 const APP_BOOT = String.raw`
 let pairs = [];
 let currentPair = null;
+// From /api/pairs: a --read-only server refuses every PUT, and the report's rail says so up front.
+let serverReadOnly = false;
 const MOBILE_BREAKPOINT = 640;
 const RETRY_SECS = 30;
 // Library state. The filter survives opening a pair and coming back; the
@@ -217,6 +219,7 @@ async function loadPairs() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const body = await res.json();
     pairs = sortEntries(body.pairs || []);
+    serverReadOnly = body.readOnly === true;
     if (body.root) document.title = 'refdiff — ' + body.root;
     clearListError();
   } catch (e) {
@@ -242,6 +245,7 @@ async function openPair(dir) {
       annotationsUrl: 'api/pairs/' + encodeURIComponent(dir) + '/annotations',
       triageUrl: 'api/pairs/' + encodeURIComponent(dir) + '/triage',
       focusUrl: 'api/pairs/' + encodeURIComponent(dir) + '/focus',
+      readOnly: serverReadOnly,
     });
   } catch (e) {
     currentPair = null;

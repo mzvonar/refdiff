@@ -664,7 +664,7 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
 // dir is one path segment down.
 export const CLIENT = String.raw`
 let report = null;
-let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations' };
+let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations', readOnly: false };
 const $ = (id) => document.getElementById(id);
 
 // iOS Safari ignores user-scalable=no, so page pinch-zoom has to be refused
@@ -790,7 +790,7 @@ function persistTriage() {
         const res = await fetch(page.triageUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
         if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
         triage.saveError = null; triage.unsaved.clear();
-      } catch (e) { triage.saveError = 'PUT ' + page.triageUrl + ' · ' + e.message; }
+      } catch (e) { triage.saveError = saveErrorText(!!page.readOnly, page.triageUrl, e.message); }
     } else {
       try { localStorage.setItem('vc-triage:' + report.pair, body); triage.saveError = null; triage.unsaved.clear(); }
       catch (e) { triage.saveError = 'localStorage · ' + e.message; }
@@ -852,7 +852,7 @@ function persistFocus() {
       const res = await fetch(page.focusUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
       if (!res.ok) throw new Error(res.status);
       focusSaveError = null;
-    } catch (e) { focusSaveError = 'PUT ' + page.focusUrl + ' · ' + e.message; }
+    } catch (e) { focusSaveError = saveErrorText(!!page.readOnly, page.focusUrl, e.message); }
     renderRailStatus();
   }, 250);
 }
@@ -1348,17 +1348,20 @@ function renderRailSummary() {
   $('rail-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
   $('rail-toggle').querySelector('.chev').textContent = open ? 'expand_more' : 'expand_less';
 }
+// A failed PUT shows its endpoint and status on the rows it lost (section C); on a --read-only
+// server it shows the refusal in the app's words — on the first save attempted, never up front,
+// so the measured DOM stays identical to the writable app.
 function renderRailStatus() {
-  const parts = [];
-  if (ann.saveError) parts.push('comments not saved · ' + ann.saveError);
-  if (triage.saveError) parts.push('triage not saved · ' + triage.saveError);
-  if (focusSaveError) parts.push('focus not saved · ' + focusSaveError);
-  const err = parts.length > 0;
-  if (!err && ann.storage !== 'api') parts.push('not served — notes stay in this browser; serve the run dir (--serve) to persist them to annotations.json');
+  const errors = [];
+  if (ann.saveError) errors.push('comments not saved · ' + ann.saveError);
+  if (triage.saveError) errors.push('triage not saved · ' + triage.saveError);
+  if (focusSaveError) errors.push('focus not saved · ' + focusSaveError);
+  const err = errors.length > 0;
+  const text = railStatusLine(errors, ann.storage);
   const el = $('rail-status');
-  el.hidden = parts.length === 0;
+  el.hidden = text.length === 0;
   el.className = 'rail-status' + (err ? ' err' : '');
-  el.textContent = parts.join(' · ');
+  el.textContent = text;
 }
 function renderRail() {
   const kept = report.findings.filter(visible);
@@ -1916,7 +1919,7 @@ function persist() {
         const res = await fetch(page.annotationsUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
         if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
         ann.saveError = null; ann.unsaved.clear();
-      } catch (e) { ann.saveError = 'PUT ' + page.annotationsUrl + ' · ' + e.message; }
+      } catch (e) { ann.saveError = saveErrorText(!!page.readOnly, page.annotationsUrl, e.message); }
     } else {
       try { localStorage.setItem('vc-annotations:' + report.pair, body); ann.saveError = null; ann.unsaved.clear(); }
       catch (e) { ann.saveError = 'localStorage · ' + e.message; }
@@ -2054,7 +2057,7 @@ let wired = false;
 // shell, so every piece of per-pair state is reset here, not at load.
 function openReport(reportData, annotationSet, pageData) {
   report = reportData;
-  page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null }, pageData || {});
+  page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null, readOnly: false }, pageData || {});
   byId = new Map(report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s))).map((f) => [f.id, f]));
   ann.set = annotationSet || { version: 1, pair: report.pair, annotations: [] };
   ann.mode = null; ann.draft = null; ann.draftText = ''; ann.selected = null; ann.band = null; ann.sticky = false;

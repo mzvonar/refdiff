@@ -101,6 +101,33 @@ export function railSummary(findings: number, comments: number, unsaved = 0): st
 }
 
 /**
+ * What a refused save on a read-only server says. Shown on the FIRST write the
+ * viewer attempts, never up front: an announcement would be an element the
+ * comp does not draw, shifting the rail under a measurement — the one thing
+ * `--read-only` exists to keep identical to the writable app (measured: +6
+ * findings on the compare pair with an up-front line).
+ */
+export const READ_ONLY_STATUS =
+  "read-only server (--read-only) — not saved; serve without --read-only to persist notes, verdicts and regions"
+
+/**
+ * The rail's status line: failed saves first (each names its endpoint, or the
+ * read-only refusal), then the one standing condition — no server at all
+ * (notes stay in this browser). Empty when there is nothing to say.
+ */
+export function railStatusLine(errors: readonly string[], storage: string): string {
+  const parts = [...errors]
+  if (parts.length === 0 && storage !== "api")
+    parts.push("not served — notes stay in this browser; serve the run dir (--serve) to persist them to annotations.json")
+  return parts.join(" · ")
+}
+
+/** The save error to show for a failed write: the read-only refusal in the app's words, else the endpoint + status. */
+export function saveErrorText(readOnly: boolean, endpoint: string, message: string): string {
+  return readOnly ? READ_ONLY_STATUS : "PUT " + endpoint + " · " + message
+}
+
+/**
  * The instance chip above the findings (gap 12): the comps' `Primary only · N`
  * / `All instances · M`, where M counts every place an aggregate repeats.
  * `instances` on a refdiff finding is the total number of members, primary

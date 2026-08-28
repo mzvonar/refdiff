@@ -32,3 +32,15 @@ its N entries are not comparable" and drop them visibly rather than cry
 wolf. Route: `docs/architecture.md` Open decisions (small feature), or
 discard if the churn stays rare.
 
+## 2026-08-28 — anything the served app shows for the harness's sake is measured (session 13, item 16)
+
+The first `--read-only` announced itself in the rail's status line up front.
+The measure said so: compare-desktop 32 → 37 (+6, R3) — the line is an element
+the comp does not draw, and it pushed every rail row under it. Rule: a
+measured impl must render EXACTLY what the writable/production app renders;
+harness-only affordances (a read-only banner, a debug chip, a build stamp)
+either appear only on interaction (the refusal now shows on the first save
+attempted) or go into the comp too. Route: `docs/architecture.md` Open
+decisions (one line under the annotator) and the refdiff skill's pre-flight
+if it recurs in a consuming repo.
+

@@ -32,6 +32,11 @@ describe("renderAppShell", () => {
     expect(html).toContain("window.addEventListener('hashchange', route)")
   })
 
+  it("carries the server's read-only flag from /api/pairs into the opened report", () => {
+    expect(html).toContain("serverReadOnly = body.readOnly === true")
+    expect(html).toContain("readOnly: serverReadOnly")
+  })
+
   it("loads a pair's data from its own directory, and its notes from the pair API", () => {
     expect(html).toContain("fetch(base + 'findings.json')")
     expect(html).toContain(

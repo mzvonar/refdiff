@@ -273,7 +273,7 @@ describe("renderReport", () => {
     expect(html).toContain("if (a.reply) h += '<div class=\"ireply\"")
     expect(html).toContain("const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };")
     // A failed save (section C): the row, the endpoint, Retry, the halo on the canvas badge, the summary.
-    expect(html).toContain("ann.saveError = 'PUT ' + page.annotationsUrl + ' · ' + e.message;")
+    expect(html).toContain("ann.saveError = saveErrorText(!!page.readOnly, page.annotationsUrl, e.message);")
     expect(html).toContain('<span class="t">Not saved</span>')
     expect(html).toContain(".vmark.ann.unsaved { box-shadow:0 0 0 3px rgba(229,72,77,.6)")
     expect(html).toContain("railSummary(report.findings.filter(visible).length, visibleItems().length, ann.saveError ? ann.unsaved.size : 0)")

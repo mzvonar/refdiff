@@ -522,6 +522,15 @@ items is now a typed finding — read it there:
 The repo's `refdiff.bindings.md` holds the specifics; these are the
 failure shapes that recur everywhere and impersonate product bugs.
 
+- **The served annotator WRITES into what it serves.** `refdiff-annotator
+  <root> --serve` persists every note, verdict and focus region into the run
+  dir (`annotations.json` / `triage.json` / `focus.json` + digests). When
+  the served root is a committed fixture, or the impl a `compare` run is
+  measuring, serve it `--read-only`: every PUT is refused with 405, the
+  page is otherwise identical (the rail names the refusal only on the first
+  save attempted), and the measure is of the tree you committed.
+  Review sessions that must save notes serve without the flag, on another
+  port.
 - **A cold route can blow the 30 s navigation budget.** A dev server compiling a
   route on first hit fails as `navigation-failed` / `Timeout 30000ms exceeded`,
   which reads exactly like a broken page. Warm the route once (`curl -L`), then

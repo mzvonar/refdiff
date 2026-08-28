@@ -447,6 +447,12 @@ regenerate before anyone could see it, and N copies went stale independently.
 `--serve` now ships ONE shell (markup + CSS + client, from memory) and loads
 data at request time: `GET /api/pairs` summarises every run dir, `#/<pair>`
 fetches `<pair>/findings.json`, notes ride on `/api/pairs/<pair>/annotations`.
+`--serve --read-only` (pure `read-only.ts`, harness item 16) refuses every
+write under `/api/` with 405 and flags `readOnly` on `/api/pairs`, so a
+refused save reads as the app's own sentence; nothing is announced up front
+(an extra rail line measured as +6 findings) — the served page stays
+identical to the writable app, for a committed fixture or an impl under
+measurement, which the writable server used to dirty.
 A run dir whose `findings.json` cannot be read (cut off mid-write, not a
 report) is listed as `{ dir, broken: true, reason }` and drawn as a degraded
 card — never dropped from the list, never a 500 for the whole set

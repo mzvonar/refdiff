@@ -16,5 +16,8 @@ singleton = true
 # the annotator serving the committed demo root. 7378 is the CLI default, but
 # another worktree's annotator may hold it — svc hands out the next free port
 # via $PORT, and the manifest run passes that as --app-url.
-cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --port ${PORT:-7378}'"
+# --read-only: this instance is the impl under MEASUREMENT (a committed fixture);
+# the app must not write annotations/triage/focus into it. A review session that
+# needs to save notes runs its own instance without the flag on another port.
+cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --read-only --port ${PORT:-7378}'"
 port_base = 7378

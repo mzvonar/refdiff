@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { aggregateCount, formatValue, instanceChipLabel, propRows, railSummary, SUPPRESSED_LABEL } from "../src/rail.js"
+import { aggregateCount, formatValue, instanceChipLabel, propRows, railStatusLine, railSummary, READ_ONLY_STATUS, saveErrorText, SUPPRESSED_LABEL } from "../src/rail.js"
 
 describe("propRows — the comps' `prop expected → actual` line from a finding's values", () => {
   it("prints one row per differing key, in CSS spelling, with px on the px keys", () => {
@@ -53,3 +53,17 @@ describe("rail summary + instance chip", () => {
     expect(SUPPRESSED_LABEL(3)).toBe("3 suppressed by policy rules")
   })
 })
+
+describe("railStatusLine / saveErrorText — a read-only server says so on the first save, never up front", () => {
+  it("stays silent on a served run until a save fails: an announcement would shift the rail under a measurement", () => {
+    expect(railStatusLine([], "api")).toBe("")
+    expect(railStatusLine([], "local")).toContain("not served")
+    expect(railStatusLine(["comments not saved · " + READ_ONLY_STATUS], "local")).toBe("comments not saved · " + READ_ONLY_STATUS)
+  })
+
+  it("names the read-only refusal in the app's words instead of the raw 405, and the endpoint otherwise", () => {
+    expect(saveErrorText(true, "api/pairs/p/annotations", '405 {"error":"…"}')).toBe(READ_ONLY_STATUS)
+    expect(saveErrorText(false, "api/pairs/p/annotations", "500 boom")).toBe("PUT api/pairs/p/annotations · 500 boom")
+  })
+})
+

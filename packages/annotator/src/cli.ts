@@ -3,7 +3,7 @@
  * refdiff-annotator — human view of a comparison run + the annotation
  * loop back to the agent.
  *
- *   refdiff-annotator <run-dir|out-root> [--out report.html] [--serve] [--port 7378]
+ *   refdiff-annotator <run-dir|out-root> [--out report.html] [--serve [--read-only]] [--port 7378]
  *                                      [--host 0.0.0.0] [--mark-implemented <id,…|all> [--reply <text>]] [--digest]
  *
  * Reads <run-dir>/findings.json (a ComparisonReport written by `refdiff
@@ -52,6 +52,7 @@ import {
   type AnnotationSet,
 } from "./annotations.js"
 import { renderAppShell } from "./app-shell.js"
+import { readOnlyRefusal } from "./read-only.js"
 import { type BrokenPair, type PairSummary } from "./index-view.js"
 import { fontFile } from "./fonts.js"
 import { renderReport } from "./render.js"
@@ -99,6 +100,11 @@ Options:
   --emit           write the self-contained report.html files (and index.html
                    for a set) — the default when not serving. Needed only to
                    read a report off disk with no server
+  --read-only      with --serve: refuse every write (PUT → 405) so the served
+                   root cannot change under a measurement — serve a committed
+                   fixture, or the thing you are comparing, with this on. The
+                   page is otherwise identical to the writable app; the rail's
+                   status line names the refusal on the first save attempted
   --port <n>       port for --serve (default 7378)
   --host <addr>    bind address for --serve (default 127.0.0.1; 0.0.0.0 for
                    other devices on the network)
@@ -313,7 +319,10 @@ interface AppApiOptions {
   /** A lone run dir is served AS the root, so its artifacts sit at `/`. */
   single: boolean
   shell: string
+  /** `--read-only`: refuse every write; the served root is under measurement or committed. */
+  readOnly?: boolean
 }
+
 
 /**
  * The app's server half. Everything is read from disk per request, so a
@@ -325,6 +334,8 @@ interface AppApiOptions {
  *   GET  /api/pairs/<dir>/annotations
  *   PUT  /api/pairs/<dir>/annotations  validate, persist atomically, refresh digest
  *
+ * With `readOnly` every non-GET under /api/ is refused with 405 before any
+ * endpoint runs, and /api/pairs carries `readOnly: true` for the rail.
  * Anything else falls through to static serving of the root.
  */
 /** `assets/fonts/` sits beside `dist/`, where this module runs from. */
@@ -347,7 +358,17 @@ function appApi(options: AppApiOptions) {
       return true
     }
     if (path === "/api/pairs") {
-      sendJson(res, 200, { root: options.root, pairs: await summarisePairs(options) })
+      sendJson(res, 200, {
+        root: options.root,
+        pairs: await summarisePairs(options),
+        ...(options.readOnly ? { readOnly: true } : {}),
+      })
+      return true
+    }
+    const refused = readOnlyRefusal(options.readOnly, req.method, path)
+    if (refused) {
+      res.setHeader("Allow", "GET")
+      sendJson(res, refused.status, { error: refused.error })
       return true
     }
     const font = fontFile(path)
@@ -667,6 +688,7 @@ async function main(): Promise<void> {
   let values: {
     out?: string
     serve?: boolean
+    "read-only"?: boolean
     emit?: boolean
     port?: string
     host?: string
@@ -683,6 +705,7 @@ async function main(): Promise<void> {
       options: {
         out: { type: "string" },
         serve: { type: "boolean" },
+        "read-only": { type: "boolean" },
         emit: { type: "boolean" },
         port: { type: "string" },
         host: { type: "string" },
@@ -754,13 +777,20 @@ async function main(): Promise<void> {
   const server = await serveDir(target, {
     port,
     host,
-    handle: appApi({ root: target, runs: found, single: !set_, shell }),
+    handle: appApi({
+      root: target,
+      runs: found,
+      single: !set_,
+      shell,
+      ...(values["read-only"] ? { readOnly: true } : {}),
+    }),
   })
   const actualPort = new URL(server.origin).port
   console.log(
     `serving ${target} — ${found.length} pair${found.length === 1 ? "" : "s"}, loaded at request time`,
   )
   console.log(`  ${server.origin}/`)
+  if (values["read-only"]) console.log("  read-only: every PUT under /api/ is refused (405); nothing is written")
   if (host === "0.0.0.0")
     for (const ip of lanAddresses()) console.log(`  http://${ip}:${actualPort}/`)
   console.log("Ctrl-C to stop")
