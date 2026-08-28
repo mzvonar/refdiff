@@ -475,8 +475,11 @@ Decided in this phase (gap numbers in section E):
 - **27 → wall clock, and `--now` for a measure.** "12 min ago" means 12
   minutes before the reader's now, nothing else. The fixture keeps its fixed
   clock in git; `node fixtures/make-demo-root.ts --now` shifts it to the wall
-  clock right before a measure (the strings agree for an hour; the minute
-  drift within a run is excused by the relative-time `textPatterns` rule),
+  clock right before a measure (the strings agree only until the next minute
+  ticks — session 15 read 0.89 / 29 suppressed three minutes after `--now`;
+  the drift is excused by the relative-time `textPatterns` rule, but each
+  excused string is an anchor lost, so `--now` and `compare` go in ONE
+  command line),
   and a plain regeneration puts the committed clock back.
 - **3 (suppressed count) and 4 (regressions) are not on the card**: the
   refetched comp has no slot for them (STATUS says the design is complete),
@@ -937,7 +940,11 @@ pixel-identical to the comp (`"3"` at (1058.5, 400) on both sides).
 Each step measured (desktop / mobile compare): 51 → 50 / 4 → 3, the
 Library pairs unchanged and their anchors within 0.5px top to bottom
 (`Both sources` 116.3 vs 116.5, `Confirm modal` 897.3 vs 897.2 — the
-Library-desktop `scaleY 0.9966` is the anchor fit's noise, not drift).
+Library-desktop `scaleY 0.9966` was read here as the anchor fit's noise; it
+was NOT: those anchors are post-fit, and undoing the fit (session 15,
+2026-08-28) showed a −1 px step at every card row, the `.thumb` rendered at
+132 against the comp's content-box 132 + 1 px border. Fixed
+`calc(132px + 1px)`; the pair went 3 → 2 with the fit at the identity).
 
 **Run reported 2 `REGRESSION`s** (`f9` missing `#6B7280`, `f17` position
 `color`): both are keys the ledger resolved on phase 3's 17:33 and phase
@@ -1020,6 +1027,9 @@ exception and the protected baseline stands as harness item 16 last
 measured it: **3 / 32 / 0 / 2** findings, confidence 0.90 / 0.71 / 1.00 /
 0.90, `align 1×0.997 / 0,0.2` on the Library desktop and `1 / 0,0` on the
 other three. `pnpm typecheck` and `pnpm test` green (no source touched).
+**Follow-up, session 15 (2026-08-28): the Library desktop's alignment note
+was the card `.thumb` 1 px short per row (content-box 132 + border); fixed,
+the set is now 2 / 32 / 0 / 2 with the fit at `1 / 0,0` on all four.**
 
 What shipped:
 

@@ -604,7 +604,11 @@ chrome sat 1–2px short — visible as nothing in the findings and as
 `offsetY −1.98` in the alignment. Every app rule that copies a fixed size
 from a bordered comp box is written as the comp's number plus its border
 (`calc(320px + 1px)`; the convention is stated once above the reset in
-`render.ts`). The comps' runtime interpolates every `{{label}}` as its own
+`render.ts`). The Library card's `.thumb` was the same miss in a REPEATED
+box (132 + 1 px, once per card row), which the fit absorbed as `scaleY
+0.9966` rather than an offset — an offset is one box, a scale is one box
+per row; found 2026-08-28 by undoing the fit on `elements.json` and walking
+`impl.y − raw.y` down the page (the skill's §1a). The comps' runtime interpolates every `{{label}}` as its own
 text node, so chip and tag labels are their own `<span>` inside the button
 (the extractor's leaf is the text, not our bordered element), and the rail
 and Library run `line-height:normal` (the comps set none; the report's 1.4

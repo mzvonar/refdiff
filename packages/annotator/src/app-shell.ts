@@ -327,11 +327,13 @@ body.route-index { display:block; height:auto; min-height:100%; overflow:auto; }
 body.lib-mobile .fchip { padding:5px 10px; font-size:11.5px; }
 .vsep { width:1px; height:20px; background:var(--line); flex-shrink:0; }
 /* ---- desktop: the thumbnail card grid */
+/* .thumb is the comp's content-box 132px + its 1px border-bottom: 133 in border-box. Rendered at 132 it
+   shaved 1px per card row (alignment scaleY 0.9966 on the Library desktop pair, 3 rows = 3px). */
 .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }
 .card { display:flex; flex-direction:column; background:var(--bg1); border:1px solid var(--line); border-radius:12px; overflow:hidden;
   color:var(--txt); text-decoration:none; cursor:pointer; }
 a.card:hover { border-color:var(--acc); }
-.thumb { height:132px; background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:center;
+.thumb { height:calc(132px + 1px); background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:center;
   position:relative; overflow:hidden; }
 .thumb .shot { display:block; width:100%; height:100%; object-fit:cover; object-position:top; }
 /* the comp's plate: what a run without a capture shows (gap 25) */

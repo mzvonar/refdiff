@@ -47,13 +47,15 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture.** The protected baseline
-  (redesign phases 0–6 + harness items 12–16, all landed 2026-08-28) is
-  **3 / 32 / 0 / 2 findings**, confidence **0.90 / 0.71 / 1.00 / 0.90**,
-  alignment at the identity (`1 / 0,0`) on three pairs. The Library desktop's
-  3 = the chip row `position ×10`, the search `size`, and its `alignment`
-  note (`align 1×0.997 / 0,0.2` in `summary.md` — a ≈3.6 px chrome height
-  difference on the Library route still to find, the one app-side item
-  left). D6's plate and the artboard logo squares are excused by
+  (redesign phases 0–6 + harness items 12–16 + the Library thumb fix, all
+  landed 2026-08-28) is **2 / 32 / 0 / 2 findings**, confidence
+  **0.90 / 0.71 / 1.00 / 0.90**, alignment at the identity (`1 / 0,0`) on
+  ALL FOUR pairs. The Library desktop's 2 = the chip row `position ×10` and
+  the search `size` (both the comp's demo data, section H). Its former
+  `alignment` note (`align 1×0.997 / 0,0.2`) was the card `.thumb` rendered
+  at 132 px against the comp's content-box 132 + 1 px border — 1 px per card
+  row, three rows — fixed as `calc(132px + 1px)`; no app-side item is left.
+  D6's plate and the artboard logo squares are excused by
   `contents: true` on the manifest's D6 rules (visible under `suppressed` as
   `(inside)`). What holds `refdiff-compare-desktop` at 32 and 0.71 is the
   comp's demo ROW ORDER (plan gap 32 — its findings array lists
@@ -69,8 +71,11 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   number plus the border (`calc(320px + 1px)`, see the comment above the reset
   in `render.ts`). The tell is not a finding: it is an `alignment` that is NOT
   the identity on a same-size viewport (phase 5: `offsetY −1.98` on the
-  desktop compare pair = the topbar's and the strip's missing pixel). When you
-  add chrome from a comp, add its border to the size.
+  desktop compare pair = the topbar's and the strip's missing pixel; `scaleY
+  0.9966` on the Library desktop = the card thumb's missing pixel × 3 rows —
+  an OFFSET is one box, a SCALE is one box repeated, `SKILL.md` §1a says how
+  to walk the raw positions to name it). When you add chrome from a comp,
+  add its border to the size.
 - The compare pairs excuse the comp's ARTBOARD vocabulary (`COMPARE_IGNORE.
   textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
   draws the run's PNGs), the two screenshots (`accepted`), and the delta
@@ -93,7 +98,7 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `LIBRARY_IGNORE.textPatterns` in the manifest — visible in `findings.json`
   under `suppressed`. What the Library desktop pair still reports (the
   dropped `Pending` chip's 78px moving every chip after it, the search field's
-  size, the `alignment` note) is deliberate — plan section H; the D6
+  size) is deliberate — plan section H; the D6
   thumbnail boxes are excused by `contents: true` since harness item 14.
 - Both comps are full-bleed pages, so the design line must say `scope
   screen-label fluid` and the same css px as the pair viewport (1180×800 /
@@ -104,8 +109,12 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   not a pair.
 - The fixture's timestamps are fixed to the comps' clock (`DEMO_NOW`,
   2026-08-28T14:22:05Z) in git; the Library renders "12 min ago" against the
-  wall clock, so measure after `node fixtures/make-demo-root.ts --now` (the
-  strings agree for an hour) and regenerate without it before committing.
+  wall clock, so measure IMMEDIATELY after `node fixtures/make-demo-root.ts
+  --now` — the strings agree only until the next minute ticks (three minutes
+  later `12 min ago` reads `15 min ago`, five relative-time anchors drop out
+  and the desktop confidence reads 0.89 instead of 0.90 with 29 suppressed
+  instead of 24 — measurement noise, not a change) — and regenerate without
+  it before committing.
 - **The served app WRITES into the fixture — so the measured instance is
   served `--read-only`** (`services.toml`, harness item 16): every PUT is
   refused with 405 and the rail's status line says so on the first save

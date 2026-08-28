@@ -49,3 +49,31 @@ decisions "Harness-only affordances are measured" + the "Annotator" section;
 the skill's pre-flight still only says the rail names the refusal on the first
 save — add the general rule there if a consuming repo hits it.
 
+
+## 2026-08-28 — a SCALE in the alignment note is a repeated box, an OFFSET is a single one (session 15)
+
+The Library desktop's `align 1×0.997 / 0,0.2` was read for two sessions as
+"anchor noise" because the anchors in `elements.json` looked flat top to
+bottom — they are stored POST-fit (`align.ts` maps design into impl space
+before packaging), so the fit had hidden exactly what it absorbed. Undoing it
+(`raw y = (y − offsetY) / scaleY`) and walking `impl.y − raw.y` by text pair
+down the page showed a −1 px step at every card row's thumbnail: the comp's
+content-box `height:132px` + `border-bottom:1px` vs the app's border-box
+132. Rule: an offset alone = one bordered box above the anchors; a scale =
+that box once per repeat; the raw-position walk names it in one pass. Routed
+already: `SKILL.md` §1a + "Reading the measurements" (general shape),
+bindings' box-model trap (the instance), `docs/architecture.md` box-model
+paragraph. Candidate tool affordance if it recurs in a consuming repo: a
+`refdiff drift <run-dir>` (or a column in `elements.json`) that prints the raw
+per-element `dy` down the page so nobody undoes the fit by hand. On process:
+confirm the routing, decide on the affordance, remove.
+
+## 2026-08-28 — the demo root's relative times drift within MINUTES, not an hour (session 15)
+
+The bindings said the `--now` fixture's `N min ago` strings "agree for an
+hour" with the comp's; they agree until the next minute ticks — three minutes
+after `--now` the impl reads `15 min ago` for the comp's `12 min ago`, five
+relative-time anchors fall to `textPatterns`, and the Library desktop reads
+0.89 / 29 suppressed instead of 0.90 / 24 with no app change. Rule (this
+repo): `--now` and `compare` in the same command line. Fixed in the bindings;
+nothing to promote beyond it (repo-specific). On process: remove.

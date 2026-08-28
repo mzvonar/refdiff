@@ -209,6 +209,18 @@ first; it cannot be accepted (the numbers move) and disappears when the fit
 snaps to the identity. A design frame of ANOTHER size never gets the note:
 that is a layout difference, not a scale.
 
+Read the transform's SHAPE to know where to look. An **offset alone** is one
+box above or beside the anchors (a topbar rendered without its border). A
+**scale** is that box REPEATED down the page: one card thumbnail 1 px short
+in every row of a three-row grid reads as `scaleY 0.9966`, not as three
+findings, because the fit absorbs a per-row step better than a per-element
+`position` would. To name the element, undo the fit — `elements.json` stores
+the design boxes already mapped into impl space, so raw `y = (y − offsetY) /
+scaleY` — pair design and impl by text, and walk `impl.y − raw.y` down the
+page: it is flat, then steps by the missing pixels at ONE element per
+repeat, and that element (its `height` + border, in the comp's box model) is
+the fix.
+
 ### 1b. Sets — a component set or a whole manifest is ONE loop
 
 A manifest entry with `design.variants` expands into one pair per variant
@@ -514,8 +526,10 @@ items is now a typed finding — read it there:
   systematic size difference the fit is absorbing that no element finding
   shows, typically a box model mismatch (a comp with no `box-sizing` reset
   renders `height:46px` + border as 47px; an app with `* { box-sizing:
-  border-box }` renders 46) in the chrome above or beside the anchors. Fix
-  the sizes; the transform snaps to `scale 1, offset 0` and the note goes.
+  border-box }` renders 46) in the chrome above or beside the anchors. An
+  offset is one such box; a scale is one such box repeated down the page
+  (§1a says how to find it). Fix the sizes; the transform snaps to `scale 1,
+  offset 0` and the note goes.
 
 ## Environment pre-flight (fill in per repo)
 
