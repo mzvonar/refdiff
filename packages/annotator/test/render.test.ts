@@ -111,7 +111,8 @@ describe("renderReport", () => {
     // Both halves of the cycle are stated, and the second one differs in more than position:
     // `translate` is world px, so at fit-to-page zoom the wiggle alone is sub-pixel.
     expect(html).toMatch(/0%,49\.99% \{ stroke:var\(--diff\); stroke-width:2; translate:0 0; \}/)
-    expect(html).toMatch(/50%,100% \{ stroke:#ff2bd6; stroke-width:4; translate:1px 1px; \}/)
+    // The alternate is a different HUE from --diff (the comps' magenta), or the pulse only moves.
+    expect(html).toMatch(/50%,100% \{ stroke:#00ff9c; stroke-width:4; translate:1px 1px; \}/)
   })
 
   it("offers the align MODES as one cycling control, not an on/off toggle", () => {
@@ -242,6 +243,41 @@ describe("renderReport", () => {
       indexHref: "../index.html",
     })
     expect(inSet).toContain('"indexHref":"../index.html"')
+  })
+
+  it("self-hosts the comps' type: IBM Plex + the icon subset via relative @font-face, no system-ui first", () => {
+    // Phase 1 of the redesign: the family mismatch was the top `typography` cause.
+    expect(html).toContain("@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:100 700;")
+    expect(html).toContain("@font-face { font-family:'IBM Plex Mono'; font-style:normal; font-weight:400;")
+    expect(html).toContain("@font-face { font-family:'Material Symbols Outlined';")
+    expect(html).toMatch(/src:url\(fonts\/ibm-plex-sans-latin\.woff2\) format\('woff2'\)/)
+    expect(html).toContain("font:13px/1.4 var(--font-sans)")
+    expect(html).toContain("--font-sans:'IBM Plex Sans',system-ui")
+    // Icons are ligatures in the comps' face, so the rule must match theirs verbatim.
+    expect(html).toContain(".msi { font-family:'Material Symbols Outlined';")
+    expect(html).not.toContain("font:13px/1.4 system-ui")
+    // <button>/<select> fall back to the UA font (Arial 13.33px) unless told to inherit — the last family mismatch.
+    expect(html).toContain("button, input, select, textarea { font:inherit; }")
+  })
+
+  it("carries the comps' tokens under the comps' names, dark by default, light as a body override", () => {
+    expect(html).toContain("--bg0:#2a2b2e; --bg1:#333438; --bg2:#3c3d42; --bg3:#46474d; --line:#4c4d54; --txt:#e7e9ec; --txt2:#a6abb3; --acc:#5b8def; --canvas:#232427;")
+    expect(html).toContain("body.cc-theme-light { --bg0:#dfe1e4;")
+    expect(html).toContain("--critical:#e5484d; --major:#f5a623; --minor:#4c9aff;")
+    // The old navy palette and its names are gone, not aliased: one vocabulary.
+    for (const gone of ["#0b1020", "#111a2e", "#60a5fa", "var(--panel)", "var(--ink)", "var(--muted)", "var(--accent)"]) {
+      expect(html).not.toContain(gone)
+    }
+    expect(html).toContain(".pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }")
+  })
+
+  it("has a theme toggle in the header, persisted with the other controls but written on its own", () => {
+    expect(html).toContain('class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"')
+    expect(html).toContain("classList.toggle('cc-theme-light', light)")
+    expect(html).toContain("applyTheme(readControls().theme)")
+    expect(html).toContain("theme: currentTheme(),")
+    // On the index route no report is open; a full saveControls() there would persist unloaded defaults.
+    expect(html).toContain("function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }")
   })
 
   it("keeps the header disclosure phone-only", () => {

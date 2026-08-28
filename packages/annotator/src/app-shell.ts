@@ -62,6 +62,7 @@ ${VIEWPORT_META}
     <h1 id="index-title">refdiff</h1>
     <span class="kv" id="index-summary"></span>
     ${options.root ? `<span class="kv root">${escapeHtml(options.root)}</span>` : ""}
+    <button type="button" class="theme-toggle" id="index-theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
   </header>
   <input id="pair-q" type="search" placeholder="filter pairs…" aria-label="filter pairs" autocomplete="off">
   <ol class="cards" id="cards"></ol>
@@ -179,19 +180,20 @@ body.route-report { display:flex; flex-direction:column; }
 body.route-index { display:block; height:auto; overflow:auto; }
 .index-head { display:flex; flex-wrap:wrap; gap:4px 14px; align-items:baseline; padding:14px 16px 10px; border:0; background:transparent; }
 .index-head h1 { font-size:17px; margin:0; }
-.root { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; }
+.root { font-family:var(--font-mono); font-size:11px; }
+.index-head .theme-toggle { margin-left:auto; align-self:center; }
 #pair-q { display:block; width:calc(100% - 32px); margin:0 16px 12px; padding:9px 12px; font-size:16px;
-  border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); }
+  border:1px solid var(--line); border-radius:8px; background:var(--bg1); color:var(--txt); }
 .cards { list-style:none; margin:0; padding:0 16px 24px; display:grid; gap:8px;
   grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); }
-.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+.card { background:var(--bg1); border:1px solid var(--line); border-radius:10px; }
 .card[hidden] { display:none; }
 /* The degraded card: a run dir whose findings.json could not be read. Nothing to open. */
 .card.broken { border-style:dashed; opacity:.8; }
-.card.broken .pill.broken { background:transparent; border:1px solid var(--line); color:var(--muted); }
-.card.broken .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+.card.broken .pill.broken { background:transparent; border:1px solid var(--line); color:var(--txt2); }
+.card.broken .mono { font-family:var(--font-mono); }
 .hit { display:block; padding:10px 12px; color:inherit; text-decoration:none; }
-.hit:hover { background:rgba(255,255,255,.04); }
+.hit:hover { background:rgba(127,127,127,.08); }
 .row1 { display:flex; align-items:center; gap:8px; justify-content:space-between; }
 .name { font-weight:600; overflow-wrap:anywhere; }
 .row2, .row3 { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:6px; }
@@ -201,6 +203,6 @@ body.route-index { display:block; height:auto; overflow:auto; }
 .n.critical { background:var(--critical); } .n.major { background:var(--major); color:#111; } .n.minor { background:var(--minor); }
 .notes { padding:0 7px; border-radius:999px; font-size:11px; font-weight:600; background:var(--open); color:#fff; }
 .conf.weak { color:var(--major); }
-.empty { color:var(--muted); padding:0 16px; }
+.empty { color:var(--txt2); padding:0 16px; }
 @media (max-width: 900px) { .cards { grid-template-columns:1fr; } }
 `

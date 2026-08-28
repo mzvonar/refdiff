@@ -31,6 +31,7 @@
 import type { ComparisonReport } from "@refdiff/core"
 
 import { emptySet, type AnnotationSet } from "./annotations.js"
+import { FONT_FACE_CSS, ICON_CSS } from "./fonts.js"
 
 export interface RenderOptions {
   /** Compiled source of view-math.js (an ESM module with no imports). */
@@ -194,55 +195,74 @@ openReport(
 `
 
 export const CSS = `
-:root { --bg:#0b1020; --panel:#111a2e; --line:#243047; --ink:#e6ecf5; --muted:#8b98ad; --accent:#60a5fa;
-  --critical:#e11d48; --major:#f59e0b; --minor:#3b82f6; --ok:#22c55e; }
+/* ---- tokens: the comps' set, same names, so a rule here reads like the comp.
+   Dark is the default (the comps' cc-theme-dark), light is an override on
+   <body> — a manual switch (#theme-toggle), never measured by refdiff. */
+:root { --bg0:#2a2b2e; --bg1:#333438; --bg2:#3c3d42; --bg3:#46474d; --line:#4c4d54; --txt:#e7e9ec; --txt2:#a6abb3; --acc:#5b8def; --canvas:#232427;
+  --critical:#e5484d; --major:#f5a623; --minor:#4c9aff; --ok:#46a758; --pending:#8f8f96;
+  /* annotation statuses (the comps' comment statuses) and triage verdicts (gap 11) */
+  --open:#8f7ee7; --implemented:#f5a623; --done:#46a758;
+  --fix:var(--acc); --ignore:#6b7280; --snooze:#8f7ee7;
+  /* the diff lab's region colour = the comps' Highlight */
+  --diff:#ff5cd0;
+  --font-sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace; }
+body.cc-theme-light { --bg0:#dfe1e4; --bg1:#f2f3f5; --bg2:#ffffff; --bg3:#e3e5e9; --line:#cfd3d8; --txt:#22262b; --txt2:#697079; --acc:#2f6fed; --canvas:#c6c9ce; }
+${FONT_FACE_CSS}
+${ICON_CSS}
 * { box-sizing:border-box; }
-html,body { margin:0; height:100%; background:var(--bg); color:var(--ink);
-  font:13px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+html,body { margin:0; height:100%; background:var(--bg0); color:var(--txt); font:13px/1.4 var(--font-sans); }
+/* Form controls do not inherit the page font: without this every <button> and <select> measured as Arial 13.33px. */
+button, input, select, textarea { font:inherit; }
 /* The canvas owns zooming; the chrome must not double-tap-zoom or rubber-band
    under it (the panes keep touch-action:none for their own pan/pinch). */
 html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
 body { display:flex; flex-direction:column; }
 header { display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; padding:8px 14px;
-  border-bottom:1px solid var(--line); background:var(--panel); }
+  border-bottom:1px solid var(--line); background:var(--bg1); }
 header h1 { font-size:15px; margin:0; }
 header #hdr-meta { display:contents; }
-header .back { flex:none; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--ink); text-decoration:none; }
-header .back:hover { border-color:var(--accent); color:var(--accent); }
-header .kv { color:var(--muted); }
-header .kv b { color:var(--ink); font-weight:500; }
-header a { color:var(--accent); text-decoration:none; }
+header .back { flex:none; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--txt); text-decoration:none; }
+header .back:hover { border-color:var(--acc); color:var(--acc); }
+header .kv { color:var(--txt2); }
+header .kv b { color:var(--txt); font-weight:500; }
+header a { color:var(--acc); text-decoration:none; }
 .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-weight:600; font-size:12px; }
-.pill.pass { background:var(--ok); color:#052e16; } .pill.fail { background:var(--critical); color:#fff; }
+.pill.pass { background:var(--ok); color:#fff; } .pill.fail { background:var(--critical); color:#fff; }
 main { flex:1; display:grid; grid-template-columns:340px 1fr; min-height:0; }
-aside { border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; background:var(--panel); }
+aside { border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; background:var(--bg1); }
 .filters { padding:8px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--line); }
-.filters input { width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+.filters input { width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); }
 .chips { display:flex; gap:6px; }
-.chip { cursor:pointer; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); user-select:none; }
-.chip.on { color:var(--ink); border-color:currentColor; }
-.chip.triage-chip.on.ignore { color:var(--ink); border-color:var(--ignore); }
+.chip { cursor:pointer; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--txt2); user-select:none; }
+.chip.on { color:var(--txt); border-color:currentColor; }
+.chip.triage-chip.on.ignore { color:var(--txt); border-color:var(--ignore); }
 .chip.triage-chip.on.snooze { color:var(--snooze); border-color:var(--snooze); }
 .chip.critical.on { color:var(--critical); } .chip.major.on { color:var(--major); } .chip.minor.on { color:var(--minor); }
-.count { padding:4px 10px; color:var(--muted); font-size:12px; }
+.count { padding:4px 10px; color:var(--txt2); font-size:12px; }
 .list { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
 .row { display:grid; grid-template-columns:34px 1fr; gap:6px; padding:6px 10px; border-bottom:1px solid var(--line); cursor:pointer; }
-.row:hover { background:rgba(255,255,255,.04); } .row.sel { background:rgba(96,165,250,.16); }
+.row:hover { background:rgba(127,127,127,.08); } .row.sel { background:var(--bg2); }
 .row .num { font-weight:700; text-align:center; border-radius:6px; color:#fff; padding:1px 0; align-self:start; font-size:12px; }
 .num.critical,.sev.critical { background:var(--critical); } .num.major,.sev.major { background:var(--major); color:#111; } .num.minor,.sev.minor { background:var(--minor); }
-.row .msg { color:var(--ink); }
-.row .meta { color:var(--muted); font-size:11px; }
+.row .msg { color:var(--txt); }
+.row .meta { color:var(--txt2); font-size:11px; }
 .row .tag { display:inline-block; padding:0 5px; border:1px solid var(--line); border-radius:4px; margin-right:4px; }
 details { border-top:1px solid var(--line); max-height:40%; display:flex; flex-direction:column; }
-details summary { padding:6px 10px; color:var(--muted); cursor:pointer; }
+details summary { padding:6px 10px; color:var(--txt2); cursor:pointer; }
 details[open] .list { max-height:30vh; }
 #viewer { display:flex; flex-direction:column; min-height:0; min-width:0; }
 .toolbar { display:flex; gap:10px; align-items:center; padding:6px 10px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-.toolbar button { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
-.toolbar label { color:var(--muted); display:flex; gap:4px; align-items:center; }
+.toolbar button { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
+.toolbar label { color:var(--txt2); display:flex; gap:4px; align-items:center; }
 .toolbar .pct { min-width:48px; text-align:center; }
-.toolbar .hint { margin-left:auto; color:var(--muted); font-size:11px; }
-.hdr-more { display:none; background:var(--bg); color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; cursor:pointer; }
+.toolbar .hint { margin-left:auto; color:var(--txt2); font-size:11px; }
+.theme-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+  background:transparent; color:var(--txt2); cursor:pointer; }
+.theme-toggle:hover { background:var(--bg3); }
+.theme-toggle .msi { font-size:19px; }
+header .theme-toggle { margin-left:auto; }
+.hdr-more { display:none; background:var(--bg0); color:var(--txt2); border:1px solid var(--line); border-radius:999px; padding:2px 10px; cursor:pointer; }
 /* One side at a time — always on a phone, on demand on desktop (#layout-toggle).
    The corner controls replace the pane label: they name the side being shown. */
 body.single .pane { display:none; }
@@ -257,47 +277,46 @@ body.single #side-switch { display:inline-flex; }
    reaches them and they cover no content — the top-right is where page headers live. */
 .canvas-controls { position:absolute; z-index:3; bottom:8px; right:8px; gap:6px; }
 .cbtn { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--line); border-radius:8px;
-  background:rgba(11,16,32,.88); color:var(--ink); font:inherit; line-height:1; cursor:pointer; }
+  background:var(--bg1); color:var(--txt); font:inherit; line-height:1; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 .cbtn .i { width:15px; height:15px; fill:currentColor; display:block; }
 .cbtn .i-note, body.ann-mode .cbtn .i-move { display:none; }
 body.ann-mode .cbtn .i-note { display:block; }
-#move-toggle { color:var(--accent); border-color:var(--accent); }
+#move-toggle { color:var(--acc); border-color:var(--acc); }
 body.ann-mode #move-toggle { color:var(--open); border-color:var(--open); }
 /* findings rail disclosure (phone only): the rail is collapsed until asked for */
 .rail-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px; padding:9px 12px;
-  background:var(--panel); color:var(--ink); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
-.rail-toggle .chev { color:var(--muted); }
+  background:var(--bg1); color:var(--txt); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
+.rail-toggle .chev { color:var(--txt2); }
 .rail-toggle .num { display:inline-block; padding:0 6px; border-radius:5px; font-weight:700; font-size:11px; color:#fff; }
 /* triage — a verdict on a finding, and the region filter */
-:root { --fix:#38bdf8; --ignore:#64748b; --snooze:#a78bfa; }
-.verdict { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; font-weight:600; color:#0b1020; }
+.verdict { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; font-weight:600; color:#fff; }
 .verdict.fix { background:var(--fix); } .verdict.ignore { background:var(--ignore); color:#fff; } .verdict.snooze { background:var(--snooze); }
-.row.triaged-ignore .msg, .row.triaged-snooze .msg { color:var(--muted); }
+.row.triaged-ignore .msg, .row.triaged-snooze .msg { color:var(--txt2); }
 .triage { margin-top:8px; border-top:1px solid var(--line); padding-top:8px; }
 .triage .actions { gap:6px; align-items:center; }
 .verdict-btn.on.fix { border-color:var(--fix); color:var(--fix); }
-.verdict-btn.on.ignore { border-color:var(--ignore); color:var(--ink); }
+.verdict-btn.on.ignore { border-color:var(--ignore); color:var(--txt); }
 .verdict-btn.on.snooze { border-color:var(--snooze); color:var(--snooze); }
-.triage-none { color:var(--muted); font-style:italic; }
-.triage .meta code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
-.focus-chip { border-color:var(--accent); color:var(--accent); background:transparent; font:inherit; }
+.triage-none { color:var(--txt2); font-style:italic; }
+.triage .meta code { background:var(--bg0); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+.focus-chip { border-color:var(--acc); color:var(--acc); background:transparent; font:inherit; }
 .focus-chip b { text-decoration:underline; margin-left:4px; }
 .pane.focusing { cursor:crosshair; }
-.marks.anns rect.focus-rect { fill:rgba(96,165,250,.10); stroke:var(--accent); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
+.marks.anns rect.focus-rect { fill:rgba(91,141,239,.10); stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
 /* Handles are interactive; the region's BODY is not, so a drag inside it still pans. */
-.marks.anns circle.focus-handle { fill:var(--accent); stroke:#0b1020; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
-.marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg); stroke:var(--accent); stroke-width:2; }
+.marks.anns circle.focus-handle { fill:var(--acc); stroke:var(--bg0); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
+.marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg0); stroke:var(--acc); stroke-width:2; }
 .marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
-#focus-toggle.on { color:var(--accent); border-color:var(--accent); }
+#focus-toggle.on { color:var(--acc); border-color:var(--acc); }
 /* Icon toggle in the toolbar: "align design through Alignment" as words ate a third of the phone's
    toolbar row, and that row is horizontally scrollable — the long label pushed the rest off. */
-.icon-toggle { display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; color:var(--muted); }
+.icon-toggle { display:inline-flex; align-items:center; justify-content:center; padding:5px 9px; color:var(--txt2); }
 .icon-toggle .i { width:15px; height:15px; fill:currentColor; display:block; }
-.icon-toggle.on { color:var(--accent); border-color:var(--accent); }
+.icon-toggle.on { color:var(--acc); border-color:var(--acc); }
 /* The align control cycles registrations rather than switching one on and off, so it carries the
    current mode's NAME: "aligned / not aligned" never said what it aligned on. */
 .icon-toggle.align-mode { gap:5px; }
-.icon-toggle.align-mode.measured { color:var(--accent); border-color:var(--accent); }
+.icon-toggle.align-mode.measured { color:var(--acc); border-color:var(--acc); }
 .icon-toggle.align-mode.manual { color:var(--major); border-color:var(--major); }
 body.rail-open .rail-toggle .chev { transform:rotate(180deg); }
 .panes { flex:1; display:flex; min-height:0; position:relative; }
@@ -308,24 +327,21 @@ body:not(.rail-open) main { grid-template-columns:38px 1fr; }
 body:not(.rail-open) aside .rail-body { display:none; }
 body:not(.rail-open) .rail-toggle { writing-mode:vertical-rl; height:100%; width:38px; padding:12px 0; justify-content:flex-start; gap:12px; }
 body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
-.pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab;
-  background-color:#1a2338;
-  background-image:linear-gradient(45deg,#1f2a42 25%,transparent 25%,transparent 75%,#1f2a42 75%),linear-gradient(45deg,#1f2a42 25%,transparent 25%,transparent 75%,#1f2a42 75%);
-  background-size:16px 16px; background-position:0 0,8px 8px; }
+.pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }
 .pane + .pane { border-left:1px solid var(--line); }
 .pane.dragging { cursor:grabbing; }
-.pane-label { position:absolute; z-index:2; top:6px; left:8px; padding:2px 8px; border-radius:6px; background:rgba(11,16,32,.85);
-  color:var(--ink); font-size:12px; pointer-events:none; }
-.pane-label span { color:var(--muted); }
+.pane-label { position:absolute; z-index:2; top:6px; left:8px; padding:2px 8px; border-radius:6px; background:var(--bg1);
+  color:var(--txt); font-size:12px; pointer-events:none; }
+.pane-label span { color:var(--txt2); }
 .stage { position:absolute; inset:0; }
 .shot { position:absolute; left:0; top:0; transform-origin:0 0; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
 .marks { position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; transform-origin:0 0; pointer-events:none; }
 .marks rect { fill:none; stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:pointer; }
 .marks rect.critical { stroke:var(--critical); } .marks rect.major { stroke:var(--major); } .marks rect.minor { stroke:var(--minor); }
 .marks rect.member { stroke-dasharray:3 3; opacity:.7; }
-.marks rect.sel { stroke-width:3; fill:rgba(96,165,250,.14); }
-.marks rect.suppressed { stroke:var(--muted); stroke-dasharray:2 3; }
-.marks g.lbl rect { fill:currentColor; stroke:none; } .marks g.lbl text { fill:#fff; font:700 11px system-ui,sans-serif; }
+.marks rect.sel { stroke-width:3; fill:rgba(91,141,239,.14); }
+.marks rect.suppressed { stroke:var(--txt2); stroke-dasharray:2 3; }
+.marks g.lbl rect { fill:currentColor; stroke:none; } .marks g.lbl text { fill:#fff; font:700 11px var(--font-sans); }
 /* Findings cluster: three marks can share a box, and the neighbour drawn last used to sit on top
    of the one you just selected — you clicked 1 and read 95. While something is selected its mark
    is drawn LAST and everything else steps back. */
@@ -338,17 +354,16 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
    pixel diffs (Finding.regions) plus the presence findings the pixel channel
    structurally cannot see, so nothing here lights up residue: boxes say WHERE,
    the raster mask (coloured by changeKind) says WHAT. */
-:root { --diff:#00ff9c; }
 .toolbar button.tog.lab.on { border-color:var(--diff); color:var(--diff); box-shadow:0 0 0 1px var(--diff) inset; }
-.toolbar .labsel { color:var(--muted); gap:6px; }
-.toolbar .labsel select { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 6px; font:inherit; }
+.toolbar .labsel { color:var(--txt2); gap:6px; }
+.toolbar .labsel select { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 6px; font:inherit; }
 .toolbar .labrange { width:120px; accent-color:var(--diff); }
-.toolbar .labnote { color:var(--muted); font-size:11px; white-space:nowrap; }
+.toolbar .labnote { color:var(--txt2); font-size:11px; white-space:nowrap; }
 .toolbar .labnote.warn { color:var(--major); }
 .marks.diffs { z-index:1; }
-.marks.diffs rect.region { fill:rgba(0,255,156,.16); stroke:var(--diff); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:none; }
-.marks.diffs rect.region.cur { fill:rgba(0,255,156,.32); stroke-width:3; }
-.marks.diffs rect.dim { fill:rgba(6,10,20,.72); stroke:none; pointer-events:none; }
+.marks.diffs rect.region { fill:rgba(255,92,208,.16); stroke:var(--diff); stroke-width:2; vector-effect:non-scaling-stroke; pointer-events:none; }
+.marks.diffs rect.region.cur { fill:rgba(255,92,208,.32); stroke-width:3; }
+.marks.diffs rect.dim { fill:rgba(0,0,0,.6); stroke:none; pointer-events:none; }
 /* The wiggle is 1 world px on the CSS translate property, which composes with
    the layer's own transform instead of fighting it — a hard-to-see 1px
    difference announces itself by moving, the way a blink comparator makes a
@@ -360,7 +375,7 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
    directions and nothing on the page ever moved. */
 @keyframes vc-strobe {
   0%,49.99% { stroke:var(--diff); stroke-width:2; translate:0 0; }
-  50%,100% { stroke:#ff2bd6; stroke-width:4; translate:1px 1px; }
+  50%,100% { stroke:#00ff9c; stroke-width:4; translate:1px 1px; }
 }
 .marks.diffs.strobing rect.region { animation:vc-strobe .84s linear infinite; }
 .mask { mix-blend-mode:screen; image-rendering:pixelated; opacity:.95; }
@@ -372,20 +387,19 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .ghost-wrap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:hidden; pointer-events:none; }
 .ghost { opacity:0; transition:opacity .08s linear; }
 .ghost.difference { mix-blend-mode:difference; }
-.detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--panel); }
+.detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--bg1); }
 .detail:empty { display:none; }
 .detail h2 { margin:0 0 4px; font-size:13px; }
 .detail table { border-collapse:collapse; margin:6px 0; }
 .detail td,.detail th { border:1px solid var(--line); padding:2px 8px; text-align:left; font-weight:500; }
-.detail th { color:var(--muted); }
+.detail th { color:var(--txt2); }
 .detail .crops { display:flex; gap:12px; flex-wrap:wrap; }
 .detail .crops figure { margin:0; } .detail .crops img { max-height:160px; max-width:45vw; border:1px solid var(--line); background:#fff; }
-.detail figcaption { color:var(--muted); font-size:11px; }
+.detail figcaption { color:var(--txt2); font-size:11px; }
 /* annotations */
-:root { --open:#a855f7; --implemented:#f59e0b; --done:#22c55e; }
 .toolbar .sep { width:1px; height:18px; background:var(--line); }
 .toolbar button.tog.on { border-color:var(--open); color:var(--open); box-shadow:0 0 0 1px var(--open) inset; }
-.toolbar .annstatus { color:var(--muted); font-size:11px; }
+.toolbar .annstatus { color:var(--txt2); font-size:11px; }
 .toolbar .annstatus.err { color:var(--critical); }
 .pane.annotating { cursor:crosshair; }
 .pane.annotating .marks rect, .pane.annotating .marks .ann { pointer-events:none; }
@@ -396,18 +410,18 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
 .marks.anns .open { stroke:var(--open); fill:var(--open); } .marks.anns .implemented { stroke:var(--implemented); fill:var(--implemented); } .marks.anns .done { stroke:var(--done); fill:var(--done); }
 .marks.anns .stale { stroke-dasharray:4 3; }
 .marks.anns .sel { stroke-width:4; }
-.marks.anns g.lbl.open { color:var(--open); } .marks.anns g.lbl.implemented { color:var(--implemented); } .marks.anns g.lbl.implemented text { fill:#111; } .marks.anns g.lbl.done { color:var(--done); } .marks.anns g.lbl.done text { fill:#052e16; }
-.marks.anns rect.band { fill:rgba(168,85,247,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
-.num.open { background:var(--open); } .num.implemented { background:var(--implemented); color:#111; } .num.done { background:var(--done); color:#052e16; }
+.marks.anns g.lbl.open { color:var(--open); } .marks.anns g.lbl.implemented { color:var(--implemented); } .marks.anns g.lbl.implemented text { fill:#111; } .marks.anns g.lbl.done { color:var(--done); }
+.marks.anns rect.band { fill:rgba(143,126,231,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
+.num.open { background:var(--open); } .num.implemented { background:var(--implemented); color:#111; } .num.done { background:var(--done); }
 .row.ann .msg { white-space:pre-wrap; }
-.row.ann.done .msg { color:var(--muted); text-decoration:line-through; }
-.detail textarea { width:100%; min-height:64px; margin:6px 0; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; resize:vertical; }
+.row.ann.done .msg { color:var(--txt2); text-decoration:line-through; }
+.detail textarea { width:100%; min-height:64px; margin:6px 0; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); font:inherit; resize:vertical; }
 .detail .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.detail .actions button { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
-.detail .actions button.primary { border-color:var(--accent); color:var(--accent); }
+.detail .actions button { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
+.detail .actions button.primary { border-color:var(--acc); color:var(--acc); }
 .detail .actions button.danger { border-color:var(--critical); color:var(--critical); }
 .detail .status { display:inline-block; padding:0 8px; border-radius:999px; font-weight:600; font-size:11px; color:#fff; }
-.detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); color:#052e16; }
+.detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); }
 /* phone: the page scrolls, the viewer sticks, one side at a time */
 @media (max-width: 900px) {
   html, body { height:auto; }
@@ -418,7 +432,7 @@ body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
   header #hdr-meta { display:none; }
   body.hdr-open header #hdr-meta { display:flex; flex-direction:column; gap:4px; width:100%; }
   main { display:flex; flex-direction:column; min-height:0; }
-  #viewer { order:-1; display:flex; flex-direction:column; position:sticky; top:0; z-index:6; background:var(--panel); border-bottom:1px solid var(--line); }
+  #viewer { order:-1; display:flex; flex-direction:column; position:sticky; top:0; z-index:6; background:var(--bg1); border-bottom:1px solid var(--line); }
   /* canvas first, its controls directly under it, then the detail panel */
   .panes { order:1; } .toolbar { order:2; } .detail { order:3; }
   .toolbar { gap:8px; padding:6px 8px; flex-wrap:nowrap; overflow-x:auto; }
@@ -486,6 +500,7 @@ function saveControls() {
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
       diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
+      theme: currentTheme(),
     }));
   } catch (e) { /* private mode: the controls just do not persist */ }
 }
@@ -510,6 +525,32 @@ const state = {
 // Narrow screens show one side at a time (both panes are laid out side by side
 // above the breakpoint, so state.side only matters below it).
 const narrow = window.matchMedia('(max-width: 900px)');
+
+// ---- theme ----------------------------------------------------------------
+// A chrome preference, not per-pair state: dark is the default (the tokens on
+// :root), light is the cc-theme-light override on <body>. It rides in the same
+// localStorage record as the other controls, but is written on its own —
+// on the index route no report is open, and saveControls() would persist the
+// unloaded defaults of everything else.
+function currentTheme() { return document.body.classList.contains('cc-theme-light') ? 'light' : 'dark'; }
+function applyTheme(theme) {
+  const light = theme === 'light';
+  document.body.classList.toggle('cc-theme-light', light);
+  for (const el of document.querySelectorAll('.theme-toggle .msi')) el.textContent = light ? 'dark_mode' : 'light_mode';
+}
+function saveTheme() {
+  try {
+    const saved = readControls();
+    saved.theme = currentTheme();
+    localStorage.setItem(CONTROLS_KEY, JSON.stringify(saved));
+  } catch (e) { /* private mode */ }
+}
+function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest && e.target.closest('.theme-toggle');
+  if (t) toggleTheme();
+});
+applyTheme(readControls().theme);
 const panes = { design: $('pane-design'), impl: $('pane-impl') };
 const imgs = { design: $('img-design'), impl: $('img-impl'), ghost: $('img-ghost'), mask: $('img-mask') };
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
@@ -860,7 +901,9 @@ function renderHeader() {
     '<span class="kv">impl <b>' + esc(report.impl.source) + '</b> ' + esc(report.impl.ref) + ' ' + report.impl.width + '×' + report.impl.height + '</span>' +
     '<span class="kv">alignment ×' + a.scale.toFixed(3) + (a.scaleY && Math.abs(a.scaleY - a.scale) > 1e-6 ? '/' + a.scaleY.toFixed(3) : '') + ' @(' + a.offsetX.toFixed(1) + ', ' + a.offsetY.toFixed(1) + ') confidence ' + a.confidence.toFixed(2) + (a.basis ? ' · fitted on ' + esc(a.basis) : '') + '</span>' +
     '<span class="kv"><a href="' + esc(page.base) + 'findings.json">findings.json</a>' + (art.diffMask ? ' · <a href="' + esc(page.base + art.diffMask) + '">diff mask</a>' : '') + ' · ' + esc(report.createdAt) + '</span>' +
-    '</div>';
+    '</div>' +
+    '<button type="button" class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>';
+  applyTheme(currentTheme());
   $('label-design').innerHTML = 'Design <span>' + esc(report.design.ref) + '</span>';
   $('label-impl').innerHTML = 'Implementation <span>' + esc(report.impl.ref) + '</span>';
 }

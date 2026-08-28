@@ -303,6 +303,14 @@ repo bindings). Read `delta`:
 - `regressions` (also printed as `REGRESSION: …`) — introduced findings that
   an EARLIER iteration had resolved. This is the loud failure: stop the
   plan, undo or fix that regression first, and count the iteration.
+  One false positive to recognise before you undo anything: when several
+  findings share a text (the "3" on five badges, "Figma" on ten cards), the
+  one-to-one pairing between runs can re-shuffle after an iteration that
+  changed every text's metrics (a font swap), so one instance lands in the
+  ledger as "resolved" and the next run reports it "back". Check the
+  regressed finding's message and place against the PREVIOUS run's
+  findings.json: if the same finding was there too, nothing came undone —
+  say so in the report and keep going.
 - Findings that know their element's `text` are identified by content
   (type, role, text), not by coordinates — so a data-parity iteration that
   moves the alignment does NOT churn them; textless findings (icons, boxes)

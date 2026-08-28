@@ -403,9 +403,26 @@ Mixing them is silent — both halves render *something* plausible.
 iOS Safari ignores the viewport flag the client also refuses `gesturestart`.
 The panes keep `touch-action:none` and run their own pan/pinch, so pinching
 reaches the image, not the document. View controls (align, marks, all
-instances, split/single, side, move, rail) persist in `localStorage` under
-`vc-controls` — they are a preference, not per-pair state, so they survive a
-reload and follow you from pair to pair.
+instances, split/single, side, move, rail, theme) persist in `localStorage`
+under `vc-controls` — they are a preference, not per-pair state, so they
+survive a reload and follow you from pair to pair.
+
+**Tokens, theme and type (redesign phase 1, 2026-08-28).** The chrome uses the
+RefDiff comps' token set under the comps' names (`--bg0..3 --line --txt --txt2
+--acc --canvas`, severity `#e5484d / #f5a623 / #4c9aff`, statuses
+`#8f7ee7 / #f5a623 / #46a758`), dark on `:root` and light as a
+`body.cc-theme-light` override behind a manual toggle in both topbars — light
+is never captured by refdiff. Type is **self-hosted**: IBM Plex Sans (variable,
+latin + latin-ext), IBM Plex Mono 400/500 and a 52-glyph Material Symbols
+Outlined subset ship as woff2 in `packages/annotator/assets/fonts/` and are
+served on `GET /fonts/<file>` (whitelisted in `fonts.ts`, which also owns the
+`@font-face` rules). The app must look right offline; the comps hydrate from
+Google Fonts and unpkg, but that is the design's excuse, not the app's. The
+emitted `report.html` (`--emit`) has no server, so its `fonts/` URLs resolve to
+nothing and the stacks fall through to the system families — deliberate:
+inlining ~200 KB of base64 into every per-run artifact is the bloat the app
+shell exists to avoid, and the emitted file is the offline reading copy, not
+the measured surface.
 
 **The annotator is an app, not a site generator (Mato, 2026-08-27).** It used
 to re-render a self-contained `report.html` into every run dir on each start —

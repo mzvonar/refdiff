@@ -215,7 +215,7 @@ pair's delta, 24 pending run states, 25 thumbnails for pairs without a PNG,
 
 ---
 
-## 1. Design tokens, theme, and self-hosted type — TODO
+## 1. Design tokens, theme, and self-hosted type — DONE (2026-08-28)
 
 One pass over `render.ts` `CSS` + `app-shell.ts` `INDEX_CSS`; no markup moves.
 
@@ -261,7 +261,74 @@ One pass over `render.ts` `CSS` + `app-shell.ts` `INDEX_CSS`; no markup moves.
 **Exit:** `typography` and `color` causes in `refdiff summary` measured before
 and after; the family-mismatch cause gone.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+What shipped: `packages/annotator/src/fonts.ts` (pure: the face list, the
+`@font-face` block, the comps' `.msi` rule verbatim, and the `/fonts/<file>`
+whitelist; tested) + `assets/fonts/` (196 KB: IBM Plex Sans **variable** latin
++ latin-ext — Google serves one file for 400–700 — Plex Mono 400/500 ×2
+subsets, Material Symbols Outlined subset via the Fonts API's `icon_names=`,
+so no fontTools; `package.json` `files` carries `assets`). `cli.ts` serves
+the faces from `../assets/fonts/` next to `dist`. `render.ts` `CSS`: the
+comps' tokens under the comps' names on `:root` (old `--bg/--panel/--ink/
+--muted/--accent` REWRITTEN, not aliased; the three scattered `:root` blocks
+folded into one), `body.cc-theme-light` override, `--diff` = the comps'
+Highlight `#ff5cd0` (strobe alternate swapped to the old green so the pulse
+still changes hue), flat `--canvas` panes instead of the navy checkerboard,
+`button, input, select, textarea { font:inherit }` (the toolbar measured as
+Arial 13.33px until then). Theme toggle (`.theme-toggle`, 32px/radius 7,
+`light_mode`/`dark_mode` ligatures) in the report header and the index head,
+persisted as `theme` inside `vc-controls` but written by `saveTheme()` alone —
+on the index route no report is open and a full `saveControls()` would persist
+unloaded defaults. Verified in a real browser: `document.fonts` reports the
+Plex + icon faces `loaded`, zero non-200 `/fonts/` responses, the toggle
+survives a reload. **`--emit` decision: degrade** — the emitted report.html
+keeps the relative `fonts/` URLs, which resolve to nothing off disk, and the
+stacks fall through to system-ui; inlining ~200 KB of base64 per run dir is
+the bloat the app shell exists to avoid (recorded in `fonts.ts` and
+`docs/architecture.md`).
+
+| pair | before findings (c/M/m) / inst / conf | after findings (c/M/m) / inst / conf | family mismatch (system-ui + Arial) | typography | color |
+| --- | --- | --- | --- | --- | --- |
+| refdiff-library-desktop | 405 (133/204/68) / 509 / 0.00 | **390** (133/177/80) / 457 / **0.08** | 29 → **0** | 29 → 26 | 32 → 25 |
+| refdiff-compare-desktop | 361 (120/156/85) / 495 / 0.00 | **339** (118/133/88) / 459 / **0.13** | 27 → **0** | 27 → 26 | 25 → 15 |
+| refdiff-library-mobile | 343 (49/192/102) / 537 / 0.00 | **323** (56/168/99) / 492 / 0.00 | 23 → **0** | 25 → 20 | 31 → 24 |
+| refdiff-compare-mobile | 118 (56/38/24) / 135 / 0.00 | **116** (57/29/30) / 124 / **0.25** | 8 → **0** | 8 → 6 | 8 → 7 |
+
+Total 1227 / 1676 → **1168 / 1532**, 0 suppressed either side. Confidence
+went UP on three pairs (Plex metrics put the shared anchors closer to the
+comp's geometry) — the count did not fall by lowering it. The "before" here
+reproduced phase 0's table exactly, so the two are one baseline.
+
+Causes that closed: every `fontFamily=… → system-ui` row (the top typography
+cause, 6+ rows, 85 findings across the four pairs) and the `Arial` row from
+form controls; the navy-vs-grey text colours (`rgb(230,236,245)` etc.) are
+now the comps' `--txt`/`--txt2` values. Causes that did not — all markup,
+i.e. later phases: **Mono vs Sans** on routes / delta / mono lines (26
+findings — the comp sets `IBM Plex Mono` per element, phases 2 and 4);
+**Material Symbols vs Sans** where the comp draws an icon and the app draws
+a word or nothing (phases 2–3 place the icons); size/weight rows (11.5/600
+chips vs 13/400 text — chip geometry, phase 2); the remaining `color` rows
+are WHICH element is muted (`--txt2` vs `--txt` on chips and counts) and the
+`#111` text on amber badges (the comps use dot-badges with coloured text,
+phase 2), not the token values. `border-radius` / `border` unchanged (markup).
+
+**`11 REGRESSION(S)` on the final run — examined, not a regression.** All
+eleven (library-desktop 5, compare-desktop 5, library-mobile 1) are findings
+present by the same id in the before run, the intermediate run and the final
+run: text-keyed findings with several same-text candidates ("3", "4", "5" on
+badges, "Figma", "Diverging", "warning") whose one-to-one nearest-box pairing
+re-shuffled when the type metrics changed, so one instance entered
+`resolved-ledger.json` as resolved in the intermediate run and read as
+"back" in the final one. Nothing phase 1 introduced came undone. The general
+shape is now in `SKILL.md` ("Reading the measurements" → `regressions`).
+Harness note for later: `delta.ts` pairs by key + nearest box; a font swap
+moves every box a few px at once, which is exactly the churn its text-keyed
+identity was meant to avoid — worth a test with N same-text findings once
+the redesign is landed.
+
+Light theme ships UNMEASURED by decision (gap 20); both themes eyeballed once
+for a contrast blunder, none found — that is not a parity claim.
 
 ---
 

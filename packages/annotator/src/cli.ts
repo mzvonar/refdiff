@@ -52,6 +52,7 @@ import {
 } from "./annotations.js"
 import { renderAppShell } from "./app-shell.js"
 import { type BrokenPair, type PairSummary } from "./index-view.js"
+import { fontFile } from "./fonts.js"
 import { renderReport } from "./render.js"
 import { parseReport, type ReportParse } from "./report-file.js"
 import {
@@ -314,12 +315,16 @@ interface AppApiOptions {
  * `compare` run finished after the server started shows up on reload:
  *
  *   GET  /                          the shell (no data)
+ *   GET  /fonts/<file>              the self-hosted faces (assets/fonts, whitelisted in fonts.ts)
  *   GET  /api/pairs                 the list, summarised from each findings.json
  *   GET  /api/pairs/<dir>/annotations
  *   PUT  /api/pairs/<dir>/annotations  validate, persist atomically, refresh digest
  *
  * Anything else falls through to static serving of the root.
  */
+/** `assets/fonts/` sits beside `dist/`, where this module runs from. */
+const FONTS_DIR = new URL("../assets/fonts/", import.meta.url)
+
 function appApi(options: AppApiOptions) {
   const byName = new Map(options.runs.map((r) => [r.name, r.dir]))
   // A lone run dir is its own root: the shell still lists exactly one pair, and
@@ -338,6 +343,24 @@ function appApi(options: AppApiOptions) {
     }
     if (path === "/api/pairs") {
       sendJson(res, 200, { root: options.root, pairs: await summarisePairs(options) })
+      return true
+    }
+    const font = fontFile(path)
+    if (font) {
+      // The package ships the files (package.json `files`); a missing one is a
+      // broken install, reported as 404 so the page degrades to system-ui
+      // instead of the request hanging or the server dying.
+      try {
+        const body = await readFile(new URL(font.file, FONTS_DIR))
+        res.writeHead(200, {
+          "Content-Type": "font/woff2",
+          "Cache-Control": "public, max-age=86400",
+        })
+        res.end(body)
+      } catch {
+        res.writeHead(404, { "Content-Type": "text/plain" })
+        res.end(`font not shipped: ${font.file}`)
+      }
       return true
     }
     // GET/PUT the pair's focus region. On write the digest is rebuilt, because the digest — not the
