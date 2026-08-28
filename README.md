@@ -31,7 +31,7 @@ for the model, and `--emit` for self-contained `report.html` files. The bounded 
 entry expands a COMPONENT_SET into per-variant pairs
 ([`examples/population-registry-ds.manifest.mjs`](examples/population-registry-ds.manifest.mjs)).
 Current state and next steps:
-[`docs/handoff-2026-08-27.md`](docs/handoff-2026-08-27.md) and
+[`docs/handoff-2026-08-28.md`](docs/handoff-2026-08-28.md) and
 [`docs/plan-next.md`](docs/plan-next.md). Background:
 
 - [`docs/research.md`](docs/research.md) — the evidence base (VLM failure

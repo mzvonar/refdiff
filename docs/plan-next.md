@@ -1,8 +1,144 @@
-# Plan — after the first vertical slice (2026-08-26, updated 2026-08-27 S12)
+# Plan — the harness (2026-08-26, updated 2026-08-28)
 
-Status: items 1–11 DONE and proven (sessions 1–12), item 4 included.
-Everything below is history; the live plan is `docs/handoff-2026-08-27.md`
-"What REMAINS" (consuming-repo decisions, then migration / publishing).
+Status: items 1–11 DONE and proven (sessions 1–12). **Items 12–16 are the
+live plan** — four harness improvements the annotator redesign (phases 0–5,
+`docs/plan-annotator-redesign.md`) surfaced, in the order to do them, plus the
+small ones. The canonical handoff is `docs/handoff-2026-08-28.md`. Everything
+from item 11 down is history.
+
+## 12. A regression must have been ABSENT from the previous run — TODO ← DO FIRST
+
+**Evidence (2026-08-28, phase 5):** `refdiff-compare-desktop` reported
+`REGRESSION: 2` on `f9` (`missing-element|text|text:#6B7280`) and `f17`
+(`position|text|text:color`). Both keys were PRESENT in the immediately
+previous run (as `f9` / `f19`-ish, same message). What happened: the rail
+has two identical `#6B7280` prop lines under order-moved rows (plan gap 32);
+a hairline change flipped which pairs with which, the count of that key went
+1 → 2, `diffFindings` (`packages/core/src/package/delta.ts`) paired one and
+listed the other as `introduced`, and `findRegressions` matched it to a
+ledger entry from 18:35 (phase 4 run 2) by key alone — `matchesEntry` uses
+the box only for textless entries. Phases 3, 4 and 5 each spent a paragraph
+explaining this "same-text reshuffle shape". The fix skill HALTS on
+`REGRESSION`, so the loop's one hard stop is crying wolf.
+
+**Fix (pure, `delta.ts`):**
+- `findRegressions(ledger, next, introduced, prevFindings, …)`: a candidate
+  whose `identityKey` occurs among `prev.findings` is not a regression — it
+  did not "come back", its multiplicity changed. `diffReports` passes
+  `prev.findings`.
+- For a text-keyed key that is NOT unique in `next`, also require the ledger
+  entry's `box` within `boxTolerance` (today the box is recorded but ignored
+  for text entries). Keep the box a tie-break for unique keys — a fixture
+  shift must not un-regress a real regression.
+- Tests in `delta.test.ts` named for the case: "two identical `#6B7280`
+  prop lines, one present in the previous run — not a regression" (fails
+  without the fix), and "the same key absent from the previous run and in
+  the ledger — still a regression".
+- `skills/refdiff/SKILL.md` "Reading the measurements" (`delta`): state
+  the definition — introduced AND absent from the previous run AND resolved
+  by an earlier one. `docs/architecture.md` Open decisions: one line.
+
+## 13. A non-identity alignment on a same-size page is itself a finding — TODO ← DO SECOND
+
+**Evidence (phase 5):** for five phases the fit absorbed `scale 1.00175,
+offset (−0.54, −1.98)` on `refdiff-compare-desktop` and `scaleY 1.00067,
+offsetY −0.52` on the mobile pair — the comps' content-box chrome (topbar
+46+1, strip 38+1, tool strip 44+1, rail 320+1) — and no finding showed it;
+`summary.md` prints only `conf`. It was found from a 1px on the phone sheet,
+by hand. Fixing the sizes snapped both transforms to `scale 1, offset 0`.
+
+**Fix:**
+- `alignment.ts` / a pure `alignmentNote(alignment, sameSize)` next to
+  `lowConfidenceFinding` (`pixel/checks.ts` is the precedent for a boxless
+  minor note): when the design frame's css px EQUALS the pair viewport (the
+  fluid-frame / same-size case — `scope screen-label fluid` in the capture
+  log; a Figma frame of another size is layout, not scale) and
+  `|scale − 1| > 0.0005` or `|offset| > 0.5px`, emit ONE minor, boxless
+  finding: `expected { scale: 1, offsetX: 0, offsetY: 0 }`, `actual { scale,
+  offsetX, offsetY }`, message "alignment is not the identity on a same-size
+  page: the fit absorbed (…) — a systematic size difference in the chrome
+  above or beside the anchors (box model?)". Decide the `type`: a new
+  `"alignment"` member of `FindingType` (`types.ts:44`) is the honest one —
+  it is neither a pixel region nor an element — and is a report-vocabulary
+  change, so §1a + "Reading the measurements" in `SKILL.md` and the
+  annotator's severity/type labels (`render.ts`, `rail.ts propRows`) travel
+  with it. Not accepted-able by value (the numbers move); the note goes away
+  when the sizes are right.
+- `summary.md` / `summary.json` (`cli.ts` `writeSummary`, ~963): an `align`
+  column — `1 / 0,0` or `1.002 / −0.5,−2.0` — beside `conf`.
+- Tests: the pure note (identity → none; 1.00175 → note; a Figma frame of a
+  different size → none), and the summary column.
+
+## 14. Accept the CONTENTS of an accepted element — TODO, DISCUSS FIRST
+
+**Evidence:** decision D6 (the card thumbnail is the run's own `impl.png`;
+the comp draws a grey plate) costs 8 findings forever across the Library
+pairs (3 desktop, 5 mobile: the plate's textless bars and the plate box
+paired with our tile), and the artboard's 16×16 / 12×12 logo squares 3 more
+on the compare pairs. `acceptedFromFinding` rightly refuses a bare
+`{ type, role }` for a textless box, and a `regions` entry has no reason and
+never expires. What DOES identify those boxes is their container: they lie
+inside the design counterpart of an element already accepted (the `<img>`).
+
+**Proposal:** `AcceptedDeviation` gains `contents?: true`: when the rule
+accepts an element finding (extra/missing element), every TEXTLESS finding
+whose box lies inside that element's box (one world space — `implBox`
+against the accepted impl element, `designBox` against the design one) is
+suppressed too, `suppressedBy: "accepted"`, `rule: "<reason> (inside)"`.
+Content-shaped: the rule still names the image, and expires with it.
+
+**Questions for Mato before building:**
+1. Boxes only, or text too? The step numerals `1 2 3` inside the artboard
+   are text; accepting text inside the image region would also hide a
+   missing canvas MARK drawn over the same region (the badges are overlays on
+   the artboard). Recommendation: boxes only; the numerals stay visible (5
+   findings) as the price of never hiding a badge.
+2. Should `refdiff accept` be able to write `contents: true` (a flag), or is
+   it manifest-only?
+3. Manifest shape change → `SKILL.md` "Configuring a pair" table,
+   `docs/architecture.md` manifest example, `manifest.ts` `readAccepted`,
+   `accepted.ts` `readRecord`.
+
+## 15. Same-text pairs before nearest-box under a lateral shift — TODO, DISCUSS FIRST
+
+**Evidence:** the Library comp's `Pending` chip (gap 24) is not drawn; the
+`flex:1` search field absorbs its 78px and every chip after it shifts.
+`matchElements` (`structural/match.ts`) pass 1 pairs UNIQUE texts by content;
+`Figma` / `Claude Design` are not unique (the cards' source chips repeat
+them), so pass 2's greedy γ paired design `Claude Design` (x 435) with impl
+`Figma` (x 446) — a text tie only breaks EQUAL γ — and one cause became six
+findings (missing `Figma`, extra `Claude Design`, `text-content`, a
+`position` on the wrong pair, plus the two real ones).
+
+**Proposal:** a pass 1b for NON-unique texts: among candidates that share
+normalized text, assign greedily by γ up to `textMaxGamma` (say 2×
+`maxGamma`) BEFORE any mixed-text candidate is considered; pass 2 keeps its
+γ for the rest. Expected on `refdiff-library-desktop`: 6 → 2 (`position ×8`
+on the chip row + the search `size`), nothing else moves (the Library's
+other 3 are D6).
+
+**Questions:** (a) is text priority right when the same word sits in two
+rows 300px apart — a badge `5` in row 5 paired with a `5` in a chip? The
+band (`textMaxGamma`) is the guard; what value? (b) the `×N` aggregation
+and the delta identity both assume today's pairing — re-measure the
+uctoinak / population-registry baselines (handoff "How to run") before
+merging, not only this repo's four pairs.
+
+## 16. Small, after 12–15 — TODO
+
+- `refdiff-annotator --read-only`: refuse every PUT with 405 and say so in
+  the rail's status line. Today the served app WRITES into the committed
+  fixture (bindings trap) — a measure against a dirty fixture is a measure of
+  the wrong thing. `cli.ts` flag + `USAGE` + `SKILL.md` + bindings.
+- Gap 18 (annotator plan): the keyboard-shortcut hint still has no drawn home
+  — a design question for Mato, not code.
+- Annotator redesign **phase 6 — Land it** (`docs/plan-annotator-redesign.md`):
+  `SKILL.md` + bindings sweep, `docs/architecture.md` "Annotator" rewritten to
+  the new IA, decisions into "Open decisions". Independent of 12–15; do it
+  when Mato says, via `/next-phase`.
+
+---
+
 
 ## 11. Corpus decisions + pixel calibration — harness half DONE (session 12)
 
