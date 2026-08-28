@@ -881,7 +881,7 @@ screenshots eyeballed once for a blunder. That is not a parity claim.
 
 ---
 
-## 5. Mobile pairs + convergence — TODO
+## 5. Mobile pairs + convergence — DONE (2026-08-28)
 
 Close `refdiff-library-mobile` and `refdiff-compare-mobile`; then iterate the
 bounded loop on whatever remains across all four, recording each delta. Every
@@ -891,7 +891,114 @@ the measurement.
 **Exit:** all four pairs at their converged numbers; the accepted list
 justified item by item.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+| pair | before findings (c/M/m) / inst / supp / conf | after findings (c/M/m) / inst / supp / conf |
+| --- | --- | --- |
+| refdiff-library-desktop | 9 (2/5/2) / 16 / 21 / 0.90 | 9 (2/5/2) / 16 / 21 / 0.90 — unchanged |
+| refdiff-compare-desktop | 51 (10/30/11) / 63 / 64 / 0.71 | **50** (10/29/11) / 62 / 66 / 0.71 |
+| refdiff-library-mobile | 5 (0/3/2) / 5 / 10 / 1.00 | 5 (0/3/2) / 5 / 10 / 1.00 — unchanged |
+| refdiff-compare-mobile | 4 (0/3/1) / 4 / 31 / 0.90 | **3** (0/3/0) / 3 / 31 / 0.90 |
+
+Total 69 / 88 → **67 / 86**, 128 suppressed (+2: the `×14` / `×5` chips,
+below). "Before" reproduced phase 4's final table exactly. Confidence held
+on all four. The number that moved most is not in the table: **the
+alignment on both compare pairs is now the identity** (desktop was `scale
+1.00175, offset (−0.54, −1.98)`, mobile `scaleY 1.00067, offsetY −0.52`;
+both read `scale 1, offset 0` after) — the fit had been absorbing a
+systematic 1–2px that no finding showed. Rows 1–3 of the rail are now
+pixel-identical to the comp (`"3"` at (1058.5, 400) on both sides).
+
+**What was the app's** — one cause, found from the mobile pair's 1px:
+
+- **The comps' inline styles are content-box.** `support.js` sets no
+  `box-sizing` reset (it only offers a `.bbox` utility) and the comps put
+  their fixed sizes inline on bordered divs, so the Tool comp's phone sheet
+  is `height:44` + 1px border = 45px; ours (`* { box-sizing:border-box }`)
+  was 44 and the whole sheet sat 1px low (the grip at 806 vs 805.03). The
+  same shape everywhere the comp fixes a size on a bordered box: the
+  topbar (46+1), the delta strip (38+1), the tool strip (44+1), the rail
+  (320+1), the align menu (264 + 1·2 + 4·2; 248 + 10 on the phone), the Library topbar (46+1),
+  its search field (36+2), the error card's icon (46+2) and bordered
+  button (36+2). Each rule now reads as the comp's number PLUS its border
+  (`calc(320px + 1px)`), with the convention documented once above the
+  reset in `render.ts`. Measured in the browser, not inferred: the rail
+  badges sat 4px right of the comp's raw x (1062.5 vs 1058.5).
+- **Our finding rows carried a 3px transparent left edge the comp's never
+  had.** The comp's `rowBase` has no left border; only its comment rows do
+  (`borderLeft: '3px solid transparent'`, line 610), so `.irow` keeps it and
+  `.frow` loses it — 3 of the 4px above. The failed-triage-save edge
+  (section C, decided in phase 4) survives as `box-shadow: inset 3px 0 0`,
+  so the row does not shift when it turns red.
+- **`.side-fab button` inherited the report's `line-height:1.4`** (the
+  comp's `fabBtn` has none): 18.2px vs 17px per line, the Design / Impl
+  toggle 1.2px high on the phone. `line-height:normal`.
+
+Each step measured (desktop / mobile compare): 51 → 50 / 4 → 3, the
+Library pairs unchanged and their anchors within 0.5px top to bottom
+(`Both sources` 116.3 vs 116.5, `Confirm modal` 897.3 vs 897.2 — the
+Library-desktop `scaleY 0.9966` is the anchor fit's noise, not drift).
+
+**Run reported 2 `REGRESSION`s** (`f9` missing `#6B7280`, `f17` position
+`color`): both are keys the ledger resolved on phase 3's 17:33 and phase
+4's 18:35 intermediate runs — the same-text prop-line reshuffle phase 4
+diagnosed (two identical `#6B7280` lines under order-moved rows, which one
+pairs with which flips on a hairline). Nothing built came undone; rows 1–3
+are identical and every dx on the rail is 0 where it was 2.6.
+
+**What remains, item by item — the converged list.** The rule that decides
+each one is `accepted.ts` (`refdiff accept`): a `position` / `spacing`
+finding is REFUSED as a rule (an offset lapses on every recapture), and a
+textless `missing-element` box cannot be identified without a structural
+predicate, which CLAUDE.md says never expires and hides a regression
+later. So "accepted" below means a content-shaped rule in
+`design/refdiff.manifest.mjs`; "visible" means left in the list on purpose
+with its cause named here.
+
+| pair | what | count | outcome |
+| --- | --- | --- | --- |
+| library-desktop | the comp's `Pending` state chip (gap 24) — 78px the `flex:1` search field absorbs, so every chip shifts, `Figma`↔`Claude Design` mis-pair | 6 | **visible** — `Pending` itself is excused by the `textPatterns` rule; a rule for the shifted chips would hide a missing chip. Ask Mato: drop the chip from the comp, or define what refdiff state it filters |
+| library-desktop | D6 — the comp's plate bars where the app draws the run's `impl.png` (three textless boxes) | 3 | **visible** — the `<img>` is accepted (`extra-element` / `image`); the bars have no text to name |
+| library-mobile | D6 — the same plate: two bars missing, and the 34×26 plate box pairs with our 44×56 tile (size / position / colour) | 5 | **visible** — same reason |
+| compare-desktop | gap 32 — the comp's demo array lists rows 1,2,3,7,8,4,5,6; refdiff lists 1..8 (phase 4 run B: 16 findings) and the same-text digit / prop-line reshuffles it causes (~10) | ~26 | **visible** — ask Mato: move `f4, f5, f6` before `g1` in the comp's array (the `num`s already agree) |
+| compare-desktop | gap 26 — the comp's two cause lines make its g1 / g2 rows ~20px taller; every row and the suppressed toggle below sit 20 / 56px lower | ~13 | sentences **accepted** by pattern; the offsets **visible** (positions cannot be rules) |
+| compare-desktop | D6 — the artboard's own DOM: step numerals `1 2 3` ×2 panes and the 16×16 logo square ×2, live elements in the comp, pixels in our `impl.png` | 8 | **visible** — a per-digit rule would hide a missing badge |
+| compare-desktop | gap 33 — `×14` / `×5` (the true count of distinct places) opposite the comp's `×15` / `×6` | 2 | **accepted** this phase (`extra-element` + text; the counterpart of the existing pattern) |
+| compare-mobile | gap 34 — the comp's `· 1 unsaved` makes its sheet summary 67px wider, so the centred summary + chevron sit ±33.5px | 2 | **visible** — the text is accepted; the offsets cannot be rules until the demo's `saveErr` is `null` |
+| compare-mobile | D6 — the 12×12 logo square in the artboard | 1 | **visible** |
+
+**The accepted list, justified** (`design/refdiff.manifest.mjs`, every hit
+under `suppressed` in `findings.json`, 128 in all):
+
+- `LIBRARY_IGNORE.textPatterns` — `Pending|Processing|Queued|running|waiting`
+  (gap 24, 5 hits); the relative times (gap 27; the strings agree for an
+  hour after `--now`); `^findings\.json · ` (the broken card quotes the real
+  parser message).
+- `LIBRARY_IGNORE.accepted` — `extra-element` / `image` (D6, the run's own
+  screenshot); `Major 2 → 3` and `Minor 2 → 3` (gap 23: the Library comp
+  counts f1–f6, refdiff also counts the Tool comp's g1 / g2).
+- `COMPARE_IGNORE.textPatterns` — the artboard vocabulary (the comp imports
+  `parts/Artboard *` as live DOM); gap 26's two sentences; `^×(15|6)$` (gap
+  33); `\d+ suppressed by preset rules` (refdiff has no presets — section C);
+  the delta strip's copy (gaps 23 / 29: the comps disagree with each other
+  and with the fixture's real delta).
+- `COMPARE_IGNORE.accepted` — `extra-element` / `image` (the two
+  screenshots); `×14` / `×5` (gap 33, this phase); the phone summary
+  `8 findings · 3 comments · 1 unsaved → 8 findings · 3 comments` (gap 34).
+
+No `regions`, no `roles`, no `dataSlots`: every rule names the content it
+excuses.
+
+**Converged numbers: 9 / 50 / 5 / 3, confidence 0.90 / 0.71 / 1.00 / 0.90,
+alignment identity on three pairs.** Every remaining finding is one of the
+comp's demo-data choices (gaps 24, 26, 32, 34) or decision D6; the four
+asks for Mato are in section H. Nothing left on the app's side of the four
+pairs that a measurement can find.
+
+Light theme, the error states, the unfolded rows and menus still ship
+UNMEASURED by decision (gap 20 / section C); the align menu's new width and
+the `.frow.unsaved` inset edge were exercised headlessly at 1360 and 390 for
+console errors, none found.
 
 ---
 
@@ -908,11 +1015,13 @@ justified item by item.
 
 ## Design gaps — things the annotator does that the comps never drew
 
-**STATUS 2026-08-28: the design is COMPLETE for phases 0–4.** Every gap below
+**STATUS 2026-08-28: the design is COMPLETE for phases 0–5.** Every gap below
 is resolved except **18 (keyboard-shortcut hint)**, which is deliberately
 deferred until after phase 4, and the four phase 4 found while building the
 rail (**31–34**, section G — one product question, three demo-data nits, each
-with its measured cost). Two comp refetches on 2026-08-28 closed the rest;
+with its measured cost). **Phase 5 converged on those plus 24 and 26; section
+H lists the four demo-data asks that would close the remaining findings on the
+comp's side, and one note about the comps' box model.** Two comp refetches on 2026-08-28 closed the rest;
 `design/refdiff/*.dc.html` in this repo is the authority, verified against the
 remote (Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`).
 
@@ -1204,6 +1313,34 @@ with Mato where the two comps disagree.
     read "×15". refdiff's `instances` counts every distinct place, primary
     included (×14 / ×5). Excused as designer data by a content-shaped pattern
     (`^×(15|6)$`) until the comp drops `inst[0]` or shows `inst.length`.
+### H. Phase 5 (2026-08-28) — the asks that remain, and a note on the comps' box model
+
+Nothing new was invented in phase 5; these are the survivors of the converged
+list (phase 5 Numbers), restated as concrete asks so they can be closed on the
+comp's side. Each carries its measured cost.
+
+- **Gap 32 — row order** (~26 findings on `refdiff-compare-desktop`): move
+  `f4, f5, f6` before `g1` in the Tool comp's `findings` array. The `num`s
+  already agree; only the array position differs.
+- **Gap 26 — the cause line** (~13): either drop `cause` from g1 / g2 in the
+  comp, or say where a real report would get one (`Finding` has no such
+  field; the model's triage note is the nearest thing that exists).
+- **Gap 34 — `saveErr` on c2** (2 on the phone): set it to `null` in the demo
+  data — the failed-save DESIGN stays (section C), only the demo state goes.
+- **Gap 24 — the `Pending` chip** (6 on the Library): drop it from the comp,
+  or name the refdiff state it filters. refdiff has no run-in-progress state
+  (a run dir exists once `compare` wrote it), and a chip that can never match
+  is worse than a missing one, so the app does not draw it and the 78px it
+  occupied moves every chip after it.
+- **Note, not a gap — the comps are content-box.** `support.js` sets no
+  `box-sizing` reset, so every inline `height:46px` on a bordered div renders
+  47px. The app matches that box by box (`render.ts`, the comment above the
+  reset). A `* { box-sizing:border-box }` in the comps' runtime would make the
+  numbers mean what they say, but it is a runtime change, not a design one —
+  for Mato's information only.
+
+35. _(reserved — no new product gap was found in phase 5)_
+
 34. **The demo comment c2 carries a `saveErr`.** The failed-save DESIGN (section
     C) is right, but as demo data it shows through the phone sheet's summary
     (`8 findings · 3 comments · 1 unsaved`) and shifts it 33px; a failed save is

@@ -483,7 +483,13 @@ items is now a typed finding — read it there:
   `confidence`, plus `confidenceX` / `confidenceY`). Read it FIRST, before any
   finding — see §1a. Confidence 0.00 means too little unique shared text:
   everything positional is unreliable until the fixture shares text with the
-  comp, and no policy tweak substitutes for that.
+  comp, and no policy tweak substitutes for that. Once a page is close, read
+  the transform too: on a same-size viewport, a fit that is NOT the identity
+  (`scale 1.002`, `offsetY −2`) is a systematic size difference the fit is
+  absorbing and no finding will show — typically a box model mismatch (a comp
+  with no `box-sizing` reset renders `height:46px` + border as 47px; an app
+  with `* { box-sizing:border-box }` renders 46) in the chrome above or beside
+  the anchors. Fix the sizes; the transform snaps to `scale 1, offset 0`.
 
 ## Environment pre-flight (fill in per repo)
 

@@ -219,7 +219,8 @@ describe("renderReport", () => {
     expect(rules).toContain(".tb-left .brand-name, #seg-layout, #seg-layer { display:none; }")
     // The rail is the comps' bottom sheet: 44px of handle over the canvas, 52% when open, the
     // tabs and lists hidden while it is down. The page itself never scrolls.
-    expect(rules).toContain(".rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:44px;")
+    // 44px is the comp's CONTENT height; its 1px top border makes the sheet 45 (phase 5: the sheet sat 1px low).
+    expect(rules).toContain(".rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:calc(44px + 1px);")
     expect(rules).toContain("body.rail-open .rail { height:52%; }")
     expect(rules).toContain("body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }")
     expect(rules).not.toContain("position:sticky")
@@ -230,7 +231,17 @@ describe("renderReport", () => {
   it("puts the review rail on the RIGHT at the comps' 320px, with tabs, chips, prop lines and a collapse chip", () => {
     // Phase 4: the 340px left aside is gone; the rail follows the viewer in the DOM and the flex row.
     expect(html.indexOf('<section id="viewer">')).toBeLessThan(html.indexOf('<aside id="side" class="rail">'))
-    expect(html).toContain(".rail { width:320px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }")
+    expect(html).toContain(".rail { width:calc(320px + 1px); flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }")
+    // The comp's inline boxes are content-box: its 320px rail, 44px tool strip, 46px topbar and 38px delta
+    // strip are each that PLUS the border. Phase 5 measured the rail badges 4px right of the comp's: 1px of
+    // this and a 3px left edge the comp's finding rows never had (its comment rows do — .irow keeps it).
+    expect(html).toContain(".tools { width:calc(44px + 1px);")
+    expect(html).toContain(".topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px);")
+    expect(html).toContain("min-height:calc(38px + 1px);")
+    expect(html).toContain(".frow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent; }")
+    expect(html).toContain(".irow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; }")
+    // A failed triage save keeps its 3px red edge (section C) without shifting the row: inset, not border.
+    expect(html).toContain(".frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }")
     expect(html).not.toContain("grid-template-columns:340px 1fr")
     expect(html).toContain('<span class="rail-title">Review</span>')
     expect(html).toContain(">right_panel_close</span>")

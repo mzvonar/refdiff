@@ -47,13 +47,24 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture**: the Library pairs sit
-  at 0.90 / 1.00 since phase 2; the compare pairs at 0.71 / 0.90 after phase
-  4 (the rail on the comp's side). What holds the desktop pair under the
-  Library's numbers is the comp's demo ROW ORDER (plan gap 32 — its findings
-  array lists 1,2,3,7,8,4,5,6; refdiff lists by severity) and its two cause
-  lines (gap 26); neither is the app's to fix. Do not tune the fixture to
-  raise it — a fixture in the comp's order would carry marks out of list
-  order, a shape refdiff never produces.
+  at 0.90 / 1.00 since phase 2; the compare pairs at 0.71 / 0.90 since phase
+  4, and phase 5 converged the four at **9 / 50 / 5 / 3 findings** with the
+  alignment at the identity (`scale 1, offset 0`) on three of them. What
+  holds the desktop pair under the Library's numbers is the comp's demo ROW
+  ORDER (plan gap 32 — its findings array lists 1,2,3,7,8,4,5,6; refdiff
+  lists by severity) and its two cause lines (gap 26); neither is the app's
+  to fix. Do not tune the fixture to raise it — a fixture in the comp's order
+  would carry marks out of list order, a shape refdiff never produces. The
+  full converged list, item by item, is the plan's phase 5 Numbers.
+- **The comps are CONTENT-box; the app is border-box.** `support.js` sets no
+  `box-sizing` reset, so a comp div with `height:46px` and a 1px border is 47px
+  tall; the app's `* { box-sizing:border-box }` would render 46. Every app rule
+  that copies a fixed size from a bordered comp box is written as the comp's
+  number plus the border (`calc(320px + 1px)`, see the comment above the reset
+  in `render.ts`). The tell is not a finding: it is an `alignment` that is NOT
+  the identity on a same-size viewport (phase 5: `offsetY −1.98` on the
+  desktop compare pair = the topbar's and the strip's missing pixel). When you
+  add chrome from a comp, add its border to the size.
 - The compare pairs excuse the comp's ARTBOARD vocabulary (`COMPARE_IGNORE.
   textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
   draws the run's PNGs), the two screenshots (`accepted`), and the delta

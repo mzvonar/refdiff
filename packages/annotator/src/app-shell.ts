@@ -295,8 +295,9 @@ body.route-index { display:block; height:auto; min-height:100%; overflow:auto; }
 #view-index { line-height:normal; }
 #view-index .mono { font-family:var(--font-mono); }
 /* ---- topbar: brand only (gap 8), layout + theme toggles on the right */
-.lib-top { position:sticky; top:0; z-index:10; display:flex; flex-wrap:nowrap; align-items:center; gap:10px; padding:0 14px; height:46px;
+.lib-top { position:sticky; top:0; z-index:10; display:flex; flex-wrap:nowrap; align-items:center; gap:10px; padding:0 14px; height:calc(46px + 1px);
   background:var(--bg1); border-bottom:1px solid var(--line); }
+/* calc(N + border): the comp's inline boxes are content-box (see render.ts CSS); ours are border-box. */
 .lib-top .brand { width:18px; height:18px; border-radius:5px; background:var(--acc); flex-shrink:0; }
 .lib-top .brand-name { font-size:13px; font-weight:700; letter-spacing:.02em; }
 .lib-top .spacer { flex:1; }
@@ -309,7 +310,7 @@ body.route-index { display:block; height:auto; min-height:100%; overflow:auto; }
 .lib-filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
 .lib-filters[hidden] { display:none; }
 .search { display:flex; align-items:center; gap:8px; background:var(--bg1); border:1px solid var(--line); border-radius:9px;
-  padding:0 10px; height:36px; flex:1; min-width:170px; }
+  padding:0 10px; height:calc(36px + 2px); flex:1; min-width:170px; }
 /* No max-width: the comp's SOURCE says 340px but its render never applies it
    (226px at 1180, the full 358px row at 390) — the render is what refdiff measures. */
 .search .msi { font-size:17px; color:var(--txt2); }
@@ -406,7 +407,7 @@ img.tile { object-fit:cover; object-position:top; display:block; }
 .errbox { display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:52px 24px;
   background:var(--bg1); border:1px solid var(--line); border-radius:14px; max-width:560px; margin:0 auto; }
 body.lib-mobile .errbox { padding:32px 16px; }
-.err-icon { width:46px; height:46px; border-radius:12px; background:var(--bg2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+.err-icon { width:calc(46px + 2px); height:calc(46px + 2px); border-radius:12px; background:var(--bg2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
 .err-icon .msi { font-size:24px; color:var(--major); }
 .err-head { font-size:15.5px; font-weight:700; letter-spacing:-.01em; }
 .err-body { font-size:12.5px; line-height:1.55; color:var(--txt2); max-width:420px; }
@@ -421,7 +422,7 @@ body.lib-mobile .errbox { padding:32px 16px; }
 .err-actions button { display:flex; align-items:center; gap:6px; padding:0 14px; height:36px; border-radius:9px; font-size:12.5px; font-weight:600; cursor:pointer; border:0; }
 .err-actions .msi { font-size:16px; }
 .err-retry { background:var(--acc); color:#fff; }
-.err-copy { background:var(--bg2); border:1px solid var(--line); color:var(--txt); }
+.err-copy { background:var(--bg2); border:1px solid var(--line); color:var(--txt); height:calc(36px + 2px); }
 .err-copy:hover { border-color:var(--acc); }
 .err-auto { font-size:11.5px; color:var(--txt2); margin-top:2px; }
 `

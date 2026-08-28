@@ -92,6 +92,18 @@ COMPARE_IGNORE.textPatterns.push(
   "^\\d+ suppressed by preset rules$",
 )
 COMPARE_IGNORE.accepted.push(
+  // gap 33, the app's side of the same off-by-one: the comp's ×15 / ×6 are excused above, so the
+  // app's ×14 / ×5 (the true count of distinct places) would otherwise read as extra elements.
+  {
+    type: "extra-element",
+    text: "×14",
+    reason: "gap 33: the comp's g1 says ×15 (1 + inst.length with inst[0] repeating the primary); refdiff counts 14 distinct places — the comp's ×15 is excused by the pattern above, this is its counterpart",
+  },
+  {
+    type: "extra-element",
+    text: "×5",
+    reason: "gap 33: the comp's g2 says ×6 for five distinct places — see ×14",
+  },
   {
     type: "text-content",
     expected: { text: "8 findings · 3 comments · 1 unsaved" },

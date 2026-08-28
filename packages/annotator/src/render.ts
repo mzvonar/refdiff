@@ -254,6 +254,11 @@ body.cc-theme-light { --bg0:#dfe1e4; --bg1:#f2f3f5; --bg2:#ffffff; --bg3:#e3e5e9
 ${FONT_FACE_CSS}
 ${ICON_CSS}
 * { box-sizing:border-box; }
+/* The comps set no box-sizing reset (support.js only offers a .bbox utility), so every inline-styled
+   box there is CONTENT-box: a div with height:46px and a 1px border is 47px tall. Where a rule below
+   copies a fixed size the comp puts on a bordered box, it is written as the comp's number PLUS its
+   border/padding so the rendered box matches (phase 5: the phone sheet sat 1px low, the rail 1px
+   narrow, the canvas 2px wide, and the align menu 10px narrow before this). */
 html,body { margin:0; height:100%; background:var(--bg0); color:var(--txt); font:13px/1.4 var(--font-sans); }
 /* Form controls do not inherit the page font: without this every <button> and <select> measured as Arial 13.33px. */
 button, input, select, textarea { font:inherit; }
@@ -263,7 +268,7 @@ html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-beha
 body { display:flex; flex-direction:column; }
 /* ---- topbar: the comps' 46px bar — back arrow, brand, pair title; the three
    segmented groups (layout / overlay / layer) centred; the theme toggle right. */
-.topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:46px; flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
+.topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px); flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
 .tb-left { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
 .tb-left .back { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--txt2); text-decoration:none; flex-shrink:0; }
 .tb-left .back:hover { background:var(--bg3); color:var(--txt); }
@@ -287,7 +292,7 @@ body { display:flex; flex-direction:column; }
 .theme-toggle .msi, .layout-toggle .msi { font-size:19px; }
 /* ---- delta strip (gap 15): under the topbar, only when the run changed something;
    red-tinted with a 3px edge when a regression is in it — the loop's stop signal. */
-.delta-strip { display:flex; align-items:center; gap:12px; padding:0 12px; min-height:38px; flex-shrink:0; background:var(--bg2);
+.delta-strip { display:flex; align-items:center; gap:12px; padding:0 12px; min-height:calc(38px + 1px); flex-shrink:0; background:var(--bg2);
   border-bottom:1px solid var(--line); border-left:3px solid transparent; font-size:12px; }
 .delta-strip[hidden] { display:none; }
 .delta-strip.reg { background:rgba(229,72,77,.13); border-left-color:var(--critical); }
@@ -311,7 +316,7 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .work { flex:1; display:flex; min-height:0; position:relative; }
 /* The comp sets no line-height on the rail (browser normal); the report's 1.4 made every chip,
    tag and prop line a pixel or two taller, compounding down the list. */
-.rail { width:320px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }
+.rail { width:calc(320px + 1px); flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }
 /* Collapsed on desktop: the rail goes, the canvas takes the width, and the floating chip at the
    top-right of the canvas says what it is hiding. The phone has its own rules (the sheet). */
 @media (min-width: 760px) {
@@ -363,12 +368,14 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .rail-empty { padding:24px 16px; font-size:12.5px; color:var(--txt2); text-align:center; line-height:1.5; }
 /* ---- a finding row: badge · title · ×N · Regression · triage tag; the mono prop line under it;
    the instance box, the verdict buttons and the note only while selected (the canvas is the crop) */
-.frow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; background:transparent; }
+/* The comp's finding rows have NO left edge (rowBase); only its comment rows carry the 3px transparent
+   one (.irow). A failed triage save still gets the red 3px edge, drawn inset so the row does not shift. */
+.frow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent; }
 .frow:hover { background:rgba(127,127,127,.06); }
 .frow.sel { background:var(--bg2); }
 .frow.sup { opacity:.66; background:var(--bg0); }
 .frow.sup.sel { background:var(--bg2); }
-.frow.unsaved { background:rgba(229,72,77,.09); border-left-color:var(--critical); }
+.frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }
 .fhead { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .fbadge { width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-sizing:border-box; }
 .fbadge.critical { background:var(--critical); } .fbadge.major { background:var(--major); } .fbadge.minor { background:var(--minor); }
@@ -450,7 +457,7 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .rail-status[hidden] { display:none; }
 .rail-status.err { color:var(--critical); }
 /* ---- the viewer: the tool strip beside the canvas */
-.tools { width:44px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 0; background:var(--bg1); border-right:1px solid var(--line); }
+.tools { width:calc(44px + 1px); flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 0; background:var(--bg1); border-right:1px solid var(--line); }
 .tool { width:32px; height:32px; padding:0; border:0; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
 .tool .msi { font-size:18px; }
 .tool:hover { background:var(--bg3); }
@@ -480,7 +487,7 @@ body.lab-on .pane-label { display:none; }
 .zoom-pill .pct { min-width:44px; text-align:center; font-size:11.5px; font-family:var(--font-mono); color:var(--txt2); }
 .side-fab { display:none; position:absolute; right:8px; bottom:12px; z-index:15; gap:2px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:3px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
 body.single .side-fab { display:flex; }
-.side-fab button { padding:7px 14px; border:0; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
+.side-fab button { padding:7px 14px; border:0; border-radius:999px; font-size:12px; font-weight:600; line-height:normal; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
 .side-fab button.on { color:#fff; background:var(--acc); }
 .op-pill { position:absolute; bottom:61px; left:50%; transform:translateX(-50%); z-index:16; display:flex; align-items:center; gap:10px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:6px 14px 6px 11px; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 .op-pill[hidden] { display:none; }
@@ -505,7 +512,7 @@ body.single .align-wrap { bottom:58px; }
 .conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
 .conf-warn[hidden] { display:none; }
 .conf-warn .msi { font-size:14px; }
-.align-menu { position:absolute; bottom:calc(100% + 8px); right:0; width:264px; background:var(--bg1); border:1px solid var(--line); border-radius:11px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:17; }
+.align-menu { position:absolute; bottom:calc(100% + 8px); right:0; width:calc(264px + 10px); background:var(--bg1); border:1px solid var(--line); border-radius:11px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:17; }
 .align-menu[hidden] { display:none; }
 .align-menu h3 { margin:0; padding:8px 10px 4px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); }
 .align-opt { display:flex; align-items:flex-start; gap:9px; padding:8px 10px; border-radius:8px; cursor:pointer; background:transparent; }
@@ -628,12 +635,12 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   .op-pill, body.single .op-pill { bottom:107px; gap:8px; padding:5px 10px 5px 8px; }
   .op-pill input { width:92px; }
   .align-wrap, body.single .align-wrap { top:10px; right:8px; bottom:auto; }
-  .align-menu { bottom:auto; top:calc(100% + 8px); width:248px; }
+  .align-menu { bottom:auto; top:calc(100% + 8px); width:calc(248px + 10px); }
   .pane-label { display:none; }
   .pane + .pane { border-left:0; }
   /* The rail is the comps' bottom sheet: 44px of grip + summary over the canvas, 52% of the
      height when open with the tabs and lists inside it. The canvas keeps the whole screen. */
-  .rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:44px; border-left:0; border-top:1px solid var(--line);
+  .rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:calc(44px + 1px); border-left:0; border-top:1px solid var(--line);
     border-radius:12px 12px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.25); overflow:hidden; z-index:20; transition:height .25s ease; }
   body.rail-open .rail { height:52%; }
   .rail-handle { display:flex; }
