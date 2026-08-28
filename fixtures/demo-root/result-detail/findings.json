@@ -1,0 +1,133 @@
+{
+  "pair": "Result detail",
+  "createdAt": "2026-08-28T12:22:05.000Z",
+  "design": {
+    "source": "figma",
+    "ref": "figma://veriflow/result-detail",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "live-url",
+    "ref": "/results/:id",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.83,
+    "confidenceX": 0.83,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [
+    {
+      "id": "d1",
+      "type": "missing-element",
+      "severity": "critical",
+      "mark": 1,
+      "implBox": {
+        "x": 24,
+        "y": 64,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — critical missing-element #1 (Result detail)"
+    },
+    {
+      "id": "d2",
+      "type": "missing-element",
+      "severity": "critical",
+      "mark": 2,
+      "implBox": {
+        "x": 24,
+        "y": 104,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — critical missing-element #2 (Result detail)"
+    },
+    {
+      "id": "d3",
+      "type": "missing-element",
+      "severity": "critical",
+      "mark": 3,
+      "implBox": {
+        "x": 24,
+        "y": 144,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — critical missing-element #3 (Result detail)"
+    },
+    {
+      "id": "d4",
+      "type": "color",
+      "severity": "major",
+      "mark": 4,
+      "implBox": {
+        "x": 24,
+        "y": 184,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — major color #4 (Result detail)"
+    },
+    {
+      "id": "d5",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 5,
+      "implBox": {
+        "x": 24,
+        "y": 224,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #5 (Result detail)"
+    },
+    {
+      "id": "d6",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 6,
+      "implBox": {
+        "x": 24,
+        "y": 264,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #6 (Result detail)"
+    }
+  ],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": false,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-28T06:22:05.000Z",
+    "resolved": [
+      "prev-1",
+      "prev-2",
+      "prev-3",
+      "prev-4",
+      "prev-5",
+      "prev-6"
+    ],
+    "introduced": [
+      "d1",
+      "d2"
+    ]
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

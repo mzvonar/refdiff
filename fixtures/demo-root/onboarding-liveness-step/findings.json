@@ -1,0 +1,22 @@
+{
+  "pair": "Onboarding — Liveness step",
+  "createdAt": "2026-08-28T14:22:05.000Z",
+  "design": {
+    "source": "figma",
+    "ref": "figma://veriflow/onboarding-liveness-step",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "live-url",
+    "ref": "/onboarding/liveness",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0

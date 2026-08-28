@@ -51,8 +51,9 @@ import {
   type AnnotationSet,
 } from "./annotations.js"
 import { renderAppShell } from "./app-shell.js"
-import { type PairSummary } from "./index-view.js"
+import { type BrokenPair, type PairSummary } from "./index-view.js"
 import { renderReport } from "./render.js"
+import { parseReport, type ReportParse } from "./report-file.js"
 import {
   emptyFocus,
   focusDigest,
@@ -105,7 +106,8 @@ Options:
   --digest         (re)write the digest files even when nothing changed
   -h, --help
 
-Exit codes: 0 ok, 2 usage error, unreadable findings.json or invalid annotations.json.`
+Exit codes: 0 ok, 2 usage error, unreadable findings.json (a single run dir —
+in a set an unreadable pair is reported and skipped) or invalid annotations.json.`
 
 function usageError(message: string): never {
   console.error(message)
@@ -114,36 +116,26 @@ function usageError(message: string): never {
   process.exit(2)
 }
 
-async function readReport(runDir: string): Promise<ComparisonReport> {
+/**
+ * A run dir's report, or the reason it cannot be one — never an exception. The
+ * CLI paths turn the reason into a usage error; the request handlers turn it
+ * into a 500 for THAT pair, because a `process.exit` from inside a request is
+ * one bad pair killing the whole served set.
+ */
+async function loadReport(runDir: string): Promise<ReportParse> {
   const path = join(runDir, "findings.json")
   let text: string
   try {
     text = await readFile(path, "utf8")
   } catch {
-    return usageError(`cannot read ${path}`)
+    return { ok: false, reason: "findings.json · cannot read" }
   }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch (e) {
-    return usageError(`${path} is not valid JSON: ${(e as Error).message}`)
-  }
-  const r = parsed as Partial<ComparisonReport>
-  if (
-    typeof r !== "object" ||
-    r === null ||
-    typeof r.pair !== "string" ||
-    !Array.isArray(r.findings) ||
-    !r.alignment ||
-    !r.design ||
-    !r.impl ||
-    !r.artifacts
-  ) {
-    return usageError(
-      `${path} is not a ComparisonReport (pair, findings, alignment, design, impl, artifacts required)`,
-    )
-  }
-  return { ...r, suppressed: r.suppressed ?? [], policy: r.policy ?? {} } as ComparisonReport
+  return parseReport(text)
+}
+
+async function readReport(runDir: string): Promise<ComparisonReport> {
+  const loaded = await loadReport(runDir)
+  return loaded.ok ? loaded.value : usageError(`${join(runDir, "findings.json")}: ${loaded.reason}`)
 }
 
 /* ------------------------------------------------------- annotations I/O -- */
@@ -358,7 +350,12 @@ function appApi(options: AppApiOptions) {
         sendJson(res, 404, { error: `unknown pair ${focusName}` })
         return true
       }
-      const focusReport = await readReport(focusDir)
+      const focusReportLoaded = await loadReport(focusDir)
+      if (!focusReportLoaded.ok) {
+        sendJson(res, 500, { error: focusReportLoaded.reason })
+        return true
+      }
+      const focusReport = focusReportLoaded.value
       if (req.method === "GET") {
         sendJson(res, 200, await readFocus(focusDir, focusReport.pair))
         return true
@@ -408,7 +405,12 @@ function appApi(options: AppApiOptions) {
         sendJson(res, 404, { error: `unknown pair ${triageName}` })
         return true
       }
-      const triageReport = await readReport(triageDir)
+      const triageReportLoaded = await loadReport(triageDir)
+      if (!triageReportLoaded.ok) {
+        sendJson(res, 500, { error: triageReportLoaded.reason })
+        return true
+      }
+      const triageReport = triageReportLoaded.value
       if (req.method === "GET") {
         sendJson(res, 200, await readTriage(triageDir, triageReport.pair))
         return true
@@ -463,7 +465,12 @@ function appApi(options: AppApiOptions) {
       sendJson(res, 404, { error: `unknown pair ${name}` })
       return true
     }
-    const report = await readReport(runDir)
+    const loaded = await loadReport(runDir)
+    if (!loaded.ok) {
+      sendJson(res, 500, { error: loaded.reason })
+      return true
+    }
+    const report = loaded.value
     const stored = await readAnnotations(runDir, report.pair)
     const elements = await readElements(runDir)
     const state = { set: elements ? reprojectAll(stored, elements) : stored }
@@ -505,22 +512,25 @@ function appApi(options: AppApiOptions) {
   }
 }
 
-/** One card's worth of numbers per run dir, read fresh (a set is ~40 files). */
-async function summarisePairs(options: AppApiOptions): Promise<PairSummary[]> {
-  const out: PairSummary[] = []
+/**
+ * One card's worth of numbers per run dir, read fresh (a set is ~40 files).
+ * A run dir whose findings.json cannot be read — mid-write, truncated, not a
+ * report — is listed as a `BrokenPair` with the reason, never skipped: one
+ * bad pair never kills the set, and a pair that silently vanishes from the
+ * list is the failure the list exists to prevent.
+ */
+async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | BrokenPair)[]> {
+  const out: (PairSummary | BrokenPair)[] = []
   for (const run of options.runs) {
-    let report: ComparisonReport
-    try {
-      // Same normalisation as readReport: a report written before `suppressed`
-      // existed (out/tx-picker-owner-desktop) must not 500 the whole index —
-      // one bad pair never kills the set.
-      const raw = JSON.parse(
-        await readFile(join(run.dir, "findings.json"), "utf8"),
-      ) as Partial<ComparisonReport>
-      if (!Array.isArray(raw.findings) || !raw.alignment || !raw.verdict) continue
-      report = { ...raw, suppressed: raw.suppressed ?? [], policy: raw.policy ?? {} } as ComparisonReport
-    } catch {
-      continue // a run dir mid-write is not a reason to fail the whole list
+    const loaded = await loadReport(run.dir)
+    if (!loaded.ok) {
+      out.push({ dir: run.name, broken: true, reason: loaded.reason })
+      continue
+    }
+    const report = loaded.value
+    if (!report.verdict) {
+      out.push({ dir: run.name, broken: true, reason: "findings.json · no verdict (written by an older refdiff)" })
+      continue
     }
     const notes = await readAnnotations(run.dir, report.pair)
     const c = counts(notes)
@@ -638,6 +648,15 @@ async function main(): Promise<void> {
   // need it — the app shell loads findings.json at runtime.
   if (values.emit || !values.serve) {
     for (const run of found) {
+      if (set_) {
+        // One bad pair never kills a set: report it in the list and move on.
+        // A single run dir still fails loudly — there is nothing else to emit.
+        const loaded = await loadReport(run.dir)
+        if (!loaded.ok) {
+          console.log(`  ${run.name} — unreadable, skipped: ${loaded.reason}`)
+          continue
+        }
+      }
       await renderRun(run, {
         values,
         viewMathSource: sources.viewMath,

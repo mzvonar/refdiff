@@ -1,0 +1,980 @@
+{
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.42,
+    "confidenceX": 0.42,
+    "confidenceY": 0.72,
+    "basis": "anchors"
+  },
+  "design": [
+    {
+      "id": "div-0",
+      "box": {
+        "x": 36,
+        "y": 19.5,
+        "w": 24,
+        "h": 24
+      },
+      "role": "box",
+      "style": {
+        "backgroundColor": "rgb(30, 42, 90)",
+        "borderRadius": 7
+      }
+    },
+    {
+      "id": "span-1",
+      "box": {
+        "x": 69,
+        "y": 21.5,
+        "w": 62,
+        "h": 20
+      },
+      "role": "text",
+      "text": "Veriflow",
+      "style": {
+        "color": "rgb(30, 42, 90)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 16,
+        "fontWeight": 700
+      }
+    },
+    {
+      "id": "span-2",
+      "box": {
+        "x": 578,
+        "y": 23,
+        "w": 66,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Need help?",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-3",
+      "box": {
+        "x": 43.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "1",
+      "style": {
+        "color": "rgb(255, 255, 255)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(79, 70, 229)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-4",
+      "box": {
+        "x": 66,
+        "y": 86.5,
+        "w": 63,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Document",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-5",
+      "box": {
+        "x": 160.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "2",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(229, 231, 235)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-6",
+      "box": {
+        "x": 183,
+        "y": 86.5,
+        "w": 33,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Selfie",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-7",
+      "box": {
+        "x": 247.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "3",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(229, 231, 235)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-8",
+      "box": {
+        "x": 270,
+        "y": 86.5,
+        "w": 41,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Review",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-9",
+      "box": {
+        "x": 36,
+        "y": 130,
+        "w": 247.41,
+        "h": 37
+      },
+      "role": "text",
+      "text": "Verify your identity",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 28,
+        "lineHeight": 33.6,
+        "fontWeight": 700
+      }
+    },
+    {
+      "id": "div-10",
+      "box": {
+        "x": 36,
+        "y": 171.59,
+        "w": 344,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Choose a document type and upload a clear photo of it.",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-11",
+      "box": {
+        "x": 60.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "public",
+      "style": {
+        "color": "rgb(79, 70, 229)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(238, 242, 255)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-12",
+      "box": {
+        "x": 53,
+        "y": 263,
+        "w": 58,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Passport",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-13",
+      "box": {
+        "x": 53,
+        "y": 289,
+        "w": 153,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Photo page with MRZ visible",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-14",
+      "box": {
+        "x": 268.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "directions_car",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(243, 244, 246)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-15",
+      "box": {
+        "x": 261,
+        "y": 263,
+        "w": 100,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Driver’s licence",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-16",
+      "box": {
+        "x": 261,
+        "y": 289,
+        "w": 112,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Front and back sides",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-17",
+      "box": {
+        "x": 476.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "badge",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(243, 244, 246)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-18",
+      "box": {
+        "x": 469,
+        "y": 263,
+        "w": 48,
+        "h": 18
+      },
+      "role": "text",
+      "text": "ID card",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-19",
+      "box": {
+        "x": 469,
+        "y": 289,
+        "w": 112,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Front and back sides",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-20",
+      "box": {
+        "x": 325,
+        "y": 398,
+        "w": 30,
+        "h": 36
+      },
+      "role": "text",
+      "text": "upload_file",
+      "style": {
+        "color": "rgb(156, 163, 175)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 30,
+        "lineHeight": 30,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-21",
+      "box": {
+        "x": 258,
+        "y": 439,
+        "w": 164,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Drag your document here",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-22",
+      "box": {
+        "x": 257.5,
+        "y": 465,
+        "w": 165,
+        "h": 15
+      },
+      "role": "text",
+      "text": "PNG, JPG or PDF · up to 10 MB",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-23",
+      "box": {
+        "x": 303.5,
+        "y": 502,
+        "w": 73,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Browse files",
+      "style": {
+        "color": "rgb(55, 65, 81)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 600,
+        "borderRadius": 8,
+        "borderWidth": 1,
+        "borderColor": "rgb(209, 213, 219)"
+      }
+    },
+    {
+      "id": "div-24",
+      "box": {
+        "x": 144.5,
+        "y": 600.5,
+        "w": 63,
+        "h": 19
+      },
+      "role": "text",
+      "text": "Continue",
+      "style": {
+        "color": "rgb(255, 255, 255)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 15,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(79, 70, 229)",
+        "borderRadius": 10
+      }
+    },
+    {
+      "id": "span-25",
+      "box": {
+        "x": 332,
+        "y": 601,
+        "w": 88,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Save for later",
+      "style": {
+        "color": "rgb(79, 70, 229)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-26",
+      "box": {
+        "x": 36,
+        "y": 669,
+        "w": 579,
+        "h": 33
+      },
+      "role": "text",
+      "text": "Your documents are encrypted in transit and processed in line with GDPR. Verification usually takes under a minute.",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 18,
+        "fontWeight": 400
+      }
+    }
+  ],
+  "impl": [
+    {
+      "id": "div-0",
+      "box": {
+        "x": 36,
+        "y": 19.5,
+        "w": 24,
+        "h": 24
+      },
+      "role": "box",
+      "style": {
+        "backgroundColor": "rgb(59, 74, 140)",
+        "borderRadius": 7
+      }
+    },
+    {
+      "id": "span-1",
+      "box": {
+        "x": 69,
+        "y": 21.5,
+        "w": 62,
+        "h": 20
+      },
+      "role": "text",
+      "text": "Veriflow",
+      "style": {
+        "color": "rgb(59, 74, 140)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 16,
+        "fontWeight": 700
+      }
+    },
+    {
+      "id": "span-2",
+      "box": {
+        "x": 578,
+        "y": 23,
+        "w": 66,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Need help?",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-3",
+      "box": {
+        "x": 43.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "1",
+      "style": {
+        "color": "rgb(255, 255, 255)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(79, 70, 229)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-4",
+      "box": {
+        "x": 66,
+        "y": 86.5,
+        "w": 63,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Document",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-5",
+      "box": {
+        "x": 152.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "2",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(229, 231, 235)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-6",
+      "box": {
+        "x": 175,
+        "y": 86.5,
+        "w": 33,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Selfie",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-7",
+      "box": {
+        "x": 231.5,
+        "y": 87.5,
+        "w": 7,
+        "h": 15
+      },
+      "role": "text",
+      "text": "3",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(229, 231, 235)",
+        "borderRadius": 11
+      }
+    },
+    {
+      "id": "span-8",
+      "box": {
+        "x": 254,
+        "y": 86.5,
+        "w": 41,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Review",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-9",
+      "box": {
+        "x": 36,
+        "y": 130,
+        "w": 212.2,
+        "h": 32
+      },
+      "role": "text",
+      "text": "Verify your identity",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 24,
+        "lineHeight": 28.8,
+        "fontWeight": 700
+      }
+    },
+    {
+      "id": "div-10",
+      "box": {
+        "x": 36,
+        "y": 166.8,
+        "w": 344,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Choose a document type and upload a clear photo of it.",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-11",
+      "box": {
+        "x": 60.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "public",
+      "style": {
+        "color": "rgb(79, 70, 229)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(238, 242, 255)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-12",
+      "box": {
+        "x": 53,
+        "y": 263,
+        "w": 58,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Passport",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-13",
+      "box": {
+        "x": 53,
+        "y": 289,
+        "w": 153,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Photo page with MRZ visible",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-14",
+      "box": {
+        "x": 268.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "directions_car",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(243, 244, 246)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-15",
+      "box": {
+        "x": 261,
+        "y": 263,
+        "w": 100,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Driver’s licence",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-16",
+      "box": {
+        "x": 261,
+        "y": 289,
+        "w": 112,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Front and back sides",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-17",
+      "box": {
+        "x": 476.5,
+        "y": 226.5,
+        "w": 19,
+        "h": 23
+      },
+      "role": "text",
+      "text": "badge",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 19,
+        "lineHeight": 19,
+        "fontWeight": 400,
+        "backgroundColor": "rgb(243, 244, 246)",
+        "borderRadius": 8
+      }
+    },
+    {
+      "id": "div-18",
+      "box": {
+        "x": 469,
+        "y": 263,
+        "w": 48,
+        "h": 18
+      },
+      "role": "text",
+      "text": "ID card",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-19",
+      "box": {
+        "x": 469,
+        "y": 289,
+        "w": 112,
+        "h": 15
+      },
+      "role": "text",
+      "text": "Front and back sides",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 16.8,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "span-20",
+      "box": {
+        "x": 325,
+        "y": 386,
+        "w": 30,
+        "h": 36
+      },
+      "role": "text",
+      "text": "upload_file",
+      "style": {
+        "color": "rgb(156, 163, 175)",
+        "fontFamily": "Material Symbols Outlined",
+        "fontSize": 30,
+        "lineHeight": 30,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-21",
+      "box": {
+        "x": 258,
+        "y": 427,
+        "w": 164,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Drag your document here",
+      "style": {
+        "color": "rgb(17, 24, 39)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-22",
+      "box": {
+        "x": 257.5,
+        "y": 453,
+        "w": 165,
+        "h": 15
+      },
+      "role": "text",
+      "text": "PNG, JPG or PDF · up to 10 MB",
+      "style": {
+        "color": "rgb(107, 114, 128)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "fontWeight": 400
+      }
+    },
+    {
+      "id": "div-23",
+      "box": {
+        "x": 303.5,
+        "y": 490,
+        "w": 73,
+        "h": 17
+      },
+      "role": "text",
+      "text": "Browse files",
+      "style": {
+        "color": "rgb(55, 65, 81)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 13,
+        "fontWeight": 600,
+        "borderRadius": 8,
+        "borderWidth": 1,
+        "borderColor": "rgb(209, 213, 219)"
+      }
+    },
+    {
+      "id": "div-24",
+      "box": {
+        "x": 144.5,
+        "y": 600.5,
+        "w": 63,
+        "h": 19
+      },
+      "role": "text",
+      "text": "Continue",
+      "style": {
+        "color": "rgb(255, 255, 255)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 15,
+        "fontWeight": 600,
+        "backgroundColor": "rgb(99, 102, 241)",
+        "borderRadius": 10
+      }
+    },
+    {
+      "id": "span-25",
+      "box": {
+        "x": 332,
+        "y": 601,
+        "w": 88,
+        "h": 18
+      },
+      "role": "text",
+      "text": "Save for later",
+      "style": {
+        "color": "rgb(79, 70, 229)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 14,
+        "fontWeight": 600
+      }
+    },
+    {
+      "id": "div-26",
+      "box": {
+        "x": 36,
+        "y": 669,
+        "w": 579,
+        "h": 33
+      },
+      "role": "text",
+      "text": "Your documents are encrypted in transit and processed in line with GDPR. Verification usually takes under a minute.",
+      "style": {
+        "color": "rgb(156, 163, 175)",
+        "fontFamily": "IBM Plex Sans",
+        "fontSize": 12,
+        "lineHeight": 18,
+        "fontWeight": 400
+      }
+    }
+  ]
+}

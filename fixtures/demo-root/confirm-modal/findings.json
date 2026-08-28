@@ -1,0 +1,39 @@
+{
+  "pair": "Confirm modal",
+  "createdAt": "2026-08-28T14:22:05.000Z",
+  "design": {
+    "source": "dc-html",
+    "ref": "confirm-modal.dc.html#Confirm modal",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "storybook",
+    "ref": "ds/ConfirmModal",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.9,
+    "confidenceX": 0.9,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": true,
+    "failThreshold": "major"
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

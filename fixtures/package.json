@@ -1,0 +1,6 @@
+{
+  "name": "refdiff-fixtures",
+  "private": true,
+  "type": "module",
+  "description": "Committed fixture roots for dogfooding the annotator (see make-demo-root.ts)"
+}

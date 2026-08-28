@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "pair": "Verification dashboard",
+  "annotations": [
+    {
+      "id": "c1",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 60
+      },
+      "note": "Demo fixture — comment 1 on Verification dashboard",
+      "status": "open",
+      "createdAt": "2026-08-28T14:02:05.000Z",
+      "updatedAt": "2026-08-28T14:02:05.000Z"
+    },
+    {
+      "id": "c2",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 100
+      },
+      "note": "Demo fixture — comment 2 on Verification dashboard",
+      "status": "open",
+      "createdAt": "2026-08-28T13:52:05.000Z",
+      "updatedAt": "2026-08-28T13:52:05.000Z"
+    },
+    {
+      "id": "c3",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 140
+      },
+      "note": "Demo fixture — comment 3 on Verification dashboard",
+      "status": "open",
+      "createdAt": "2026-08-28T13:42:05.000Z",
+      "updatedAt": "2026-08-28T13:42:05.000Z"
+    },
+    {
+      "id": "c4",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 180
+      },
+      "note": "Demo fixture — comment 4 on Verification dashboard",
+      "status": "open",
+      "createdAt": "2026-08-28T13:32:05.000Z",
+      "updatedAt": "2026-08-28T13:32:05.000Z"
+    },
+    {
+      "id": "c5",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 220
+      },
+      "note": "Demo fixture — comment 5 on Verification dashboard",
+      "status": "open",
+      "createdAt": "2026-08-28T13:22:05.000Z",
+      "updatedAt": "2026-08-28T13:22:05.000Z"
+    }
+  ]
+}

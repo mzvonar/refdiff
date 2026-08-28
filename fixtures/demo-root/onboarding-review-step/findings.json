@@ -1,0 +1,39 @@
+{
+  "pair": "Onboarding — Review step",
+  "createdAt": "2026-08-28T14:22:05.000Z",
+  "design": {
+    "source": "dc-html",
+    "ref": "onboarding-review-step.dc.html#Onboarding — Review step",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "live-url",
+    "ref": "/onboarding/review",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.88,
+    "confidenceX": 0.88,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": true,
+    "failThreshold": "major"
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

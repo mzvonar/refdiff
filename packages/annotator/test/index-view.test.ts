@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
   CONFIDENCE_GATE,
   escapeHtml,
+  isBroken,
   pairCard,
   pairCards,
   pairsSummaryLine,
+  type BrokenPair,
   type PairSummary,
 } from "../src/index-view.js"
 
@@ -61,6 +63,42 @@ describe("pairCard", () => {
     expect(html).not.toContain("<b>x</b>")
     expect(html).toContain('data-pair="a&quot;b"')
     expect(escapeHtml("</script>")).toBe("&lt;/script&gt;")
+  })
+})
+
+describe("a pair whose findings.json could not be read", () => {
+  // The demo root's onboarding-liveness-step: findings.json cut off mid-write.
+  const broken: BrokenPair = {
+    dir: "onboarding-liveness-step",
+    broken: true,
+    reason: "findings.json · Unexpected end of JSON input",
+  }
+
+  it("is listed as a degraded card with the reason, not dropped from the list", () => {
+    const html = pairCard(broken, "#/onboarding-liveness-step")
+    expect(html).toContain('class="card broken"')
+    expect(html).toContain("onboarding-liveness-step")
+    expect(html).toContain("Couldn't read this run")
+    expect(html).toContain("findings.json · Unexpected end of JSON input")
+    expect(isBroken(broken)).toBe(true)
+    expect(isBroken(pair())).toBe(false)
+  })
+
+  it("has nothing to open — no link, so a tap cannot land on a report that does not exist", () => {
+    expect(pairCard(broken, "#/onboarding-liveness-step")).not.toContain("href=")
+  })
+
+  it("escapes the reason — it quotes whatever the parser said about a file on disk", () => {
+    const html = pairCard({ ...broken, reason: "findings.json · <b>x</b>" }, "")
+    expect(html).not.toContain("<b>x</b>")
+  })
+
+  it("counts in the summary line and keeps its place among the cards", () => {
+    const html = pairCards([pair(), broken, pair({ dir: "b", pair: "b" })], (p) => "#/" + p.dir)
+    expect(html.match(/class="card( broken)?"/g)).toHaveLength(3)
+    expect(pairsSummaryLine([pair(), broken])).toBe(
+      "1 failing · 0 under the 0.50 confidence gate · 1 unreadable",
+    )
   })
 })
 

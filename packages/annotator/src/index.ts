@@ -18,12 +18,17 @@
 export { renderReport, embedJson, type RenderOptions } from "./render.js"
 export { renderAppShell, type AppShellOptions } from "./app-shell.js"
 export {
+  brokenCard,
+  isBroken,
   pairCard,
   pairCards,
   pairsSummaryLine,
   CONFIDENCE_GATE,
+  type BrokenPair,
+  type PairEntry,
   type PairSummary,
 } from "./index-view.js"
+export { parseReport, type ReportParse } from "./report-file.js"
 export {
   anchorFor,
   anchorOf,

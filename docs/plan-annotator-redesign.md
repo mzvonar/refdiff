@@ -71,9 +71,9 @@ app's real run dirs, i.e. DATA, not drift. 6+ `typography` causes are the
 
 ```bash
 pnpm dev                                                   # keep running
-refdiff-annotator fixtures/demo-root --serve --port 7378 &  # the impl under test
+svc up annotator   # = refdiff-annotator fixtures/demo-root --serve; 7378 or the next free port (svc ports)
 refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
-  --app-url http://127.0.0.1:7378 --out out/refdiff
+  --app-url http://127.0.0.1:7379 --out out/refdiff       # the port svc printed
 refdiff summary out/refdiff
 ```
 
@@ -81,7 +81,7 @@ Network + servers need the Bash sandbox disabled (handoff "Env gotchas").
 
 ---
 
-## 0. Demo out root + honest baseline — TODO
+## 0. Demo out root + honest baseline — DONE (2026-08-28)
 
 **Why first:** confidence 0.00 makes every later measurement meaningless, and
 1398 findings are mostly the comps' fixture copy arguing with `out/`'s real run
@@ -94,8 +94,9 @@ changes with every run" trap, because the served root stops being the results
 root). It must not live under `out/`: that path is gitignored as run artifacts,
 so a fixture there would be uncommittable and invisible to every other machine.
 
-- A generator `fixtures/make-demo-root.mjs` (pure-ish, effects at the
-  edge) that writes `fixtures/demo-root/<slug>/` for each of the comps' Library
+- A generator `fixtures/make-demo-root.ts` (pure builders, effects at the
+  edge; `.ts` not `.mjs` so the reports are typed against `ComparisonReport` —
+  Node ≥22.18 strips types natively) that writes `fixtures/demo-root/<slug>/` for each of the comps' Library
   items:
   `doc`, `selfie`, `review`, `button`, `card`, `stepper`, `login`, `dash`,
   `detail`, `modal`, `errors` — names, routes, severity counts, comment counts
@@ -103,8 +104,10 @@ so a fixture there would be uncommittable and invisible to every other machine.
 - The one opened pair (`onboarding-document-step`, the comp's `doc`) gets a
   FULL run dir: `findings.json` conforming to the real `ComparisonReport` type
   (import the types from `@refdiff/core`, do not hand-roll a shape), the comps'
-  6 findings verbatim (`f1..f6`: titles, `prop`, `expected`, `actual`, `rect`,
-  severity high/medium/low → critical/major/minor), and an `annotations.json`
+  findings verbatim (`f1..f6`, plus — after the 2026-08-28 refetch — the
+  aggregates `g1` ×14 / `g2` ×5 and the suppressed `s1..s3`, eleven in all:
+  titles, `prop`, `expected`, `actual`, `rect`, severity high/medium/low →
+  critical/major/minor, `num` → `mark`), and an `annotations.json`
   with the comps' 3 comments (`c1..c3`, statuses update/new/done, the reply on
   `c1` and `c3`).
 - `design.png` / `impl.png` for that pair captured from
@@ -126,7 +129,7 @@ Then: repoint `design/refdiff.manifest.mjs` — `COMPARE_ROUTE =
 "/#/onboarding-document-step"` — and update `refdiff.bindings.md` (impl is now
 `refdiff-annotator fixtures/demo-root --serve`; the results root `out/refdiff`
 is no longer served, so drop the trap note and add "the demo root is a
-committed fixture; regenerate with `node fixtures/make-demo-root.mjs`").
+committed fixture; regenerate with `node fixtures/make-demo-root.ts`").
 
 NOTE the comps hardcode `ROOT = '~/Development/refdiff/out/demo'` in the error
 state's copy. That costs nothing: the error box only renders when `loadState`
@@ -140,7 +143,75 @@ confidence above 0.5 on at least the two compare pairs** (or, if not, the
 reason measured and written down — that is itself the finding). Findings that
 remain are chrome and layout, not copy.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+What shipped: `fixtures/make-demo-root.ts` (typed against `ComparisonReport`
+/ `AnnotationSet` via the built dist; `fixtures/tsconfig.json` is part of
+`pnpm typecheck`), `fixtures/demo-root/` with 12 run dirs, the opened pair
+captured from `parts/Artboard Design|Impl.dc.html` at 680×740 @2x with
+`elements.json` (27 leaves a side; the three comments are anchored to real
+elements: `Veriflow`, `Photo page with MRZ visible`, `Continue`), and
+`onboarding-liveness-step/findings.json` truncated on purpose. Code:
+`packages/annotator/src/report-file.ts` (`parseReport`, pure, tested) —
+`/api/pairs` lists an unreadable run dir as `{ dir, broken, reason }` and the
+Library draws a degraded card (`index-view.ts` `brokenCard`); the request
+handlers and the `--emit` set path no longer `process.exit` on one bad pair.
+Manifest `COMPARE_ROUTE = "/#/onboarding-document-step"`; bindings rewritten;
+`services.toml` gained `[annotator]` (svc allocated **7379** — 7378 is held
+by another worktree's annotator on this box).
+
+"Before" on this machine: none — `out/` does not exist here (the baseline
+table above ran elsewhere and is, as stated, not comparable). The table below
+is the phase-0 baseline every later phase compares against.
+
+| pair | verdict | findings (c/M/m) | inst | supp | conf (X / Y) | basis | delta |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| refdiff-library-desktop | FAIL | 405 (133/204/68) | 509 | 0 | 0.00 (0.09 / 0.00) | anchors | – |
+| refdiff-compare-desktop | FAIL | 361 (120/156/85) | 495 | 0 | 0.00 (0.53 / 0.07) | anchors | – |
+| refdiff-library-mobile | FAIL | 343 (49/192/102) | 537 | 0 | 0.00 (1.00 / 0.00) | anchors | – |
+| refdiff-compare-mobile | FAIL | 118 (56/38/24) | 135 | 0 | 0.00 (0.00 / 0.00) | none | – |
+
+Total 1227 findings / 1676 instances (baseline elsewhere: 1398 / 1584 — a
+different fixture, do not read it as a delta). All four captures report
+`scope screen-label fluid` at the pair viewport.
+
+**Confidence stayed 0.00 — the exit's "reason measured":** the anchors now
+EXIST (shared unique texts per pair, from `elements.json`: library-desktop
+**11**, library-mobile **11**, compare-desktop **12**, compare-mobile **1**;
+before phase 0 the card names and finding titles matched nothing) but they
+disagree on geometry, which is precisely what the later phases change:
+
+- **compare-desktop:** two clusters. The 9 finding titles agree with each
+  other (dx −7) and the 3 topbar anchors (`Split`, `Diff`, the pair title)
+  agree with each other, but the clusters are **~1015px apart in x** — the
+  app's 340px LEFT rail vs the comp's 320px RIGHT rail (phase 4). Within the
+  rail the titles scatter dy −268..107: the app's rows are taller and ordered
+  differently (phase 4). confidenceX 0.53 is the topbar half holding.
+- **compare-mobile:** ONE shared anchor (`Design`), so `basis none`. At 390px
+  the app shows its one-side-at-a-time chrome (`‹ All pairs`, `FAIL · threshold
+  major`, `8 findings · 3 notes`) and the comp its bottom sheet
+  (`8 findings · 3 comments`); nothing else overlaps (phases 3–5).
+- **library-desktop:** the 11 card NAMES match (that is the fixture working),
+  dx −874..769 / dy −790..18 — a 2-column list vs the comp's 4-column
+  `minmax(250px)` grid, AND a different order: the app sorts run dirs by name,
+  the comp lists by recency (phase 2 — sort by `createdAt` desc, cheap and
+  worth doing first).
+- **library-mobile:** dx = 1 on all 11 anchors (x is already right); dy
+  −985..490 from row order + row height (phase 2).
+
+Causes that closed: the copy. The comps' item names, routes, finding titles
+and comment texts are now the app's data, so `missing-element` /
+`extra-element` on text is chrome copy (`12 pairs`, `7 failing · …`, ISO
+timestamps, `+N new / −M resolved`, `42%`), not fixture-vs-run-dir noise.
+Causes that did not: `typography` (`system-ui` vs IBM Plex — phase 1), every
+`position` / `size` / `spacing` (frame unverifiable at 0.00), `color` /
+`border-radius` (phase 1 tokens), and the pixel channel refuses to run on all
+four (correct under the gate).
+
+Discovered while building (added to Design gaps, section E): 23 the opened
+pair's delta, 24 pending run states, 25 thumbnails for pairs without a PNG,
+26 the aggregate `cause` line, 27 relative "when" vs a fixed clock, 28
+`reply` on the fixture's comments.
 
 ---
 
@@ -497,4 +568,50 @@ by where they surface.
   compare topbar keeps brand + the comparison name. No pending comp edit.
 - **18 DEFERRED**: the keyboard-shortcut hint has no home yet. The shortcuts
   keep working; nothing is drawn. Revisit after phase 4.
+
+### E. Found while building the demo root (phase 0, 2026-08-28)
+
+None of these blocked phase 0; each is the phase's call when it gets there,
+with Mato where the two comps disagree.
+
+23. **The opened pair's delta — the two comps disagree.** Section C says the
+    demo pair has NO previous run (`showDeltaStrip` defaults to false), and the
+    fixture obeys: `onboarding-document-step` carries no `delta`. But the
+    Library card for `doc` reads `+3 new / −1 resolved`, and the Comparison
+    Tool's rows `f1` / `g2` carry a `Regression` tag (`reg: true, regRun: 44 /
+    45`) — both need a previous run. Options: (a) keep no-previous-run and
+    `accept` the card label + the two tags as fixture-vs-comp; (b) give the
+    pair a delta with 2 regressions and hide the strip by default (which
+    contradicts gap 15 "impossible to miss"); (c) Mato reconciles the comps.
+    The generator is a one-line switch either way (`reportFor`, the `delta`
+    branch). Phase 2 hits the card label, phase 4 the tags.
+24. **Pending run states.** The comp's `Processing` (`Onboarding — Review
+    step`, "running") and `Queued` (`Confirm modal`, "waiting") have no refdiff
+    representation — a run dir exists once `compare` wrote it. The fixture
+    writes both as zero-finding PASSING runs with the comp's confidence and
+    comment counts. Phase 2: either a `Pending` verdict needs a source (a dir
+    without `findings.json`? a marker `compare` writes while running?) or the
+    two cards render `Pass · Clean` and the state pill is `accept`ed as
+    designer data.
+25. **Thumbnails for pairs without a PNG.** Decision D6 makes the card
+    thumbnail the real `impl.png`; only the opened pair has one. The other 10
+    demo runs (and any real run whose capture hard-stopped) need a no-image
+    state — the comp's grey plate is the obvious candidate, but that is
+    phase 2's call, not a fixture problem.
+26. **Aggregate `cause` line.** The comp's `g1` / `g2` show a second line
+    ("Muted label token resolves to the wrong grey"). `Finding` has no such
+    field — `message` is the title. Either the aggregator writes a cause (core
+    change) or the row has one line. Phase 4.
+27. **Relative "when" vs a fixed clock.** The fixture's `createdAt` values are
+    anchored to `DEMO_NOW` (2026-08-28T14:22:05Z) so the files are stable;
+    "12 min ago" rendered against the wall clock will read "N days ago" and
+    never match the comp's text. Phase 2 either renders relative time against
+    the newest run in the root (deterministic, and arguably right: "12 min
+    before the latest run") or accepts the eleven `when` strings as data.
+28. **`reply` on the fixture's comments.** `annotations.json` for the opened
+    pair already carries the comps' two model replies (gap 19), but
+    `parseAnnotationSet` drops unknown fields, so a PUT from the browser
+    rewrites the file without them until phase 4 adds the field. Regenerate
+    (`node fixtures/make-demo-root.ts`) to restore; `git checkout fixtures/`
+    resets anything the served app wrote.
 

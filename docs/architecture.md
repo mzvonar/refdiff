@@ -415,6 +415,10 @@ regenerate before anyone could see it, and N copies went stale independently.
 `--serve` now ships ONE shell (markup + CSS + client, from memory) and loads
 data at request time: `GET /api/pairs` summarises every run dir, `#/<pair>`
 fetches `<pair>/findings.json`, notes ride on `/api/pairs/<pair>/annotations`.
+A run dir whose `findings.json` cannot be read (cut off mid-write, not a
+report) is listed as `{ dir, broken: true, reason }` and drawn as a degraded
+card — never dropped from the list, never a 500 for the whole set
+(`report-file.ts` `parseReport`; the fifth principle applied to the list).
 A pair captured after the server started appears on reload. Emitting the static
 files stays behind `--emit` (the default when not serving) for reading a report
 off disk with no server; the served API also answers the emitted file's own

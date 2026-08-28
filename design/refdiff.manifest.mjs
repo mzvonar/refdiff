@@ -1,7 +1,10 @@
 // refdiff manifest for DOGFOODING: the RefDiff redesign of the annotator
 // (Claude Design project 5a1a95c3-beee-457a-815b-ef6f6bf3e06a, fetched into
-// design/refdiff/) against the annotator app itself, served by
-// `refdiff-annotator out --serve` on :7378.
+// design/refdiff/) against the annotator app itself, serving the COMMITTED
+// demo root: `refdiff-annotator fixtures/demo-root --serve` (port 7378, or
+// whatever `svc` allocated — see refdiff.bindings.md). The demo root mirrors
+// the comps' fixture data (regenerate: `node fixtures/make-demo-root.ts`), so
+// the alignment has shared text anchors and findings are chrome, not copy.
 //
 //   refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
 //     --app-url http://127.0.0.1:7378 --out out/refdiff [--pair refdiff-library-desktop]
@@ -13,11 +16,13 @@
 // pages) and is deliberately not a pair.
 //
 // The impl route for the comparison page is a hash route into one run dir of
-// the served out root; keep it pointing at a dir that exists in `out/`.
+// the served demo root — the pair the comps open (`fixtures/make-demo-root.ts`
+// OPENED_PAIR). A missing dir renders the index instead and compares "fine"
+// against the wrong comp.
 
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
-const COMPARE_ROUTE = "/#/live-docs-owner-desktop"
+const COMPARE_ROUTE = "/#/onboarding-document-step"
 
 export const manifest = [
   {

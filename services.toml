@@ -1,0 +1,20 @@
+# svc service definitions (github.com/mzvonar/svc) — used on the Linux devbox
+# only; macOS has no `svc` and uses `setup-dev.sh --watch` instead.
+# `svc up dev-watch` / `svc status` / `svc logs dev-watch`.
+
+[dev-watch]
+# `pnpm dev` = tsc --watch over both packages, so packages/*/dist follows every
+# edit to packages/*/src. That is what makes the globally-linked
+# `refdiff` / `refdiff-annotator` CLIs (which run from dist) live
+# in dev mode. No port; singleton because dist is a single shared build output
+# per checkout, and two watchers would fight over the same files.
+cmd = "pnpm dev"
+singleton = true
+
+[annotator]
+# The impl under test for the annotator redesign (docs/plan-annotator-redesign.md):
+# the annotator serving the committed demo root. 7378 is the CLI default, but
+# another worktree's annotator may hold it — svc hands out the next free port
+# via $PORT, and the manifest run passes that as --app-url.
+cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --port ${PORT:-7378}'"
+port_base = 7378

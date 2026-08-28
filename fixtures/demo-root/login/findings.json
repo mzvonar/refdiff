@@ -1,0 +1,47 @@
+{
+  "pair": "Login",
+  "createdAt": "2026-08-28T13:22:05.000Z",
+  "design": {
+    "source": "dc-html",
+    "ref": "login.dc.html#Login",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "live-url",
+    "ref": "/auth/login",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.97,
+    "confidenceX": 0.97,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": true,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-28T07:22:05.000Z",
+    "resolved": [
+      "prev-1",
+      "prev-2"
+    ],
+    "introduced": []
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

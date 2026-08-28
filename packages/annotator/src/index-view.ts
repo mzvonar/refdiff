@@ -27,6 +27,23 @@ export interface PairSummary {
   notes: number
 }
 
+/**
+ * A run dir whose findings.json could not be read — cut off mid-write, or not
+ * a report at all. Listed, never dropped: a pair that silently vanishes from
+ * the Library is the one outcome the list exists to prevent (one bad pair
+ * never kills a run).
+ */
+export interface BrokenPair {
+  dir: string
+  broken: true
+  /** Written the way the card prints it: `findings.json · <what went wrong>`. */
+  reason: string
+}
+
+export type PairEntry = PairSummary | BrokenPair
+
+export const isBroken = (p: PairEntry): p is BrokenPair => (p as BrokenPair).broken === true
+
 export const CONFIDENCE_GATE = 0.5
 
 export function escapeHtml(s: string): string {
@@ -36,8 +53,22 @@ export function escapeHtml(s: string): string {
   )
 }
 
+/** The degraded card: nothing to open, the reason in the open. */
+export function brokenCard(pair: BrokenPair): string {
+  return (
+    '<li class="card broken" data-pair="' +
+    escapeHtml(pair.dir) +
+    '"><div class="hit"><div class="row1"><span class="name">' +
+    escapeHtml(pair.dir) +
+    '</span><span class="pill broken">UNREADABLE</span></div><div class="row2"><span class="kv">Couldn\'t read this run</span></div><div class="row3"><span class="kv mono">' +
+    escapeHtml(pair.reason) +
+    "</span></div></div></li>"
+  )
+}
+
 /** `href` is the route (app) or the file (emitted index) for this pair. */
-export function pairCard(pair: PairSummary, href: string): string {
+export function pairCard(pair: PairEntry, href: string): string {
+  if (isBroken(pair)) return brokenCard(pair)
   const weak = pair.confidence < CONFIDENCE_GATE
   return (
     '<li class="card" data-pair="' +
@@ -83,12 +114,14 @@ export function pairCard(pair: PairSummary, href: string): string {
   )
 }
 
-export function pairCards(pairs: PairSummary[], href: (pair: PairSummary) => string): string {
-  return pairs.map((p) => pairCard(p, href(p))).join("")
+export function pairCards(pairs: PairEntry[], href: (pair: PairSummary) => string): string {
+  return pairs.map((p) => pairCard(p, isBroken(p) ? "" : href(p))).join("")
 }
 
-/** The line above the list: what is failing, what cannot be trusted, what is waiting. */
-export function pairsSummaryLine(pairs: PairSummary[]): string {
+/** The line above the list: what is failing, what cannot be trusted, what is waiting, what could not be read. */
+export function pairsSummaryLine(entries: PairEntry[]): string {
+  const pairs = entries.filter((p): p is PairSummary => !isBroken(p))
+  const broken = entries.length - pairs.length
   const failing = pairs.filter((p) => !p.pass).length
   const weak = pairs.filter((p) => p.confidence < CONFIDENCE_GATE).length
   const notes = pairs.reduce((n, p) => n + p.openNotes, 0)
@@ -99,6 +132,7 @@ export function pairsSummaryLine(pairs: PairSummary[]): string {
     " under the " +
     CONFIDENCE_GATE.toFixed(2) +
     " confidence gate" +
-    (notes ? " · " + notes + " open note" + (notes === 1 ? "" : "s") : "")
+    (notes ? " · " + notes + " open note" + (notes === 1 ? "" : "s") : "") +
+    (broken ? " · " + broken + " unreadable" : "")
   )
 }

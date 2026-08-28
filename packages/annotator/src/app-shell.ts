@@ -186,6 +186,10 @@ body.route-index { display:block; height:auto; overflow:auto; }
   grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); }
 .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; }
 .card[hidden] { display:none; }
+/* The degraded card: a run dir whose findings.json could not be read. Nothing to open. */
+.card.broken { border-style:dashed; opacity:.8; }
+.card.broken .pill.broken { background:transparent; border:1px solid var(--line); color:var(--muted); }
+.card.broken .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
 .hit { display:block; padding:10px 12px; color:inherit; text-decoration:none; }
 .hit:hover { background:rgba(255,255,255,.04); }
 .row1 { display:flex; align-items:center; gap:8px; justify-content:space-between; }

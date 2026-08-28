@@ -1,0 +1,114 @@
+{
+  "pair": "Error & empty states",
+  "createdAt": "2026-08-27T14:22:05.000Z",
+  "design": {
+    "source": "figma",
+    "ref": "figma://veriflow/error-empty-states",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "live-url",
+    "ref": "/onboarding/errors",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.68,
+    "confidenceX": 0.68,
+    "confidenceY": 0.98,
+    "basis": "anchors"
+  },
+  "findings": [
+    {
+      "id": "d1",
+      "type": "color",
+      "severity": "major",
+      "mark": 1,
+      "implBox": {
+        "x": 24,
+        "y": 64,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — major color #1 (Error & empty states)"
+    },
+    {
+      "id": "d2",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 2,
+      "implBox": {
+        "x": 24,
+        "y": 104,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #2 (Error & empty states)"
+    },
+    {
+      "id": "d3",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 3,
+      "implBox": {
+        "x": 24,
+        "y": 144,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #3 (Error & empty states)"
+    },
+    {
+      "id": "d4",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 4,
+      "implBox": {
+        "x": 24,
+        "y": 184,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #4 (Error & empty states)"
+    },
+    {
+      "id": "d5",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 5,
+      "implBox": {
+        "x": 24,
+        "y": 224,
+        "w": 200,
+        "h": 24
+      },
+      "message": "Demo fixture — minor spacing #5 (Error & empty states)"
+    }
+  ],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": false,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-27T08:22:05.000Z",
+    "resolved": [
+      "prev-1"
+    ],
+    "introduced": [
+      "d1"
+    ]
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

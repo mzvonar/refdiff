@@ -16,7 +16,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && pnpm --filter @refdiff/annotator exec tsc -p ../../fixtures/tsconfig.json",
     "dev": "pnpm -r --parallel dev"
   }
 }

@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "pair": "Onboarding — Document step",
+  "annotations": [
+    {
+      "id": "c1",
+      "side": "impl",
+      "shape": {
+        "kind": "rect",
+        "x": 36,
+        "y": 14,
+        "w": 150,
+        "h": 36
+      },
+      "anchor": {
+        "elementId": "span-1",
+        "box": {
+          "x": 69,
+          "y": 21.5,
+          "w": 62,
+          "h": 20
+        },
+        "role": "text",
+        "text": "Veriflow"
+      },
+      "note": "Logo should use the darker navy from the brand kit",
+      "status": "implemented",
+      "createdAt": "2026-08-28T13:32:05.000Z",
+      "updatedAt": "2026-08-28T13:32:05.000Z",
+      "implementedAt": "2026-08-28T13:37:05.000Z",
+      "reply": "Fetched brand token — logo color maps to #1E2A5A. Queued for the next impl build."
+    },
+    {
+      "id": "c2",
+      "side": "impl",
+      "shape": {
+        "kind": "rect",
+        "x": 36,
+        "y": 204,
+        "w": 608,
+        "h": 140
+      },
+      "anchor": {
+        "elementId": "div-13",
+        "box": {
+          "x": 53,
+          "y": 289,
+          "w": 153,
+          "h": 15
+        },
+        "role": "text",
+        "text": "Photo page with MRZ visible"
+      },
+      "note": "Check spacing between document cards at tablet width",
+      "status": "open",
+      "createdAt": "2026-08-28T13:52:05.000Z",
+      "updatedAt": "2026-08-28T13:52:05.000Z"
+    },
+    {
+      "id": "c3",
+      "side": "impl",
+      "shape": {
+        "kind": "rect",
+        "x": 36,
+        "y": 586,
+        "w": 280,
+        "h": 48
+      },
+      "anchor": {
+        "elementId": "div-24",
+        "box": {
+          "x": 144.5,
+          "y": 600.5,
+          "w": 63,
+          "h": 19
+        },
+        "role": "text",
+        "text": "Continue"
+      },
+      "note": "Continue button should be full width on mobile",
+      "status": "done",
+      "createdAt": "2026-08-28T12:52:05.000Z",
+      "updatedAt": "2026-08-28T12:52:05.000Z",
+      "implementedAt": "2026-08-28T12:57:05.000Z",
+      "doneAt": "2026-08-28T13:00:05.000Z",
+      "reply": "Confirmed — impl build 342 makes the button fluid below 480px."
+    }
+  ]
+}

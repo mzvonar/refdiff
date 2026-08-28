@@ -1,0 +1,48 @@
+{
+  "pair": "Stepper",
+  "createdAt": "2026-08-28T13:42:05.000Z",
+  "design": {
+    "source": "figma",
+    "ref": "figma://veriflow/stepper",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "storybook",
+    "ref": "ds/Stepper",
+    "width": 680,
+    "height": 740,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.94,
+    "confidenceX": 0.94,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": true,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-28T07:42:05.000Z",
+    "resolved": [
+      "prev-1",
+      "prev-2",
+      "prev-3"
+    ],
+    "introduced": []
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

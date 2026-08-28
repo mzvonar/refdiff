@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "pair": "Selection card",
+  "annotations": [
+    {
+      "id": "c1",
+      "side": "impl",
+      "shape": {
+        "kind": "point",
+        "x": 60,
+        "y": 60
+      },
+      "note": "Demo fixture — comment 1 on Selection card",
+      "status": "open",
+      "createdAt": "2026-08-28T14:02:05.000Z",
+      "updatedAt": "2026-08-28T14:02:05.000Z"
+    }
+  ]
+}
