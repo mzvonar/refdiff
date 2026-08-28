@@ -117,3 +117,12 @@ Do not commit unless asked.
 ## Lessons capture (ad-hoc work) — append, process later
 
 There is no automatic lesson → guideline pipeline, so reusable insights from ad-hoc work get lost. **Whenever work surfaces a durable lesson — a correction worth keeping, a non-obvious gotcha, a rejected approach and why, a rule that should exist — append a dated entry to [`docs/lessons-inbox.md`](docs/lessons-inbox.md)** the moment it's noticed (don't fix-and-forget; scrollback isn't reliably re-scannable later). The inbox is a transient buffer, never a durable home. Later, when the user says **"process the lessons"**, the `/lessons` skill drains it and promotes each entry to its real home in THIS repo — a skill body (`skills/refdiff/SKILL.md`, `.claude/skills/*`), this file, `docs/architecture.md` "Open decisions", or memory — or discards it. Standing instruction. Full format + routing → `/lessons` (its ADR / anchors / wiki homes are another repo's; use the ones named here).
+
+## Guideline hygiene — `/update-guidelines`
+
+`/update-guidelines` is the runbook for changing a convention everywhere it
+is asserted (CLAUDE.md gist → body in the owning skill or
+`docs/architecture.md`, the product skill kept repo-agnostic, the bindings
+and the workflow skills re-checked) and for keeping this file lean (budget
+≤ ~15k chars). `.claude/skills/update-guidelines/list-managed-files.sh` lists
+the project skills it may edit (`managed-by: project`).
