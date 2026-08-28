@@ -54,6 +54,7 @@ function readRecord(value: unknown): AcceptedRecord | undefined {
   if (!["role", "changeKind", "text", "key", "decidedAt"].every(optionalString)) return undefined
   if (value["expected"] !== undefined && !isValues(value["expected"])) return undefined
   if (value["actual"] !== undefined && !isValues(value["actual"])) return undefined
+  if (value["contents"] !== undefined && value["contents"] !== true) return undefined
   const str = (k: string): Record<string, string> =>
     typeof value[k] === "string" ? { [k]: value[k] } : {}
   return {
@@ -63,6 +64,7 @@ function readRecord(value: unknown): AcceptedRecord | undefined {
     ...str("text"),
     ...(isValues(value["expected"]) ? { expected: value["expected"] } : {}),
     ...(isValues(value["actual"]) ? { actual: value["actual"] } : {}),
+    ...(value["contents"] === true ? { contents: true as const } : {}),
     reason: value["reason"],
     ...str("key"),
     ...str("decidedAt"),
@@ -189,7 +191,8 @@ const sameRule = (a: AcceptedRecord, b: AcceptedRecord): boolean =>
 /**
  * Add a decision. An identical rule is REPLACED (the newer reason and timestamp
  * win) rather than appended, so re-running `accept` over the same triage does
- * not grow the file.
+ * not grow the file. A hand-added `contents: true` on the existing rule
+ * survives the replacement — the CLI never writes it and must not drop it.
  */
 export function upsertAccepted(
   file: AcceptedFile,
@@ -198,7 +201,11 @@ export function upsertAccepted(
 ): { file: AcceptedFile; added: boolean } {
   const existing = file.pairs[pair] ?? []
   const at = existing.findIndex((e) => sameRule(e, record))
-  const next = at >= 0 ? existing.map((e, i) => (i === at ? record : e)) : [...existing, record]
+  const merged: AcceptedRecord =
+    at >= 0 && existing[at]!.contents === true && record.contents === undefined
+      ? { ...record, contents: true }
+      : record
+  const next = at >= 0 ? existing.map((e, i) => (i === at ? merged : e)) : [...existing, record]
   return {
     file: { version: 1, pairs: { ...file.pairs, [pair]: next } },
     added: at < 0,

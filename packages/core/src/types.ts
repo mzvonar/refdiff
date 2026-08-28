@@ -188,6 +188,17 @@ export interface AcceptedDeviation {
   text?: string
   expected?: Record<string, string | number>
   actual?: Record<string, string | number>
+  /**
+   * Also excuse what lies INSIDE the accepted element: every TEXTLESS finding
+   * whose boxes fall within the boxes of a finding this rule hit is suppressed
+   * too, as `"<reason> (inside)"`. For an accepted image whose comp stand-in
+   * is a drawn placeholder (a grey plate with bars, a logo square) the bars
+   * are the same decision — but text inside the region stays visible, so a
+   * missing label or a badge drawn over the region is never hidden by it.
+   * Content-shaped: the rule still names the element and expires with it.
+   * Manifest-only — `refdiff accept` never writes it.
+   */
+  contents?: true
   reason: string
 }
 

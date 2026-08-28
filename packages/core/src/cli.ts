@@ -133,6 +133,9 @@ Ignore policy (both modes):
   --accept <json>         intended deviation, repeatable: '{"type":"color",
                           "expected":{"color":"rgb(26, 26, 26)"},"actual":{"color":
                           "rgb(44, 36, 25)"},"reason":"…"}' → suppressed as "accepted";
+                          a manifest rule may add "contents": true to also excuse
+                          the TEXTLESS findings inside the element it accepted
+                          ("<reason> (inside)"); this flag never writes it;
                           optional "role" narrows it ({"type":"missing-element",
                           "role":"box","reason":"focus ring …"}); for pixel-region,
                           "changeKind" narrows to shape|color|hue-rotation|added|

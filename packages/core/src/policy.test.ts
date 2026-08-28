@@ -333,6 +333,67 @@ describe("accepted deviations", () => {
     ).toHaveLength(0)
   })
 
+  // Decision D6 on the Library pairs: the card thumbnail is the run's own
+  // impl.png where the comp draws a grey plate with three bars; the extra <img>
+  // is accepted, and the plate's bars sit inside it — textless boxes the
+  // same decision covers. A label inside the region is NOT covered.
+  describe("contents: true — the accepted element's insides", () => {
+    type Boxes = Pick<Finding, "designBox" | "implBox">
+    const textless = (
+      id: string,
+      type: Finding["type"],
+      role: string,
+      boxes: Boxes,
+      values: Pick<Finding, "expected" | "actual"> = {},
+      message = id,
+    ): Finding => ({ id, mark: 0, type, severity: "major", role, message, ...boxes, ...values })
+    const tile = textless("tile", "extra-element", "image", { implBox: { x: 17, y: 160, w: 274.5, h: 131 } })
+    const bar = (id: string, y: number, h: number): Finding =>
+      textless(id, "missing-element", "box", { designBox: { x: 82.91, y, w: 142.69, h } })
+    const numeral: Finding = {
+      ...textless("numeral", "missing-element", "text", { designBox: { x: 100, y: 200, w: 8, h: 12 } }),
+      text: "1",
+    }
+    const outside = bar("outside", 400, 12)
+    const d6 = { type: "extra-element" as const, role: "image", contents: true as const, reason: "D6: the thumbnail is the run's own impl.png" }
+
+    it("suppresses the textless findings inside the accepted element, visibly, as '<reason> (inside)'", () => {
+      const { kept, suppressed } = applyPolicy(
+        [tile, bar("b1", 202, 61.3), bar("b2", 189, 7), bar("b3", 269, 12), numeral, outside],
+        { accepted: [d6] },
+      )
+      expect(suppressed.map((s) => [s.message, s.rule])).toEqual([
+        ["tile", d6.reason],
+        ["b1", `${d6.reason} (inside)`],
+        ["b2", `${d6.reason} (inside)`],
+        ["b3", `${d6.reason} (inside)`],
+      ])
+      expect(suppressed.every((s) => s.suppressedBy === "accepted")).toBe(true)
+      // Boxes only: the numeral inside the region and the bar outside it stay.
+      expect(kept.map((f) => f.message)).toEqual(["numeral", "outside"])
+    })
+
+    it("excuses nothing extra without the flag, and nothing when the rule itself hit nothing", () => {
+      const { contents: _c, ...plain } = d6
+      expect(applyPolicy([tile, bar("b1", 202, 61.3)], { accepted: [plain] }).kept).toHaveLength(1)
+      expect(applyPolicy([bar("b1", 202, 61.3)], { accepted: [d6] }).kept).toHaveLength(1)
+    })
+
+    it("uses both boxes of a PAIRED accepted finding as the region and needs every box of a candidate inside it", () => {
+      // The mobile Library: the plate is matched to the tile — a size finding
+      // on the pair, its bars inside the impl box but not the design box.
+      const pair: Boxes = { designBox: { x: 32, y: 287, w: 34, h: 26 }, implBox: { x: 27, y: 273, w: 44, h: 56 } }
+      const plate = textless("plate", "size", "box", pair, { expected: { w: 34, h: 26 }, actual: { w: 44, h: 56 } })
+      const topBar = textless("topBar", "missing-element", "box", { designBox: { x: 32, y: 279, w: 23.8, h: 5 } })
+      const shifted = textless("shifted", "position", "box", pair, { expected: { x: 32, y: 287 }, actual: { x: 27, y: 273 } })
+      const straddling = textless("taller", "position", "box", { ...pair, implBox: { x: 27, y: 273, w: 44, h: 80 } })
+      const rule = { type: "size" as const, role: "box", expected: { w: 34, h: 26 }, actual: { w: 44, h: 56 }, contents: true as const, reason: "D6 mobile" }
+      const { kept, suppressed } = applyPolicy([plate, topBar, shifted, straddling], { accepted: [rule] })
+      expect(suppressed.map((s) => s.rule)).toEqual(["D6 mobile", "D6 mobile (inside)", "D6 mobile (inside)"])
+      expect(kept.map((f) => f.message)).toEqual(["taller"])
+    })
+  })
+
   it("does not accept a different value, type, or a partial mismatch", () => {
     expect(
       applyPolicy([{ ...ink, actual: { color: "rgb(0, 0, 0)" } }], { accepted: [rule] }).kept,

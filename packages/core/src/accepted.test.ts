@@ -152,6 +152,15 @@ describe("the decisions file", () => {
     expect(acceptedFor(twice.file, "p")[0]!.reason).toBe("ours, restated")
   })
 
+  it("keeps a hand-added `contents: true` when the CLI re-records the same rule", () => {
+    const widened = { ...decide(finding(), "ours"), contents: true as const }
+    const file = upsertAccepted(emptyAcceptedFile(), "p", widened).file
+    const parsed = parseAcceptedFile(JSON.parse(JSON.stringify(file)))
+    expect(parsed.ok && acceptedFor(parsed.value, "p")[0]?.contents).toBe(true)
+    const again = upsertAccepted(file, "p", decide(finding(), "ours, restated", "2026-09-01T00:00:00.000Z"))
+    expect(acceptedFor(again.file, "p")[0]).toMatchObject({ reason: "ours, restated", contents: true })
+  })
+
   it("removes by the key that recorded it", () => {
     const file = upsertAccepted(emptyAcceptedFile(), "p", decide(finding(), "ours")).file
     expect(removeAcceptedByKey(file, "p", "color|text|…").removed).toBe(1)

@@ -198,10 +198,13 @@ What the model receives — every item evidence-backed (research §4):
   grew is introduced, not back. The loop's loud failure lives in the tool,
   not in the model's memory.
 - **Accepted deviations** (`IgnorePolicy.accepted[] { type, expected?,
-  actual?, reason }`): intended differences the loop has reviewed (an
-  app-wide token when one comp is the outlier) are suppressed as
-  `accepted` with the reason as the visible rule — the "NL ignore policy"
-  the skill needs, still never a silent skip.
+  actual?, text?, contents?, reason }`): intended differences the loop has
+  reviewed (an app-wide token when one comp is the outlier) are suppressed
+  as `accepted` with the reason as the visible rule — the "NL ignore policy"
+  the skill needs, still never a silent skip. `contents: true` (manifest
+  only) widens a rule to the textless findings whose boxes lie inside the
+  finding it hit — a placeholder's bars — as `"<reason> (inside)"`; text in
+  the region is never excused.
 - `inspect` CLI subcommand (crop/zoom/sample-pixel) — NOT built: three
   loop iterations on doc-detail never needed a closer look than
   `expected/actual` + the crop pair.
@@ -597,6 +600,20 @@ to `localStorage` otherwise (and says so).
   px = 0.4 px). A new `FindingType` member rather than a `pixel-region`
   note: it is neither a region nor an element. Not accepted-able — the fix
   is the size difference it names.
+- **`accepted[].contents: true` — decided 2026-08-28 (plan-next §14).**
+  Decision D6 (the thumbnail is the run's own `impl.png`; the comp draws a
+  grey plate with bars) cost 8 findings forever: the bars are textless boxes
+  `acceptedFromFinding` rightly refuses, and a `regions` entry has no reason
+  and never expires. What identifies them is their container. A rule with
+  `contents: true` also suppresses every TEXTLESS finding whose boxes lie
+  within the boxes of the finding it hit (both boxes of a paired finding —
+  the mobile plate is matched to the tile — one world space, 1 px slack),
+  visibly as `"<reason> (inside)"`, decided from the first pass's hits so
+  contents never excuse each other. Boxes only (Mato, 2026-08-28): the
+  artboard's step numerals stay visible as the price of never hiding a badge
+  drawn over the region. Manifest-only: `refdiff accept` never writes it,
+  and `upsertAccepted` preserves a hand-added one. Content-shaped: the rule
+  names the element and expires with it.
 - `@blazediff/agent` — **decided 2026-08-26: skip as a dependency,
   reference its protocol.** Evaluated against blazediff.dev/apis/agent
   (time-boxed). It is a CLI-driven visual-regression harness (route

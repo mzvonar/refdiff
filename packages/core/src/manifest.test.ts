@@ -103,6 +103,14 @@ describe("readAccepted", () => {
       { type: "color", expected: { color: "a" }, actual: { color: "b" }, reason: "token" },
     ]);
     expect(readAccepted({ type: "size", reason: "r" })).toEqual({ type: "size", reason: "r" });
+    expect(readAccepted({ type: "extra-element", role: "image", contents: true, reason: "r" })).toEqual({
+      type: "extra-element",
+      role: "image",
+      contents: true,
+      reason: "r",
+    });
+    // Only the literal `true` widens a rule to its contents — never a truthy string.
+    expect(readAccepted({ type: "extra-element", contents: "yes", reason: "r" })).toBeUndefined();
     expect(readAccepted({ reason: "r" })).toBeUndefined();
     expect(readAccepted({ type: "pixel-region", role: "icon", changeKind: "shape", reason: "r" })).toEqual({
       type: "pixel-region",

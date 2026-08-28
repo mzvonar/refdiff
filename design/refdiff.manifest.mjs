@@ -39,7 +39,21 @@ const LIBRARY_IGNORE = {
     {
       type: "extra-element",
       role: "image",
+      // contents: the plate's three grey bars are drawn INSIDE the region our
+      // <img> occupies — the same decision, excused as "(inside)" (harness item 14).
+      contents: true,
       reason: "decision D6: the card thumbnail is the run's own impl.png; the comp's grey plate is the designer's stand-in for that screenshot",
+    },
+    {
+      // D6 on the mobile layout: the plate box is MATCHED to our tile (34×26 vs
+      // 44×56), so it is a size finding on the pair rather than an extra image;
+      // its position / colour findings and the bars inside are its contents.
+      type: "size",
+      role: "box",
+      expected: { w: 34, h: 26 },
+      actual: { w: 44, h: 56 },
+      contents: true,
+      reason: "decision D6 (mobile): the comp's 34×26 grey plate is matched to the card's 44×56 impl.png tile",
     },
     {
       type: "text-content",
@@ -72,6 +86,8 @@ const COMPARE_IGNORE = {
     {
       type: "extra-element",
       role: "image",
+      // contents: the artboard's 16×16 logo squares lie inside the screenshots' region.
+      contents: true,
       reason: "the app draws the run's design.png / impl.png where the comp imports the artboards as live DOM",
     },
   ],
