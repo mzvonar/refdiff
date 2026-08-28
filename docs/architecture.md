@@ -235,323 +235,399 @@ fixed / accepted / needs-a-human lists — never a description of a screenshot.
 
 ## Annotator
 
-Reuses the best ideas of the population-registry annotator (split view,
+`packages/annotator` is the human half of the harness: the app a designer and
+a reviewer open, and the place where the human gate (principle 4) is
+exercised — notes for the model, triage verdicts on findings, a focus region.
+It was redesigned against the RefDiff comps in `design/refdiff/` during
+2026-08-28 (phases 0–6, `docs/plan-annotator-redesign.md`, each phase with its
+measured numbers) and is **dogfooded**: the annotator serving the committed
+fixture root `fixtures/demo-root/` is the impl under test in this repo's own
+manifest (`design/refdiff.manifest.mjs`, bindings in `refdiff.bindings.md`).
+Nothing below is an eyeball claim; every layout statement was closed against
+`findings.json` and the survivors are named in the plan's phase 5 Numbers.
+
+It reuses the best ideas of the population-registry annotator (split view,
 point/rect annotations, phone-friendly zero-dep server, the
-`open → implemented → done` designer/agent state machine) with one
-structural fix: **annotations anchor to matched elements from core's
-element model**, not image-fraction coordinates — recaptures re-project
-annotations through element identity instead of fragile geometry
-migration. Rendered annotation digests (marked PNG + text) remain the
-model-facing output.
+`open → implemented → done` designer/agent state machine) with one structural
+fix: **annotations anchor to matched elements from core's element model**, not
+image-fraction coordinates — recaptures re-project annotations through element
+identity instead of fragile geometry migration. Rendered annotation digests
+(marked PNG + text) remain the model-facing output.
 
-**The diff lab (2026-08-28).** Over the split screen sit Chromatic's reading
-aids, driven by our channel rather than a raw pixel diff: **Diff** highlights
-the reported regions (`Finding.regions` + the presence findings, which a
-box-scoped pixel diff structurally cannot see) on BOTH panes plus the coloured
-raster mask on the impl; **Focus** punches those regions out of a dark sheet;
-**Strobe** pulses and wiggles them; `[` / `]` step through them; and one
-superimposition mode (**blink / onion / swipe / difference**) draws the design
-over the impl pane. Why it cannot simply mirror Chromatic: Chromatic compares
-two renders of the same code, so every differing pixel is signal, while a comp
-against an implementation is rasterised at a different scale — 95.6 % of one
-page pair's raw mask lay inside text. Regions therefore come from the reported
-findings, never from the raw diff. The superimposed ghost uses the run's FULL
-alignment (per-axis stretch included) because a blink against a frame that does
-not land on the impl compares nothing; the design PANE keeps refusing that
-distortion, and the lab states it in words instead.
+### Information architecture (as built, 2026-08-28)
 
-**Human view requirement (Mato, 2026-08-26):** the annotator/report must
-show the FULL design and the FULL implementation side by side in a split
-screen (synchronized pan/zoom, aligned through `Alignment`) — the crops
-serve the model, a person compares whole pages/
-components. Consequently every capture adapter stores the complete
-reference image (`artifacts.designPng` / `implPng`, native resolution),
-never only the per-finding crops; the Figma adapter keeps the full node
-render, the live/Storybook adapters the full viewport or `fullPage` shot.
-
-**The UI never stretches the reference (Mato, 2026-08-28).** `align` fits x and y independently,
-which is right for locating things and wrong for showing them: across uctoinak's corpus that
-projects designs **+53 %, +38 %, +32 %, +16 %** taller (and several shorter) than drawn. A person
-cannot judge proportion or type against a distorted reference and — worse — had no way to know it
-was distorted. So the stretch stays in the DATA (finding boxes, matching, the delta) and never
-reaches the screen: `projection()` always drops it, and there is deliberately no toggle, because
-"show me the honest picture" is not a preference to negotiate.
-
-Undoing it for display means moving the design's MARKS with its image: finding boxes are baked into
-world space through the run's own anisotropic alignment, so `designLayerTransform` applies the
-inverse stretch about `offsetY` to the design layers only (`projectionAlignment` does the image;
-both unit-tested to land a design point at the same world y). The impl side is untouched. The cost
-is honest and stated: the design no longer lines up vertically with the impl, which is why the pane
-label reads `· true aspect (fit +16% vertical)` — the fit's number is disclosed without anyone
-having to look at a warped image to discover it.
-
-**Registration IS a preference, though — four align modes (Mato, 2026-08-28).** The stretch is not
-negotiable; WHERE the frame is registered is, and the old "aligned / not aligned" toggle answered
-neither "what did it align on" nor "line these up the other way". `state.align` now cycles
-`anchors` (the run's fit, aspect-locked — the default) → `width` (frame scaled onto the impl's
-width, corners at the origin) → `left` (1:1, top-left) → `right` (1:1, top-RIGHT, for frames that
-differ by a left-hand rail); the control carries the mode's NAME and states both transforms in its
-title, and every mode is isotropic. The fit is a regression over matched text, so on a page whose
-two sides differ structurally it lands the whole frame tens of px off (`client-pending-…-desktop`:
-`@(15.6, −67.9)` under a 15 % stretch, an intercept the isotropic projection then inherits) — the
-corner modes are the manual answer to that, not a second opinion about the stretch.
-
-Everything the design side draws goes through ONE re-map, `alignRemap(run, display)`: per axis
-`k = display.scale / run.scale`, `t = display.offset − k·run.offset`. The aspect lock is just its
-`display = projectionAlignment(run, true)` case, so marks stay glued to the image in every mode
-rather than only in the fit's own. It runs in reverse (`worldFromShown`) on every pointer that lands
-on the design pane, because shapes are stored in RUN world space: without the inverse, a note drawn
-on the design side under any other registration saved itself elsewhere and reappeared offset from
-the thing it pointed at.
-
-**One annotate mode, and a strobe that actually strobes (2026-08-28).** `+ note` and `+ region` were
-one gesture asked twice: the pointer-up already decided the shape by drag distance, so the buttons
-collapsed into one (`#ann-draw`, `n`) — click = point, drag = region, with the live band appearing
-exactly when the drag crosses the same threshold that will save a rect. And Strobe had never
-strobed: `animation: … steps(1) infinite alternate` looks like the classic two-state flip, but a
-reversed iteration flips the step POSITION too, so Chrome sampled the same keyframe in both
-directions — `getAnimations()` said `running` while the computed `stroke` never moved. It is hard
-stops at 50 % now, and the second state changes `stroke-width` as well as `translate`, because
-`translate` is world px: fit-to-page zoom made the 1px wiggle sub-pixel even when it did run.
-
-**The canvas controls are not phone-only either.** Move/annotate and focus show in every layout;
-only the Design/Impl SWITCH hides itself when both panes are already on screen (`body.single
-#side-switch`). Tying the whole control group to single-pane mode had made focusing and annotating
-unreachable on desktop.
-
-**The findings rail collapses on desktop too (2026-08-28).** It was phone-only. On desktop the
-column shrinks to a 38px strip whose summary turns sideways, handing ~300px back to the canvas.
-Defaults differ by breakpoint on purpose — desktop has always shown the rail, a phone never had room
-— so with no saved preference the rail starts open above 900px and collapsed below; an explicit
-toggle is remembered for both.
-
-**Triage: a verdict on a FINDING, keyed by identity (2026-08-27).** Annotations answer "here is
-something I want changed"; triage answers "what about the thing you already told me" — `fix`,
-`ignore` or `snooze`, plus a note. It is filed against `Finding.key`, which `packageForModel` now
-stamps from the delta's `identityKey`: ids and marks are renumbered every capture, so an id-keyed
-verdict would silently attach to a different finding on the next run. Consequence worth knowing:
-two findings with the same type, role and text share one key and therefore one verdict — the same
-property that makes the delta stable. A snooze carries a horizon and reads as untriaged once it
-passes. Stored per run dir in `triage.json` (+ `triage.md` for the fix loop) behind
-`GET/PUT /api/pairs/<pair>/triage`; the model is pure in `triage.ts` with its own tests. Findings
-from reports written before `key` existed cannot be triaged, and the panel says so rather than
-inventing a handle.
-
-**Focus a region (2026-08-27).** Drag a box on the canvas and the list, the marks and the counts
-narrow to it — the way to read one column of a screen without the chrome's findings burying it. A
-filter over WHERE a finding is, not over what it is; the LIST test lives in `visible()` alongside
-severity and search, so list and canvas cannot disagree about which findings exist.
-
-The canvas test is per BOX, not per finding, and that distinction is the whole feature: an
-aggregated finding ("×26 rows") can have instances in the content AND in the header, so admitting
-the whole finding drew its header marks straight back — focus the content, watch the chrome light
-up anyway. `renderMarks` therefore filters the primary box and every member through `boxInFocus`.
-A tap rather than a drag clears instead of focusing a 1px region, which would hide everything and
-read as the app breaking.
-
-**The region is editable and it is an ARTIFACT.** Drawing a rectangle precisely with a thumb is not
-realistic, so a drawn region carries four corner handles and a centre move-grip (`focus.ts`,
-`handleAt`/`resizeRect`, with a minimum size so a corner dragged past its opposite cannot collapse
-the region and strand its own handles). The region's BODY stays inert, so a drag inside it still
-pans the canvas.
-
-More important, it persists to `focus.json` and `focus.md` (`GET/PUT /api/pairs/<pair>/focus`).
-That is the point rather than a convenience: a region that lives only in the browser cannot be
-handed over, and "let's work in the focused region" has to mean the same rectangle to the agent as
-it does on the phone. `focus.md` states the rectangle in impl CSS px, how many of the findings fall
-inside it, that everything outside is deliberately out of scope, and each in-scope finding by mark,
-severity, message and stable key.
-
-**Marks stack, so the selected one is drawn last.** Three findings can share a box; the neighbour
-drawn last used to sit on top of the one just selected (click finding 1, read 95). While a selection
-is active its rect and label are appended last and everything else drops to 25–35% opacity.
-
-**Scope: the labelled element IS the screen (2026-08-27).** The area rule
-("chrome is thin strips of text, the UI is the big box") cannot tell a frame
-that WRAPS the screen from a frame that IS the screen. `.dc.html` comps are
-written both ways — `documents.dc.html#8a` is `<div id="8a">` around a labelled
-screen, `org-detail.dc.html#2a` is the labelled screen itself — and on the
-second shape the rule descended one level too far and kept only the largest
-column. Measured across uctoinak's 41 comps: three desktop pairs lost the app's
-232px sidebar entirely (`client-pending`/`client-overview`/`client-detail-chrome`
-accountant desktop), ten more lost the frame's own border and padding. The
-design pane simply had no navigation, and every element right of it sat a third
-of a frame off — which also pins those pairs at 0.00 alignment confidence.
-
-There is nothing Claude-Design-specific to blacklist, which is the tempting
-fix: `support.js` wraps only the DOCUMENT (`x-dc`, `dc-root`, `dc-canvas`,
-`.sc-host`) and injects no per-frame chrome; the numbered chip, title and
-designer notes are hand-authored siblings OUTSIDE the frame, already excluded
-by addressing the frame directly. The marker to use is the authored one:
-`data-screen-label`, which sits on the screen root under both comp shapes. So
-scope resolves explicit → `data-screen-label` (frame, else its single labelled
-descendant) → largest-child → frame. Two labelled screens in one frame stay
-ambiguous and fall through to the area rule, as do unlabelled artboards like
-`doc-detail-modal.dc.html#1a`.
-
-**The design image was drawn `alignment.scale`× off — 40 of 41 pairs (2026-08-27).**
-`report.design.width` is the capture NORMALIZED onto the impl (raw CSS ×
-`alignment.scale`, applied by `normalize` then `alignStructural`), while
-`designPng` stays the RAW capture. The viewer inferred its DPR as
-`naturalWidth / design.width`, which is `dpr / alignment.scale` — so the design
-rendered 1.35× too large on `client-pending-accountant-desktop`, 0.8× too small
-on the mobile pairs, and the finding boxes (already in world space) no longer
-sat on the thing they described. The tell was arithmetic, not eyeballing:
-across the set every inferred DPR times its `alignment.scale` came to exactly
-2.000. `designCaptureDpr` (view-math, unit-tested) now multiplies the scale
-back in, so reports written before this still render correctly, and the report
-records `design.dpr` / `impl.dpr` so new runs state it outright. Anything
-sizing the design PNG divides by that DPR — never by `design.width`.
-
-**The same double-scale sat in the world box**, and fixing only the image
-exposed it: `designWorldBox` maps RAW design px through the alignment, so
-passing `report.design.width` scaled it twice — a 1280×1107 pair produced a
-1728×1495 world, "Fit" solved for a third more space than the content occupies
-(41% → 30%), and the button then looked dead because the view already WAS that
-fit. `rawDesignSize(design, alignment)` undoes the normalization at the one
-place that needs raw px. Rule for this codebase: `report.design.width` is
-world/normalized px; the PNG and `designToWorld`/`designWorldBox` are raw px.
-Mixing them is silent — both halves render *something* plausible.
-
-**The chrome does not zoom; the canvas does.** `user-scalable=no` plus
-`touch-action:manipulation` kills double-tap and pinch on the page, and because
-iOS Safari ignores the viewport flag the client also refuses `gesturestart`.
-The panes keep `touch-action:none` and run their own pan/pinch, so pinching
-reaches the image, not the document. View controls (align, marks, all
-instances, split/single, side, move, rail, theme) persist in `localStorage`
-under `vc-controls` — they are a preference, not per-pair state, so they
-survive a reload and follow you from pair to pair.
-
-**Tokens, theme and type (redesign phase 1, 2026-08-28).** The chrome uses the
-RefDiff comps' token set under the comps' names (`--bg0..3 --line --txt --txt2
---acc --canvas`, severity `#e5484d / #f5a623 / #4c9aff`, statuses
-`#8f7ee7 / #f5a623 / #46a758`), dark on `:root` and light as a
-`body.cc-theme-light` override behind a manual toggle in both topbars — light
-is never captured by refdiff. Type is **self-hosted**: IBM Plex Sans (variable,
-latin + latin-ext), IBM Plex Mono 400/500 and a 52-glyph Material Symbols
-Outlined subset ship as woff2 in `packages/annotator/assets/fonts/` and are
-served on `GET /fonts/<file>` (whitelisted in `fonts.ts`, which also owns the
-`@font-face` rules). The app must look right offline; the comps hydrate from
-Google Fonts and unpkg, but that is the design's excuse, not the app's. The
-emitted `report.html` (`--emit`) has no server, so its `fonts/` URLs resolve to
-nothing and the stacks fall through to the system families — deliberate:
-inlining ~200 KB of base64 into every per-run artifact is the bloat the app
-shell exists to avoid, and the emitted file is the offline reading copy, not
-the measured surface.
-
-**The annotator is an app, not a site generator (Mato, 2026-08-27).** It used
-to re-render a self-contained `report.html` into every run dir on each start —
-41 files / 5.1 MB for the uctoinak set, 0.58 s. The cost was never the time: the
-app's own code was baked into every artifact, so each annotator change needed a
-regenerate before anyone could see it, and N copies went stale independently.
-`--serve` now ships ONE shell (markup + CSS + client, from memory) and loads
-data at request time: `GET /api/pairs` summarises every run dir, `#/<pair>`
-fetches `<pair>/findings.json`, notes ride on `/api/pairs/<pair>/annotations`.
-`--serve --read-only` (pure `read-only.ts`, harness item 16) refuses every
-write under `/api/` with 405 and flags `readOnly` on `/api/pairs`, so a
-refused save reads as the app's own sentence; nothing is announced up front
-(an extra rail line measured as +6 findings) — the served page stays
-identical to the writable app, for a committed fixture or an impl under
-measurement, which the writable server used to dirty.
-A run dir whose `findings.json` cannot be read (cut off mid-write, not a
-report) is listed as `{ dir, broken: true, reason }` and drawn as a degraded
-card — never dropped from the list, never a 500 for the whole set
-(`report-file.ts` `parseReport`; the fifth principle applied to the list).
-A pair captured after the server started appears on reload. Emitting the static
-files stays behind `--emit` (the default when not serving) for reading a report
-off disk with no server; the served API also answers the emitted file's own
-`<pair>/api/annotations` shape. The client is shared verbatim between both
-deliveries — it takes its data through `openReport(report, notes, page)` and
-prefixes artifacts with `page.base`, so it never learns which mode it is in.
-Two consequences of that sharing, both paid for once: (1) the client's module
-dependencies must be embedded by BOTH renderers — `renderReport` and
-`renderAppShell` each take every import-free module (`view-math`,
-`annotations`, `triage`, `focus`, `rail`) and `render.test.ts` asserts each
-source is present, because an emitted `report.html` threw a `ReferenceError`
-for weeks after triage/focus were added while the served app worked; (2) the
-shell is ONE document holding both routes, so an id or class chosen for the
-Library collides with the report's — `#layout-toggle` inherited the report
-toolbar's `display:none` at 900px, `.row` and `.badge` picked up the other
-route's rules. New index-route elements carry a route prefix (`lib-…`) and a
+**One shell, two routes.** `--serve` ships ONE document (markup + CSS + client,
+from memory) holding both routes and loads data at request time: the
+**Library** at `/` (`GET /api/pairs` summarises every run dir) and the
+**Comparison tool** at `#/<run-dir>` (fetches `<run-dir>/findings.json`; notes,
+verdicts and the focus region ride on `/api/pairs/<dir>/{annotations,triage,
+focus}`). Because the shell is one document, an id or class chosen for the
+Library collides with the report's (`.badge` once painted the canvas badges'
+digits invisible); index-route names carry a `lib-` prefix and a
 `grep -n 'id="<name>"\|\.<class> ' packages/annotator/src/render.ts
 packages/annotator/src/app-shell.ts` precedes any new name.
 
-> **Superseded in part by the annotator redesign (2026-08-28, phase 3 —
-> `docs/plan-annotator-redesign.md`):** the breakpoint is the comps' 760px,
-> the toolbar is gone (segments in the topbar, a tool strip and floating
-> pills over the canvas), Split/Single is the Split / Full segment and the
-> corner controls are the tool strip. **Phase 4 (2026-08-28)** moved the
-> rail to the comps' 320px RIGHT panel with Findings / Comments tabs, severity
-> chips, one row per finding with its `prop expected → actual` line and the
-> triage actions in the selected row, a suppressed disclosure, and the
-> comments with the model's `reply` (`--mark-implemented … --reply`); the
-> bottom detail panel and its crop images are gone (the canvas focuses on the
-> selected element instead; the crop PNGs stay in the run dir for the model),
-> and on a phone the rail is the comps' bottom sheet over a fixed canvas —
-> the page no longer scrolls. The rail paragraphs below describe the
-> pre-redesign rail. Phase 6 rewrites this section.
+**Library** (`app-shell.ts` `#view-index` + pure `index-view.ts`): a 46px
+brand-only topbar (accent square, "RefDiff", spacer, a `computer` /
+`smartphone` layout toggle that forces the row list — the comp's preview aid,
+not persisted — and the theme toggle); the head row `Library · N of M
+comparisons`; a filter row — search over name + route, source chips Both /
+Figma / Claude Design, state chips Any / Failing / Critical / Diverging / Low
+confidence / Has comments; then the grid (`auto-fill, minmax(250px, 1fr)`) or,
+under 640px or with the toggle, the row list. A **card** is the run's own
+`impl.png` as its thumbnail band (decision D6 — the comp's grey plate is the
+designer's stand-in; a run without a PNG gets the plate), the verdict pill
+top-left (`Pass` / `Fail`, the deterministic gate — a percentage was
+considered and refused: no similarity number exists in the pipeline and a
+share-of-clean-elements would be severity-blind), the run-state pill
+top-right, name + source chip, the mono route, severity dot-badges + comment
+count, and a footer of trend + `+N new / −M resolved` + relative "when". Under
+the 0.5 confidence gate the card carries a muted warning line — confidence is
+a WARNING STATE, never a number (gap 2: it says how well the two sides could
+be registered, not how similar they are). Order is newest first, ties in dir
+order, unreadable times last — order before anything else, because refdiff
+matches card N to card N and a different order reads as a finding on every
+pill (phase 2: 208 → 101 findings from the sort alone). A run dir whose
+`findings.json` cannot be read is `{ dir, broken: true, reason }` from
+`parseReport` (which also `salvage`s `pair`, `createdAt`, `impl.ref` from a
+file cut mid-write) and is drawn as the dashed degraded card with the real
+parser message — never dropped, never a 500 for the set (the fifth principle
+applied to the list). Two typed load-failure states (server gone / endpoint
+errored) with the real error line, the out-root path, Retry, a copy-restart
+button and an auto-retry countdown ship from spec, unmeasured. There is NO
+`Pending` state or chip: a run dir exists once `compare` wrote it, and a chip
+that can never match is worse than a missing one (the comp's `Pending` /
+`Processing` / `Queued` vocabulary is excused by policy in the dogfood
+manifest). The card has no source line and no absolute timestamp (D7); the
+relative time is the wall clock, which is why the dogfood fixture is shifted
+with `make-demo-root.ts --now` before a measure.
 
-**Phone variant (Mato, 2026-08-27):** a split screen on a 390px-wide phone
-left each pane ~50px tall inside a height-locked page that could not be
-scrolled at all — the reference image was unreachable. Below 900px the page
-therefore scrolls, the header's metadata collapses behind a `details`
-disclosure, the viewer sticks to the top and shows ONE side at a time (over
-the *same* shared pan/zoom, so switching compares the same spot), zoom and the
-rest of the toolbar sit directly under the canvas, and the findings rail
-collapses behind a summary bar (counts + notes) that opens on demand.
+**Comparison tool** (`render.ts` `REPORT_BODY` + `CSS` + `CLIENT`, pure
+`view-math.ts`, `rail.ts`, `annotations.ts`, `triage.ts`, `focus.ts`):
 
-**One side at a time is a MODE, not a breakpoint** (`body.single`): forced
-below 900px, chosen above it with the toolbar's Split/Single button. In that
-mode two controls sit in the canvas corner and the pane label is dropped (the
-refs live in the header): a Design/Impl switch, and a **move toggle** — move
-on = pan/zoom, move off = a tap drops a note and a drag marks a region, the
-same gesture split the `+ region` button already made, held until the toggle
-goes back (`ann.sticky`; the desktop `+ note` / `+ region` buttons stay
-one-shot). The region-vs-point threshold is in SCREEN px, since at a
-fit-to-phone zoom a 3-world-px wobble is under two real pixels.
+- **Topbar (46px):** `arrow_back` to the Library, brand square, "RefDiff", the
+  pair title; three segmented groups — **Split / Full** (`state.single`;
+  Full is one side at a time over the same shared view, with a floating
+  Design / Impl fab), **Off / Wipe / Onion / Blink / Diff** (the
+  superimposition, below) and the layer group **Findings / Comments / All /
+  Clean** (`state.layer`; Comments off hides comment shapes, never the focus
+  region); the theme toggle. The pair verdict, c/M/m counts and source lines
+  are NOT here (gap 14) — they live on the Library card you came from; the
+  refs and the fit's numbers live in the pane labels' and align pill's
+  `title`s.
+- **Delta strip** under the topbar, only when the run has a delta (gap 15:
+  impossible to miss): mono run label, `+N introduced` / `−M resolved`; on a
+  regression the red tint + 3px edge, "N regressions · fixed earlier, back
+  again — fix plan halted" and **Review**, which narrows the list to
+  `delta.regressions`.
+- **Tool strip** (44px, left; a floating pill bottom-left on the phone):
+  `pan_tool` move · `center_focus_strong` focus · `add_comment` comment ·
+  `difference` Highlight · `tonality` Dim · `flare` Strobe. Floating over the
+  canvas: the **zoom pill** (`−` / mono `NN%` / `+` / `fit_screen`), the
+  **align pill** (lock + mode + chevron, the amber `warning` treatment under
+  the 0.5 gate on Anchors only — the other modes are fixed geometry) with its
+  dropdown (Anchors / Width / Top left / Top right, `check` on the active
+  one), the **opacity pill** for Onion and Diff (one amount per blend,
+  `labAmount`), and a top-centre slot shared by the **focus chip** ("Region
+  focus · N of M findings · Clear") and the `lab-note` pill (the stretch /
+  highlight-count notes).
+- **Canvas:** two `--canvas` panes with mono-caps `DESIGN` / `IMPLEMENTATION`
+  labels (hidden while an overlay is on, and on the phone). Marks are the
+  comps' badges as HTML divs, never SVG text (the extractor never saw an SVG
+  number — 22 digits measured missing until they became DOM): 24px severity
+  circles at the box's top-left, 18px hollow ones for repeat instances, 22px
+  rounded squares in the status colour for comments, drawn on BOTH panes (a
+  note placed on the impl was invisible on a phone showing the design). The
+  box itself is outlined only while selected, or through Highlight / Dim.
+  `showMembers` defaults to false (gap 12: a ×15 aggregate carpeted the
+  artboard); the rail's `Primary only · N` / `All instances · M` chip flips
+  it. `fitView` is the comps' fit (24px air, capped 1.6×). Selecting a finding
+  focuses the canvas on its element (gap 13): the canvas IS the crop, at full
+  resolution and in context — there are no crop thumbnails in the UI, and the
+  crop PNGs stay in the run dir for the model.
+- **Review rail** (320px, RIGHT; `right_panel_close` collapses it to a
+  floating `right_panel_open` + summary chip): `REVIEW`, tabs `Findings · N`
+  / `Comments · N`. Findings: severity chips with dots and counts (+ `Ignored
+  N` / `Snoozed N` only when triage exists), the instance chip, one **row per
+  finding** — 20px badge, title, `×N` mono chip, the `undo` **REGRESSION**
+  pill, the triage tag, and the mono `prop expected → actual` line with the
+  actual in the critical colour (`rail.ts` `propRows`: CSS spelling, px on px
+  keys, a `position` finding as its shift `translateY 0px → 23px`, a `size`
+  finding as width/height). Selected, the row unfolds the instance box, **To
+  fix / Ignore / Snooze** (the active one again clears) and the "Note for the
+  model…" input. At the foot, the **suppressed disclosure** (gap 10:
+  `visibility` "N suppressed by policy rules" · Show / Hide; rows with the
+  hollow dashed badge, `filter_alt_off` + `<suppressedBy> · <rule>` from
+  `findings.json`, the manifest note when selected — no Unsuppress / Edit
+  rule button, because a suppression is a FILE in the consuming repo, not app
+  state). Comments: the draft composer (Point / Region, "Instruction for the
+  model…", Cancel / **Send to model**), rows with the status badge + `OPEN` /
+  `IMPLEMENTED` / `DONE`, the text and the model's **reply** block, and when
+  selected "Add another instruction…" + Send (appends ` — <text>` and
+  reopens; the reply stays as history) / Mark done / Reopen / Mark
+  implemented / Delete. A failed save shows on four surfaces (section C of
+  the plan): the row (`cloud_off` **Not saved** + the REAL
+  `PUT /api/pairs/<dir>/annotations · <status>` + Retry, red tint + inset 3px
+  edge), the canvas badge's red halo, and `· N unsaved` in the phone sheet's
+  summary; a triage row gets the same, a failed focus PUT is named in the
+  rail's status line (the one line at the foot, otherwise hidden). The
+  finding text filter survives as `/` (a search row above the chips; nothing
+  drawn in the default state — gap 31).
+- **Phone (< 760px, the comps' breakpoint):** the rail is the comps' bottom
+  sheet (44px grip + `N findings · M comments` + chevron, 52% when open) over
+  a FIXED canvas — the page does not scroll; Full mode is forced; the layer
+  segments sit under the topbar behind a "Show" label; the tool strip is the
+  floating pill. Under 1120px the layer labels shorten (`Find.` / `Comm.`)
+  and the pair title drops.
+- **Keyboard:** `j`/`k` next/previous finding, `[`/`]` step the highlighted
+  boxes, `a`/`A` cycle align, `l` lock, `d`/`g`/`s` Highlight / Dim / Strobe,
+  `b`/`o`/`w`/`x` blink / onion / swipe / difference, `n` annotate, `/`
+  search, `+`/`-`/`0` zoom, `Esc` clear. Every tool's `title` carries its key;
+  a drawn hint has no home in the comps yet (gap 18, deferred — a design
+  question, not code).
+- **View controls persist** in `localStorage` under `vc-controls` (align,
+  lock, layer, members, suppressed, single/side, move, triaged, rail, diff,
+  dim, strobe, lab + amount, theme): a preference, not per-pair state, so it
+  follows you from pair to pair. The chrome never zooms (`user-scalable=no`,
+  `touch-action:manipulation`, `gesturestart` refused for iOS); the panes run
+  their own pan/pinch under `touch-action:none`.
 
-**Built (session 8) — the viewer half:** `packages/annotator` renders a
-self-contained `report.html` into a run dir (`refdiff-annotator
-<run-dir> [--serve]`). Pure `renderReport(report, { viewMathSource })` →
-HTML; pure `view-math.ts` (compiled JS embedded verbatim into the page, no
-network, no deps). One world space = impl CSS px (the space every `Finding`
-box already uses); one shared `View { z, tx, ty }` drives both panes; the
-impl PNG maps in through its DPR, the design PNG through its DPR and then
-the `Alignment` (offset + per-axis scale), so pan/zoom on either side moves
-both and the same UI lands at the same screen point. Marks are drawn from
-`designBox`/`implBox` (+ aggregated members) on both panes; the list
-filters by severity/text, selection focuses both panes and shows
-expected/actual + the crop pair; `suppressed` and `delta` are visible;
-the align control cycles how the design is registered onto the impl
-(`anchors` / `width` / `left` / `right` — see "Registration IS a preference"
-above). DPRs are read at load time from PNG natural width ÷ reported
-CSS width.
+### The view model — what does not change with the chrome
 
-**Built (session 9) — the annotation half.** Pure model in
-`packages/annotator/src/annotations.ts` (no runtime imports; embedded into
-the page like view-math and imported by the CLI): `Annotation { id, side,
-shape: point | rect (world = impl CSS px), anchor? { elementId, role, text,
-box }, note, status, timestamps, stale? }` in an `AnnotationSet { version: 1,
-pair, annotations }`. Snapping (`snapToElement`): a region → the element with
-the largest intersection-over-union (a loose rectangle around a button means
-the button, not the label under its centre); a point → the smallest element
-containing it, else the nearest within 48px; `backdrop` leaves never anchor.
-State machine (`transition`/`editNote`): `open → implemented` (agent, via
-`--mark-implemented`) `→ done` (designer); `reopen` from either; editing an
-implemented note's text reopens it (the spec changed). Re-projection
-(`resolveAnchor`/`reproject`): on every CLI start the stored set is resolved
-against the CURRENT `elements.json` — same id with the same text, else the
-same text+role nearest, else same-role geometry within 40px — and the shape
-moves by the element's delta; an unresolved anchor marks the note `stale`
-(kept at its last place, never dropped). Digest for the model:
-`annotations.md` (numbered, grouped open → implemented → done, anchor
-description + world coords) and `annotations-design.png` /
-`annotations-impl.png` (the full PNGs with numbered markers at native
-resolution — the design side through the inverse Alignment). Effects live in
-`cli.ts`: `annotations.json` (atomic write), `GET/PUT /api/annotations` on
-core's `serveDir` via its new `handle` hook (validate → persist → re-digest,
-last write wins), sharp for the PNGs. The page saves to the API when served,
-to `localStorage` otherwise (and says so).
+**One world space = impl CSS px** (the space every `Finding` box already
+uses); one shared `View { z, tx, ty }` drives both panes (`viewD` is the
+design pane's own only while the align lock is off — gap 22 — and locking
+snaps it back). The impl PNG maps in through its DPR, the design PNG through
+its DPR and then the `Alignment` (offset + per-axis scale), so pan/zoom on
+either side moves both and the same UI lands at the same screen point.
+
+**The design image was drawn `alignment.scale`× off — 40 of 41 pairs
+(2026-08-27).** `report.design.width` is the capture NORMALIZED onto the impl
+(raw CSS × `alignment.scale`), while `designPng` stays the RAW capture; the
+viewer inferred its DPR as `naturalWidth / design.width`, i.e. `dpr /
+alignment.scale`. The tell was arithmetic: every inferred DPR times its
+`alignment.scale` came to exactly 2.000. `designCaptureDpr` (view-math,
+unit-tested) multiplies the scale back in and the report records
+`design.dpr` / `impl.dpr`. The same double-scale sat in `designWorldBox`, and
+`rawDesignSize(design, alignment)` undoes the normalization at the one place
+that needs raw px. Rule for this codebase: `report.design.width` is
+world/normalized px; the PNG and `designToWorld` / `designWorldBox` are raw
+px. Mixing them is silent — both halves render *something* plausible.
+
+**The UI never stretches the reference (Mato, 2026-08-28).** `align` fits x
+and y independently, which is right for locating things and wrong for showing
+them: across uctoinak's corpus that projects designs +53 %, +38 %, +32 %,
++16 % taller than drawn, and a person could not know it. So the stretch stays
+in the DATA (finding boxes, matching, the delta) and never reaches the screen:
+`projection()` drops it, and there is deliberately no toggle. Undoing it for
+display means moving the design's MARKS with its image: `designLayerTransform`
+applies the inverse stretch about `offsetY` to the design layers
+(`projectionAlignment` does the image; both unit-tested to land a design point
+at the same world y). The cost is stated, not hidden: the pane label reads
+`· true aspect (fit +16% vertical)`.
+
+**Registration IS a preference — four align modes (Mato, 2026-08-28).**
+`state.align` cycles `anchors` (the run's fit, aspect-locked — the default) →
+`width` (frame scaled onto the impl's width, corners at the origin) → `left`
+(1:1, top-left) → `right` (1:1, top-right, for frames that differ by a
+left-hand rail); every mode is isotropic. The fit is a regression over matched
+text, so on a page whose two sides differ structurally it lands the whole
+frame tens of px off — the corner modes are the manual answer to that, not a
+second opinion about the stretch. Everything the design side draws goes
+through ONE re-map, `alignRemap(run, display)` (per axis `k = display.scale /
+run.scale`, `t = display.offset − k·run.offset`), so marks stay glued to the
+image in every mode; it runs in reverse (`worldFromShown`) on every pointer
+that lands on the design pane, because shapes are stored in RUN world space.
+
+**Marks stack, so the selected one is drawn last**; while a selection is
+active everything else drops to 25–35 % opacity.
+
+### The diff lab
+
+Over the split screen sit Chromatic's reading aids, driven by our channel
+rather than a raw pixel diff: **Highlight** outlines EVERY listed finding's
+box plus `Finding.regions` (the presence findings a box-scoped pixel diff
+structurally cannot see) on both panes; **Dim** punches those boxes out of a
+dark sheet (an SVG mask, 6px round each box); **Strobe** pulses and wiggles
+them (hard stops at 50 % — `steps(1) … alternate` sampled the same keyframe
+both ways and never moved — and the second state changes `stroke-width` as
+well as `translate`, because a 1px world-px wiggle is sub-pixel at fit zoom);
+`[` / `]` step through them; and one superimposition (**Wipe / Onion / Blink /
+Diff**) draws the design over the impl pane — Wipe is a curtain at a WORLD x
+with the comps' `sync_alt` knob. Why it cannot simply mirror Chromatic:
+Chromatic compares two renders of the same code, so every differing pixel is
+signal, while a comp against an implementation is rasterised at a different
+scale — 95.6 % of one page pair's raw mask lay inside text. Regions therefore
+come from the reported findings, never from the raw diff. The superimposed
+ghost uses the run's FULL alignment (per-axis stretch included) because a
+blink against a frame that does not land on the impl compares nothing; the
+design PANE keeps refusing that distortion, and the lab-note pill says so.
+
+**One annotate gesture.** The pointer-up decides the shape by drag distance,
+so click = point, drag = region, with the live band appearing exactly when
+the drag crosses the same threshold that will save a rect. The threshold is
+in SCREEN px, since at a fit-to-phone zoom a 3-world-px wobble is under two
+real pixels. On the phone the mode is held until the tool is toggled back
+(`ann.sticky`).
+
+### Annotations — the model (`annotations.ts`, pure)
+
+`Annotation { id, side, shape: point | rect (world = impl CSS px), anchor?
+{ elementId, role, text, box }, note, reply?, status, timestamps, stale? }`
+in an `AnnotationSet { version: 1, pair, annotations }`. Snapping
+(`snapToElement`): a region → the element with the largest
+intersection-over-union (a loose rectangle around a button means the button,
+not the label under its centre); a point → the smallest element containing
+it, else the nearest within 48px; `backdrop` leaves never anchor. State
+machine (`transition` / `editNote`): `open → implemented` (the agent, via
+`refdiff-annotator --mark-implemented <ids> --reply "…"` — `reply` is the
+model's one line under the comment, gap 19) `→ done` (the designer); `reopen`
+from either; appending an instruction to an implemented note reopens it (the
+spec changed). Re-projection (`resolveAnchor` / `reproject`): on every CLI
+start the stored set is resolved against the CURRENT `elements.json` — same
+id with the same text, else the same text+role nearest, else same-role
+geometry within 40px — and the shape moves by the element's delta; an
+unresolved anchor marks the note `stale` (kept at its last place, never
+dropped). Digest for the model: `annotations.md` (numbered, grouped open →
+implemented → done, anchor description + world coords, `↳ reply:` lines) and
+`annotations-design.png` / `annotations-impl.png` (the full PNGs with numbered
+markers at native resolution — the design side through the inverse
+Alignment). Effects live in `cli.ts`: `annotations.json` (atomic write),
+`GET/PUT` on core's `serveDir` via its `handle` hook (validate → persist →
+re-digest, last write wins — multi-reviewer is last-write-wins by design),
+sharp for the PNGs. The page saves to the API when served, to `localStorage`
+otherwise (and says so).
+
+### Triage — a verdict on a FINDING, keyed by identity (2026-08-27)
+
+Annotations answer "here is something I want changed"; triage answers "what
+about the thing you already told me" — `fix`, `ignore` or `snooze`, plus a
+note. It is filed against `Finding.key`, which `packageForModel` stamps from
+the delta's `identityKey`: ids and marks are renumbered every capture, so an
+id-keyed verdict would silently attach to a different finding on the next
+run. Consequence worth knowing: two findings with the same type, role and
+text share one key and therefore one verdict — the same property that makes
+the delta stable. A snooze carries a horizon and reads as untriaged once it
+passes. Stored per run dir in `triage.json` (+ `triage.md` for the fix loop)
+behind `GET/PUT /api/pairs/<pair>/triage`; pure in `triage.ts`. Findings from
+reports written before `key` existed cannot be triaged, and the row says so
+rather than inventing a handle. `refdiff accept` turns every `ignore` verdict
+into an `accepted.json` decision beside the manifest (SKILL.md §3a).
+
+### Focus a region (2026-08-27)
+
+Drag a box on the canvas and the list, the marks and the counts narrow to it
+— the way to read one column of a screen without the chrome's findings
+burying it. A filter over WHERE a finding is, not over what it is; the LIST
+test lives in `visible()` alongside severity and search, so list and canvas
+cannot disagree. The canvas test is per BOX, not per finding: an aggregated
+finding can have instances in the content AND in the header, so admitting the
+whole finding drew its header marks straight back — `renderMarks` filters the
+primary box and every member through `boxInFocus`. A tap rather than a drag
+clears instead of focusing a 1px region. The region is editable (`focus.ts`
+`handleAt` / `resizeRect`, four corner handles + a centre grip, a minimum size
+so a corner dragged past its opposite cannot strand its own handles; the body
+stays inert so a drag inside it still pans) and it is an ARTIFACT: `focus.json`
++ `focus.md` (`GET/PUT /api/pairs/<pair>/focus`) state the rectangle in impl
+CSS px, how many findings fall inside, that everything outside is out of
+scope, and each in-scope finding by mark, severity, message and key — "let's
+work in the focused region" means the same rectangle to the agent as on the
+phone.
+
+### The app, its server modes, and what a measurement sees
+
+**The annotator is an app, not a site generator (Mato, 2026-08-27).** It used
+to re-render a self-contained `report.html` into every run dir on each start
+— 41 files / 5.1 MB for the uctoinak set; the cost was never the time but
+that the app's own code was baked into every artifact, so each change needed
+a regenerate and N copies went stale independently. `--serve` ships the one
+shell above; a pair captured after the server started appears on reload.
+**The running server never re-reads `dist`** — it rendered its shell at
+start — so an annotator edit is invisible until it is restarted
+(`svc restart annotator`), a phantom every redesign phase hit once.
+
+**`--serve --read-only`** (pure `read-only.ts`, harness item 16) refuses every
+write under `/api/` with 405 and flags `readOnly` on `/api/pairs`; a refused
+save reads as the app's own sentence on the row that lost it. Nothing is
+announced up front — **anything the served app shows for the harness's sake
+is measured**: an up-front read-only status line was an element the comp does
+not draw and shifted the rail by +6 findings. A measured impl renders EXACTLY
+what the writable app renders; harness-only affordances appear on interaction
+or go into the comp too. This is the mode for a committed fixture or an impl
+under measurement, both of which the writable server used to dirty.
+
+**`--emit`** (the default when not serving) writes the self-contained
+`report.html` (+ `index.html` for a set) for reading a report off disk with no
+server; the served API also answers the emitted file's own
+`<pair>/api/annotations` shape. The client is shared verbatim between both
+deliveries — it takes its data through `openReport(report, notes, page)` and
+prefixes artifacts with `page.base`, so it never learns which mode it is in.
+Paid for once: the client's module dependencies must be embedded by BOTH
+renderers — `renderReport` and `renderAppShell` each take every import-free
+module (`view-math`, `annotations`, `triage`, `focus`, `rail`) and
+`render.test.ts` asserts each source is present, because an emitted
+`report.html` threw a `ReferenceError` for weeks after triage/focus were added
+while the served app worked. The emitted file has no `/fonts/` server, so its
+type falls through to the system families — deliberate (below).
+
+### Tokens, theme, type, and the comps' box model
+
+**Tokens and theme (phase 1).** The chrome uses the comps' token set under the
+comps' names (`--bg0..3 --line --txt --txt2 --acc --canvas`, severity
+`#e5484d / #f5a623 / #4c9aff`, statuses `#8f7ee7 / #f5a623 / #46a758`,
+Highlight `#ff5cd0`), dark on `:root` and light as a `body.cc-theme-light`
+override behind a manual toggle in both topbars. **Light is never captured
+by refdiff** (gap 20): no light frame exists in the design, so light parity
+is not gated — the toggle is a user preference, shipped unmeasured, like the
+error states, the unfolded rows and the open menus (the comp captures its
+default state; each was exercised headlessly for console errors, which is not
+a parity claim). `button, input, select, textarea { font:inherit }` — the
+toolbar measured as Arial 13.33px until then.
+
+**Type is self-hosted.** IBM Plex Sans (variable, latin + latin-ext), IBM Plex
+Mono 400/500 and a 52-glyph Material Symbols Outlined subset ship as woff2 in
+`packages/annotator/assets/fonts/` (196 KB) and are served on
+`GET /fonts/<file>` (whitelisted in `fonts.ts`, which owns the `@font-face`
+rules and the comps' `.msi` rule). The app must look right offline; the comps
+hydrate from Google Fonts and unpkg, but that is the design's excuse, not the
+app's. The glyph list is regenerated from BOTH the comps' markup and their
+state arrays (a third of the names live in `toolBtns` / `layerBtns`), and the
+Fonts API's `icon_names=` request rejects a non-icon word, so the fetch is the
+check; a missed glyph renders as its name in letters. `--emit` decision:
+degrade — inlining ~200 KB of base64 into every per-run artifact is the bloat
+the app shell exists to avoid.
+
+**The comps are content-box; the app is border-box (phase 5).** `support.js`
+sets no `box-sizing` reset, so a comp div with `height:46px` and a 1px border
+is 47px; the app's `* { box-sizing:border-box }` rendered 46 and the whole
+chrome sat 1–2px short — visible as nothing in the findings and as
+`offsetY −1.98` in the alignment. Every app rule that copies a fixed size
+from a bordered comp box is written as the comp's number plus its border
+(`calc(320px + 1px)`; the convention is stated once above the reset in
+`render.ts`). The comps' runtime interpolates every `{{label}}` as its own
+text node, so chip and tag labels are their own `<span>` inside the button
+(the extractor's leaf is the text, not our bordered element), and the rail
+and Library run `line-height:normal` (the comps set none; the report's 1.4
+made every chip, tag and prop line 1–2px taller, compounding down the list).
+Marks are HTML, not SVG text, for the same extractor reason.
+
+### Scope: the labelled element IS the screen (2026-08-27)
+
+The area rule ("chrome is thin strips of text, the UI is the big box") cannot
+tell a frame that WRAPS the screen from a frame that IS the screen. `.dc.html`
+comps are written both ways — `documents.dc.html#8a` is `<div id="8a">` around
+a labelled screen, `org-detail.dc.html#2a` is the labelled screen itself — and
+on the second shape the rule descended one level too far and kept only the
+largest column. Measured across uctoinak's 41 comps: three desktop pairs lost
+the app's 232px sidebar entirely, ten more lost the frame's own border and
+padding — which also pinned those pairs at 0.00 alignment confidence. There is
+nothing Claude-Design-specific to blacklist: `support.js` wraps only the
+DOCUMENT (`x-dc`, `dc-root`, `dc-canvas`, `.sc-host`) and injects no per-frame
+chrome. The marker to use is the authored one, `data-screen-label`, which
+sits on the screen root under both comp shapes. So scope resolves explicit →
+`data-screen-label` (frame, else its single labelled descendant) →
+largest-child → frame. Two labelled screens in one frame stay ambiguous and
+fall through to the area rule, as do unlabelled artboards.
 
 ## Reuse vs build
 
@@ -585,6 +661,50 @@ to `localStorage` otherwise (and says so).
   text run as a leaf without the parent's decoration on both sides, which
   would make the comparison markup-shape-agnostic. Decide after the redesign
   lands; measure the phantom `border` count on a real set first.
+- **Annotator redesign — decided with Mato, 2026-08-28 (phases 0–6,
+  `docs/plan-annotator-redesign.md`; the built IA is the "Annotator" section
+  above).** Full adoption of the RefDiff comps AND every existing feature
+  kept — nothing dropped to make a finding go away. The dogfood fixture lives
+  in `fixtures/demo-root/` (`out/` is ignored wholesale and stays that way).
+  D6: the card thumbnail is the run's own `impl.png`, the comp's plate is the
+  designer's stand-in (excused by `accepted[].contents: true`). The card's
+  pill is the deterministic VERDICT, not a percentage; alignment confidence is
+  a warning state under 0.5, never a number. No `Pending` run state (a run dir
+  exists once `compare` wrote it). The card's time is the wall clock, so a
+  measure shifts the fixture with `--now`. No crop thumbnails in the UI — the
+  canvas focuses on the selected element; the crop PNGs stay for the model.
+  The pair verdict header is dropped from the comparison tool (it is on the
+  card). The suppressed disclosure has no Unsuppress / Edit-rule — a
+  suppression is a manifest file, not app state. Light theme, the error
+  states, failed-save surfaces and every non-default state ship UNMEASURED
+  (the comp captures its default state; no light frame exists). The Tool
+  comp's `showDeltaStrip` default was flipped to true in the LOCAL copy (gap
+  29) — a refetch reverts it. The finding text filter is `/` with nothing
+  drawn; the keyboard-shortcut hint has no drawn home (gap 18, deferred — a
+  design question). What still holds `refdiff-compare-desktop` at 32
+  findings is the comp's demo data, on Mato's side: its row order (gap 32,
+  ≈26), the two cause lines (26, ≈13), `saveErr` on `c2` (34) and the
+  `Pending` chip on the Library (24, 6) — plan section H, each with its cost.
+- **Harness-only affordances are measured — decided 2026-08-28 (item 16).**
+  An up-front "read-only" status line cost +6 findings on the rail; a
+  measured impl renders exactly what the production app renders, so anything
+  shown for the harness's sake appears only on interaction (the refusal on
+  the first save attempted) or goes into the comp too. Same rule for a debug
+  chip or a build stamp in a consuming repo.
+- **A matcher upgrade invalidates a run dir's ledger — open, 2026-08-28
+  (item 15).** Pass 1b changed what several findings ARE, so
+  `resolved-ledger.json` entries written under the old pairing read as
+  `REGRESSION: 8` on a run with no app change; item 12's "absent from the
+  previous run" test cannot help (under the new pairing they were absent).
+  Candidate: stamp the ledger with an identity version
+  (`ResolvedLedger.identity`) and, when the running version differs, print
+  "ledger written under an older pairing — its N entries are not comparable"
+  and drop them visibly. Not built; `SKILL.md` §4 names the shape (check
+  `resolvedAt` against the upgrade). Build it if the churn recurs.
+- **The comps are content-box — Mato's information, not a request.** A
+  `* { box-sizing:border-box }` in `support.js` would make the comps' numbers
+  mean what they say, but it is a runtime change; the app matches box by box
+  (`calc(<n>px + <border>)`, "Annotator" above).
 - **`delta.ts` and N same-text findings — decided 2026-08-28 (plan-next
   §12).** When several findings share a text (two `#6B7280` prop lines) and
   the pairing re-shuffles, the key's count goes 2 → 1 → 2 and one instance

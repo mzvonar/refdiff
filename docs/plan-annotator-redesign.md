@@ -1002,7 +1002,7 @@ console errors, none found.
 
 ---
 
-## 6. Land it — TODO
+## 6. Land it — DONE (2026-08-28)
 
 - `skills/refdiff/SKILL.md` + `refdiff.bindings.md` updated for anything the
   redesign changed (CLAUDE.md hard rule; `grep -n "<old-term>" skills/ packages/ docs/`
@@ -1010,6 +1010,58 @@ console errors, none found.
 - `docs/architecture.md` "Annotator" section rewritten to the new IA;
   decisions added to "Open decisions".
 - Fresh handoff; `docs/plan-next.md` pointed here.
+
+**Exit:** no sentence outside this plan's own history asserts the
+pre-redesign annotator.
+
+**Numbers (2026-08-28, Linux devbox):** none moved — the phase changes no
+rendered output, so the measure step was skipped by loop rule 1's own
+exception and the protected baseline stands as harness item 16 last
+measured it: **3 / 32 / 0 / 2** findings, confidence 0.90 / 0.71 / 1.00 /
+0.90, `align 1×0.997 / 0,0.2` on the Library desktop and `1 / 0,0` on the
+other three. `pnpm typecheck` and `pnpm test` green (no source touched).
+
+What shipped:
+
+- `docs/architecture.md` "Annotator" (2026-08-28): the section is now the
+  BUILT IA — one shell / two routes, the Library (card anatomy, order,
+  degraded card, load-failure states, no `Pending`), the comparison tool
+  (topbar segments, delta strip, tool strip and pills, canvas badges, the
+  320px right rail row by row, the failed-save surfaces, the phone sheet,
+  the keyboard, `vc-controls`), then the invariants that survived the
+  redesign under their own headings (world space and the DPR / double-scale
+  rules, no stretch, the four align modes + `alignRemap`, the diff lab, the
+  annotation model, triage, focus, the server modes incl. `--read-only` and
+  the "harness-only affordances are measured" rule, tokens / self-hosted
+  type / the content-box convention, scope). Gone: the 340px LEFT rail, the
+  toolbar with its Split/Single button, the 900px breakpoint, the bottom
+  detail panel and its crops, the summary bar, the `+ note` / `+ region`
+  buttons, the checkerboard, and the "session 8 / session 9 built" history
+  that described them (still in git). "Open decisions" gained four entries:
+  the redesign's decisions in one block (full adoption, the fixture's home,
+  D6, verdict-not-percentage, confidence as a warning state, no `Pending`,
+  wall-clock time, no crops in the UI, the dropped verdict header, no
+  Unsuppress, unmeasured states, gap 29's local flip, `/` and gap 18, the
+  four demo-data asks), the harness-only-affordance rule (item 16), the
+  matcher-upgrade ledger churn as an open candidate (item 15), and the
+  comps' content-box note for Mato.
+- `refdiff.bindings.md`: the "Low confidence" trap restated as one baseline
+  paragraph (3 / 32 / 0 / 2, the Library desktop's three, D6 under
+  `contents: true`, gap 32 / 26 on the comp's side); the Library `textPatterns`
+  bullet no longer points at phase 2's D6 boxes (excused since item 14).
+- `README.md`: the annotator row and the Status paragraph name the Library,
+  the rail, triage, focus, `--read-only`.
+- `docs/plan-next.md`: status line + item 16 mark phase 6 DONE; the handoff
+  `docs/handoff-2026-08-28.md` refreshed (state of play, what remains in
+  order, the lessons-inbox pointer).
+- `skills/refdiff/SKILL.md`: swept, NOT changed — nothing in it asserted the
+  old layout (its §3 diff-lab paragraph, §3a, the `--reply` and `--read-only`
+  lines were already written against the redesigned app in phases 3–4 and
+  item 16). No flag, default or report field changed this phase, so no
+  consuming repo's bindings are affected.
+- `docs/lessons-inbox.md`: the two entries whose candidate home was "Open
+  decisions" now carry a pointer there; `/lessons` removes them when Mato
+  says.
 
 ---
 

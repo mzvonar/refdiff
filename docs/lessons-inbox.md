@@ -30,7 +30,9 @@ ledger with a matcher/identity version (`ResolvedLedger.identity`) and, when
 the running version differs, print "ledger written under an older pairing —
 its N entries are not comparable" and drop them visibly rather than cry
 wolf. Route: `docs/architecture.md` Open decisions (small feature), or
-discard if the churn stays rare.
+discard if the churn stays rare. **Landed there in phase 6 (2026-08-28)** as
+"A matcher upgrade invalidates a run dir's ledger — open"; on process,
+confirm and remove.
 
 ## 2026-08-28 — anything the served app shows for the harness's sake is measured (session 13, item 16)
 
@@ -42,5 +44,8 @@ harness-only affordances (a read-only banner, a debug chip, a build stamp)
 either appear only on interaction (the refusal now shows on the first save
 attempted) or go into the comp too. Route: `docs/architecture.md` Open
 decisions (one line under the annotator) and the refdiff skill's pre-flight
-if it recurs in a consuming repo.
+if it recurs in a consuming repo. **Landed in phase 6 (2026-08-28)**: Open
+decisions "Harness-only affordances are measured" + the "Annotator" section;
+the skill's pre-flight still only says the rail names the refusal on the first
+save — add the general rule there if a consuming repo hits it.
 

@@ -1,9 +1,10 @@
 # Plan — the harness (2026-08-26, updated 2026-08-28)
 
-Status: items 1–15 DONE and proven (sessions 1–13). **Item 16 is the live
-plan** — the small ones left after the annotator redesign (phases 0–5,
-`docs/plan-annotator-redesign.md`). The canonical handoff is
-`docs/handoff-2026-08-28.md`. Everything from item 15 down is history.
+Status: items 1–16 DONE and proven (sessions 1–14); the annotator redesign
+(phases 0–6, `docs/plan-annotator-redesign.md`) is landed. What is left is
+listed in the canonical handoff, `docs/handoff-2026-08-28.md` ("What
+REMAINS"); item 16 below holds the last open nit (gap 18). Everything from
+item 15 down is history.
 
 ## 12. A regression must have been ABSENT from the previous run — DONE (session 13, 2026-08-28)
 
@@ -205,7 +206,7 @@ and the delta identity both assume today's pairing — re-measure the
 uctoinak / population-registry baselines (handoff "How to run") before
 merging, not only this repo's four pairs.
 
-## 16. Small, after 12–15 — `--read-only` DONE (session 13); gap 18 + phase 6 TODO
+## 16. Small, after 12–15 — `--read-only` DONE (session 13); phase 6 DONE (session 14); gap 18 open
 
 - `refdiff-annotator --serve --read-only` — DONE. Pure `read-only.ts`
   (`readOnlyRefusal`: every non-GET under `/api/` → 405 with the reason;
@@ -222,10 +223,15 @@ merging, not only this repo's four pairs.
   `"readOnly":true`), `refdiff.bindings.md` trap rewritten.
 - Gap 18 (annotator plan): the keyboard-shortcut hint still has no drawn home
   — a design question for Mato, not code.
-- Annotator redesign **phase 6 — Land it** (`docs/plan-annotator-redesign.md`):
-  `SKILL.md` + bindings sweep, `docs/architecture.md` "Annotator" rewritten to
-  the new IA, decisions into "Open decisions". Independent of 12–15; do it
-  when Mato says, via `/next-phase`.
+- Annotator redesign **phase 6 — Land it** — DONE (session 14, 2026-08-28):
+  `docs/architecture.md` "Annotator" rewritten to the built IA (one shell,
+  two routes, the rail, the phone sheet, server modes, tokens / type / box
+  model) and the redesign's decisions in "Open decisions"; `SKILL.md` and
+  `refdiff.bindings.md` swept (nothing in the skill asserted the old layout —
+  the bindings' Library line still pointed at phase 2's D6 boxes, fixed);
+  README status refreshed; the handoff is `docs/handoff-2026-08-28.md`. Docs
+  only, no rendered output changed — the measure was skipped by the loop's
+  own rule and the baseline stands at 3 / 32 / 0 / 2.
 
 ---
 

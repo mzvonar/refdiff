@@ -46,25 +46,22 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - The comps hydrate the `dc-runtime` from `support.js` and React from unpkg —
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
-- **Low confidence is the layout, not the fixture**: the Library pairs sit
-  at 0.90 / 1.00 since phase 2; the compare pairs at 0.71 / 0.90 since phase
-  4, and phase 5 converged the four at **9 / 50 / 5 / 3 findings** with the
-  alignment at the identity (`scale 1, offset 0`) on three of them. Since
-  harness items 13–15 the baseline is **3 / 32 / 0 / 2** (the Library
-  desktop's 3 = the chip row `position ×10`, the search `size`, the
-  alignment note; the compare desktop's 32 is the comp's row order and
-  cause lines): the fourth pair
-  (`refdiff-library-desktop`) carries the `alignment` note — `align 1×0.997 /
-  0,0.2` in `summary.md`, a ≈3.6 px chrome height difference on the Library
-  route still to find — and D6's plate and the artboard logo squares are
-  excused by `contents: true` on the manifest's D6 rules (visible under
-  `suppressed` as `(inside)`). What
-  holds the desktop pair under the Library's numbers is the comp's demo ROW
-  ORDER (plan gap 32 — its findings array lists 1,2,3,7,8,4,5,6; refdiff
-  lists by severity) and its two cause lines (gap 26); neither is the app's
-  to fix. Do not tune the fixture to raise it — a fixture in the comp's order
-  would carry marks out of list order, a shape refdiff never produces. The
-  full converged list, item by item, is the plan's phase 5 Numbers.
+- **Low confidence is the layout, not the fixture.** The protected baseline
+  (redesign phases 0–6 + harness items 12–16, all landed 2026-08-28) is
+  **3 / 32 / 0 / 2 findings**, confidence **0.90 / 0.71 / 1.00 / 0.90**,
+  alignment at the identity (`1 / 0,0`) on three pairs. The Library desktop's
+  3 = the chip row `position ×10`, the search `size`, and its `alignment`
+  note (`align 1×0.997 / 0,0.2` in `summary.md` — a ≈3.6 px chrome height
+  difference on the Library route still to find, the one app-side item
+  left). D6's plate and the artboard logo squares are excused by
+  `contents: true` on the manifest's D6 rules (visible under `suppressed` as
+  `(inside)`). What holds `refdiff-compare-desktop` at 32 and 0.71 is the
+  comp's demo ROW ORDER (plan gap 32 — its findings array lists
+  1,2,3,7,8,4,5,6; refdiff lists by severity) and its two cause lines (gap
+  26); neither is the app's to fix. Do not tune the fixture to raise it — a
+  fixture in the comp's order would carry marks out of list order, a shape
+  refdiff never produces. The full converged list, item by item, is the
+  plan's phase 5 Numbers; the asks on the comp's side are its section H.
 - **The comps are CONTENT-box; the app is border-box.** `support.js` sets no
   `box-sizing` reset, so a comp div with `height:46px` and a 1px border is 47px
   tall; the app's `* { box-sizing:border-box }` would render 46. Every app rule
@@ -94,9 +91,10 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - The `Pending` / `Processing` / `Queued` / `running` / `waiting` words, the
   relative times and the parser message on the broken card are excused by
   `LIBRARY_IGNORE.textPatterns` in the manifest — visible in `findings.json`
-  under `suppressed`. What the Library pairs still report is listed in the
-  plan's phase 2 Numbers (the D6 thumbnail boxes, the dropped Pending chip's
-  width) and is deliberate.
+  under `suppressed`. What the Library desktop pair still reports (the
+  dropped `Pending` chip's 78px moving every chip after it, the search field's
+  size, the `alignment` note) is deliberate — plan section H; the D6
+  thumbnail boxes are excused by `contents: true` since harness item 14.
 - Both comps are full-bleed pages, so the design line must say `scope
   screen-label fluid` and the same css px as the pair viewport (1180×800 /
   1360×820 / 390×844). If it reports the viewport +120 instead, the fluid-frame
