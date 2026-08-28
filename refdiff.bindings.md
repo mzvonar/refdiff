@@ -21,7 +21,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 
 ```bash
 pnpm dev                                                  # keep tsc --watch running; CLIs run from dist
-svc up annotator                                          # or: refdiff-annotator fixtures/demo-root --serve --port 7378 &
+svc up annotator                                          # or: refdiff-annotator fixtures/demo-root --serve --read-only --port 7378 &
 svc restart annotator                                     # after any annotator edit — the served shell is rendered at start
 node fixtures/make-demo-root.ts --now                     # fixture clock = now, so "12 min ago" reads as the comp's
 refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
@@ -49,7 +49,16 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - **Low confidence is the layout, not the fixture**: the Library pairs sit
   at 0.90 / 1.00 since phase 2; the compare pairs at 0.71 / 0.90 since phase
   4, and phase 5 converged the four at **9 / 50 / 5 / 3 findings** with the
-  alignment at the identity (`scale 1, offset 0`) on three of them. What
+  alignment at the identity (`scale 1, offset 0`) on three of them. Since
+  harness items 13–15 the baseline is **3 / 32 / 0 / 2** (the Library
+  desktop's 3 = the chip row `position ×10`, the search `size`, the
+  alignment note; the compare desktop's 32 is the comp's row order and
+  cause lines): the fourth pair
+  (`refdiff-library-desktop`) carries the `alignment` note — `align 1×0.997 /
+  0,0.2` in `summary.md`, a ≈3.6 px chrome height difference on the Library
+  route still to find — and D6's plate and the artboard logo squares are
+  excused by `contents: true` on the manifest's D6 rules (visible under
+  `suppressed` as `(inside)`). What
   holds the desktop pair under the Library's numbers is the comp's demo ROW
   ORDER (plan gap 32 — its findings array lists 1,2,3,7,8,4,5,6; refdiff
   lists by severity) and its two cause lines (gap 26); neither is the app's
@@ -99,11 +108,14 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   2026-08-28T14:22:05Z) in git; the Library renders "12 min ago" against the
   wall clock, so measure after `node fixtures/make-demo-root.ts --now` (the
   strings agree for an hour) and regenerate without it before committing.
-- **The served app WRITES into the fixture.** Placing a note, a triage verdict
-  or a focus region in the served demo root (or `Send` / `Mark done` on a
-  comment, or `--mark-implemented … --reply` against it) PUTs
-  `annotations.json` / `triage.json` / `focus.json` (+ digests) into
-  `fixtures/demo-root/<pair>/`.
-  That is the annotator working as designed, but it dirties a committed
-  fixture: `git checkout fixtures/` or `node fixtures/make-demo-root.ts` before
-  a measure, or the impl you measure is not the one you committed.
+- **The served app WRITES into the fixture — so the measured instance is
+  served `--read-only`** (`services.toml`, harness item 16): every PUT is
+  refused with 405 and the rail's status line says so on the first save
+  attempted (never up front — that line would shift the rail by +6
+  findings). Placing a note, a
+  triage verdict or a focus region against a WRITABLE serve of the demo root
+  (or `--mark-implemented … --reply` against it, which writes regardless of
+  any server) PUTs `annotations.json` / `triage.json` / `focus.json` (+
+  digests) into `fixtures/demo-root/<pair>/` and dirties a committed fixture:
+  `git checkout fixtures/` or `node fixtures/make-demo-root.ts` before a
+  measure.

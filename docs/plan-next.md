@@ -1,12 +1,25 @@
 # Plan — the harness (2026-08-26, updated 2026-08-28)
 
-Status: items 1–11 DONE and proven (sessions 1–12). **Items 12–16 are the
-live plan** — four harness improvements the annotator redesign (phases 0–5,
-`docs/plan-annotator-redesign.md`) surfaced, in the order to do them, plus the
-small ones. The canonical handoff is `docs/handoff-2026-08-28.md`. Everything
-from item 11 down is history.
+Status: items 1–15 DONE and proven (sessions 1–13). **Item 16 is the live
+plan** — the small ones left after the annotator redesign (phases 0–5,
+`docs/plan-annotator-redesign.md`). The canonical handoff is
+`docs/handoff-2026-08-28.md`. Everything from item 15 down is history.
 
-## 12. A regression must have been ABSENT from the previous run — TODO ← DO FIRST
+## 12. A regression must have been ABSENT from the previous run — DONE (session 13, 2026-08-28)
+
+Built as specified: `findRegressions(ledger, next, introduced, prev, options)`
+— an introduced finding whose identity `prev` still holds (key; key + box
+within tolerance for a textless one) is a multiplicity change, never a
+regression; a text-keyed ledger entry needs its box when the key is not
+unique in the run; the box stays a tie-break for a unique key. Three tests in
+`delta.test.ts` (the 2 → 1 → 2 `#6B7280` shape, the guard, the "names only
+the one at its place" case); the first and third go red without the fix.
+`SKILL.md` §4 states the definition and drops the "false positive to
+recognise" paragraph; `USAGE` + `docs/architecture.md` follow. Measured: the
+dogfood run's `R2` on `refdiff-compare-desktop` is gone (`+0/−0`), 9/50/5/3
+unchanged. Original spec below.
+
+### 12 (original spec, for reference)
 
 **Evidence (2026-08-28, phase 5):** `refdiff-compare-desktop` reported
 `REGRESSION: 2` on `f9` (`missing-element|text|text:#6B7280`) and `f17`
@@ -38,7 +51,24 @@ explaining this "same-text reshuffle shape". The fix skill HALTS on
   the definition — introduced AND absent from the previous run AND resolved
   by an earlier one. `docs/architecture.md` Open decisions: one line.
 
-## 13. A non-identity alignment on a same-size page is itself a finding — TODO ← DO SECOND
+## 13. A non-identity alignment on a same-size page is itself a finding — DONE (session 13, 2026-08-28)
+
+Built: pure `alignmentNote(alignment, sameSize)` in `structural/align.ts`
+(same-size = `design.scope.fluid` or raw design width = impl width; epsilon
+`|scale − 1| > 0.0005`, `|offset| > 0.5 px`), a new `FindingType`
+`"alignment"` (boxless, minor, one per run, printed as `ALIGNMENT:`), delta
+identity by type alone (the numbers move; gone = resolved, back = regression),
+never aggregated, `refdiff accept` refuses it, `summary.md` / `summary.json`
+gain the `align` column (`1 / 0,0`, `1×0.997 / 0,0.2`). Tests: `align.test.ts`
+(identity → none; 1.00175 → note; anisotropic; other-size frame → none),
+`summary.test.ts` (column + one cause across pairs), `delta.test.ts`,
+`accepted.test.ts`. `SKILL.md` §1a / §2 / "Reading the measurements", `USAGE`,
+`docs/architecture.md`. Measured: three pairs `1 / 0,0`; `refdiff-library-desktop`
+gets the note (`1×0.997 / 0,0.2` — scaleY 0.9966 over the 1066 px fluid
+frame, i.e. a ≈3.6 px chrome height difference the fit had been absorbing
+unseen), so 9 → 10 there; 50/5/3 unchanged. Original spec below.
+
+### 13 (original spec, for reference)
 
 **Evidence (phase 5):** for five phases the fit absorbed `scale 1.00175,
 offset (−0.54, −1.98)` on `refdiff-compare-desktop` and `scaleY 1.00067,
@@ -69,7 +99,27 @@ by hand. Fixing the sizes snapped both transforms to `scale 1, offset 0`.
 - Tests: the pure note (identity → none; 1.00175 → note; a Figma frame of a
   different size → none), and the summary column.
 
-## 14. Accept the CONTENTS of an accepted element — TODO, DISCUSS FIRST
+## 14. Accept the CONTENTS of an accepted element — DONE (session 13, 2026-08-28)
+
+Decided with Mato: **boxes only** (the numerals stay visible so a badge over
+the region is never hidden) and **manifest-only** (`refdiff accept` never
+writes it; `upsertAccepted` preserves a hand-added one). Built:
+`AcceptedDeviation.contents?: true` (`types.ts`, `manifest.ts readAccepted`,
+`accepted.ts readRecord`), a second pass in `applyPolicy` — every TEXTLESS
+finding whose boxes lie within the boxes of a finding the rule hit (both
+boxes of a paired finding, 1 px slack, decided from the first pass so contents
+never excuse each other) is suppressed as `"<reason> (inside)"`. One
+generalisation over the proposal: the container is ANY accepted finding with
+a box, not only a presence finding — on the mobile Library the plate is
+MATCHED to the tile (a `size` finding), so the manifest carries a D6
+`size { w 34×26 → 44×56 }` rule with `contents`. Tests in `policy.test.ts`
+(the three D6 shapes), `manifest.test.ts`, `accepted.test.ts`. `SKILL.md`
+"Configuring a pair" + §2, `USAGE`, `docs/architecture.md`. Measured (this
+repo's manifest, `contents: true` on the three D6 rules): 10/50/5/3 →
+**7 / 48 / 0 / 2**, `+0 / −11`, 0 regressions — exactly the 8 + 3 the
+evidence counted; `refdiff-library-mobile` PASSES. Original spec below.
+
+### 14 (original spec, for reference)
 
 **Evidence:** decision D6 (the card thumbnail is the run's own `impl.png`;
 the comp draws a grey plate) costs 8 findings forever across the Library
@@ -99,7 +149,38 @@ Content-shaped: the rule still names the image, and expires with it.
    `docs/architecture.md` manifest example, `manifest.ts` `readAccepted`,
    `accepted.ts` `readRecord`.
 
-## 15. Same-text pairs before nearest-box under a lateral shift — TODO, DISCUSS FIRST
+## 15. Same-text pairs before nearest-box under a lateral shift — DONE (session 13, 2026-08-28)
+
+Decided with Mato: `textMaxGamma` = **2 × `maxGamma`** (200 px by default).
+Built as pass 1b in `structural/match.ts`: among candidates sharing a
+normalized NON-unique text, assign greedily by γ within the band before pass
+2 sees any mixed-text candidate (`via: "text"`); what the band rejects falls
+through. Tests: the chip-row shift (design "Claude Design" x 435 pairs with
+impl "Claude Design" x 513, not impl "Figma" x 446) and the band guard (a
+`5` badge 300 px from a `5` chip stays unpaired; within the band the text
+wins over a nearer `•`) — both red without the pass. `USAGE`, `SKILL.md`
+(Presence bullet + §4's upgrade-churn shape), `docs/architecture.md`.
+
+Measured: `refdiff-library-desktop` **7 → 3** (`position ×10` on the chip
+row + the search `size` + the alignment note — the prediction was 2 + note);
+`refdiff-compare-desktop` **48 → 32** (10/21/1): the ten minor
+`text-content` "reads Figma, design says Claude Design" and the missing +
+extra chains are gone, the comp's row order (gap 32) now reads as
+`position` on the numerals themselves; both mobile pairs unchanged (0 / 2).
+The delta on compare-desktop churned once (`+15 / −31`, `REGRESSION: 8`):
+every "regressed" key is a numeral the OLD pairing had resolved in phases
+3–4 by mis-pairing it with a neighbour — a ledger written under the old
+pairing, not an app regression; recorded in `SKILL.md` §4 and the lessons
+inbox (a matcher-version stamp on the ledger is the candidate fix).
+Consuming repos: uctoinak2 `doc-detail-owner-desktop` (Storybook :6006, the
+`redesign13` tree as it stands, `out/u2-before` vs `out/u2-after`) is
+IDENTICAL before and after — 76 findings / 144 instances, 59 matched, 4
+design-only / 2 impl-only; population-registry is not on this devbox, so the
+Button set (141 / 13 causes) is NOT re-measured — do it on the Mac before
+trusting the set numbers. Baseline now **3 / 32 / 0 / 2**. Original spec
+below.
+
+### 15 (original spec, for reference)
 
 **Evidence:** the Library comp's `Pending` chip (gap 24) is not drawn; the
 `flex:1` search field absorbs its 78px and every chip after it shifts.
@@ -124,12 +205,21 @@ and the delta identity both assume today's pairing — re-measure the
 uctoinak / population-registry baselines (handoff "How to run") before
 merging, not only this repo's four pairs.
 
-## 16. Small, after 12–15 — TODO
+## 16. Small, after 12–15 — `--read-only` DONE (session 13); gap 18 + phase 6 TODO
 
-- `refdiff-annotator --read-only`: refuse every PUT with 405 and say so in
-  the rail's status line. Today the served app WRITES into the committed
-  fixture (bindings trap) — a measure against a dirty fixture is a measure of
-  the wrong thing. `cli.ts` flag + `USAGE` + `SKILL.md` + bindings.
+- `refdiff-annotator --serve --read-only` — DONE. Pure `read-only.ts`
+  (`readOnlyRefusal`: every non-GET under `/api/` → 405 with the reason;
+  reads and static files pass), `/api/pairs` carries `readOnly: true`, the
+  shell hands it to the report, and a refused save reads as the app's own
+  sentence (`READ_ONLY_STATUS`, `saveErrorText` in `rail.ts`) on the rows it
+  lost. Learned by measuring: an UP-FRONT status line is an element the comp
+  does not draw and shifted the rail (compare-desktop 32 → 37, +6 R3), so
+  the refusal is announced only on the first save attempted and the served
+  page stays identical to the writable app (3 / 32 / 0 / 2 again). Tests:
+  `test/read-only.test.ts`, `rail.test.ts`, `app-shell.test.ts`. `USAGE`,
+  `SKILL.md` pre-flight, `docs/architecture.md`, `services.toml` (the
+  measured instance now runs `--read-only`; verified `PUT → 405`,
+  `"readOnly":true`), `refdiff.bindings.md` trap rewritten.
 - Gap 18 (annotator plan): the keyboard-shortcut hint still has no drawn home
   — a design question for Mato, not code.
 - Annotator redesign **phase 6 — Land it** (`docs/plan-annotator-redesign.md`):
