@@ -1,11 +1,11 @@
 ---
-name: visual-compare
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the visual-compare CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run visual-compare", "work in the focused region", or to verify a UI change against its design — and when asked to "set up visual-compare in dev mode", "install the visual-compare CLI", or the `visual-compare` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
+name: refdiff
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design — and when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
 ---
 
-# visual-compare — the bounded fix loop over its reports
+# refdiff — the bounded fix loop over its reports
 
-This skill is THIN on purpose: the harness measures, you act. `visual-compare
+This skill is THIN on purpose: the harness measures, you act. `refdiff
 compare` produces `findings.json` (typed, bbox-grounded, severity-ranked
 findings with machine-readable `expected` / `actual`), per-finding crop pairs,
 both element trees, and — from the second run on — a
@@ -17,7 +17,7 @@ times, and stop on diminishing returns.
 ## Repo bindings
 
 This skill is a USER-level skill (symlinked from
-`~/.claude-shared/skills/visual-compare` → the visual-compare checkout; both
+`~/.claude-shared/skills/refdiff` → the refdiff checkout; both
 profiles link it), so it is available in every project. Nothing of it lives
 in a consuming repo — the repo only carries its manifest and a bindings file.
 **Read the bindings first** — they are the source of truth for paths, ports,
@@ -25,7 +25,7 @@ seeds and gotchas. Each repo keeps the file wherever its visual tooling lives,
 so locate it rather than assuming a path:
 
 ```bash
-find . -name 'visual-compare.bindings.md' -not -path '*/node_modules/*'
+find . -name 'refdiff.bindings.md' -not -path '*/node_modules/*'
 ```
 
 A bindings file names: the manifest, the design dir / Figma file, how the impl
@@ -33,28 +33,28 @@ is served (Storybook dir or URL, live app + auth), the run dir convention, and
 the repo's environment traps. If none exists, stop and write one with the user
 before running anything.
 
-The CLIs are on PATH via `pnpm link --global` from the visual-compare
-checkout: `visual-compare` (core) and `visual-compare-annotator`. They run
+The CLIs are on PATH via `pnpm link --global` from the refdiff
+checkout: `refdiff` (core) and `refdiff-annotator`. They run
 from `dist` — keep `pnpm dev` (tsc --watch) running in that checkout while
 developing, or `pnpm build` after pulling.
 
 ## Dev-mode setup (new machine / VM)
 
-When the user asks to set the skill up in dev mode, or `visual-compare` is
+When the user asks to set the skill up in dev mode, or `refdiff` is
 not on PATH, run the bundled script — it is idempotent and touches no
 consuming repo:
 
 ```bash
-bash "$(dirname "$(readlink -f ~/.claude/skills/visual-compare/SKILL.md)")/setup-dev.sh" --watch
-# options: --checkout <dir> (default ~/Development/visual-compare, cloned from
-#          github.com/mzvonar/visual-compare if missing)  --no-browser  (skip Playwright Chromium)
+bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/setup-dev.sh" --watch
+# options: --checkout <dir> (default ~/Development/refdiff, cloned from
+#          github.com/mzvonar/refdiff if missing)  --no-browser  (skip Playwright Chromium)
 ```
 
-It makes these true, then verifies (`visual-compare --help`, test count):
+It makes these true, then verifies (`refdiff --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages
-built; `pnpm link --global` so `visual-compare` / `visual-compare-annotator`
+built; `pnpm link --global` so `refdiff` / `refdiff-annotator`
 resolve (it tells you the PATH line to add if pnpm's global bin is not on
-PATH yet); the skill is user-level — `~/.claude/skills/visual-compare` (and
+PATH yet); the skill is user-level — `~/.claude/skills/refdiff` (and
 `~/.claude-personal` if present) → the checkout, through
 `~/.claude-shared/skills` only when that dir already exists (a plain machine
 with just `~/.claude` links directly; nothing is created that was not in use);
@@ -63,7 +63,7 @@ edits to `packages/*/src` reach the linked CLIs without a manual build. Edits
 to `SKILL.md` are live immediately (symlink). Needs Node ≥22, pnpm, git, and
 network for the clone / Chromium download (in a sandboxed shell, run it with
 the sandbox off). Then the repo you are in needs only its manifest and a
-`visual-compare.bindings.md` — write the bindings with the user if absent.
+`refdiff.bindings.md` — write the bindings with the user if absent.
 
 ## The rules (non-negotiable)
 
@@ -103,7 +103,7 @@ the sandbox off). Then the repo you are in needs only its manifest and a
    measure the other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l`
    per file, or the other frames of the same component). If the comp you
    are comparing is the outlier, the implementation is right: record the
-   decision with `visual-compare accept` (§3a), evidence as its `reason`. If the
+   decision with `refdiff accept` (§3a), evidence as its `reason`. If the
    siblings agree with it, fix the token.
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
@@ -141,9 +141,9 @@ while iteration < 5:
 ### 1. Run
 
 ```bash
-visual-compare compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
+refdiff compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
-visual-compare summary $OUT_ROOT      # sets / many pairs: one table + causes across pairs (see 1b)
+refdiff summary $OUT_ROOT      # sets / many pairs: one table + causes across pairs (see 1b)
 ```
 
 `--out` is a ROOT, always: the run dir is `$OUT_ROOT/<pair>/`, for one pair and
@@ -199,7 +199,7 @@ list is the shopping list for the fixture.
 
 A manifest entry with `design.variants` expands into one pair per variant
 cell (Alert 23, Button 41). Do not read 41 `findings.json`. A multi-pair run
-ends with the set summary (also `visual-compare summary <out-root>`, written
+ends with the set summary (also `refdiff summary <out-root>`, written
 to `<out-root>/summary.md` + `summary.json`): one row per pair (verdict,
 counts, alignment confidence, delta) and — the part you read first — **one
 row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
@@ -227,7 +227,7 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
 | **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
 | **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members |
-| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `visual-compare accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference" |
+| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference" |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
 
@@ -258,9 +258,9 @@ When the verdict is "we looked, and the IMPLEMENTATION is right", the decision
 belongs in policy, not in the design file:
 
 ```bash
-visual-compare accept $RUN_DIR --manifest $MANIFEST                 # every finding triaged "ignore" in the annotator
-visual-compare accept $RUN_DIR --manifest $MANIFEST --finding f7 --reason "…"   # one, straight from the CLI
-visual-compare accept $RUN_DIR --manifest $MANIFEST --dry-run       # what it would record
+refdiff accept $RUN_DIR --manifest $MANIFEST                 # every finding triaged "ignore" in the annotator
+refdiff accept $RUN_DIR --manifest $MANIFEST --finding f7 --reason "…"   # one, straight from the CLI
+refdiff accept $RUN_DIR --manifest $MANIFEST --dry-run       # what it would record
 ```
 
 It writes `accepted.json` beside the manifest; the next `compare` merges each
@@ -314,7 +314,7 @@ repo bindings). Read `delta`:
 Then mark the notes you acted on:
 
 ```bash
-visual-compare-annotator $RUN_DIR --mark-implemented <id,…|all>     # open → implemented; the designer closes them as done
+refdiff-annotator $RUN_DIR --mark-implemented <id,…|all>     # open → implemented; the designer closes them as done
 ```
 
 ### 5. Bounds — when to stop
@@ -367,7 +367,7 @@ Pick the narrowest tool that covers the case:
 | an element entirely — geometry, colour and text alike | `textPatterns` | every finding type about a matching string, geometry included; reach for it last |
 | a kind of element (backdrops, focus rings) | `roles` | that role everywhere in the pair |
 | artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
-| a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `visual-compare accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
+| a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `refdiff accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
 
 **`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
 from BOTH strings and the remainder compared: equal remainder = data churn
@@ -436,7 +436,7 @@ items is now a typed finding — read it there:
 
 ## Environment pre-flight (fill in per repo)
 
-The repo's `visual-compare.bindings.md` holds the specifics; these are the
+The repo's `refdiff.bindings.md` holds the specifics; these are the
 failure shapes that recur everywhere and impersonate product bugs.
 
 - **A cold route can blow the 30 s navigation budget.** A dev server compiling a
@@ -452,6 +452,16 @@ failure shapes that recur everywhere and impersonate product bugs.
   Storybook decorator `<div>`, overlay stories render in the browser default and
   EVERY `typography` finding names the same fallback family. Put the variables
   where the app puts them (`<html>`), not on a wrapper.
+- **A full-bleed comp is captured at the pair viewport; a fixed artboard is
+  not.** The dc-html adapter opens its canvas 120px wider than
+  `app.viewport` so a fixed-size frame never reflows against the window edge.
+  A comp with no fixed width (`width:100%`, `min-height:100vh` page comps)
+  would grow into that slack and capture 120px wider than the impl — every
+  right-aligned control offset, confidence gone — so the adapter detects the
+  frame reaching the canvas edge and snaps the window to the exact viewport
+  first. The design capture line then reads `scope … fluid` and its css px
+  equal the pair viewport. A fluid comp WITHOUT `app.viewport` on the pair
+  captures at the 1560px default canvas: give every full-bleed pair a viewport.
 - Storybook: token / global-CSS edits may not HMR — restart before trusting
   a re-run; confirm a color via the `color` finding, not the screenshot.
 - Live app: seeds present? auth working? A soft 404 compares "fine".

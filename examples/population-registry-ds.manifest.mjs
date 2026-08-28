@@ -1,4 +1,4 @@
-// visual-compare manifest for the population-registry design system: Figma file
+// refdiff manifest for the population-registry design system: Figma file
 // M0hnCQJIUho3tcW6PcnHWH vs the DS Storybook (frontend/ds/storybook, :6008 — start recipe in
 // docs/handoff-2026-08-27.md "How to run"). Every Figma node here is a COMPONENT_SET, so each
 // entry expands into one pair per variant COMPONENT against the story cell its `variants`

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * visual-compare-annotator — human view of a comparison run + the annotation
+ * refdiff-annotator — human view of a comparison run + the annotation
  * loop back to the agent.
  *
- *   visual-compare-annotator <run-dir|out-root> [--out report.html] [--serve] [--port 7378]
+ *   refdiff-annotator <run-dir|out-root> [--out report.html] [--serve] [--port 7378]
  *                                      [--host 0.0.0.0] [--mark-implemented <id,…|all>] [--digest]
  *
- * Reads <run-dir>/findings.json (a ComparisonReport written by `visual-compare
+ * Reads <run-dir>/findings.json (a ComparisonReport written by `refdiff
  * compare`), writes a self-contained report.html INTO the run dir (it links
  * design.png / impl.png / crops relatively) and, with --serve, serves the run
  * dir with a zero-dependency JSON API (`GET/PUT /api/annotations`) so notes
@@ -33,7 +33,7 @@ import {
   type Alignment,
   type ComparisonReport,
   type ElementNode,
-} from "@visual-compare/core"
+} from "@refdiff/core"
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises"
 import { networkInterfaces } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
@@ -68,7 +68,7 @@ import {
 } from "./triage.js"
 import { worldToDesign } from "./view-math.js"
 
-const USAGE = `Usage: visual-compare-annotator <run-dir|out-root> [options]
+const USAGE = `Usage: refdiff-annotator <run-dir|out-root> [options]
 
 Writes <run-dir>/report.html: the FULL design and FULL implementation side by
 side, one shared pan/zoom (the design pane is projected through the run's
@@ -511,9 +511,14 @@ async function summarisePairs(options: AppApiOptions): Promise<PairSummary[]> {
   for (const run of options.runs) {
     let report: ComparisonReport
     try {
-      report = JSON.parse(
+      // Same normalisation as readReport: a report written before `suppressed`
+      // existed (out/tx-picker-owner-desktop) must not 500 the whole index —
+      // one bad pair never kills the set.
+      const raw = JSON.parse(
         await readFile(join(run.dir, "findings.json"), "utf8"),
-      ) as ComparisonReport
+      ) as Partial<ComparisonReport>
+      if (!Array.isArray(raw.findings) || !raw.alignment || !raw.verdict) continue
+      report = { ...raw, suppressed: raw.suppressed ?? [], policy: raw.policy ?? {} } as ComparisonReport
     } catch {
       continue // a run dir mid-write is not a reason to fail the whole list
     }

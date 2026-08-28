@@ -1,5 +1,5 @@
 {
-  "name": "visual-compare",
+  "name": "refdiff",
   "private": true,
   "version": "0.0.0",
   "description": "Design-vs-implementation visual comparison harness for AI coding agents",
@@ -7,7 +7,7 @@
   "author": "Martin Zvonar",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mzvonar/visual-compare.git"
+    "url": "https://github.com/mzvonar/refdiff.git"
   },
   "engines": {
     "node": ">=22"

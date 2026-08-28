@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;overscroll-behavior:none}
+a{color:#5b8def}a:hover{color:#7da4f2}
+input{outline:none}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,132,140,.4);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--canvas:#232427}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--canvas:#c6c9ce}
+.msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+</style>
+</helmet>
+<div class="cc-theme-dark {{themeClass}}" style="position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;user-select:none;overflow:hidden" data-screen-label="RefDiff comparison tool">
+  <div style="display:flex;align-items:center;gap:8px;padding:0 10px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <a href="./RefDiff Library.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);text-decoration:none;flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
+      <div style="width:18px;height:18px;border-radius:5px;background:var(--acc)"></div>
+      <span style="{{brandStyle}}">RefDiff</span>
+      <span style="{{projStyle}}">Onboarding — Document step</span>
+    </div>
+    <div style="flex:1;min-width:4px"></div>
+    <div style="{{grpMainStyle}}">
+      <sc-for list="{{mainBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="{{grpStyle}}">
+      <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="{{grpLayerStyle}}">
+      <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="flex:1;min-width:4px"></div>
+    <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+  </div>
+  <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+    <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+      <span style="font-size:10.5px;color:var(--txt2);flex-shrink:0">Show</span>
+      <div style="{{grpMobStyle}}">
+        <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+      </div>
+    </div>
+  </sc-if>
+  <div style="flex:1;display:flex;min-height:0;position:relative">
+    <div style="{{toolStripStyle}}">
+      <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:18px">{{b.icon}}</span></div></sc-for>
+    </div>
+    <div style="{{canvasStyle}}" ref="{{refC}}">
+      <div style="{{paneAStyle}}" ref="{{refA}}" onPointerDown="{{downA}}" onPointerMove="{{moveA}}" onPointerUp="{{upA}}" onWheel="{{wheelA}}">
+        <div style="{{tAStyle}}">
+          <dc-import name="parts/Artboard Design" hint-size="680px,740px" style="position:absolute;left:0;top:0;width:680px;height:740px"></dc-import>
+          <div style="{{ovlStyle}}"><dc-import name="parts/Artboard Impl" hint-size="680px,740px" style="position:absolute;inset:0"></dc-import></div>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{ovA.whStyle}}" onPointerDown="{{whDownA}}" onPointerMove="{{whMoveA}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{ovA.whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
+            <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
+              <defs><mask id="dimA"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="{{dimFill}}" mask="url(#dimA)"></rect>
+            </svg>
+          </sc-if>
+          <sc-for list="{{ovA.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{ovA.focus}}" hint-placeholder-val="{{false}}"><div style="{{ovA.focusStyle}}"></div></sc-if>
+          <sc-if value="{{ovA.draft}}" hint-placeholder-val="{{false}}"><div style="{{ovA.draftStyle}}"></div></sc-if>
+          <sc-for list="{{ovA.sel}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-for list="{{ovA.fm}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.num}}</div></sc-for>
+          <sc-for list="{{ovA.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
+        </div>
+        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">{{labelA}}</div></sc-if>
+      </div>
+      <div style="{{paneBStyle}}" ref="{{refB}}" onPointerDown="{{downB}}" onPointerMove="{{moveB}}" onPointerUp="{{upB}}" onWheel="{{wheelB}}">
+        <div style="{{tBStyle}}">
+          <dc-import name="parts/Artboard Impl" hint-size="680px,740px" style="position:absolute;left:0;top:0;width:680px;height:740px"></dc-import>
+          <div style="{{ovlStyle}}"><dc-import name="parts/Artboard Design" hint-size="680px,740px" style="position:absolute;inset:0"></dc-import></div>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{ovB.whStyle}}" onPointerDown="{{whDownB}}" onPointerMove="{{whMoveB}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{ovB.whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
+            <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
+              <defs><mask id="dimB"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="{{dimFill}}" mask="url(#dimB)"></rect>
+            </svg>
+          </sc-if>
+          <sc-for list="{{ovB.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{ovB.focus}}" hint-placeholder-val="{{false}}"><div style="{{ovB.focusStyle}}"></div></sc-if>
+          <sc-if value="{{ovB.draft}}" hint-placeholder-val="{{false}}"><div style="{{ovB.draftStyle}}"></div></sc-if>
+          <sc-for list="{{ovB.sel}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-for list="{{ovB.fm}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.num}}</div></sc-for>
+          <sc-for list="{{ovB.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
+        </div>
+        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;right:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">{{labelB}}</div></sc-if>
+      </div>
+      <div style="{{zoomWrapStyle}}">
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomOut}}" title="Zoom out"><span class="msi" style="font-size:17px">remove</span></div>
+        <div style="min-width:44px;text-align:center;font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{zoomPct}}</div>
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomIn}}" title="Zoom in"><span class="msi" style="font-size:17px">add</span></div>
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:17px">fit_screen</span></div>
+      </div>
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{false}}">
+        <div style="{{fabStyle}}">
+          <div style="{{fabD.style}}" onClick="{{fabD.onClick}}">Design</div>
+          <div style="{{fabI.style}}" onClick="{{fabI.onClick}}">Impl</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{alignShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{alignWrapStyle}}">
+          <div style="{{alignPillStyle}}">
+            <div style="{{lockBtnStyle}}" onClick="{{lockToggle}}" title="{{lockTip}}"><span class="msi" style="font-size:15px">{{lockIcon}}</span></div>
+            <div style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:0 2px" onClick="{{alignMenuToggle}}" title="{{alignTip}}">
+              <span class="msi" style="font-size:16px;color:var(--txt2)">{{alignIcon}}</span>
+              <span style="font-size:11.5px;font-weight:600">{{alignLabel}}</span>
+              <span class="msi" style="font-size:15px;color:var(--txt2)">{{alignChev}}</span>
+            </div>
+          </div>
+          <sc-if value="{{alignOpen}}" hint-placeholder-val="{{false}}">
+            <div style="{{alignMenuStyle}}">
+              <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Align lock mode</div>
+              <sc-for list="{{alignOpts}}" as="o" hint-placeholder-count="4">
+                <div style="{{o.style}}" onClick="{{o.onClick}}" title="{{o.tip}}">
+                  <span class="msi" style="{{o.iconStyle}}">{{o.icon}}</span>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:12px;font-weight:600">{{o.name}}</span>
+                    <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{o.desc}}</span>
+                  </div>
+                  <sc-if value="{{o.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasFocus}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:5px 7px 5px 14px;z-index:14;font-size:12px;color:var(--txt);white-space:nowrap">
+          <span class="msi" style="font-size:15px;color:var(--acc)">center_focus_strong</span>
+          <span>{{focusMsg}}</span>
+          <div style="padding:3px 10px;border-radius:999px;background:var(--bg3);cursor:pointer;font-weight:600;font-size:11.5px" onClick="{{clearFocus}}">Clear</div>
+        </div>
+      </sc-if>
+    </div>
+    <div style="{{railStyle}}">
+      <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 12px 8px;cursor:pointer;flex-shrink:0" onClick="{{railToggle}}">
+          <div style="width:36px;height:4px;border-radius:2px;background:var(--bg3);position:absolute;top:5px;left:50%;transform:translateX(-50%)"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--txt)">{{railSummary}}</span>
+          <span class="msi" style="font-size:18px;color:var(--txt2)">{{railChev}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--txt2)">Review</span>
+          <div style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{collapseRail}}" title="Collapse panel"><span class="msi" style="font-size:17px">right_panel_close</span></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{railContentShow}}" hint-placeholder-val="{{true}}">
+      <div style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0">
+        <div style="{{tabFStyle}}" onClick="{{onTabF}}">Findings · {{fCount}}</div>
+        <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
+      </div>
+      <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
+        <div style="display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+          <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+        </div>
+        <div style="flex:1;overflow-y:auto;min-height:0">
+          <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center">No findings match the current filters.</div></sc-if>
+          <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="4">
+            <div style="{{f.rowStyle}}" onClick="{{f.select}}">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                <sc-if value="{{f.hasTag}}" hint-placeholder-val="{{false}}"><span style="{{f.tagStyle}}">{{f.tagLabel}}</span></sc-if>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                <span style="color:var(--txt2)">{{f.prop}}</span>
+                <span style="color:var(--txt)">{{f.expected}}</span>
+                <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                <span style="color:#e5484d">{{f.actual}}</span>
+              </div>
+              <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                <div style="margin:10px 0 2px 28px;display:flex;gap:6px">
+                  <sc-for list="{{f.actions}}" as="a" hint-placeholder-count="3"><div style="{{a.style}}" onClick="{{a.onClick}}">{{a.label}}</div></sc-for>
+                </div>
+                <input style="margin:8px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Note for the model&#8230;" value="{{f.commentVal}}" onChange="{{f.onComment}}" onClick="{{f.stop}}" onPointerDown="{{f.stop}}">
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1;overflow-y:auto;min-height:0">
+          <sc-if value="{{hasDraft}}" hint-placeholder-val="{{false}}">
+            <div style="padding:12px;border-bottom:1px solid var(--line);background:var(--bg2)">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8f7ee7;margin-bottom:8px">{{draftKind}}</div>
+              <input style="width:100%;box-sizing:border-box;background:var(--bg0);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:12.5px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Instruction for the model&#8230;" value="{{draftText}}" onChange="{{onDraftText}}">
+              <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+                <div style="padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--txt2)" onClick="{{cancelDraft}}">Cancel</div>
+                <div style="padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{saveDraftFn}}">Send to model</div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{emptyI}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">No comments yet. Pick the comment tool, then tap a point or drag a region on either pane.</div></sc-if>
+          <sc-for list="{{itemRows}}" as="it" hint-placeholder-count="3">
+            <div style="{{it.rowStyle}}" onClick="{{it.select}}">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="{{it.badgeStyle}}">{{it.num}}</div>
+                <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
+              </div>
+              <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px">{{it.text}}</div>
+              <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}">
+                <div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45">{{it.reply}}</div>
+              </sc-if>
+              <sc-if value="{{it.isSel}}" hint-placeholder-val="{{false}}">
+                <input style="margin:10px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Add another instruction&#8230;" value="{{it.noteVal}}" onChange="{{it.onNote}}" onClick="{{it.stop}}" onPointerDown="{{it.stop}}">
+                <div style="display:flex;gap:6px;margin:8px 0 2px 28px">
+                  <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{it.send}}">Send</div>
+                  <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt2)" onClick="{{it.done}}">{{it.doneLabel}}</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      </sc-if>
+    </div>
+    <sc-if value="{{railHidden}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;top:12px;right:12px;z-index:16;display:flex;align-items:center;gap:7px;background:var(--bg1);border:1px solid var(--line);border-radius:9px;padding:6px 10px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.25)" onClick="{{expandRail}}" title="Open review panel">
+        <span class="msi" style="font-size:17px;color:var(--txt2)">right_panel_open</span>
+        <span style="font-size:12px;font-weight:600">{{railSummary}}</span>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:820},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:280,&quot;max&quot;:400,&quot;step&quot;:10,&quot;default&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;paneLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Canvas&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
+const W = 680, H = 740;
+const SEV = { high: '#e5484d', medium: '#f5a623', low: '#4c9aff' };
+const SEVL = { high: 'High', medium: 'Med', low: 'Low' };
+const STC = { new: '#8f7ee7', update: '#f5a623', done: '#46a758' };
+const ALIGN = {
+  anchors: { label: 'Anchors', icon: 'hub', desc: 'Locks the views on matched UI elements \u2014 corresponding parts stay aligned even when sizes drift.' },
+  width: { label: 'Width', icon: 'width', desc: 'Matches zoom so both refs render at the same width; panning stays independent per pane.' },
+  'top-left': { label: 'Top left', icon: 'north_west', desc: 'Locks both views to a shared top-left origin \u2014 classic overlay for left-aligned layouts.' },
+  'top-right': { label: 'Top right', icon: 'north_east', desc: 'Locks views by the top-right corner \u2014 useful for right-aligned or RTL layouts.' }
+};
+const STL = { new: 'New', update: 'Update', done: 'Done' };
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.refA = React.createRef(); this.refB = React.createRef(); this.refC = React.createRef();
+    this._drag = null; this._wh = null; this._bt = null;
+    this.state = {
+      theme: null, mode: 'split', pane: 'design', variant: 'none', blinkOn: true,
+      layer: 'all', railTab: 'findings', railOpen: false, railCollapsed: false,
+      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
+      tA: { x: 24, y: 24, s: 0.55 }, tB: { x: 24, y: 24, s: 0.55 }, anim: false,
+      sevOn: { high: true, medium: true, low: true },
+      focusRect: null, selected: null, draft: null, draftText: '', isMobile: false, isNarrow: false,
+      findings: [
+        { id: 'f1', num: 1, sev: 'high', title: 'Primary button color mismatch', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
+        { id: 'f2', num: 2, sev: 'high', title: 'Dropzone inner padding reduced', prop: 'padding', expected: '32px', actual: '20px', rect: { x: 36, y: 368, w: 608, h: 190 }, status: 'open', comment: '' },
+        { id: 'f3', num: 3, sev: 'medium', title: 'Heading font-size drift', prop: 'font-size', expected: '28px', actual: '24px', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 'f4', num: 4, sev: 'medium', title: 'Card corner radius mismatch', prop: 'border-radius', expected: '12px', actual: '6px', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' },
+        { id: 'f5', num: 5, sev: 'low', title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
+        { id: 'f6', num: 6, sev: 'low', title: 'Footer text color drift', prop: 'color', expected: '#6B7280', actual: '#9CA3AF', rect: { x: 36, y: 664, w: 608, h: 24 }, status: 'open', comment: '' }],
+      items: [
+        { id: 'c1', num: 1, status: 'update', text: 'Logo should use the darker navy from the brand kit', reply: 'Fetched brand token \u2014 logo color maps to #1E2A5A. Queued for the next impl build.', note: '', rect: { x: 36, y: 14, w: 150, h: 36 } },
+        { id: 'c2', num: 2, status: 'new', text: 'Check spacing between document cards at tablet width', reply: '', note: '', rect: { x: 36, y: 204, w: 608, h: 140 } },
+        { id: 'c3', num: 3, status: 'done', text: 'Continue button should be full width on mobile', reply: 'Confirmed \u2014 impl build 342 makes the button fluid below 480px.', note: '', rect: { x: 36, y: 586, w: 280, h: 48 } }]
+    };
+  }
+  componentDidMount() {
+    this._rs = () => {
+      const w = window.innerWidth, m = this.props.mobile ?? (w < 760);
+      const n = !m && w < 1120;
+      if (m !== this.state.isMobile || n !== this.state.isNarrow) this.setState({ isMobile: m, isNarrow: n, railOpen: false });
+    };
+    this._rs(); window.addEventListener('resize', this._rs);
+    setTimeout(() => this.fit(false), 80);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); if (this._bt) clearInterval(this._bt); }
+  theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  effMode() { return this.state.isMobile ? 'full' : this.state.mode; }
+  setVariant(v) {
+    if (this._bt) { clearInterval(this._bt); this._bt = null; }
+    if (v === 'blink') this._bt = setInterval(() => this.setState(s => ({ blinkOn: !s.blinkOn })), 650);
+    this.setState({ variant: v, blinkOn: true });
+  }
+  paneEl(p) { return (p === 'A' ? this.refA : this.refB).current; }
+  paneRect(p) {
+    let el = this.paneEl(p);
+    if (!el || el.offsetParent === null) el = this.paneEl(p === 'A' ? 'B' : 'A');
+    if (!el || el.offsetParent === null) return null;
+    return el.getBoundingClientRect();
+  }
+  getT(p) { return p === 'A' ? this.state.tA : this.state.tB; }
+  setT(p, t) {
+    const S = this.state;
+    if (!S.lockstep) { this.setState(p === 'A' ? { tA: t } : { tB: t }); return; }
+    if (S.alignMode === 'width') {
+      const o = { ...(p === 'A' ? S.tB : S.tA), s: t.s };
+      this.setState(p === 'A' ? { tA: t, tB: o } : { tB: t, tA: o });
+    } else this.setState({ tA: t, tB: t });
+  }
+  toArt(p, e) { const r = this.paneEl(p).getBoundingClientRect(), t = this.getT(p); return { x: (e.clientX - r.left - t.x) / t.s, y: (e.clientY - r.top - t.y) / t.s }; }
+  nrect(a, b) { return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) }; }
+  pDown(p, e) {
+    if (e.button && e.button !== 0) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    this._drag = { p, tool: this.state.tool, sx: e.clientX, sy: e.clientY, t0: { ...this.getT(p) }, a0: this.toArt(p, e), moved: false };
+    if (this.state.anim) this.setState({ anim: false });
+  }
+  pMove(p, e) {
+    const d = this._drag; if (!d || d.p !== p) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (d.tool === 'pan') { this.setT(p, { x: d.t0.x + dx, y: d.t0.y + dy, s: d.t0.s }); return; }
+    if (!d.moved) return;
+    const pr = this.paneEl(p).getBoundingClientRect();
+    const b = { x: (e.clientX - pr.left - d.t0.x) / d.t0.s, y: (e.clientY - pr.top - d.t0.y) / d.t0.s };
+    const r = this.nrect(d.a0, b);
+    if (d.tool === 'focus') this.setState({ focusRect: r });
+    else if (d.tool === 'comment') this.setState({ draft: { ...r, point: false } });
+  }
+  pUp(p, e) {
+    const d = this._drag; if (!d) return; this._drag = null;
+    if (d.tool === 'comment') {
+      if (!d.moved) { const a = d.a0; this.setState({ draft: { x: a.x, y: a.y, w: 0, h: 0, point: true } }); }
+      this.setState({ draftText: '', railTab: 'items', railOpen: true, selected: null, tool: 'pan' });
+    } else if (d.tool === 'focus') {
+      this.setState({ tool: 'pan', ...(d.moved ? {} : { focusRect: null }) });
+    }
+  }
+  wheel(p, e) {
+    if (e.cancelable) e.preventDefault();
+    const el = this.paneEl(p); if (!el) return;
+    const r = el.getBoundingClientRect(), t = this.getT(p);
+    const s2 = Math.min(4, Math.max(0.15, t.s * Math.exp(-e.deltaY * 0.0015)));
+    const k = s2 / t.s, mx = e.clientX - r.left, my = e.clientY - r.top;
+    this.setT(p, { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 });
+  }
+  zoom(f) {
+    const r = this.paneRect('A'); if (!r) return;
+    const t = this.state.tA;
+    const s2 = Math.min(4, Math.max(0.15, t.s * f));
+    const k = s2 / t.s, mx = r.width / 2, my = r.height / 2;
+    const nt = { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 };
+    this.setState({ tA: nt, tB: nt });
+  }
+  fit(anim = true) {
+    const r = this.paneRect('A'); if (!r || r.width < 10) return;
+    const s = Math.min((r.width - 48) / W, (r.height - 48) / H, 1.6);
+    const t = { x: (r.width - W * s) / 2, y: (r.height - H * s) / 2, s };
+    this.setState({ tA: t, tB: t, anim });
+  }
+  focusOn(rect) {
+    const r = this.paneRect('A'); if (!r) return;
+    const w = Math.max(rect.w, 60) + 140, h = Math.max(rect.h, 60) + 140;
+    const s = Math.min(r.width / w, r.height / h, 2.2);
+    const t = { x: r.width / 2 - (rect.x + rect.w / 2) * s, y: r.height / 2 - (rect.y + rect.h / 2) * s, s };
+    this.setState({ tA: t, tB: t, anim: true });
+  }
+  whDown(p, e) { e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} this._wh = p; }
+  whMove(p, e) {
+    if (this._wh !== p) return;
+    const el = this.paneEl(p); if (!el) return;
+    const r = el.getBoundingClientRect(), t = this.getT(p);
+    const x = (e.clientX - r.left - t.x) / t.s;
+    this.setState({ wipeX: Math.min(W - 20, Math.max(20, x)) });
+  }
+  selFinding(f) { this.setState({ selected: { type: 'f', id: f.id }, railTab: 'findings', railOpen: true }); this.focusOn(f.rect); }
+  selItem(it) { this.setState({ selected: { type: 'i', id: it.id }, railTab: 'items', railOpen: true }); this.focusOn(it.rect); }
+  setFStatus(id, st) { this.setState(s => ({ findings: s.findings.map(f => f.id === id ? { ...f, status: f.status === st ? 'open' : st } : f) })); }
+  inter(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  renderVals() {
+    const S = this.state, th = this.theme(), light = th === 'light', mode = this.effMode(), isM = S.isMobile;
+    const isFull = mode === 'full', V = S.variant;
+    const railW = this.props.railWidth ?? 320;
+    const showLabels = (this.props.paneLabels ?? true) && !isM && V === 'none';
+    const vis = S.findings.filter(f => S.sevOn[f.sev] && (!S.focusRect || this.inter(f.rect, S.focusRect)));
+    const visItems = S.items.filter(i => !S.focusRect || this.inter(i.rect, S.focusRect));
+    const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
+    const segBtn = act => ({ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '16px' });
+    const segBtnSm = act => ({ ...segBtn(act), padding: '3px 8px', fontSize: 11, lineHeight: '14px' });
+    const grp = { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 };
+    const mainBtns = [['split', 'Split'], ['full', 'Full']].map(([id, label]) => ({ id, label, style: segBtn(mode === id), onClick: () => this.setState({ mode: id }) }));
+    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: segBtn(V === id), onClick: () => this.setVariant(id) }));
+    const layerBtns = (S.isNarrow ? [['findings', 'Find.'], ['items', 'Comm.'], ['all', 'All'], ['none', 'Clean']] : [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']]).map(([id, label]) => ({ id, label, style: isM ? segBtnSm(S.layer === id) : segBtn(S.layer === id), onClick: () => this.setState({ layer: id }) }));
+    const toolBtn = act => ({ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
+    const toolDefs = [
+      ['pan', 'pan_tool', 'Pan / move', () => this.setState({ tool: 'pan' }), S.tool === 'pan'],
+      ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
+      ['comment', 'add_comment', 'Comment \u2014 tap a point or drag a region', () => this.setState({ tool: 'comment' }), S.tool === 'comment'],
+      ['hl', 'difference', 'Highlight changed parts', () => this.setState(s => ({ highlight: !s.highlight })), S.highlight],
+      ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim]];
+    const toolBtns = toolDefs.map(([id, icon, title, onClick, act]) => ({ id, icon, title, onClick, style: toolBtn(act) }));
+    const toolStripStyle = isM
+      ? { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }
+      : { width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 0', background: 'var(--bg1)', borderRight: '1px solid var(--line)' };
+    const cursor = S.tool === 'pan' ? 'grab' : 'crosshair';
+    const paneBase = { position: 'relative', overflow: 'hidden', background: 'var(--canvas)', touchAction: 'none', cursor, minWidth: 0 };
+    let paneAStyle, paneBStyle;
+    if (!isFull) { paneAStyle = { ...paneBase, flex: 1, borderRight: '1px solid var(--line)' }; paneBStyle = { ...paneBase, flex: 1 }; }
+    else if (S.pane === 'design') { paneAStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneBStyle = { display: 'none' }; }
+    else { paneBStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneAStyle = { display: 'none' }; }
+    const canvasStyle = { flex: 1, position: 'relative', minWidth: 0, minHeight: 0, display: isFull ? 'block' : 'flex', background: 'var(--canvas)' };
+    const tStyle = t => ({ position: 'absolute', left: 0, top: 0, width: W, height: H, transform: 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', transformOrigin: '0 0', transition: S.anim ? 'transform 0.35s cubic-bezier(0.2,0.8,0.2,1)' : 'none' });
+    let ovlStyle = { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' };
+    if (V === 'none') ovlStyle.display = 'none';
+    else if (V === 'wipe') ovlStyle.clipPath = 'inset(0 0 0 ' + S.wipeX + 'px)';
+    else if (V === 'onion') ovlStyle.opacity = 0.55;
+    else if (V === 'blink') { ovlStyle.opacity = S.blinkOn ? 1 : 0; ovlStyle.transition = 'opacity 0.1s'; }
+    else if (V === 'diff') { ovlStyle.mixBlendMode = 'difference'; ovlStyle.opacity = 1; }
+    const ov = t => {
+      const s = t.s, out = { fm: [], im: [], hl: [], sel: [] };
+      const cs = Math.min(2.4, 1 / s);
+      if (showF) for (const f of vis) {
+        out.fm.push({ num: f.num, title: f.title, select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: f.rect.x - 12, top: f.rect.y - 12, width: 24, height: 24, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.9)', transform: 'scale(' + cs + ')', transformOrigin: 'center', opacity: (f.status === 'ignore' || f.status === 'snooze') ? 0.45 : 1, zIndex: 6 } });
+        if (S.selected && S.selected.type === 'f' && S.selected.id === f.id) out.sel.push({ style: { position: 'absolute', left: f.rect.x - 4, top: f.rect.y - 4, width: f.rect.w + 8, height: f.rect.h + 8, border: (2 / s) + 'px solid ' + SEV[f.sev], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
+      }
+      if (showI) for (const it of visItems) {
+        out.im.push({ label: it.num, title: it.text, select: () => this.selItem(it), stop: e => e.stopPropagation(), style: { position: 'absolute', left: it.rect.x - 11, top: it.rect.y - 11, width: 22, height: 22, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
+        if (S.selected && S.selected.type === 'i' && S.selected.id === it.id) out.sel.push({ style: { position: 'absolute', left: it.rect.x - 4, top: it.rect.y - 4, width: it.rect.w + 8, height: it.rect.h + 8, border: (2 / s) + 'px solid ' + STC[it.status], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
+      }
+      if (S.highlight) for (const f of vis) out.hl.push({ style: { position: 'absolute', left: f.rect.x, top: f.rect.y, width: f.rect.w, height: f.rect.h, border: (1.5 / s) + 'px solid #ff5cd0', background: 'rgba(255,92,208,0.08)', borderRadius: 4, pointerEvents: 'none', zIndex: 4 } });
+      const fr = S.focusRect;
+      out.focus = !!fr;
+      out.focusStyle = fr ? { position: 'absolute', left: fr.x, top: fr.y, width: fr.w, height: fr.h, border: (1.5 / s) + 'px dashed var(--acc)', boxShadow: '0 0 0 4000px rgba(15,17,20,0.45)', pointerEvents: 'none', zIndex: 3 } : null;
+      const dr = S.draft;
+      out.draft = !!dr;
+      out.draftStyle = dr ? (dr.point
+        ? { position: 'absolute', left: dr.x - 13, top: dr.y - 13, width: 26, height: 26, borderRadius: '50% 50% 50% 4px', background: '#8f7ee7', border: '2px solid #fff', boxShadow: '0 1px 5px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', zIndex: 7 }
+        : { position: 'absolute', left: dr.x, top: dr.y, width: dr.w, height: dr.h, border: (1.5 / s) + 'px dashed #8f7ee7', background: 'rgba(143,126,231,0.12)', zIndex: 7 }) : null;
+      out.whStyle = { position: 'absolute', left: S.wipeX - 14, top: 0, width: 28, height: H, cursor: 'ew-resize', zIndex: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none' };
+      out.whKnob = { width: 24, height: 24, borderRadius: '50%', background: 'var(--acc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, boxShadow: '0 2px 8px rgba(0,0,0,0.35)', transform: 'scale(' + cs + ')' };
+      return out;
+    };
+    const ovA = ov(S.tA), ovB = ov(S.tB);
+    const dimRects = vis.map(f => ({ x: f.rect.x - 6, y: f.rect.y - 6, w: f.rect.w + 12, h: f.rect.h + 12 }));
+    const railStyle = isM
+      ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }
+      : (S.railCollapsed ? { display: 'none' } : { width: railW, flexShrink: 0, background: 'var(--bg1)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 });
+    const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
+    const sevChips = ['high', 'medium', 'low'].map(sv => {
+      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv).length;
+      return { label: SEVL[sv] + ' ' + n, onClick: () => this.setState(s => ({ sevOn: { ...s.sevOn, [sv]: !s.sevOn[sv] } })), style: { display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (on ? SEV[sv] : 'var(--line)'), color: on ? SEV[sv] : 'var(--txt2)', background: 'transparent', opacity: on ? 1 : 0.6 }, dotStyle: { width: 7, height: 7, borderRadius: '50%', background: on ? SEV[sv] : 'var(--bg3)' } };
+    });
+    const selId = S.selected ? S.selected.id : null;
+    const rowBase = sel => ({ padding: '10px 12px', borderBottom: '1px solid var(--line)', cursor: 'pointer', background: sel ? 'var(--bg2)' : 'transparent' });
+    const actBtn = (act, color) => ({ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (act ? color : 'var(--line)'), color: act ? '#fff' : 'var(--txt2)', background: act ? color : 'transparent' });
+    const findingRows = vis.map(f => {
+      const sel = selId === f.id && S.selected.type === 'f';
+      return {
+        id: f.id, num: f.num, title: f.title, prop: f.prop, expected: f.expected, actual: f.actual,
+        isSel: sel, select: () => this.selFinding(f), rowStyle: rowBase(sel),
+        badgeStyle: { width: 20, height: 20, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        hasTag: f.status !== 'open', tagLabel: { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' }[f.status] || '',
+        tagStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 999, color: f.status === 'fix' ? '#fff' : 'var(--txt2)', background: f.status === 'fix' ? 'var(--acc)' : 'var(--bg3)', marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap' },
+        actions: [['fix', 'To fix', 'var(--acc)'], ['ignore', 'Ignore', '#6b7280'], ['snooze', 'Snooze', '#8f7ee7']].map(([st, label, color]) => ({ label, onClick: e => { e.stopPropagation(); this.setFStatus(f.id, st); }, style: actBtn(f.status === st, color) })),
+        commentVal: f.comment, onComment: e => { const v = e.target.value; this.setState(s => ({ findings: s.findings.map(x => x.id === f.id ? { ...x, comment: v } : x) })); },
+        stop: e => e.stopPropagation()
+      };
+    });
+    const itemRows = visItems.map(it => {
+      const sel = selId === it.id && S.selected.type === 'i';
+      return {
+        id: it.id, num: it.num, text: it.text, reply: it.reply, hasReply: !!it.reply, isSel: sel,
+        select: () => this.selItem(it), rowStyle: rowBase(sel),
+        badgeStyle: { width: 20, height: 20, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        statusLabel: STL[it.status], statusStyle: { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: STC[it.status], marginLeft: 'auto', flexShrink: 0 },
+        noteVal: it.note, onNote: e => { const v = e.target.value; this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, note: v } : x) })); },
+        send: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id && x.note ? { ...x, text: x.text + ' \u2014 ' + x.note, note: '', status: 'new' } : x) })); },
+        done: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, status: x.status === 'done' ? 'new' : 'done' } : x) })); },
+        doneLabel: it.status === 'done' ? 'Reopen' : 'Mark done',
+        stop: e => e.stopPropagation()
+      };
+    });
+    const fabBtn = act => ({ padding: isM ? '10px 16px' : '7px 14px', borderRadius: 999, fontSize: isM ? 13 : 12, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' });
+    return {
+      themeClass: light ? 'cc-theme-light' : '',
+      themeIcon: light ? 'dark_mode' : 'light_mode',
+      toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
+      brandStyle: { fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', display: isM ? 'none' : 'block' },
+      projStyle: { fontSize: 12, color: 'var(--txt2)', whiteSpace: 'nowrap', display: (isM || S.isNarrow) ? 'none' : 'block' },
+      grpMainStyle: { ...grp, display: isM ? 'none' : 'flex' },
+      grpStyle: grp,
+      grpMobStyle: { ...grp, padding: 2, borderRadius: 7 },
+      grpLayerStyle: { ...grp, display: isM ? 'none' : 'flex' },
+      mainBtns, variantBtns, layerBtns, toolBtns, toolStripStyle, canvasStyle,
+      refA: this.refA, refB: this.refB, refC: this.refC,
+      paneAStyle, paneBStyle, tAStyle: tStyle(S.tA), tBStyle: tStyle(S.tB),
+      downA: e => this.pDown('A', e), moveA: e => this.pMove('A', e), upA: e => this.pUp('A', e), wheelA: e => this.wheel('A', e),
+      downB: e => this.pDown('B', e), moveB: e => this.pMove('B', e), upB: e => this.pUp('B', e), wheelB: e => this.wheel('B', e),
+      showLabels, labelA: 'DESIGN', labelB: 'IMPLEMENTATION',
+      ovA, ovB, ovlStyle, dimOn: S.dim, dimRects, dimFill: 'rgba(15,17,20,0.5)',
+      wipeOn: V === 'wipe',
+      whDownA: e => this.whDown('A', e), whMoveA: e => this.whMove('A', e),
+      whDownB: e => this.whDown('B', e), whMoveB: e => this.whMove('B', e),
+      whUp: () => { this._wh = null; },
+      zoomWrapStyle: isM
+        ? { position: 'absolute', left: 12, top: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 }
+        : { position: 'absolute', left: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 },
+      zoomOut: () => this.zoom(1 / 1.25), zoomIn: () => this.zoom(1.25), fitFn: () => this.fit(), zoomPct: Math.round(S.tA.s * 100) + '%',
+      isFull,
+      fabStyle: { position: 'absolute', right: 8, bottom: isM ? 56 : 12, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: 3, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      fabD: { style: fabBtn(S.pane === 'design'), onClick: () => this.setState({ pane: 'design' }) },
+      fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
+      alignShow: isM || !isFull || V !== 'none',
+      alignOpen: S.alignOpen,
+      alignWrapStyle: isM
+        ? { position: 'absolute', top: 10, right: 8, zIndex: 16 }
+        : { position: 'absolute', bottom: isFull ? 58 : 12, right: 12, zIndex: 16 },
+      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      lockIcon: S.lockstep ? 'link' : 'link_off',
+      lockTip: S.lockstep ? 'Lockstep on \u2014 panes move together. Click to unlink.' : 'Lockstep off \u2014 panes move independently. Click to link.',
+      lockBtnStyle: { width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', flexShrink: 0 },
+      lockToggle: () => this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }),
+      alignIcon: ALIGN[S.alignMode].icon,
+      alignLabel: ALIGN[S.alignMode].label,
+      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc,
+      alignChev: S.alignOpen ? (isM ? 'expand_less' : 'expand_more') : (isM ? 'expand_more' : 'expand_less'),
+      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen })),
+      alignMenuStyle: isM
+        ? { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 248, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 }
+        : { position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, width: 264, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 },
+      alignOpts: Object.keys(ALIGN).map(id => {
+        const a = ALIGN[id], act = S.alignMode === id;
+        return {
+          name: a.label, desc: a.desc, tip: a.desc,
+          iconStyle: { fontSize: 17, color: act ? 'var(--acc)' : 'var(--txt2)', flexShrink: 0, marginTop: 1 },
+          icon: a.icon, checkShow: act,
+          style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
+          onClick: () => this.setState(s => ({ alignMode: id, alignOpen: false, lockstep: true, tB: id === 'width' ? s.tB : s.tA }))
+        };
+      }),
+      hasFocus: !!S.focusRect, focusMsg: 'Region focus \u00b7 ' + vis.length + ' of ' + S.findings.length + ' findings', clearFocus: () => this.setState({ focusRect: null }),
+      railStyle, isMobile: isM, railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })),
+      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments',
+      railChev: S.railOpen ? 'expand_more' : 'expand_less',
+      isDesk: !isM,
+      railContentShow: !isM || S.railOpen,
+      collapseRail: () => this.setState({ railCollapsed: true }),
+      expandRail: () => this.setState({ railCollapsed: false }),
+      railHidden: !isM && S.railCollapsed,
+      tabFStyle: tabStyle(S.railTab === 'findings'), tabIStyle: tabStyle(S.railTab === 'items'),
+      onTabF: () => this.setState({ railTab: 'findings' }), onTabI: () => this.setState({ railTab: 'items' }),
+      fCount: vis.length, iCount: visItems.length,
+      showFindTab: S.railTab === 'findings', showItemTab: S.railTab === 'items',
+      sevChips, emptyF: vis.length === 0, findingRows,
+      hasDraft: !!S.draft, draftKind: S.draft && S.draft.point ? 'Point comment' : 'Region comment',
+      draftText: S.draftText, onDraftText: e => this.setState({ draftText: e.target.value }),
+      cancelDraft: () => this.setState({ draft: null, draftText: '' }),
+      saveDraftFn: () => {
+        const { draft, draftText } = this.state; if (!draft) return;
+        this.setState(s => ({ items: [...s.items, { id: 'c' + Date.now(), num: s.items.length + 1, status: 'new', text: draftText || '(no instruction)', reply: '', note: '', rect: draft.point ? { x: draft.x, y: draft.y, w: 0, h: 0 } : { x: draft.x, y: draft.y, w: draft.w, h: draft.h } }], draft: null, draftText: '' }));
+      },
+      emptyI: visItems.length === 0 && !S.draft, itemRows
+    };
+  }
+}
+</script>
+</body>
+</html>

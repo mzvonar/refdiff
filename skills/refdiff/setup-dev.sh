@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# visual-compare — dev-mode setup for a new machine / VM. Idempotent; re-run any time.
+# refdiff — dev-mode setup for a new machine / VM. Idempotent; re-run any time.
 #
-#   bash ~/.claude-shared/skills/visual-compare/setup-dev.sh [--checkout <dir>] [--watch] [--no-browser]
+#   bash ~/.claude-shared/skills/refdiff/setup-dev.sh [--checkout <dir>] [--watch] [--no-browser]
 #
 # What it makes true:
-#   1. a visual-compare checkout exists (default ~/Development/visual-compare; cloned if missing)
+#   1. a refdiff checkout exists (default ~/Development/refdiff; cloned if missing)
 #   2. deps installed, Playwright Chromium present, both packages built
-#   3. `visual-compare` and `visual-compare-annotator` on PATH via `pnpm link --global` (run from dist)
-#   4. the skill is USER-level: ~/.claude/skills/visual-compare (and ~/.claude-personal if present) →
-#      <checkout>/skills/visual-compare, via ~/.claude-shared/skills when that dir already exists
+#   3. `refdiff` and `refdiff-annotator` on PATH via `pnpm link --global` (run from dist)
+#   4. the skill is USER-level: ~/.claude/skills/refdiff (and ~/.claude-personal if present) →
+#      <checkout>/skills/refdiff, via ~/.claude-shared/skills when that dir already exists
 #   5. --watch: `pnpm dev` (tsc --watch, both packages) running in the background so dist follows edits
-# Nothing is written into consuming repos; they only carry a manifest + visual-compare.bindings.md.
+# Nothing is written into consuming repos; they only carry a manifest + refdiff.bindings.md.
 set -euo pipefail
 
-REPO_URL="https://github.com/mzvonar/visual-compare.git"
-CHECKOUT="${VISUAL_COMPARE_DIR:-$HOME/Development/visual-compare}"
+REPO_URL="https://github.com/mzvonar/refdiff.git"
+CHECKOUT="${REFDIFF_DIR:-$HOME/Development/refdiff}"
 WATCH=0
 BROWSER=1
 while [ $# -gt 0 ]; do
@@ -96,36 +96,36 @@ linked_bins=1
 if [ "$linked_bins" = 0 ]; then
   echo "warn: pnpm link --global failed — the CLIs are not on PATH. Run them from the checkout" >&2
   echo "      (node $CHECKOUT/packages/core/dist/cli.js) or fix pnpm's global bin dir and re-run." >&2
-elif ! command -v visual-compare >/dev/null 2>&1; then
+elif ! command -v refdiff >/dev/null 2>&1; then
   echo "note: $GBIN is not on PATH in your profile — add it:  export PATH=\"$GBIN:\$PATH\""
 fi
 
 # 4. user-level skill symlinks. With the two-profile setup (~/.claude-shared exists) follow its
 #    convention: shared → checkout, profiles → shared. On a plain machine (only ~/.claude) link the
 #    profile straight to the checkout — never create ~/.claude-shared where it is not in use.
-SKILL_SRC="$CHECKOUT/skills/visual-compare"
+SKILL_SRC="$CHECKOUT/skills/refdiff"
 LINK_TARGET="$SKILL_SRC"
 if [ -d "$HOME/.claude-shared" ]; then
   mkdir -p "$HOME/.claude-shared/skills"
-  ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/visual-compare"
-  LINK_TARGET="$HOME/.claude-shared/skills/visual-compare"
+  ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/refdiff"
+  LINK_TARGET="$HOME/.claude-shared/skills/refdiff"
 fi
 linked=0
 for profile in "$HOME/.claude" "$HOME/.claude-personal"; do
   [ -d "$profile" ] || continue
   mkdir -p "$profile/skills"
-  if [ -e "$profile/skills/visual-compare" ] && [ ! -L "$profile/skills/visual-compare" ]; then
-    echo "note: $profile/skills/visual-compare is a real directory, not replacing it (remove it to link the checkout)"
+  if [ -e "$profile/skills/refdiff" ] && [ ! -L "$profile/skills/refdiff" ]; then
+    echo "note: $profile/skills/refdiff is a real directory, not replacing it (remove it to link the checkout)"
     continue
   fi
-  ln -sfn "$LINK_TARGET" "$profile/skills/visual-compare"
-  say "skill: $profile/skills/visual-compare → $LINK_TARGET"
+  ln -sfn "$LINK_TARGET" "$profile/skills/refdiff"
+  say "skill: $profile/skills/refdiff → $LINK_TARGET"
   linked=1
 done
 if [ "$linked" = 0 ]; then
   mkdir -p "$HOME/.claude/skills"
-  ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/visual-compare"
-  say "skill: ~/.claude/skills/visual-compare → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
+  ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/refdiff"
+  say "skill: ~/.claude/skills/refdiff → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
 fi
 
 # 5. watcher
@@ -141,8 +141,8 @@ fi
 
 # verify
 say "verify"
-"${GBIN:-.}/visual-compare" --help 2>/dev/null | head -1 || node packages/core/dist/cli.js --help | head -1
+"${GBIN:-.}/refdiff" --help 2>/dev/null | head -1 || node packages/core/dist/cli.js --help | head -1
 echo "tests: $(pnpm -r test 2>&1 | grep -oE 'Tests +[0-9]+ passed' | awk '{s+=$2} END {print s+0}') passing"
 echo
 echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."
-echo "A consuming repo needs only: its manifest + a visual-compare.bindings.md (see SKILL.md 'Repo bindings')."
+echo "A consuming repo needs only: its manifest + a refdiff.bindings.md (see SKILL.md 'Repo bindings')."

@@ -28,7 +28,7 @@
  * the same spot), and the finding list flows underneath.
  */
 
-import type { ComparisonReport } from "@visual-compare/core"
+import type { ComparisonReport } from "@refdiff/core"
 
 import { emptySet, type AnnotationSet } from "./annotations.js"
 
@@ -45,7 +45,7 @@ export interface RenderOptions {
    * index to go back to.
    */
   indexHref?: string | undefined
-  /** Page title; default "<pair> — visual-compare". */
+  /** Page title; default "<pair> — refdiff". */
   title?: string
 }
 
@@ -75,7 +75,7 @@ export const embedJson = (value: unknown): string =>
     .replace(/\u2029/g, "\\u2029")
 
 export function renderReport(report: ComparisonReport, options: RenderOptions): string {
-  const title = options.title ?? `${report.pair} — visual-compare`
+  const title = options.title ?? `${report.pair} — refdiff`
   if (
     options.viewMathSource.includes("</script") ||
     options.annotationsSource.includes("</script")
@@ -1202,7 +1202,7 @@ function triageHtml(f) {
   // one that is re-taken every run — and the note is what becomes its reason,
   // so an empty one is refused at harvest time.
   const stick = verdict === 'ignore'
-    ? '<div class="meta">hidden here only — <code>visual-compare accept ' + esc(report.pair) + '</code> turns this into a policy rule that suppresses it in every run (and lapses if the measurement changes). Needs the note below.</div>'
+    ? '<div class="meta">hidden here only — <code>refdiff accept ' + esc(report.pair) + '</code> turns this into a policy rule that suppresses it in every run (and lapses if the measurement changes). Needs the note below.</div>'
     : '';
   return '<div class="triage"><div class="actions">' +
     button('fix', 'To fix') + button('ignore', 'Ignore') + button('snooze', 'Snooze') +
@@ -1585,7 +1585,7 @@ function openReport(reportData, annotationSet, pageData) {
   document.body.classList.remove('has-detail', 'ann-mode', 'hdr-open');
   $('q').value = '';
   applyControls(readControls());
-  document.title = report.pair + ' — visual-compare';
+  document.title = report.pair + ' — refdiff';
   renderHeader(); renderList(); renderDetail(); renderAnnList();
   if (!wired) { wire(); wired = true; }
   applyLayout(); applySide(); updateRailToggle(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();

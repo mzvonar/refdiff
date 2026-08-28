@@ -53,13 +53,13 @@ export function renderAppShell(options: AppShellOptions): string {
 <head>
 <meta charset="utf-8">
 ${VIEWPORT_META}
-<title>${escapeHtml(options.title ?? "visual-compare")}</title>
+<title>${escapeHtml(options.title ?? "refdiff")}</title>
 <style>${CSS}${INDEX_CSS}</style>
 </head>
 <body class="route-index">
 <section id="view-index">
   <header class="index-head">
-    <h1 id="index-title">visual-compare</h1>
+    <h1 id="index-title">refdiff</h1>
     <span class="kv" id="index-summary"></span>
     ${options.root ? `<span class="kv root">${escapeHtml(options.root)}</span>` : ""}
   </header>
@@ -120,7 +120,7 @@ async function loadPairs() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const body = await res.json();
     pairs = body.pairs || [];
-    if (body.root) document.title = 'visual-compare — ' + body.root;
+    if (body.root) document.title = 'refdiff — ' + body.root;
   } catch (e) {
     $('index-empty').textContent = 'cannot load the pair list: ' + e.message;
   }
@@ -154,7 +154,7 @@ function route() {
   document.body.classList.toggle('route-report', !!dir);
   if (!dir) {
     currentPair = null;
-    document.title = 'visual-compare';
+    document.title = 'refdiff';
     // The list is cheap and reflects runs finished since load — refresh it.
     void loadPairs();
     return;

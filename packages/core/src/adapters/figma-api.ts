@@ -96,7 +96,7 @@ export interface FigmaClientOptions {
   env?: NodeJS.ProcessEnv;
   /** Where `.figma-token` is looked for (this dir and its parents). Default cwd. */
   cwd?: string;
-  /** Cooldown record location. Default ~/.cache/visual-compare/figma-cooldown.json. */
+  /** Cooldown record location. Default ~/.cache/refdiff/figma-cooldown.json. */
   cooldownFile?: string;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -119,7 +119,7 @@ export async function readToken({ env = process.env, cwd = process.cwd() }: Figm
   }
 }
 
-const defaultCooldownFile = (): string => join(homedir(), ".cache", "visual-compare", "figma-cooldown.json");
+const defaultCooldownFile = (): string => join(homedir(), ".cache", "refdiff", "figma-cooldown.json");
 
 async function readCooldown(file: string): Promise<CooldownRecord | undefined> {
   try {

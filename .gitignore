@@ -7,7 +7,7 @@ dist/
 
 # comparison run artifacts (never commit captures/diffs)
 out/
-.visual-compare/
+.refdiff/
 
 # secrets & tokens
 .figma-token
@@ -23,5 +23,5 @@ assets/
 .idea/
 .vscode/
 
-# pnpm dev watcher log (skills/visual-compare/setup-dev.sh --watch)
+# pnpm dev watcher log (skills/refdiff/setup-dev.sh --watch)
 .dev.log

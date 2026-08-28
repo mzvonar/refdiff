@@ -10,7 +10,7 @@ importers:
 
   packages/annotator:
     dependencies:
-      '@visual-compare/core':
+      '@refdiff/core':
         specifier: workspace:*
         version: link:../core
       sharp:

@@ -1,5 +1,5 @@
 {
-  "name": "@visual-compare/core",
+  "name": "@refdiff/core",
   "version": "0.0.1",
   "description": "Deterministic design-vs-implementation comparison engine with agent-facing output",
   "license": "MIT",
@@ -7,7 +7,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "visual-compare": "./dist/cli.js"
+    "refdiff": "./dist/cli.js"
   },
   "files": [
     "dist"

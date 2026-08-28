@@ -3,10 +3,10 @@
 Design-vs-implementation comparison harness for AI coding agents. Two
 packages, one repo:
 
-- **`@visual-compare/core`** — the deterministic comparison engine and
+- **`@refdiff/core`** — the deterministic comparison engine and
   agent-facing packaging. Zero UI. Usable standalone from any context
   (CLI, library, later possibly a thin MCP wrapper).
-- **`@visual-compare/annotator`** — split-screen design/impl review UI
+- **`@refdiff/annotator`** — split-screen design/impl review UI
   with element-anchored annotations, consuming core's artifacts.
 
 Evidence for every design decision below is in `docs/research.md`.
@@ -76,7 +76,13 @@ Design side:
 - **Claude Design `.dc.html`**: rendered via Playwright. Since the canvas
   is HTML, this adapter also yields DOM boxes + computed styles — the
   richest ref source. Hydration is verified (no `{{…}}` remnants), fonts
-  awaited; failure is a typed error.
+  awaited; failure is a typed error. The canvas opens `CANVAS_SLACK` (120px)
+  wider than the pair viewport so a fixed artboard never reflows against the
+  window edge; a **fluid** frame (full-bleed page comp, width from the
+  viewport) would grow into that slack and capture 120px wider than the impl,
+  so `isFluidFrame` (pure, `adapters/scope.ts`) detects the frame reaching the
+  canvas edge after hydration and the window is snapped to the exact pair
+  viewport before capture (`CaptureScope.fluid`, printed as `scope … fluid`).
 
 Implementation side:
 - **Storybook**: per-story iframe capture with error-page detection; an
@@ -188,7 +194,7 @@ What the model receives — every item evidence-backed (research §4):
   loop iterations on doc-detail never needed a closer look than
   `expected/actual` + the crop pair.
 
-**Decisions are policy, not comp edits (2026-08-28).** `visual-compare accept
+**Decisions are policy, not comp edits (2026-08-28).** `refdiff accept
 <run-dir> --manifest <file>` turns reviewed findings into `accepted` entries in
 an `accepted.json` beside the manifest, which `compare` merges per pair (and
 `--no-accepted` re-opens). Its input is either the annotator's triage — every
@@ -203,9 +209,9 @@ and an empty reason. `AcceptedDeviation.text` was added for the second case —
 a `missing-element` carries no values, so text is the only thing that scopes it
 to one element.
 
-The **skill** — `skills/visual-compare/SKILL.md` (canonical; installed per
+The **skill** — `skills/refdiff/SKILL.md` (canonical; installed per
 consuming repo with a "Repo bindings" section, first in
-`uctoinak-bmad/.claude/skills/visual-compare/`) — enforces loop discipline:
+`uctoinak-bmad/.claude/skills/refdiff/`) — enforces loop discipline:
 run → classify every finding (data / drift / intended deviation /
 environment / needs a human) → act on open annotations → fix → re-run →
 read `delta`; bounded (5 iterations, diminishing-returns cutoff), a
@@ -436,7 +442,7 @@ one-shot). The region-vs-point threshold is in SCREEN px, since at a
 fit-to-phone zoom a 3-world-px wobble is under two real pixels.
 
 **Built (session 8) — the viewer half:** `packages/annotator` renders a
-self-contained `report.html` into a run dir (`visual-compare-annotator
+self-contained `report.html` into a run dir (`refdiff-annotator
 <run-dir> [--serve]`). Pure `renderReport(report, { viewMathSource })` →
 HTML; pure `view-math.ts` (compiled JS embedded verbatim into the page, no
 network, no deps). One world space = impl CSS px (the space every `Finding`
@@ -609,7 +615,7 @@ to `localStorage` otherwise (and says so).
   chars. A long page mentioning "404" in a table cell is NOT an error page.
 - MCP wrapper over the CLI (deferred until the CLI proves out).
 - npm publishing vs git-URL consumption (publishing preferred; scope
-  `@visual-compare` is free as of Aug 2026).
+  `@refdiff` is free as of Aug 2026).
 
 - **Component-set expansion — decided 2026-08-27 (S10): a pure template
   over the set's variant properties, not a discovery heuristic.**
@@ -666,7 +672,7 @@ to `localStorage` otherwise (and says so).
   across pairs is ONE cause: categorical types group on exact `(type, role,
   expected, actual)` like `aggregate`, metric types on `(type, role, axis)`
   with the value spread, presence on `(type, role)`; every group lists its
-  pairs. `renderSummary` is Markdown. `visual-compare summary <out-root>`
+  pairs. `renderSummary` is Markdown. `refdiff summary <out-root>`
   writes `summary.md` + `summary.json` over every run dir under the root; a
   multi-pair `compare` prints the table for the pairs it ran and rewrites
   the root's files. Measured: Alert 153 findings → 10 causes, Button 201 → 16.
@@ -787,5 +793,5 @@ Once the core works end-to-end on one real pair per source type:
 - `uctoinak-bmad/tools/design-compare` → core with the `.dc.html` adapter
   (fixes: 404-as-success, no diff signal, no structured verdict).
 - `population-registry/frontend/ds/tooling/visual` + annotator → core
-  Figma adapter + `@visual-compare/annotator` (fixes: scale mismatch,
+  Figma adapter + `@refdiff/annotator` (fixes: scale mismatch,
   three competing Figma mappings, fraction-based annotation fragility).

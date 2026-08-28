@@ -33,7 +33,7 @@ be pixel-diffed at all, then §4 sub-classification now that real
 
 Ran from population-registry (`ds-alert` 23 cells, `ds-button-fill` 41) and
 uctoinak-bmad (`tx-picker-owner-desktop`). Every stumble became a harness fix
-here: `visual-compare summary` (per-set table + causes across pairs; Alert 153
+here: `refdiff summary` (per-set table + causes across pairs; Alert 153
 findings → 10 causes, Button 201 → 16), Figma fill-width TEXT measured by
 render bounds, decoration hoisting through icon siblings on BOTH sides,
 `accepted.role`, finding identity by text (delta no longer churns when the
@@ -44,8 +44,8 @@ PASS in a reverted trial). Details: handoff "What's DONE (session 11)".
 
 ## 8. The skill — bounded fix loop consuming reports — DONE (session 10)
 
-Built as `skills/visual-compare/SKILL.md` (canonical) + an installed copy
-with repo bindings in `uctoinak-bmad/.claude/skills/visual-compare/`. Two
+Built as `skills/refdiff/SKILL.md` (canonical) + an installed copy
+with repo bindings in `uctoinak-bmad/.claude/skills/refdiff/`. Two
 harness additions the loop needed: a **regression ledger**
 (`resolved-ledger.json` per run dir, pure `recordResolved` /
 `findRegressions` in `package/delta.ts`, `delta.regressions` + a loud
@@ -266,7 +266,7 @@ nodes response recorded as `test/fixtures/figma/nodes-button-fill-set.json`
 
 Landed: `FigmaSource` + six typed errors (`pipeline.ts`), `adapters/figma-api.ts`
 (`FigmaClient`: token from `$FIGMA_TOKEN` / `.figma-token` upwards, 429 →
-cooldown record in `~/.cache/visual-compare/figma-cooldown.json` and
+cooldown record in `~/.cache/refdiff/figma-cooldown.json` and
 `cooling-down` before any request until it passes, chunked `/v1/images` with
 `use_absolute_bounds=true`, variables endpoint optional), pure
 `adapters/figma-tree.ts` (`figmaTreeToElements` → leaves in root-box CSS px,
@@ -304,7 +304,7 @@ the design through the inverse Alignment. 175 tests. Viewer half below.
 
 ### 7 (viewer half, session 8)
 
-`packages/annotator`: `visual-compare-annotator <run-dir> [--out] [--serve
+`packages/annotator`: `refdiff-annotator <run-dir> [--out] [--serve
 --port --host]` writes `report.html` into the run dir — FULL design and FULL
 impl side by side, one shared pan/zoom with the design pane projected through
 `Alignment`, numbered marks on both panes, finding list (severity/text

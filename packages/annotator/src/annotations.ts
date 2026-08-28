@@ -368,7 +368,7 @@ export function digestText(set: AnnotationSet, meta: { runCreatedAt?: string; de
     c.open + " open · " + c.implemented + " implemented · " + c.done + " done" + (meta.runCreatedAt ? " · run " + meta.runCreatedAt : ""),
     "",
     "Numbers match the markers on " + (meta.designPng ?? "annotations-design.png") + " / " + (meta.implPng ?? "annotations-impl.png") + ". Coordinates are impl CSS px (world space).",
-    "Act on `open` notes, then mark them: visual-compare-annotator <run-dir> --mark-implemented <id,…>. The designer closes them as done.",
+    "Act on `open` notes, then mark them: refdiff-annotator <run-dir> --mark-implemented <id,…>. The designer closes them as done.",
     "",
   ];
   for (const status of STATUSES) {

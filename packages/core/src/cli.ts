@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * visual-compare CLI.
+ * refdiff CLI.
  *
  * Implemented:
  *   compare   run the pipeline for one design-frame / storybook-story pair,
@@ -52,9 +52,9 @@ import { alignStructural } from "./structural/align.js"
 import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
 import { matchElements } from "./structural/match.js"
 
-const USAGE = `Usage: visual-compare compare [options]
-       visual-compare summary <out-root> [--json]
-       visual-compare accept <run-dir> [options]
+const USAGE = `Usage: refdiff compare [options]
+       refdiff summary <out-root> [--json]
+       refdiff accept <run-dir> [options]
 
 accept — record "we looked, and the implementation is right" for findings of
 one run, so the next run suppresses them visibly instead of re-reporting them.
@@ -119,7 +119,7 @@ properties ('[data-rowkey="fill:{variant|tone}:…"][data-col="{State}"]'):
   --pair <id[,id…]>       run only these manifest ids
 
 Live app (both modes):
-  --app-url <origin>      origin for relative live routes (default $VC_APP_URL)
+  --app-url <origin>      origin for relative live routes (default $REFDIFF_APP_URL)
   --auth-state <file>     Playwright storageState JSON for the browser context
   --auth-post <url>       POST a JSON session request before navigating
                           (body { role, email: "__test__<role>@example.com",
@@ -142,7 +142,7 @@ Ignore policy (both modes):
                           "role":"text","text":"Pripomenúť","reason":"…"})
   --accepted <file>       decisions file to merge (default: accepted.json next
                           to the manifest, when one exists). Written by
-                          \`visual-compare accept\` — see that command.
+                          \`refdiff accept\` — see that command.
   --no-accepted           ignore the decisions file for this run: every accepted
                           deviation is reported again, which is how you re-review
                           what past runs decided
@@ -193,7 +193,7 @@ set, so a multi-pair run ends with ONE table (pair → verdict, counts, alignmen
 confidence, delta) plus the causes shared across pairs (same type/role/values →
 one row listing how many cells show it), and writes it as summary.md +
 summary.json into the out root. Rebuild it any time from the run dirs:
-  visual-compare summary <out-root>   (--json prints summary.json instead)
+  refdiff summary <out-root>   (--json prints summary.json instead)
 
 Exit codes: 0 pass, 1 findings at/above threshold, 2 capture or usage error.`
 
@@ -229,7 +229,7 @@ interface RunOptions {
   maxGamma?: number
   /** CLI-level policy, merged over the pair's own. */
   policy: IgnorePolicy
-  /** Decisions recorded by `visual-compare accept`, keyed by pair. */
+  /** Decisions recorded by `refdiff accept`, keyed by pair. */
   decisions?: AcceptedFile
   /** Collapse systematic findings (default true). */
   aggregate: boolean
@@ -278,7 +278,7 @@ async function readLedger(outDir: string, pair: string): Promise<ResolvedLedger>
 function resolveLiveUrl(route: string, appUrl: string | undefined): Result<string, string> {
   if (/^https?:\/\//i.test(route)) return ok(route)
   if (!appUrl)
-    return err(`live route "${route}" is relative — pass --app-url <origin> (or $VC_APP_URL)`)
+    return err(`live route "${route}" is relative — pass --app-url <origin> (or $REFDIFF_APP_URL)`)
   return ok(`${appUrl.replace(/\/$/, "")}${route.startsWith("/") ? "" : "/"}${route}`)
 }
 
@@ -292,7 +292,7 @@ function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undef
       kind: "post",
       url: postUrl,
       headers: o.authHeaders,
-      body: { role, email: `__test__${role}@example.com`, name: `visual-compare ${role}` },
+      body: { role, email: `__test__${role}@example.com`, name: `refdiff ${role}` },
     }
   }
   return undefined
@@ -380,7 +380,7 @@ async function runPair(
   if (!design.ok) return err({ side: "design", error: design.error })
   const d = design.value
   console.log(
-    `  ${d.width}x${d.height} css px @${d.dpr}x, ${d.elements.length} leaf elements, scope ${d.scope?.mode ?? "frame"} (${d.scope?.selector ?? "-"})${
+    `  ${d.width}x${d.height} css px @${d.dpr}x, ${d.elements.length} leaf elements, scope ${d.scope?.mode ?? "frame"}${d.scope?.fluid ? " fluid" : ""} (${d.scope?.selector ?? "-"})${
       d.quality
         ? `, design quality ${d.quality.score} (${d.quality.bound}/${d.quality.leaves} bound)`
         : ""
@@ -684,7 +684,7 @@ async function compare(argv: string[]): Promise<void> {
     if (!m?.[1]) fail(`--auth-header must look like "Name: value", got "${h}"`)
     authHeaders[m[1].trim()] = m[2] ?? ""
   }
-  const appUrl = values["app-url"] ?? process.env["VC_APP_URL"]
+  const appUrl = values["app-url"] ?? process.env["REFDIFF_APP_URL"]
   const live: LiveOptions = {
     authHeaders,
     ...(appUrl !== undefined ? { appUrl } : {}),
@@ -838,7 +838,7 @@ async function compare(argv: string[]): Promise<void> {
 
   const outRoot = values.out
 
-  // Decisions recorded by `visual-compare accept`. Default location is next to
+  // Decisions recorded by `refdiff accept`. Default location is next to
   // the manifest, because that is where the pairs are defined and a decision is
   // about a pair; an explicit --accepted overrides, --no-accepted re-opens every
   // past decision for review.
@@ -952,7 +952,7 @@ async function compare(argv: string[]): Promise<void> {
   if (specs.length > 1 && done.length > 0) {
     const root = resolve(outRoot ?? "out")
     console.log(
-      `\n${renderSummary(summarizeReports(done), { title: `visual-compare summary — this run` })}`,
+      `\n${renderSummary(summarizeReports(done), { title: `refdiff summary — this run` })}`,
     )
     await writeSummary(root, await readRunDirs(root))
     console.log(`summary (all run dirs under the root): ${join(root, "summary.md")}`)
@@ -966,7 +966,7 @@ async function writeSummary(
   reports: { dir: string; report: ComparisonReport }[],
 ): Promise<string> {
   const summary = summarizeReports(reports)
-  const text = renderSummary(summary, { title: `visual-compare summary — ${root}` })
+  const text = renderSummary(summary, { title: `refdiff summary — ${root}` })
   await writeFile(join(root, "summary.md"), text)
   await writeFile(join(root, "summary.json"), JSON.stringify(summary, null, 2))
   return text

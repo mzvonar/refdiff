@@ -1,4 +1,4 @@
-# visual-compare
+# refdiff
 
 Design-vs-implementation visual comparison harness for AI coding agents.
 
@@ -14,8 +14,8 @@ opinion.
 
 | Package | What it is |
 |---|---|
-| [`@visual-compare/core`](packages/core) | The comparison engine: pluggable capture adapters (Figma, Claude Design canvases, Storybook, live URLs), alignment, a GVT-style structural channel (element matching + typed checks), a scoped AA-aware pixel channel, and agent-facing packaging (findings.json, per-finding crops, diff mask). CLI + library, zero UI. |
-| [`@visual-compare/annotator`](packages/annotator) | Split-screen design/impl review UI with element-anchored annotations (click = note, drag = region), four ways to register the design onto the impl (the run's own fit, scaled-to-width, top-left, top-right), a designer ⇄ agent feedback loop (`open → implemented → done`), and a diff lab (highlight / focus / strobe / step through the reported diff regions, and superimpose the design over the impl by blink, onion skin, swipe or difference blend). Depends on core. |
+| [`@refdiff/core`](packages/core) | The comparison engine: pluggable capture adapters (Figma, Claude Design canvases, Storybook, live URLs), alignment, a GVT-style structural channel (element matching + typed checks), a scoped AA-aware pixel channel, and agent-facing packaging (findings.json, per-finding crops, diff mask). CLI + library, zero UI. |
+| [`@refdiff/annotator`](packages/annotator) | Split-screen design/impl review UI with element-anchored annotations (click = note, drag = region), four ways to register the design onto the impl (the run's own fit, scaled-to-width, top-left, top-right), a designer ⇄ agent feedback loop (`open → implemented → done`), and a diff lab (highlight / focus / strobe / step through the reported diff regions, and superimpose the design over the impl by blink, onion skin, swipe or difference blend). Depends on core. |
 
 ## Status
 
@@ -26,7 +26,7 @@ the annotator serves the whole out root as one app (pair list → split-screen
 pair view, switchable to one side at a time, which is what a phone always gets)
 with element-anchored human annotations (`open → implemented → done`), a digest
 for the model, and `--emit` for self-contained `report.html` files. The bounded fix loop that consumes all of this is
-[`skills/visual-compare/SKILL.md`](skills/visual-compare/SKILL.md)
+[`skills/refdiff/SKILL.md`](skills/refdiff/SKILL.md)
 (regression ledger + accepted deviations in the CLI); one Figma manifest
 entry expands a COMPONENT_SET into per-variant pairs
 ([`examples/population-registry-ds.manifest.mjs`](examples/population-registry-ds.manifest.mjs)).

@@ -1,13 +1,13 @@
-# visual-compare — working agreement
+# refdiff — working agreement
 
 Design-vs-implementation comparison harness. Two packages
-(`@visual-compare/core`, `@visual-compare/annotator`), pnpm 10 workspace,
+(`@refdiff/core`, `@refdiff/annotator`), pnpm 10 workspace,
 TypeScript/ESM, Node ≥22. Background and rationale: `README.md`,
 `docs/architecture.md`, `docs/research.md`.
 
 ## HARD RULE: the skill ships with the code
 
-**`skills/visual-compare/SKILL.md` is this project's user interface.** Nobody
+**`skills/refdiff/SKILL.md` is this project's user interface.** Nobody
 runs the CLI by reading `cli.ts` — a model reads the skill and does what it
 says. A change to behaviour that is not reflected there does not exist for the
 only caller that matters, and worse: the skill keeps asserting the OLD
@@ -41,7 +41,7 @@ the reader looking for suppressions that no longer happened.
 The skill is installed USER-level and loads in every project. Nothing
 repo-specific goes in it — no paths, org slugs, ports, or fixture names from a
 consuming repo. Each consuming repo carries its own
-`visual-compare.bindings.md` (found via `find`, never a hardcoded path) with
+`refdiff.bindings.md` (found via `find`, never a hardcoded path) with
 its manifest location, how the impl is served, auth, and its own traps. If you
 catch yourself writing a concrete project name into `SKILL.md`, it belongs in
 that repo's bindings instead.
@@ -95,7 +95,7 @@ The CLIs are on PATH via `pnpm link --global` and **run from `dist`**, so a
 source edit is invisible until `pnpm dev` (or `pnpm build`) has rebuilt. If a
 change appears to have no effect, check that first.
 
-`skills/visual-compare/setup-dev.sh` reproduces the whole dev setup on a fresh
+`skills/refdiff/setup-dev.sh` reproduces the whole dev setup on a fresh
 machine and is idempotent.
 
 ## Tests

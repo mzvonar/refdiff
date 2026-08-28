@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>html,body{margin:0;padding:0}a{color:#5b8def}a:hover{color:#7da4f2}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,132,140,.4);border-radius:4px}::-webkit-scrollbar-track{background:transparent}</style>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#0f1012;padding:24px;box-sizing:border-box;font-family:'IBM Plex Sans',system-ui,sans-serif">
+  <div style="display:flex;gap:2px;background:#26282d;border:1px solid #34383e;border-radius:999px;padding:3px">
+    <div style="{{btnLib.style}}" onClick="{{btnLib.onClick}}">Library</div>
+    <div style="{{btnTool.style}}" onClick="{{btnTool.onClick}}">Compare</div>
+  </div>
+  <div style="position:relative;width:390px;height:844px;transform:translateZ(0);overflow:hidden;background:#141518;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+    <sc-if value="{{showLib}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;inset:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(128,132,140,0.4) transparent"><dc-import name="RefDiff Library" mobile="{{ true }}" hint-size="100%,100%"></dc-import></div>
+    </sc-if>
+    <sc-if value="{{showTool}}" hint-placeholder-val="{{true}}">
+      <dc-import name="RefDiff Comparison Tool" mobile="{{ true }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { page: 'tool' };
+  renderVals() {
+    const btn = act => ({ padding: '6px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : '#9aa1aa', background: act ? '#5b8def' : 'transparent' });
+    return {
+      showLib: this.state.page === 'lib', showTool: this.state.page === 'tool',
+      btnLib: { style: btn(this.state.page === 'lib'), onClick: () => this.setState({ page: 'lib' }) },
+      btnTool: { style: btn(this.state.page === 'tool'), onClick: () => this.setState({ page: 'tool' }) }
+    };
+  }
+}
+</script>
+</body>
+</html>

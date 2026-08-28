@@ -1,4 +1,4 @@
-// @visual-compare/annotator
+// @refdiff/annotator
 //
 // Human view of a comparison run: the FULL design and the FULL implementation
 // side by side with one shared pan/zoom (the design pane projected through

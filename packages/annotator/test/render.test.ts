@@ -1,5 +1,5 @@
 import type { AnnotationSet } from "../src/annotations.js"
-import type { ComparisonReport } from "@visual-compare/core"
+import type { ComparisonReport } from "@refdiff/core"
 
 import { describe, expect, it } from "vitest"
 
@@ -74,7 +74,7 @@ describe("renderReport", () => {
 
   it("is a self-contained page referencing the run dir's full images relatively", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true)
-    expect(html).toContain("<title>doc-detail-owner-desktop — visual-compare</title>")
+    expect(html).toContain("<title>doc-detail-owner-desktop — refdiff</title>")
     expect(html).toContain('id="img-design"')
     expect(html).toContain('id="img-impl"')
     // No CDN, no fonts, no absolute URLs — only the run dir's own files are

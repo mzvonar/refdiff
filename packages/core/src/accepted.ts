@@ -1,5 +1,5 @@
 /**
- * Accepted-deviation DECISIONS (pure) — the file behind `visual-compare accept`.
+ * Accepted-deviation DECISIONS (pure) — the file behind `refdiff accept`.
  *
  * "We looked at this difference and the implementation is right" is a decision
  * a person makes once and the harness must then remember. The mechanism already

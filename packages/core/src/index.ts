@@ -1,4 +1,4 @@
-// @visual-compare/core
+// @refdiff/core
 //
 // Pipeline: capture (pluggable adapters) -> normalize -> structural channel
 // (element matching + typed checks) -> ignore policy -> aggregation of

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#2a2b2e}
+a{color:#5b8def;text-decoration:none}a:hover{color:#7da4f2}
+input{outline:none}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed}
+.msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+</style>
+</helmet>
+<div class="cc-theme-dark {{themeClass}}" style="min-height:100vh;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif" data-screen-label="Library">
+  <div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line)">
+    <div style="width:18px;height:18px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+    <span style="font-size:13px;font-weight:700;letter-spacing:0.02em">RefDiff</span>
+    <span class="msi" style="font-size:15px;color:var(--txt2)">chevron_right</span>
+    <span style="font-size:12.5px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Veriflow</span>
+    <div style="flex:1"></div>
+    <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleLayout}}" title="{{layoutTitle}}"><span class="msi" style="font-size:19px">{{layoutIcon}}</span></div>
+    <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+  </div>
+  <div style="max-width:1180px;margin:0 auto;padding:20px 16px 40px;box-sizing:border-box">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:19px;font-weight:700;letter-spacing:-0.01em">Library</span>
+      <span style="font-size:12.5px;color:var(--txt2)">{{countMsg}}</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg1);border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;flex:1;min-width:170px;max-width:340px">
+        <span class="msi" style="font-size:17px;color:var(--txt2)">search</span>
+        <input style="flex:1;background:transparent;border:none;color:var(--txt);font-size:13px;font-family:'IBM Plex Sans',sans-serif;min-width:0" placeholder="Search screens, components&#8230;" value="{{query}}" onChange="{{onQuery}}">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{typeChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}">{{c.label}}</div></sc-for>
+      </div>
+      <div style="width:1px;height:20px;background:var(--line);flex-shrink:0"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{filterChips}}" as="c" hint-placeholder-count="4"><div style="{{c.style}}" onClick="{{c.onClick}}">{{c.label}}</div></sc-for>
+      </div>
+    </div>
+    <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+      <div style="{{mobListStyle}}">
+        <sc-for list="{{cards}}" as="p" hint-placeholder-count="6">
+          <a href="{{p.href}}" style="display:flex;align-items:center;gap:12px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:10px 12px;color:var(--txt);min-height:44px" style-hover="border-color:var(--acc)">
+            <div style="width:44px;height:44px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0"><span class="msi" style="font-size:20px;color:var(--txt2)">{{p.icon}}</span></div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{p.name}}</span>
+                <span style="{{p.typeStyle}}">{{p.typeLabel}}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <sc-for list="{{p.badges}}" as="b" hint-placeholder-count="3"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+                <span style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">chat_bubble</span>{{p.comments}}</span>
+              </div>
+            </div>
+            <span style="{{p.pillStyle}}">{{p.pillLabel}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px">
+        <sc-for list="{{cards}}" as="p" hint-placeholder-count="6">
+          <a href="{{p.href}}" style="display:flex;flex-direction:column;background:var(--bg1);border:1px solid var(--line);border-radius:12px;overflow:hidden;color:var(--txt);cursor:pointer" style-hover="border-color:var(--acc)">
+            <div style="height:120px;background:var(--bg2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;position:relative">
+              <div style="width:64%;height:78%;background:var(--bg3);border-radius:6px 6px 0 0;margin-top:26px;display:flex;align-items:center;justify-content:center"><span class="msi" style="font-size:24px;color:var(--txt2)">{{p.icon}}</span></div>
+              <span style="{{p.pillStyle}}">{{p.pillLabel}}</span>
+            </div>
+            <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13.5px;font-weight:600;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{p.name}}</span>
+                <span style="{{p.typeStyle}}">{{p.typeLabel}}</span>
+              </div>
+              <span style="font-size:11.5px;color:var(--txt2);font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{p.route}}</span>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{p.badges}}" as="b" hint-placeholder-count="3"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+                <span style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--txt2)"><span class="msi" style="font-size:14px">chat_bubble</span>{{p.comments}}</span>
+                <span style="margin-left:auto;font-size:11px;color:var(--txt2)">{{p.when}}</span>
+              </div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+      <div style="padding:60px 20px;text-align:center;color:var(--txt2);font-size:13px">Nothing matches your search or filter.</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:800},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+const SEV = { high: '#e5484d', medium: '#f5a623', low: '#4c9aff' };
+const PILL = { analyzed: ['Analyzed', '#46a758'], processing: ['Processing', '#f5a623'], queued: ['Queued', '#8f8f96'], clean: ['Clean', '#46a758'] };
+const TYPE = { page: ['Page', 'web'], component: ['Component', 'widgets'], flow: ['Flow', 'route'] };
+const ITEMS = [
+  { id: 'doc', type: 'page', name: 'Onboarding — Document step', route: '/onboarding/document', st: 'analyzed', high: 2, med: 2, low: 2, comments: 3, when: '12 min ago', href: './RefDiff Comparison Tool.dc.html' },
+  { id: 'selfie', type: 'page', name: 'Onboarding — Selfie step', route: '/onboarding/selfie', st: 'analyzed', high: 1, med: 3, low: 0, comments: 1, when: '25 min ago', href: '#' },
+  { id: 'review', type: 'page', name: 'Onboarding — Review step', route: '/onboarding/review', st: 'processing', high: 0, med: 0, low: 0, comments: 2, when: 'running', href: '#' },
+  { id: 'button', type: 'component', name: 'Button', route: 'ds/Button', st: 'analyzed', high: 1, med: 0, low: 1, comments: 0, when: '40 min ago', href: '#' },
+  { id: 'card', type: 'component', name: 'Selection card', route: 'ds/SelectionCard', st: 'analyzed', high: 0, med: 2, low: 0, comments: 1, when: '40 min ago', href: '#' },
+  { id: 'stepper', type: 'component', name: 'Stepper', route: 'ds/Stepper', st: 'clean', high: 0, med: 0, low: 0, comments: 0, when: '40 min ago', href: '#' },
+  { id: 'login', type: 'page', name: 'Login', route: '/auth/login', st: 'clean', high: 0, med: 0, low: 0, comments: 0, when: '1 h ago', href: '#' },
+  { id: 'dash', type: 'page', name: 'Verification dashboard', route: '/dashboard', st: 'analyzed', high: 0, med: 4, low: 3, comments: 5, when: '2 h ago', href: '#' },
+  { id: 'detail', type: 'page', name: 'Result detail', route: '/results/:id', st: 'analyzed', high: 3, med: 1, low: 2, comments: 0, when: '2 h ago', href: '#' },
+  { id: 'modal', type: 'component', name: 'Confirm modal', route: 'ds/ConfirmModal', st: 'queued', high: 0, med: 0, low: 0, comments: 0, when: 'waiting', href: '#' },
+  { id: 'errors', type: 'flow', name: 'Error & empty states', route: '/onboarding/errors', st: 'analyzed', high: 0, med: 1, low: 4, comments: 1, when: 'yesterday', href: '#' }];
+class Component extends DCLogic {
+  state = { theme: null, query: '', filter: 'all', type: 'all', isMobile: false, forceMobile: null };
+  componentDidMount() {
+    this._rs = () => { const m = window.innerWidth < 640; if (m !== this.state.isMobile) this.setState({ isMobile: m }); };
+    this._rs(); window.addEventListener('resize', this._rs);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._rs); }
+  theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  renderVals() {
+    const S = this.state, light = this.theme() === 'light', isM = S.forceMobile ?? this.props.mobile ?? S.isMobile;
+    const q = S.query.trim().toLowerCase();
+    const match = p => {
+      if (S.type !== 'all' && p.type !== S.type) return false;
+      if (q && !(p.name.toLowerCase().includes(q) || p.route.toLowerCase().includes(q))) return false;
+      if (S.filter === 'findings') return p.high + p.med + p.low > 0;
+      if (S.filter === 'high') return p.high > 0;
+      if (S.filter === 'comments') return p.comments > 0;
+      if (S.filter === 'pending') return p.st === 'processing' || p.st === 'queued';
+      return true;
+    };
+    const list = ITEMS.filter(match);
+    const chip = act => ({ padding: isM ? '5px 10px' : '6px 12px', borderRadius: 999, fontSize: isM ? 11.5 : 12, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (act ? 'var(--acc)' : 'var(--line)'), color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'var(--bg1)', whiteSpace: 'nowrap' });
+    const typeChips = [['all', 'All'], ['page', 'Pages'], ['component', 'Components'], ['flow', 'Flows']].map(([id, label]) => ({ id, label, style: chip(S.type === id), onClick: () => this.setState({ type: id }) }));
+    const filterChips = [['all', 'Any state'], ['findings', 'Has findings'], ['high', 'High severity'], ['comments', 'Has comments'], ['pending', 'Pending']].map(([id, label]) => ({ id, label, style: chip(S.filter === id), onClick: () => this.setState({ filter: id }) }));
+    const cards = list.map(p => {
+      const [pl, pc] = PILL[p.st], [tl, icon] = TYPE[p.type];
+      const badges = [['high', p.high], ['medium', p.med], ['low', p.low]].filter(([, n]) => n > 0).map(([sv, n]) => ({
+        label: n, style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600, color: SEV[sv] },
+        dot: { width: 8, height: 8, borderRadius: '50%', background: SEV[sv], display: 'inline-block' }
+      }));
+      if (!badges.length) badges.push({ label: 'No findings', style: { fontSize: 11.5, color: 'var(--txt2)' }, dot: { display: 'none' } });
+      return {
+        ...p, badges, icon, typeLabel: tl,
+        typeStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 999, border: '1px solid var(--line)', color: 'var(--txt2)', flexShrink: 0 },
+        pillLabel: pl,
+        pillStyle: isM
+          ? { padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', color: '#fff', background: pc, flexShrink: 0 }
+          : { position: 'absolute', top: 8, right: 8, padding: '2px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', color: '#fff', background: pc }
+      };
+    });
+    return {
+      themeClass: light ? 'cc-theme-light' : '', themeIcon: light ? 'dark_mode' : 'light_mode',
+      toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
+      layoutIcon: isM ? 'computer' : 'smartphone',
+      layoutTitle: isM ? 'Switch to desktop layout' : 'Switch to mobile layout',
+      toggleLayout: () => this.setState({ forceMobile: !isM }),
+      query: S.query, onQuery: e => this.setState({ query: e.target.value }),
+      countMsg: list.length + ' of ' + ITEMS.length + ' items', typeChips, filterChips, cards,
+      isMobile: isM, isDesk: !isM, empty: list.length === 0,
+      mobListStyle: { display: 'flex', flexDirection: 'column', gap: 8, maxWidth: S.isMobile ? 'none' : 420, margin: '0 auto' }
+    };
+  }
+}
+</script>
+</body>
+</html>
