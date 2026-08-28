@@ -8,6 +8,7 @@ const sources = {
   indexViewSource: "export const CONFIDENCE_GATE = 0.5;",
   triageSource: "export const TRIAGE_STATES = ['fix', 'ignore', 'snooze'];",
   focusSource: "export const FOCUS_HANDLES = ['nw', 'ne', 'se', 'sw', 'move'];",
+  railSource: "export const SUPPRESSED_LABEL = (n) => n + ' suppressed by policy rules';",
 }
 
 describe("renderAppShell", () => {
@@ -40,18 +41,20 @@ describe("renderAppShell", () => {
     expect(html).toContain("page.base + report.artifacts.designPng")
   })
 
-  it("embeds the three import-free modules and refuses one that would close the script", () => {
+  it("embeds the import-free modules and refuses one that would close the script", () => {
     expect(html).toContain(sources.viewMathSource)
     expect(html).toContain(sources.annotationsSource)
     expect(html).toContain(sources.indexViewSource)
     expect(html).toContain(sources.triageSource)
     expect(html).toContain(sources.focusSource)
+    expect(html).toContain(sources.railSource)
     for (const key of [
       "viewMathSource",
       "annotationsSource",
       "indexViewSource",
       "triageSource",
       "focusSource",
+      "railSource",
     ] as const) {
       expect(() => renderAppShell({ ...sources, [key]: "</script><script>alert(1)" })).toThrow()
     }

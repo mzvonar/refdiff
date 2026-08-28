@@ -444,13 +444,33 @@ off disk with no server; the served API also answers the emitted file's own
 `<pair>/api/annotations` shape. The client is shared verbatim between both
 deliveries — it takes its data through `openReport(report, notes, page)` and
 prefixes artifacts with `page.base`, so it never learns which mode it is in.
+Two consequences of that sharing, both paid for once: (1) the client's module
+dependencies must be embedded by BOTH renderers — `renderReport` and
+`renderAppShell` each take every import-free module (`view-math`,
+`annotations`, `triage`, `focus`, `rail`) and `render.test.ts` asserts each
+source is present, because an emitted `report.html` threw a `ReferenceError`
+for weeks after triage/focus were added while the served app worked; (2) the
+shell is ONE document holding both routes, so an id or class chosen for the
+Library collides with the report's — `#layout-toggle` inherited the report
+toolbar's `display:none` at 900px, `.row` and `.badge` picked up the other
+route's rules. New index-route elements carry a route prefix (`lib-…`) and a
+`grep -n 'id="<name>"\|\.<class> ' packages/annotator/src/render.ts
+packages/annotator/src/app-shell.ts` precedes any new name.
 
 > **Superseded in part by the annotator redesign (2026-08-28, phase 3 —
 > `docs/plan-annotator-redesign.md`):** the breakpoint is the comps' 760px,
 > the toolbar is gone (segments in the topbar, a tool strip and floating
 > pills over the canvas), Split/Single is the Split / Full segment and the
-> corner controls are the tool strip. The rail paragraphs below still describe
-> the current rail until phase 4. Phase 6 rewrites this section.
+> corner controls are the tool strip. **Phase 4 (2026-08-28)** moved the
+> rail to the comps' 320px RIGHT panel with Findings / Comments tabs, severity
+> chips, one row per finding with its `prop expected → actual` line and the
+> triage actions in the selected row, a suppressed disclosure, and the
+> comments with the model's `reply` (`--mark-implemented … --reply`); the
+> bottom detail panel and its crop images are gone (the canvas focuses on the
+> selected element instead; the crop PNGs stay in the run dir for the model),
+> and on a phone the rail is the comps' bottom sheet over a fixed canvas —
+> the page no longer scrolls. The rail paragraphs below describe the
+> pre-redesign rail. Phase 6 rewrites this section.
 
 **Phone variant (Mato, 2026-08-27):** a split screen on a 390px-wide phone
 left each pane ~50px tall inside a height-locked page that could not be
@@ -531,6 +551,28 @@ to `localStorage` otherwise (and says so).
 
 - Plain typed async functions with a `Result` union vs an effect system
   (Effect). Starting plain; revisit if composition gets noisy.
+- **A `fonts-not-loaded` capture error** (principle 3, from the annotator
+  redesign phase 1). The `typography` channel reads the computed family,
+  which is the declared stack's first name whether or not its file loaded, so
+  a 404'd `@font-face` is invisible to every finding. The adapter could read
+  `document.fonts` after the load wait and hard-stop (or annotate the capture)
+  when a declared face is not `loaded`. Not built; the skill's pre-flight
+  carries the manual check.
+- **Text runs inside a styled parent** (phase 2 / phase 4). The Claude Design
+  runtime renders every `{{interpolation}}` as its own text node, so the comp's
+  leaf for a chip label carries no border while an impl's
+  `<button>Label</button>` does; today the impl mirrors the comp's markup
+  shape (label in a span). The extractor could instead treat a parent's own
+  text run as a leaf without the parent's decoration on both sides, which
+  would make the comparison markup-shape-agnostic. Decide after the redesign
+  lands; measure the phantom `border` count on a real set first.
+- **`delta.ts` and N same-text findings.** Findings pair across runs by
+  identity key + nearest box; when several findings share a text (the "3" on
+  five badges) and every box moves at once (a font swap, a rail move), one
+  instance can enter the resolved ledger and read as a regression the next
+  run — seen in every phase of the annotator redesign. Worth a unit test with
+  N same-text findings and a whole-set shift, and possibly pairing by relative
+  order within the same-text group before nearest box.
 - `@blazediff/agent` — **decided 2026-08-26: skip as a dependency,
   reference its protocol.** Evaluated against blazediff.dev/apis/agent
   (time-boxed). It is a CLI-driven visual-regression harness (route

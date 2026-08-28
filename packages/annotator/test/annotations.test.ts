@@ -12,6 +12,7 @@ import {
   reproject,
   reprojectAll,
   resolveAnchor,
+  setReply,
   snapToElement,
   transition,
   type Annotation,
@@ -102,6 +103,19 @@ describe("state machine", () => {
     expect(a.status).toBe("open");
   });
 
+  it("keeps the model's reply (gap 19): set, cleared when empty, kept across a later instruction", () => {
+    const impl = transition(note(), "implement", T1);
+    const replied = setReply(impl, "  Bumped the weight to 600.  ", T2);
+    expect(replied).toMatchObject({ reply: "Bumped the weight to 600.", updatedAt: T2, status: "implemented" });
+    expect(setReply(replied, "Bumped the weight to 600.", T2)).toBe(replied);
+    // The designer sends another instruction: the note reopens, the reply stays as history.
+    const again = editNote(replied, "Make the label bolder — and larger", T2);
+    expect(again).toMatchObject({ status: "open", reply: "Bumped the weight to 600." });
+    const cleared = setReply(replied, "", T2);
+    expect(cleared.reply).toBeUndefined();
+    expect(cleared.status).toBe("implemented");
+  });
+
   it("editing the note of an implemented annotation reopens it (the spec changed)", () => {
     const impl = transition(note(), "implement", T1);
     const edited = editNote(impl, "Make the label bolder AND larger", T2);
@@ -160,9 +174,11 @@ describe("parseAnnotationSet", () => {
     expect(parseAnnotationSet({ version: 2, pair: "p", annotations: [] })).toMatchObject({ ok: false });
     expect(parseAnnotationSet({ version: 1, pair: "p", annotations: [{ id: "x" }] })).toMatchObject({ ok: false, error: expect.stringContaining("annotations[0]") });
     expect(parseAnnotationSet({ version: 1, pair: "p", annotations: [note(), note()] })).toMatchObject({ ok: false, error: expect.stringContaining("duplicates") });
-    // Unknown fields are dropped, not kept.
-    const loose = parseAnnotationSet({ version: 1, pair: "p", annotations: [{ ...note(), extra: 1 }] });
+    // Unknown fields are dropped, not kept — the reply is a known one (gap 28: the fixture's
+    // replies used to vanish on the first PUT from the browser).
+    const loose = parseAnnotationSet({ version: 1, pair: "p", annotations: [{ ...note(), extra: 1, reply: "done it" }] });
     expect(loose.ok && "extra" in loose.value.annotations[0]!).toBe(false);
+    expect(loose.ok && loose.value.annotations[0]!.reply).toBe("done it");
   });
 });
 
@@ -171,7 +187,7 @@ describe("digest", () => {
     ...emptySet("figma-button-fill-default"),
     annotations: [
       note({ id: "n1", note: "Use Montserrat here" }),
-      transition(note({ id: "n2", side: "design", shape: { kind: "rect", x: 10, y: 20, w: 30, h: 40 }, anchor: undefined, note: "whole button" }), "implement", T1),
+      setReply(transition(note({ id: "n2", side: "design", shape: { kind: "rect", x: 10, y: 20, w: 30, h: 40 }, anchor: undefined, note: "whole button" }), "implement", T1), "Made the whole button fluid.", T1),
       transition(note({ id: "n3", stale: true, note: "" }), "done", T1),
     ],
   };
@@ -180,9 +196,9 @@ describe("digest", () => {
     const text = digestText(set, { runCreatedAt: T0 });
     expect(text).toContain("1 open · 1 implemented · 1 done · run " + T0);
     expect(text).toContain("## open (1)\n\n1. [n1] impl · point 120,110 · text “Save” at 112,108 40×16\n   Use Montserrat here");
-    expect(text).toContain("## implemented (1)\n\n2. [n2] design · region 10,20 30×40 · no element nearby\n   whole button");
+    expect(text).toContain("## implemented (1)\n\n2. [n2] design · region 10,20 30×40 · no element nearby\n   whole button\n   ↳ reply: Made the whole button fluid.");
     expect(text).toContain("3. [n3] impl · point 120,110 · text “Save” at 112,108 40×16 (STALE: element not found in the current capture)\n   (no text)");
-    expect(text).toContain("--mark-implemented");
+    expect(text).toContain("--mark-implemented <id,…> --reply");
   });
 
   it("draws only that side's annotations, at native resolution through toNative", () => {

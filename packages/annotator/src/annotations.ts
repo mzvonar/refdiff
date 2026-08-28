@@ -59,6 +59,12 @@ export interface Annotation {
   doneAt?: string;
   /** Set by `reproject` when the anchor is missing from the current elements. */
   stale?: boolean;
+  /**
+   * The model's answer to the note (plan, gap 19): what it did, or why not —
+   * written by `--mark-implemented … --reply`, shown under the comment as the
+   * comps draw it. A later instruction (`Send`) keeps the reply as history.
+   */
+  reply?: string;
 }
 
 export interface AnnotationSet {
@@ -138,6 +144,7 @@ export function parseAnnotationSet(raw: unknown, pair?: string): ParseResult {
     if (typeof v["implementedAt"] === "string") a.implementedAt = v["implementedAt"];
     if (typeof v["doneAt"] === "string") a.doneAt = v["doneAt"];
     if (v["stale"] === true) a.stale = true;
+    if (typeof v["reply"] === "string" && v["reply"] !== "") a.reply = v["reply"];
     out.push(a);
   }
   return { ok: true, value: { version: 1, pair: raw["pair"], annotations: out } };
@@ -272,6 +279,18 @@ export function editNote(a: Annotation, note: string, now: string): Annotation {
   return { ...a, note, updatedAt: now };
 }
 
+/** The model's reply to a note. An empty reply clears it. */
+export function setReply(a: Annotation, reply: string, now: string): Annotation {
+  const trimmed = reply.trim();
+  if ((a.reply ?? "") === trimmed) return a;
+  if (trimmed === "") {
+    const { reply: _r, ...rest } = a;
+    void _r;
+    return { ...rest, updatedAt: now };
+  }
+  return { ...a, reply: trimmed, updatedAt: now };
+}
+
 export function createAnnotation(
   input: { id: string; side: Side; shape: Shape; note: string; now: string },
   elements: readonly ElementLike[] = [],
@@ -368,7 +387,7 @@ export function digestText(set: AnnotationSet, meta: { runCreatedAt?: string; de
     c.open + " open · " + c.implemented + " implemented · " + c.done + " done" + (meta.runCreatedAt ? " · run " + meta.runCreatedAt : ""),
     "",
     "Numbers match the markers on " + (meta.designPng ?? "annotations-design.png") + " / " + (meta.implPng ?? "annotations-impl.png") + ". Coordinates are impl CSS px (world space).",
-    "Act on `open` notes, then mark them: refdiff-annotator <run-dir> --mark-implemented <id,…>. The designer closes them as done.",
+    "Act on `open` notes, then mark them: refdiff-annotator <run-dir> --mark-implemented <id,…> --reply \"what you did\". The designer closes them as done.",
     "",
   ];
   for (const status of STATUSES) {
@@ -380,6 +399,7 @@ export function digestText(set: AnnotationSet, meta: { runCreatedAt?: string; de
         n + ". [" + a.id + "] " + a.side + " · " + shapeText(a.shape) + " · " + describeAnchor(a.anchor) + (a.stale ? " (STALE: element not found in the current capture)" : ""),
       );
       lines.push("   " + (a.note.trim() === "" ? "(no text)" : a.note.trim().replace(/\r?\n/g, "\n   ")));
+      if (a.reply) lines.push("   ↳ reply: " + a.reply.replace(/\r?\n/g, "\n     "));
       lines.push("");
     }
   }

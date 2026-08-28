@@ -25,6 +25,8 @@ export interface AppShellOptions {
   triageSource: string
   /** Compiled source of focus.js (an ESM module with no imports). */
   focusSource: string
+  /** Compiled source of rail.js (an ESM module with no imports). */
+  railSource: string
   /**
    * Which out root is being served. Not shown in the chrome (the comp's
    * Library topbar is brand only, gap 8) — it is what the list-load error
@@ -47,6 +49,7 @@ export function renderAppShell(options: AppShellOptions): string {
     options.indexViewSource,
     options.triageSource,
     options.focusSource,
+    options.railSource,
   ]) {
     if (source.includes("</script")) {
       throw new Error("embedded module sources must not contain a closing script tag")
@@ -94,6 +97,7 @@ ${options.annotationsSource}
 ${options.indexViewSource}
 ${options.triageSource}
 ${options.focusSource}
+${options.railSource}
 ${CLIENT}
 ${APP_BOOT}
 </script>

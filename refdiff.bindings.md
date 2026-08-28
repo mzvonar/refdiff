@@ -47,9 +47,13 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture**: the Library pairs sit
-  at 0.90 / 1.00 since phase 2; the compare pairs sit at 0.36 / 0.93 after
-  phase 3 and stay there until phase 4 moves the rail to the comp's side. Do
-  not tune the fixture to raise it — move the markup, and the number follows.
+  at 0.90 / 1.00 since phase 2; the compare pairs at 0.71 / 0.90 after phase
+  4 (the rail on the comp's side). What holds the desktop pair under the
+  Library's numbers is the comp's demo ROW ORDER (plan gap 32 — its findings
+  array lists 1,2,3,7,8,4,5,6; refdiff lists by severity) and its two cause
+  lines (gap 26); neither is the app's to fix. Do not tune the fixture to
+  raise it — a fixture in the comp's order would carry marks out of list
+  order, a shape refdiff never produces.
 - The compare pairs excuse the comp's ARTBOARD vocabulary (`COMPARE_IGNORE.
   textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
   draws the run's PNGs), the two screenshots (`accepted`), and the delta
@@ -85,8 +89,10 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   wall clock, so measure after `node fixtures/make-demo-root.ts --now` (the
   strings agree for an hour) and regenerate without it before committing.
 - **The served app WRITES into the fixture.** Placing a note, a triage verdict
-  or a focus region in the served demo root PUTs `annotations.json` /
-  `triage.json` / `focus.json` (+ digests) into `fixtures/demo-root/<pair>/`.
+  or a focus region in the served demo root (or `Send` / `Mark done` on a
+  comment, or `--mark-implemented … --reply` against it) PUTs
+  `annotations.json` / `triage.json` / `focus.json` (+ digests) into
+  `fixtures/demo-root/<pair>/`.
   That is the annotator working as designed, but it dirties a committed
   fixture: `git checkout fixtures/` or `node fixtures/make-demo-root.ts` before
   a measure, or the impl you measure is not the one you committed.

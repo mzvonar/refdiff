@@ -56,7 +56,8 @@
       },
       "message": "Primary button color mismatch",
       "role": "box",
-      "text": "Continue"
+      "text": "Continue",
+      "key": "color|box|[[\"backgroundColor\",\"#4F46E5\"]]|[[\"backgroundColor\",\"#6366F1\"]]|text:Continue"
     },
     {
       "id": "f2",
@@ -82,7 +83,8 @@
         "padding": "20px"
       },
       "message": "Dropzone inner padding reduced",
-      "role": "box"
+      "role": "box",
+      "key": "spacing|box|[[\"padding\",\"32px\"]]|[[\"padding\",\"20px\"]]"
     },
     {
       "id": "f3",
@@ -109,7 +111,8 @@
       },
       "message": "Heading font-size drift",
       "role": "text",
-      "text": "Upload your ID document"
+      "text": "Upload your ID document",
+      "key": "typography|text|[[\"fontSize\",28]]|[[\"fontSize\",24]]|text:Upload your ID document"
     },
     {
       "id": "f4",
@@ -135,7 +138,8 @@
         "borderRadius": 6
       },
       "message": "Card corner radius mismatch",
-      "role": "box"
+      "role": "box",
+      "key": "border-radius|box|[[\"borderRadius\",12]]|[[\"borderRadius\",6]]"
     },
     {
       "id": "f5",
@@ -163,7 +167,8 @@
         "axis": "x"
       },
       "message": "Step indicator gap tighter",
-      "role": "box"
+      "role": "box",
+      "key": "spacing|box|[[\"axis\",\"x\"],[\"gap\",24]]|[[\"axis\",\"x\"],[\"gap\",16]]"
     },
     {
       "id": "f6",
@@ -189,7 +194,8 @@
         "color": "#9CA3AF"
       },
       "message": "Footer text color drift",
-      "role": "text"
+      "role": "text",
+      "key": "color|text|[[\"color\",\"#6B7280\"]]|[[\"color\",\"#9CA3AF\"]]"
     },
     {
       "id": "g1",
@@ -414,7 +420,8 @@
             "h": 16
           }
         }
-      ]
+      ],
+      "key": "color|text|[[\"color\",\"#6B7280\"]]|[[\"color\",\"#94A3B8\"]]"
     },
     {
       "id": "g2",
@@ -515,7 +522,8 @@
             "h": 22
           }
         }
-      ]
+      ],
+      "key": "position|box|[[\"x\",36],[\"y\",380]]|[[\"x\",36],[\"y\",403]]"
     }
   ],
   "suppressed": [
@@ -546,6 +554,7 @@
       },
       "message": "Text renders 0.4px wider",
       "role": "text",
+      "key": "size|text|[[\"h\",40],[\"w\",430]]|[[\"h\",40],[\"w\",430.4]]",
       "suppressedBy": "accepted",
       "rule": "size w/h ±0.5px on text — font smoothing widens glyphs, not a layout change"
     },
@@ -576,6 +585,7 @@
       },
       "message": "Content 15px narrower",
       "role": "box",
+      "key": "size|box|[[\"h\",740],[\"w\",680]]|[[\"h\",740],[\"w\",665]]",
       "suppressedBy": "accepted",
       "rule": "size w 680→665 on the page box — the scrollbar gutter, present in the browser and absent in the comp"
     },
@@ -605,6 +615,7 @@
       "message": "Placeholder copy differs",
       "role": "text",
       "text": "Front side of ID",
+      "key": "text-content|text|[[\"text\",\"Front side of ID\"]]|[[\"text\",\"Front of document\"]]|text:Front side of ID",
       "suppressedBy": "text-pattern",
       "rule": "^Front (side of ID|of document)$"
     }

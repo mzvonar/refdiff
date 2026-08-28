@@ -41,6 +41,7 @@ import type {
   Severity,
   SuppressedFinding,
 } from "../packages/core/dist/index.js"
+import { identityKey } from "../packages/core/dist/package/delta.js"
 import type { Annotation, AnnotationSet, Shape } from "../packages/annotator/dist/annotations.js"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -162,7 +163,12 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
     expected: Record<string, string | number>,
     actual: Record<string, string | number>,
     extra: Partial<Finding> = {},
-  ): Finding => ({ id, type, severity, mark, designBox: b, implBox: b, expected, actual, message, ...extra })
+  ): Finding => {
+    const f: Finding = { id, type, severity, mark, designBox: b, implBox: b, expected, actual, message, ...extra }
+    // The run-stable identity `packageForModel` stamps on a real run — without it the rail's
+    // triage row can only say "no stable key" (phase 4).
+    return { ...f, key: identityKey(f) }
+  }
 
   const grid = (n: number, at: (i: number) => Box): FindingMember[] =>
     Array.from({ length: n }, (_, i) => ({ designBox: at(i), implBox: at(i) }))

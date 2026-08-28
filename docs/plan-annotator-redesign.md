@@ -250,9 +250,15 @@ One pass over `render.ts` `CSS` + `app-shell.ts` `INDEX_CSS`; no markup moves.
   trending_up undo visibility visibility_off warning width
   ```
 
-  Regenerate the list rather than trusting it if a comp changes:
-  `grep -oh 'class="msi"[^>]*>[a-z_]*<' design/refdiff/*.dc.html` plus the
-  dynamic `icon:`/`Icon:`/ternary references.
+  Regenerate the list rather than trusting it if a comp changes — from BOTH
+  the markup and the script: `grep -oh 'class="msi"[^>]*>[a-z_]*<'
+  design/refdiff/*.dc.html` sees only static markup, and a third of the
+  glyphs are named in state arrays (`toolBtns`, `layerBtns`, `variantBtns`:
+  `pan_tool`, `difference`, `tonality`, `trending_*`…); add a grep for quoted
+  `[a-z_]+` tokens inside the `<script type="text/x-dc">` block and let the
+  Fonts API's `icon_names=` request reject the non-icon words (an unknown
+  name fails the fetch, so the fetch IS the check). A missed glyph renders as
+  its name in letters.
   Store under `packages/annotator/assets/fonts/`, add to the package `files`,
   serve on `/fonts/` from the `handle` hook in `packages/annotator/src/cli.ts`,
   and inline the `@font-face` rules in `CSS`. The emitted (`--emit`) report has
@@ -680,17 +686,16 @@ UNMEASURED by decision (gap 20 / section C — the comp captures its default
 state); each was exercised once headlessly for console errors, none found.
 That is not a parity claim.
 
-Notes for phase 4: the comp's `×N` is `1 + inst.length` (×15 for g1) where
-`rowHtml` shows `×instances` (×14) — settle what `instances` counts when the
-rail rows get their `prop expected → actual` line; `#members` and
-`#ann-status` need their comp homes (the `Primary only · N` chip, the
-save-error surfaces); the detail panel and crops go (gap 13); once the rail
-is 320px on the right, the 36 badge digits and the two offset rows above
-should pair on their own.
+Notes for phase 4 (all settled there): the comp's `×N` is `1 + inst.length`
+(×15 for g1) where `rowHtml` shows `×instances` (×14) — `instances` counts
+every distinct place, the comp's demo repeats the primary (gap 33);
+`#members` → the `Primary only · N` chip and the selected row's instance
+box, `#ann-status` → the row surfaces + the rail status line; the detail
+panel and crops went (gap 13); the badge digits paired once the rail moved.
 
 ---
 
-## 4. Review rail — Findings and Comments — TODO
+## 4. Review rail — Findings and Comments — DONE (2026-08-28)
 
 The biggest single move: the rail goes from a 340px **left** aside to the
 comps' 320px **right** panel with tabs.
@@ -717,7 +722,162 @@ comps' 320px **right** panel with tabs.
 **Exit:** `refdiff-compare-desktop` rail causes measured; both compare pairs
 converging.
 
-**Numbers:** _(fill in)_
+**Numbers (2026-08-28, Linux devbox, `out/refdiff/summary.md`):**
+
+What shipped: `render.ts` `REPORT_BODY` + `CSS` + the rail half of `CLIENT`,
+a new pure `rail.ts` (`propRows` — the `prop expected → actual` line from a
+finding's `expected`/`actual`, CSS spelling, px on the px keys, a `position`
+finding as the shift `translateY 0px → 23px`, a `size` finding as
+`width`/`height`; `railSummary`; `instanceChipLabel` / `aggregateCount`;
+tested), `annotations.ts` `reply` (parsed, kept, `setReply`, in the
+`annotations.md` digest as `↳ reply:`), `cli.ts` `--reply <text>` beside
+`--mark-implemented`. The DOM: `#viewer` first, then `<aside class="rail">`
+— the comps' **320px right panel**: `REVIEW` + `right_panel_close`
+(collapsed → the floating `right_panel_open` + summary chip top-right of the
+canvas), `Findings · N` / `Comments · N` tabs, severity chips with dots and
+counts (+ the `Ignored N` / `Snoozed N` chips only when triage exists), the
+`crop_free` **Primary only · N** / `select_all` **All instances · M** chip
+(gap 12; only while an aggregate is listed), one row per finding (20px
+badge, title, `×N` mono chip, the `undo` **REGRESSION** pill, the triage tag
+`To fix` / `Ignored` / `Snoozed`, the mono prop line with the actual in
+`#e5484d`), and when selected the instance box, **To fix / Ignore / Snooze**
+(the active one again clears — the comps' toggle) and the "Note for the
+model…" input (gap 11); the **suppressed disclosure** (gap 10: `visibility`
+"N suppressed by policy rules" · Show/Hide, rows with the hollow dashed
+badge, the `Suppressed` tag, `filter_alt_off` + `<suppressedBy> · <rule>`
+from findings.json, the manifest note when selected — no Unsuppress / Edit
+rule, section C). Comments: the draft composer (Point / Region comment,
+"Instruction for the model…", Cancel / **Send to model**), rows with the
+status badge + `OPEN` / `IMPLEMENTED` / `DONE`, the text, the model's
+**reply** block (2px `--acc` edge), and when selected "Add another
+instruction…" + **Send** (appends ` — <text>` and reopens — the comps'
+semantics; the reply stays as history) / Mark done / Reopen / Mark
+implemented / Delete. A failed save (section C): the row tints red with the
+3px edge, `cloud_off` **Not saved** + `PUT /api/pairs/<dir>/annotations ·
+<status>` + **Retry**, the canvas badge's red halo, `· N unsaved` in the
+sheet summary; triage rows get the same, a focus save failure the rail's
+status line. Comment shapes and badges are drawn on **both panes** (the
+comps' `ovA.im` / `ovB.im`; the other side lighter) — a note placed on the
+impl was invisible on a phone showing the design. **Selecting focuses the
+canvas** on the element (gap 13): the bottom detail panel, its expected/actual
+table and its crop `<img>`s are gone; the crop PNGs stay in the run dir.
+Mobile: the rail is the comps' **bottom sheet** (44px grip + `N findings · M
+comments` + chevron; 52% when open, the tabs and lists inside) over a fixed
+canvas — the phone page no longer scrolls. The finding text filter survives
+as `/` (gap 31). `#members` / `#ann-status` / `#count` / `#detail` / the
+`.row`/`.chip`/`details` CSS are gone; `showSup` joins `vc-controls`.
+
+Two things fixed on the way: an **emitted `report.html` had thrown a
+ReferenceError since triage/focus were added** (`renderReport` embedded two
+of the five modules the shared client calls — `render.test.ts` now asserts
+every source); and the fixture's findings now carry `key` (via core's
+`identityKey`), so the demo's triage row works instead of saying "no stable
+key".
+
+| pair | before findings (c/M/m) / inst / supp / conf | after findings (c/M/m) / inst / supp / conf |
+| --- | --- | --- |
+| refdiff-compare-desktop | 218 (78/107/33) / 272 / 96 / 0.36 | **51** (10/30/11) / 63 / 64 / **0.71** |
+| refdiff-compare-mobile | 11 (5/6/0) / 11 / 30 / 0.93 | **4** (0/3/1) / 4 / 31 / 0.90 |
+| refdiff-library-desktop | 9 (2/5/2) / 16 / 21 / 0.90 | 9 (2/5/2) / 16 / 21 / 0.90 — unchanged |
+| refdiff-library-mobile | 5 (0/3/2) / 5 / 10 / 1.00 | 5 (0/3/2) / 5 / 10 / 1.00 — unchanged |
+
+Total 243 / 304 → **69 / 88**, 126 suppressed, every one visible under
+`suppressed` (the 30 new ones: the artboard vocabulary now hits the badge
+rows the rail shifted, gap 26's two sentences, `×15` / `×6`, "preset
+rules", the phone summary). "Before" reproduced phase 3's final table
+exactly. Desktop confidence went UP with the count (0.36 → 0.71; X 0.96 /
+Y 0.79); **mobile went DOWN 0.03** (0.93 → 0.90) — gap 34: the comp's
+summary reads `8 findings · 3 comments · 1 unsaved`, ours the true
+`8 findings · 3 comments`, so the one anchor that held the sheet's centre
+is gone and the chevron beside it disagrees by 33.5px. Honest, and the
+comp's demo data to change, not ours.
+
+The staircase, each step measured (desktop / mobile):
+
+1. the rail on the right with the comps' rows, tabs, chips, disclosure,
+   comments and sheet: 218 → **77** (conf 0.36 → 0.75) / 11 → 8 (0.93 →
+   0.90).
+2. chip and tag labels as their own `<span>` (the comps' runtime renders an
+   interpolated label that way, so the extractor's leaf is the text, not our
+   bordered `<button>`: four "border the design does not have" rows) and
+   comment badges on both panes: 77 → **68** / 8 → **5**.
+3. `line-height:normal` on the rail (the report's 1.4 made every chip, tag
+   and prop line 1–2px taller, compounding down the list), the `position`
+   prop line as the shift, and the phase's policy entries: 68 → **51** /
+   5 → **4**.
+
+**Run B — the fixture in the COMP's row order for one run, reverted (gap
+32):** desktop **35** (9/19/7) / conf 0.73 at the final build (42 at step 2).
+The comp lists 1, 2, 3, 7, 8, 4, 5, 6; refdiff lists 1..8. The **16
+findings** between 51 and 35 are that order — every `text reads "4", design
+says "7"`, the `Card corner radius mismatch` ×9 offsets, `8` ×3,
+`translateY` ×3 — and cannot be closed on the app's side (the fixture would
+have to carry marks out of list order, which refdiff never produces).
+Measured into `out/refdiff-runB` so the main ledger stays clean.
+
+**What remains, all read from `findings.json` (51 desktop / 4 mobile):**
+
+- **16 — the row order** (gap 32, above).
+- **~13 — gap 26's height**: the comp's two cause lines make its g1/g2 rows
+  ~20px taller each, so every row and the suppressed toggle under them sit
+  20 / 56px lower in the comp (run B's `color` ×6 dy −20, `translateY` ×15
+  dy −56, `visibility` / `Show` −58). The sentences are excused; the pixels
+  cannot be, and `Finding` has no field to draw them from.
+- **8 — the artboard's own DOM**: the step numerals `1 2 3` (×2 panes) and
+  the 16×16 logo square (×2; the 12×12 one on the phone) are live elements
+  in the comp and pixels in our `impl.png` — the D6 reasoning. Left
+  visible on purpose: a per-digit accept would hide a missing badge.
+- **~10 — same-text digit reshuffles** across the canvas badges and the rail
+  badges (`5` ↔ `4`, `6` ↔ `undo`), which follow the two causes above.
+- **mobile 3 of 4 — gap 34**: `expand_less` −33.5 / the summary +33.5 / the
+  2px spacing under `Design`; the fourth is the logo square.
+- the `arrow_right_alt` ×3 offsets are the prop lines of the rows the order
+  moves.
+
+`REGRESSION` lines: 17 + 1 on run 1, 7 on the final run — all the same-text
+reshuffle shape (`"Show"`, `"visibility"`, `"REGRESSION"`, the arrows), each
+present under the same identity in the ledger from phase 3's intermediate
+runs (17:33) or this phase's run 2 (18:35) and back at a new place now that
+the rows moved. Nothing phase 4 built came undone; the final run's list is
+above.
+
+Causes that closed: the rail side (every `−1029` / `+339` / `+321` offset
+row from phase 3), the 36 badge digits, `REVIEW` / `Findings ·` /
+`Comments ·` / `Critical 2` / `Major 3` / `Minor 3` / `Primary only · 8` /
+`crop_free` / `right_panel_close` / `visibility` / `3 suppressed by …` /
+`undo` / `REGRESSION` drawn or missing, every `prop` / `#hex` / `Npx` /
+`arrow_right_alt` text of the eight prop lines, the old rail's own copy
+(`8 of 8 findings shown`, `all instances`, `annotations.json · 3 loaded`,
+`3 annotations — …`, the anchor descriptions, the `suppressed: …` tags),
+the chip borders, the `Show` / `IMPLEMENTATION` / `pan_tool` rows, the
+sheet's `expand_less` and summary on the phone. Causes that did not: the
+four groups above — two are the comp's demo data (gaps 32, 26), one the
+artboard (D6), one the demo's `saveErr` (gap 34).
+
+Decided in this phase (section E/G):
+
+- **19 → built**: `Annotation.reply`, `--mark-implemented <ids> --reply
+  "…"`, shown under the comment, in the digest; `parseAnnotationSet` keeps
+  it (gap 28 closed).
+- **12 → the comps' chip + the row's instance box**; `instances` counts
+  every distinct place (gap 33 for the comp's ×15).
+- **10 → the disclosure**, no Unsuppress / Edit rule (section C).
+- **3 / 4** live here: the suppressed count is the disclosure's label, the
+  regressions are the row pills (and the strip).
+- **31 (new)** the text filter as `/`; **32 (new)** the comp's row order —
+  ask Mato to move `f4, f5, f6` before `g1` in the demo array; **33 (new)**
+  the comp's `×15`; **34 (new)** the demo `saveErr`.
+- Triage / focus save failures: see section C.
+- **The old free-text editing of a note is replaced by the comps' append**
+  ("Add another instruction…" → ` — <text>`, reopened); `editNote` still
+  backs it, so an implemented note goes back to open as before.
+
+Light theme, the error states, the selected rows, the open Comments tab, the
+draft composer, the failed-save surfaces, the suppressed rows unfolded, the
+collapsed rail and the open sheet ship UNMEASURED by decision (gap 20 /
+section C — the comp captures its default state); each was exercised
+headlessly for console errors at 1360 and 390, none found, and both
+screenshots eyeballed once for a blunder. That is not a parity claim.
 
 ---
 
@@ -750,7 +910,9 @@ justified item by item.
 
 **STATUS 2026-08-28: the design is COMPLETE for phases 0–4.** Every gap below
 is resolved except **18 (keyboard-shortcut hint)**, which is deliberately
-deferred until after phase 4. Two comp refetches on 2026-08-28 closed the rest;
+deferred until after phase 4, and the four phase 4 found while building the
+rail (**31–34**, section G — one product question, three demo-data nits, each
+with its measured cost). Two comp refetches on 2026-08-28 closed the rest;
 `design/refdiff/*.dc.html` in this repo is the authority, verified against the
 remote (Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`).
 
@@ -904,6 +1066,13 @@ by where they surface.
   `/focus`), so show the REAL one, never the demo string. And the design marks
   only comments; **triage verdicts and the focus region also `PUT`** and can
   fail the same way — decide in phase 4 whether they get the same marker.
+  **DECIDED (phase 4):** a triage verdict that did not reach `triage.json`
+  gets the same row surfaces (red tint + 3px edge, `cloud_off` + Not saved
+  + the real `PUT /api/pairs/<dir>/triage` line + Retry) on the finding's
+  row; a focus region has no row, so a failed `PUT …/focus` is named in the
+  rail's status line (the one line at the foot of the rail, otherwise
+  hidden). The comment surfaces are exactly the four above, with
+  `PUT /api/pairs/<dir>/annotations · <status>` as the detail.
 - **Capture settings that keep the pair comparable:** the comp's
   `anchorConfidence` prop defaults to **0.42**, so it renders the low-confidence
   warning — the demo fixture must record `confidence: 0.42`. `showDeltaStrip`
@@ -1005,5 +1174,41 @@ with Mato where the two comps disagree.
     `parseAnnotationSet` drops unknown fields, so a PUT from the browser
     rewrites the file without them until phase 4 adds the field. Regenerate
     (`node fixtures/make-demo-root.ts`) to restore; `git checkout fixtures/`
-    resets anything the served app wrote.
+    resets anything the served app wrote. **CLOSED in phase 4** — the field
+    exists, the parser keeps it, `--reply` writes it.
+
+### G. Found while building the review rail (phase 4, 2026-08-28)
+
+31. **The finding text filter has no drawn home.** The old rail had a
+    "filter findings…" search box; the comp's rail has severity chips, the
+    instance chip, the focus region and the delta strip's Review as its only
+    filters. Kept as a keyboard affordance (`/` opens a search row above the
+    chips, Esc clears and closes it — nothing drawn in the default state, so
+    the capture matches), like the other unhinted shortcuts (gap 18). Mato:
+    draw it, bless the shortcut, or drop it.
+32. **The comp lists the demo findings in its ARRAY order, not by severity.**
+    `findings: [f1, f2, f3, g1, g2, s1, s2, s3, f4, f5, f6]` renders the rows as
+    1, 2, 3, 7, 8, 4, 5, 6. refdiff's `applyPolicy` renumbers kept findings in
+    list order (severity-sorted), so a real report ALWAYS lists 1..N in order
+    and the app follows the report; a fixture in the comp's order would carry
+    marks out of list order — a shape refdiff never produces. Measured in
+    phase 4 (run B, the fixture reordered for one run and reverted): the
+    order alone is **26 findings** on `refdiff-compare-desktop` (68 → 42 at
+    the same build; the final numbers are in the phase's table). Ask: move
+    `f4, f5, f6` before `g1` in the comp's demo array (the numbers already
+    agree — `num: 4, 5, 6` — only the array position differs). Nothing to
+    change in the app.
+33. **`×15` / `×6` in the comp count the primary twice.** The row label is
+    `1 + inst.length`, and `inst[0]` repeats `rect` (both `REP(n, i => …)`
+    grids start at the primary's position), so g1's fourteen distinct places
+    read "×15". refdiff's `instances` counts every distinct place, primary
+    included (×14 / ×5). Excused as designer data by a content-shaped pattern
+    (`^×(15|6)$`) until the comp drops `inst[0]` or shows `inst.length`.
+34. **The demo comment c2 carries a `saveErr`.** The failed-save DESIGN (section
+    C) is right, but as demo data it shows through the phone sheet's summary
+    (`8 findings · 3 comments · 1 unsaved`) and shifts it 33px; a failed save is
+    runtime state a fixture cannot hold. The summary text is accepted with that
+    reason; the two position findings under it (`expand_less`, the summary)
+    are the cost until the demo's `saveErr` is `null`. The app shows exactly
+    those words when a PUT really fails.
 

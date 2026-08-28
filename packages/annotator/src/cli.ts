@@ -4,7 +4,7 @@
  * loop back to the agent.
  *
  *   refdiff-annotator <run-dir|out-root> [--out report.html] [--serve] [--port 7378]
- *                                      [--host 0.0.0.0] [--mark-implemented <id,…|all>] [--digest]
+ *                                      [--host 0.0.0.0] [--mark-implemented <id,…|all> [--reply <text>]] [--digest]
  *
  * Reads <run-dir>/findings.json (a ComparisonReport written by `refdiff
  * compare`), writes a self-contained report.html INTO the run dir (it links
@@ -47,6 +47,7 @@ import {
   emptySet,
   parseAnnotationSet,
   reprojectAll,
+  setReply,
   transition,
   type AnnotationSet,
 } from "./annotations.js"
@@ -74,9 +75,10 @@ const USAGE = `Usage: refdiff-annotator <run-dir|out-root> [options]
 
 Writes <run-dir>/report.html: the FULL design and FULL implementation side by
 side, one shared pan/zoom (the design pane is projected through the run's
-Alignment), numbered finding marks on both panes, the finding list with
-expected/actual and crops, suppressed findings and the delta — plus human
-annotations (notes/regions anchored to elements, open → implemented → done).
+Alignment), numbered finding marks on both panes, the review rail with each
+finding's expected → actual, the suppressed findings and the delta — plus human
+comments (notes/regions anchored to elements, open → implemented → done, with
+the model's reply under each).
 
 Point it at an OUT ROOT (the parent of many run dirs) instead and it renders
 every pair plus <out-root>/index.html — one card per pair, each report linking
@@ -104,6 +106,9 @@ Options:
                    the agent acted on these open notes: open → implemented
                    ("all" = every open note); rewrites annotations.json + digest.
                    Single run dir only — note ids are per pair
+  --reply <text>   with --mark-implemented: the agent's answer, shown under
+                   the comment in the app ("what I did / why not"); the same
+                   text goes on every note marked in this call
   --digest         (re)write the digest files even when nothing changed
   -h, --help
 
@@ -666,6 +671,7 @@ async function main(): Promise<void> {
     port?: string
     host?: string
     "mark-implemented"?: string
+    reply?: string
     digest?: boolean
     help?: boolean
   }
@@ -681,6 +687,7 @@ async function main(): Promise<void> {
         port: { type: "string" },
         host: { type: "string" },
         "mark-implemented": { type: "string" },
+        reply: { type: "string" },
         digest: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
@@ -701,6 +708,8 @@ async function main(): Promise<void> {
     return usageError("--out takes a single run dir; a set writes each report into its own dir")
   if (set_ && values["mark-implemented"] !== undefined)
     return usageError("--mark-implemented takes a single run dir — note ids are per pair")
+  if (values.reply !== undefined && values["mark-implemented"] === undefined)
+    return usageError("--reply goes with --mark-implemented: it answers the notes being marked")
 
   const sources = await readEmbeddedSources()
 
@@ -722,6 +731,9 @@ async function main(): Promise<void> {
         values,
         viewMathSource: sources.viewMath,
         annotationsSource: sources.annotations,
+        triageSource: sources.triage,
+        focusSource: sources.focus,
+        railSource: sources.rail,
         indexHref: set_ ? "../index.html" : undefined,
         quiet: set_,
       })
@@ -765,18 +777,20 @@ interface EmbeddedSources {
   indexView: string
   triage: string
   focus: string
+  rail: string
 }
 
-/** The three import-free modules the page embeds verbatim. */
+/** The import-free modules the page embeds verbatim. */
 async function readEmbeddedSources(): Promise<EmbeddedSources> {
-  const [viewMath, annotations, indexView, triage, focus] = await Promise.all([
+  const [viewMath, annotations, indexView, triage, focus, rail] = await Promise.all([
     readFile(new URL("./view-math.js", import.meta.url), "utf8"),
     readFile(new URL("./annotations.js", import.meta.url), "utf8"),
     readFile(new URL("./index-view.js", import.meta.url), "utf8"),
     readFile(new URL("./triage.js", import.meta.url), "utf8"),
     readFile(new URL("./focus.js", import.meta.url), "utf8"),
+    readFile(new URL("./rail.js", import.meta.url), "utf8"),
   ])
-  return { viewMath, annotations, indexView, triage, focus }
+  return { viewMath, annotations, indexView, triage, focus, rail }
 }
 
 function shellSources(sources: EmbeddedSources) {
@@ -786,13 +800,17 @@ function shellSources(sources: EmbeddedSources) {
     indexViewSource: sources.indexView,
     triageSource: sources.triage,
     focusSource: sources.focus,
+    railSource: sources.rail,
   }
 }
 
 interface RenderRunOptions {
-  values: { out?: string; digest?: boolean; serve?: boolean; "mark-implemented"?: string }
+  values: { out?: string; digest?: boolean; serve?: boolean; "mark-implemented"?: string; reply?: string }
   viewMathSource: string
   annotationsSource: string
+  triageSource: string
+  focusSource: string
+  railSource: string
   indexHref?: string | undefined
   /** A set prints one line per pair, not the single-run paragraph. */
   quiet: boolean
@@ -833,16 +851,20 @@ async function renderRun(
     for (const id of wanted ?? [])
       if (!known.has(id)) return usageError(`--mark-implemented: no annotation ${id}`)
     let n = 0
+    const reply = values.reply
     set = {
       ...set,
       annotations: set.annotations.map((a) => {
         if (wanted && !wanted.has(a.id)) return a
-        const next = transition(a, "implement", now)
+        let next = transition(a, "implement", now)
         if (next !== a) n++
+        // The reply answers the note whether or not the transition applied (a
+        // note already implemented can still get the model's answer).
+        if (reply !== undefined) next = setReply(next, reply, now)
         return next
       }),
     }
-    console.log(`marked ${n} annotation${n === 1 ? "" : "s"} implemented`)
+    console.log(`marked ${n} annotation${n === 1 ? "" : "s"} implemented${reply !== undefined ? " with a reply" : ""}`)
   }
   const changed = set !== stored
   if (changed) await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(set, null, 2))
@@ -854,6 +876,9 @@ async function renderRun(
   const html = renderReport(report, {
     viewMathSource: options.viewMathSource,
     annotationsSource: options.annotationsSource,
+    triageSource: options.triageSource,
+    focusSource: options.focusSource,
+    railSource: options.railSource,
     annotations: set,
     indexHref: options.indexHref,
   })

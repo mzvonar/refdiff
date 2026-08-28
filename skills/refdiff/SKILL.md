@@ -243,7 +243,10 @@ instructions from the reviewer anchored to an element (world coordinates +
 the element's text/role/box, marker numbers on `annotations-design.png` /
 `annotations-impl.png`). Act on them before the findings they overlap; when
 a note contradicts a finding, the note wins — and you say so in the report.
-`stale` notes lost their element: read them, do not guess.
+`stale` notes lost their element: read them, do not guess. A `↳ reply:` line
+under a note is what the model answered last time; a note that is `open`
+again UNDER a reply carries a follow-up instruction appended to its text
+(`… — <new instruction>`) — act on the latest part.
 
 A note may well come from the annotator's **diff lab** (the tool strip's
 Highlight / Dim / Strobe, `[` `]` to step the highlighted boxes, and the
@@ -323,8 +326,14 @@ repo bindings). Read `delta`:
 Then mark the notes you acted on:
 
 ```bash
-refdiff-annotator $RUN_DIR --mark-implemented <id,…|all>     # open → implemented; the designer closes them as done
+refdiff-annotator $RUN_DIR --mark-implemented <id,…> --reply "what you did, or why not"   # open → implemented; the designer closes them as done
 ```
+
+`--reply` is the one line the reviewer sees under their comment in the
+annotator (and the next run's `annotations.md`). Say what changed and where
+(`file:line`), or why you did not act; one reply per call, so mark notes
+one at a time when the answers differ. `--mark-implemented all` without
+`--reply` still works but leaves the reviewer guessing.
 
 ### 5. Bounds — when to stop
 
@@ -351,7 +360,12 @@ Every pair in a manifest may carry an `ignore` block. It is the durable place
 for a judgement you have already made; making it once beats re-judging the same
 findings every run. **Nothing here deletes a finding** — suppressed findings
 travel in `findings.json` under `suppressed`, tagged with the rule that hit
-them, so a wrong policy is auditable rather than invisible.
+them, so a wrong policy is auditable rather than invisible. A `textPatterns`
+regex is tested against the finding's `text` IN FULL, then the strings quoted
+in its message and the `expected` / `actual` text — so an anchored `^…$`
+pattern can excuse a long label; if a rule "does not fire", print those
+strings for the finding before touching the regex (display strings are not
+data strings).
 
 ```js
 {
@@ -396,12 +410,26 @@ and a harness that guesses it goes quiet about copy regressions. Read the
    findings, or every `typography` finding naming the same fallback family).
 2. **Data** — make the fixture/seed render the comp's data. This is what lifts
    alignment confidence; policy cannot.
-3. **Alignment** — `ignore.scope`, viewport/height, using the per-axis split.
-4. **Only then** the real drift, and only then write policy for what is left.
+3. **Order** — on any list, grid or panel of repeated rows, compare the ORDER
+   of the shared anchors on both sides before reading one finding. refdiff
+   pairs row N with row N, so a different order reads as a `text-content` /
+   `color` / `typography` finding on every pill, badge and chip of every row
+   (one Library page: 208 → 101 findings and confidence 0.20 → 0.76 from the
+   sort alone). Fix the sort or the fixture's sort key first, then re-run. If
+   the order is the comp's OWN data (a demo array listed by hand) and the impl
+   sorts by a real rule, it is a design gap — say so, do not bend the fixture.
+4. **Alignment** — `ignore.scope`, viewport/height, using the per-axis split.
+5. **Only then** the real drift, and only then write policy for what is left.
 
-Doing 4 before 1–3 means fixing artefacts, and the delta will not stick.
+Doing 5 before 1–4 means fixing artefacts, and the delta will not stick.
 
 ## Reading the measurements (the ported "what to compare" checklist)
+
+refdiff measures the comp's captured RENDER, and the render is what the
+designer approved. When a rule in the comp's source visibly does not apply in
+`elements.json` (a `max-width` the layout never hits, a style behind a
+non-default prop), match the render and write the discrepancy down for the
+designer — do not code the source and eat the finding.
 
 The old checklist sampled pixels and computed styles by hand. Each of its
 items is now a typed finding — read it there:
@@ -421,8 +449,22 @@ items is now a typed finding — read it there:
   holds both trees in world space if you need a box the findings do not show.
 - **Presence** → `missing-element` / `extra-element` with the element's text
   or role and size. Icons and glyph swaps (Upload vs ChevronsUpDown) land
-  here or in `pixel-region`.
-- **Borders / radii** → `border` (width, color ΔE), `border-radius`.
+  here or in `pixel-region`. The extractor sees DOM text only: a number or
+  label drawn as SVG `<text>` (a badge, a chart tick) measures as MISSING
+  however right it looks — whatever the comp draws as DOM text must be DOM
+  text in the impl to be matched at all.
+- **Borders / radii** → `border` (width, color ΔE), `border-radius`. One
+  shape to recognise: a `border` / `border-radius` finding on a CHIP or TAG
+  LABEL ("border the design does not have", "radius 12px, design says 0px")
+  where both sides clearly draw the same pill is usually a LEAF-shape
+  mismatch, not a missing border — a design runtime that wraps every label
+  in its own `<span>` makes the text the leaf (no border of its own), while
+  a `<button>Label</button>` IS the leaf and carries the pill's border. The
+  same runtime splits `Positions unreliable · {{pct}} anchor match` into
+  three leaves, so an impl that writes one string gets a phantom
+  `missing-element` per piece. Match the markup shape (each interpolated
+  value in its own span — harmless markup) rather than removing a border or
+  re-wording the copy.
 - **Pixels** → `pixel-region` only inside matched boxes ≥ 16 px that are not
   text and not already reported; `actual.diffRatio` plus
   `actual.changeKind`: `shape` (a different glyph or drawing — the story's
@@ -456,6 +498,20 @@ failure shapes that recur everywhere and impersonate product bugs.
   SQL and a cached read still serves the old answer — typically as a soft 404
   (HTTP **200** with a not-found body, so only a content check catches it).
   Restart the app after seeding, then re-capture.
+- **A matching `fontFamily` does not prove the font loaded.** The
+  `typography` channel reads the COMPUTED family — the declared stack's first
+  name whether or not its woff2 arrived — so a 404'd `@font-face` reports the
+  right family on both sides while the pixels are the system font, and no
+  finding says so (the loud case, every finding naming the fallback family, is
+  the one below). Pair any self-hosted or newly wired font with a load check:
+  `[...document.fonts]` statuses in the captured page, or an audit of zero
+  non-200 font requests.
+- **A comp's prop DEFAULTS decide what gets captured.** A `.dc.html` comp is
+  captured in its default state; a designed state behind a non-default prop
+  (`showDeltaStrip: false`, an `errorState` selector) ships UNMEASURED and any
+  impl that draws it pays a layout shift against the capture. Read the
+  `data-props` block first; ask the designer to flip a default that should
+  be the demo state, and list the rest as unmeasured by decision.
 - **CSS variables set on a decorator wrapper do not reach portalled content.**
   Dialogs and sheets portal to `<body>`; if the font/theme variables live on a
   Storybook decorator `<div>`, overlay stories render in the browser default and

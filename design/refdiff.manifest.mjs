@@ -76,6 +76,29 @@ const COMPARE_IGNORE = {
     },
   ],
 }
+// Phase 4 — the review rail. What the comp draws that refdiff's data cannot say,
+// each named by its CONTENT so the rule expires when the comp changes:
+//  - gap 26: the comp's aggregates carry a second "cause" line; `Finding` has
+//    no such field (the message IS the title), so the two sentences are
+//    designer data.
+//  - gap 33: the comp's `×15` / `×6` count `1 + inst.length` where `inst[0]`
+//    repeats the primary rect — an off-by-one in the demo data; refdiff's
+//    `instances` counts every distinct place (×14 / ×5).
+//  - the suppressed disclosure says "by preset rules" in the comp; refdiff has
+//    no presets — the rules are the manifest's ignore policy (section C).
+COMPARE_IGNORE.textPatterns.push(
+  "^(Muted label token resolves to the wrong grey|Section padding change pushes the whole row down)$",
+  "^×(15|6)$",
+  "^\\d+ suppressed by preset rules$",
+)
+COMPARE_IGNORE.accepted.push(
+  {
+    type: "text-content",
+    expected: { text: "8 findings · 3 comments · 1 unsaved" },
+    actual: { text: "8 findings · 3 comments" },
+    reason: "gap 34: the comp's demo comment c2 carries a saveErr, so its phone sheet summary says '· 1 unsaved'; a failed save is runtime state the fixture cannot carry — the app shows the same words when a PUT really fails",
+  },
+)
 // gap 29 (RESOLVED 2026-08-28: `showDeltaStrip` defaults to true in the comp,
 // flipped at Mato's request): both sides draw the delta strip. Its COPY is
 // still designer data — the Tool comp says "Run 47 vs 46 · −6 resolved", the

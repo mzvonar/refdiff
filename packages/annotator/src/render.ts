@@ -17,9 +17,10 @@
  * introduces instead of letting the eye read it as drift.
  *
  * The HTML references the run directory's artifacts by relative path
- * (design.png, impl.png, crops/…), so it must be written INTO the run dir
- * (or served from it). No network, no dependencies: the view math is the
- * compiled `view-math.js` embedded verbatim into an inline module script.
+ * (design.png, impl.png), so it must be written INTO the run dir (or served
+ * from it). No network, no dependencies: the pure modules (view-math,
+ * annotations, triage, focus, rail) are embedded verbatim into an inline
+ * module script.
  *
  * The chrome follows the RefDiff comps (docs/plan-annotator-redesign.md,
  * phase 3): a 46px topbar (back, brand, pair title; the Split / Full,
@@ -28,10 +29,14 @@
  * something, a 44px tool strip beside the canvas (pan, focus, comment,
  * highlight, dim, strobe), and floating pills over the canvas (zoom, the
  * Design / Impl switch in Full mode, overlay opacity, the align pill with its
- * lock, dropdown and confidence warning, the focus chip). On a phone
- * (< 760px, the comps' breakpoint) the page scrolls, the viewer sticks to
- * the top showing ONE side at a time, the tools float over the canvas and
- * the finding list flows underneath (phase 4 turns it into the bottom sheet).
+ * lock, dropdown and confidence warning, the focus chip), and the 320px
+ * review rail on the right (phase 4): Findings / Comments tabs, severity
+ * chips, one row per finding with its `prop expected → actual` line, the
+ * suppressed disclosure, the comments with the model's replies. Selecting a
+ * row focuses the canvas on the element — the canvas is the crop; the crop
+ * PNGs stay in the run dir for the model. On a phone (< 760px) one side
+ * shows at a time, the tools float over the canvas and the rail is the
+ * comps' bottom sheet.
  */
 
 import type { ComparisonReport } from "@refdiff/core"
@@ -44,6 +49,12 @@ export interface RenderOptions {
   viewMathSource: string
   /** Compiled source of annotations.js (an ESM module with no imports). */
   annotationsSource: string
+  /** Compiled source of triage.js (an ESM module with no imports). */
+  triageSource: string
+  /** Compiled source of focus.js (an ESM module with no imports). */
+  focusSource: string
+  /** Compiled source of rail.js (an ESM module with no imports). */
+  railSource: string
   /** Annotations to embed (the page prefers the live API when served). */
   annotations?: AnnotationSet
   /**
@@ -71,11 +82,16 @@ export const embedJson = (value: unknown): string =>
 
 export function renderReport(report: ComparisonReport, options: RenderOptions): string {
   const title = options.title ?? `${report.pair} — refdiff`
-  if (
-    options.viewMathSource.includes("</script") ||
-    options.annotationsSource.includes("</script")
-  ) {
-    throw new Error("embedded module sources must not contain a closing script tag")
+  for (const source of [
+    options.viewMathSource,
+    options.annotationsSource,
+    options.triageSource,
+    options.focusSource,
+    options.railSource,
+  ]) {
+    if (source.includes("</script")) {
+      throw new Error("embedded module sources must not contain a closing script tag")
+    }
   }
   const annotations = options.annotations ?? emptySet(report.pair)
   return `<!doctype html>
@@ -94,6 +110,9 @@ ${REPORT_BODY}
 <script type="module">
 ${options.viewMathSource}
 ${options.annotationsSource}
+${options.triageSource}
+${options.focusSource}
+${options.railSource}
 ${CLIENT}
 ${EMBEDDED_BOOT}
 </script>
@@ -147,21 +166,6 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
   </div>
 </div>
 <main>
-  <aside id="side">
-    <button type="button" class="rail-toggle" id="rail-toggle" aria-expanded="false" aria-controls="rail-body"></button>
-    <div class="rail-body" id="rail-body">
-      <div class="filters">
-        <input id="q" type="search" placeholder="filter findings…" aria-label="filter findings">
-        <div class="chips" id="sev-chips"></div>
-        <label class="members"><input type="checkbox" id="members"> all instances</label>
-        <span id="ann-status" class="annstatus"></span>
-      </div>
-      <div id="count" class="count"></div>
-      <ol id="list" class="list"></ol>
-      <details id="suppressed-box"><summary id="suppressed-summary"></summary><ol id="suppressed" class="list"></ol></details>
-      <details id="ann-box" open><summary id="ann-summary"></summary><ol id="ann-list" class="list"></ol></details>
-    </div>
-  </aside>
   <section id="viewer">
     <div class="work">
       <div class="tools" id="tools">
@@ -199,10 +203,29 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
         </div>
         <div class="focus-chip" id="focus-chip" hidden><span class="msi" aria-hidden="true">center_focus_strong</span><span id="focus-msg"></span><button type="button" id="focus-clear">Clear</button></div>
         <div class="lab-note" id="lab-note" hidden></div>
+        <button type="button" class="rail-fab" id="rail-expand" title="Open review panel"><span class="msi" aria-hidden="true">right_panel_open</span><span id="rail-fab-summary"></span></button>
       </div>
     </div>
-    <div id="detail" class="detail"></div>
   </section>
+  <aside id="side" class="rail">
+    <button type="button" class="rail-handle" id="rail-toggle" aria-expanded="false" aria-controls="rail-panels"><span class="grip" aria-hidden="true"></span><span id="rail-summary"></span><span class="msi chev" aria-hidden="true">expand_less</span></button>
+    <div class="rail-head"><span class="rail-title">Review</span><button type="button" class="rail-icon" id="rail-collapse" title="Collapse panel"><span class="msi" aria-hidden="true">right_panel_close</span></button></div>
+    <div class="rail-tabs" role="tablist"><button type="button" class="rtab" data-tab="findings" role="tab">Findings · <span id="tab-f-count"></span></button><button type="button" class="rtab" data-tab="items" role="tab">Comments · <span id="tab-i-count"></span></button></div>
+    <div class="rail-panels" id="rail-panels">
+      <div class="rail-panel" id="panel-findings">
+        <div class="rail-filters">
+          <div class="fsearch" id="fsearch" hidden><span class="msi" aria-hidden="true">search</span><input id="q" type="search" placeholder="Filter findings…" aria-label="filter findings" autocomplete="off"></div>
+          <div class="sevchips" id="sev-chips"></div>
+          <div class="instrow" id="inst-row" hidden></div>
+        </div>
+        <div class="rail-scroll" id="flist"></div>
+      </div>
+      <div class="rail-panel" id="panel-items" hidden>
+        <div class="rail-scroll" id="ilist"></div>
+      </div>
+      <div class="rail-status" id="rail-status" hidden></div>
+    </div>
+  </aside>
 </main>`
 
 /** Boot for an emitted file: the data is already in the page. */
@@ -282,59 +305,151 @@ body { display:flex; flex-direction:column; }
 .delta-strip .dismiss { margin-left:auto; width:24px; height:24px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
 .delta-strip .dismiss:hover { background:var(--bg3); }
 .delta-strip .dismiss .msi { font-size:16px; }
-/* ---- the rail (phase 4 moves it to the comps' right-hand review panel) */
-main { flex:1; display:grid; grid-template-columns:340px 1fr; min-height:0; }
-aside { border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; background:var(--bg1); }
-.filters { padding:8px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid var(--line); }
-.filters input[type=search] { width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); }
-.filters .members { color:var(--txt2); display:flex; gap:4px; align-items:center; font-size:12px; }
-.annstatus { color:var(--txt2); font-size:11px; }
-.annstatus.err { color:var(--critical); }
-.chips { display:flex; gap:6px; }
-.chip { cursor:pointer; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--txt2); user-select:none; }
-.chip.on { color:var(--txt); border-color:currentColor; }
-.chip.triage-chip.on.ignore { color:var(--txt); border-color:var(--ignore); }
-.chip.triage-chip.on.snooze { color:var(--snooze); border-color:var(--snooze); }
-.chip.critical.on { color:var(--critical); } .chip.major.on { color:var(--major); } .chip.minor.on { color:var(--minor); }
-.count { padding:4px 10px; color:var(--txt2); font-size:12px; }
-.list { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
-.row { display:grid; grid-template-columns:34px 1fr; gap:6px; padding:6px 10px; border-bottom:1px solid var(--line); cursor:pointer; }
-.row:hover { background:rgba(127,127,127,.08); } .row.sel { background:var(--bg2); }
-.row .num { font-weight:700; text-align:center; border-radius:6px; color:#fff; padding:1px 0; align-self:start; font-size:12px; }
-.num.critical,.sev.critical { background:var(--critical); } .num.major,.sev.major { background:var(--major); color:#111; } .num.minor,.sev.minor { background:var(--minor); }
-.row .msg { color:var(--txt); }
-.row .meta { color:var(--txt2); font-size:11px; }
-.row .tag { display:inline-block; padding:0 5px; border:1px solid var(--line); border-radius:4px; margin-right:4px; }
-details { border-top:1px solid var(--line); max-height:40%; display:flex; flex-direction:column; }
-details summary { padding:6px 10px; color:var(--txt2); cursor:pointer; }
-details[open] .list { max-height:30vh; }
-/* triage — a verdict on a finding, and the region filter */
-.verdict { display:inline-block; padding:0 6px; border-radius:4px; font-size:11px; font-weight:600; color:#fff; }
-.verdict.fix { background:var(--fix); } .verdict.ignore { background:var(--ignore); color:#fff; } .verdict.snooze { background:var(--snooze); }
-.row.triaged-ignore .msg, .row.triaged-snooze .msg { color:var(--txt2); }
-.triage { margin-top:8px; border-top:1px solid var(--line); padding-top:8px; }
-.triage .actions { gap:6px; align-items:center; }
-.verdict-btn.on.fix { border-color:var(--fix); color:var(--fix); }
-.verdict-btn.on.ignore { border-color:var(--ignore); color:var(--txt); }
-.verdict-btn.on.snooze { border-color:var(--snooze); color:var(--snooze); }
-.triage-none { color:var(--txt2); font-style:italic; }
-.triage .meta code { background:var(--bg0); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
-/* findings rail disclosure (phone only): the rail is collapsed until asked for */
-.rail-toggle { display:flex; width:100%; justify-content:space-between; align-items:center; gap:8px; padding:9px 12px;
-  background:var(--bg1); color:var(--txt); border:0; border-bottom:1px solid var(--line); font:inherit; text-align:left; cursor:pointer; }
-.rail-toggle .chev { color:var(--txt2); }
-.rail-toggle .num { display:inline-block; padding:0 6px; border-radius:5px; font-weight:700; font-size:11px; color:#fff; }
-body.rail-open .rail-toggle .chev { transform:rotate(180deg); }
-aside .rail-body { display:contents; }
-/* Collapsed on DESKTOP: the rail becomes a strip and the canvas takes the width. Phone keeps its
-   own rules (the rail is a section of a scrolling page there, not a column). */
-body:not(.rail-open) main { grid-template-columns:38px 1fr; }
-body:not(.rail-open) aside .rail-body { display:none; }
-body:not(.rail-open) .rail-toggle { writing-mode:vertical-rl; height:100%; width:38px; padding:12px 0; justify-content:flex-start; gap:12px; }
-body:not(.rail-open) .rail-toggle .num { writing-mode:horizontal-tb; }
-/* ---- the viewer: the tool strip beside the canvas, the detail panel under both */
-#viewer { display:flex; flex-direction:column; min-height:0; min-width:0; }
+/* ---- layout: the tool strip, the canvas, and the comps' 320px review rail on the RIGHT */
+main { flex:1; display:flex; min-height:0; position:relative; }
+#viewer { flex:1; display:flex; flex-direction:column; min-height:0; min-width:0; }
 .work { flex:1; display:flex; min-height:0; position:relative; }
+/* The comp sets no line-height on the rail (browser normal); the report's 1.4 made every chip,
+   tag and prop line a pixel or two taller, compounding down the list. */
+.rail { width:320px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }
+/* Collapsed on desktop: the rail goes, the canvas takes the width, and the floating chip at the
+   top-right of the canvas says what it is hiding. The phone has its own rules (the sheet). */
+@media (min-width: 760px) {
+  body:not(.rail-open) .rail { display:none; }
+  body:not(.rail-open) .rail-fab { display:flex; }
+}
+.rail-fab { display:none; position:absolute; top:12px; right:12px; z-index:16; align-items:center; gap:7px; padding:6px 10px; border:1px solid var(--line); border-radius:9px;
+  background:var(--bg1); color:var(--txt); font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+.rail-fab .msi { font-size:17px; color:var(--txt2); }
+/* The phone sheet's handle: grip, summary, chevron. Desktop never shows it. */
+.rail-handle { display:none; position:relative; align-items:center; justify-content:center; gap:8px; padding:12px 12px 8px; border:0; background:transparent;
+  color:var(--txt); font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; width:100%; }
+.rail-handle .grip { position:absolute; top:5px; left:50%; transform:translateX(-50%); width:36px; height:4px; border-radius:2px; background:var(--bg3); }
+.rail-handle .chev { font-size:18px; color:var(--txt2); }
+.rail-head { display:flex; align-items:center; justify-content:space-between; padding:8px 8px 8px 12px; border-bottom:1px solid var(--line); flex-shrink:0; }
+.rail-title { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--txt2); }
+.rail-icon { width:26px; height:26px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; }
+.rail-icon:hover { background:var(--bg3); }
+.rail-icon .msi { font-size:17px; }
+.rail-tabs { display:flex; border-bottom:1px solid var(--line); flex-shrink:0; }
+.rtab { flex:1; padding:9px 0; border:0; border-bottom:2px solid transparent; background:transparent; text-align:center; font-size:12.5px; font-weight:600; color:var(--txt2); cursor:pointer; }
+.rtab.on { color:var(--txt); border-bottom-color:var(--acc); }
+.rail-panels { flex:1; display:flex; flex-direction:column; min-height:0; }
+.rail-panel { flex:1; display:flex; flex-direction:column; min-height:0; }
+.rail-panel[hidden] { display:none; }
+.rail-filters { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); flex-shrink:0; }
+/* The text filter has no place in the comp (gap 31): it opens on / and closes on Esc. */
+.fsearch { display:flex; align-items:center; gap:6px; padding:0 8px; height:30px; border-radius:7px; border:1px solid var(--line); background:var(--bg0); }
+.fsearch[hidden] { display:none; }
+.fsearch .msi { font-size:15px; color:var(--txt2); }
+.fsearch input { flex:1; min-width:0; border:0; background:transparent; color:var(--txt); font-size:12px; outline:none; appearance:none; -webkit-appearance:none; }
+.sevchips { display:flex; gap:6px; flex-wrap:wrap; }
+.sevchip { display:flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; user-select:none;
+  border:1px solid var(--line); color:var(--txt2); background:transparent; opacity:.6; }
+.sevchip .dot { width:7px; height:7px; border-radius:50%; background:var(--bg3); }
+.sevchip.on { opacity:1; }
+.sevchip.critical.on { color:var(--critical); border-color:var(--critical); } .sevchip.critical.on .dot { background:var(--critical); }
+.sevchip.major.on { color:var(--major); border-color:var(--major); } .sevchip.major.on .dot { background:var(--major); }
+.sevchip.minor.on { color:var(--minor); border-color:var(--minor); } .sevchip.minor.on .dot { background:var(--minor); }
+.sevchip.tri.ignore.on { color:var(--txt); border-color:var(--ignore); } .sevchip.tri.ignore.on .dot { background:var(--ignore); }
+.sevchip.tri.snooze.on { color:var(--snooze); border-color:var(--snooze); } .sevchip.tri.snooze.on .dot { background:var(--snooze); }
+.instrow { display:flex; }
+.instrow[hidden] { display:none; }
+.instchip { display:flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+  border:1px solid var(--line); color:var(--txt2); background:transparent; }
+.instchip .msi { font-size:14px; }
+.instchip.on { border-color:var(--acc); color:#fff; background:var(--acc); }
+.rail-scroll { flex:1; overflow-y:auto; min-height:0; }
+.rail-empty { padding:24px 16px; font-size:12.5px; color:var(--txt2); text-align:center; line-height:1.5; }
+/* ---- a finding row: badge · title · ×N · Regression · triage tag; the mono prop line under it;
+   the instance box, the verdict buttons and the note only while selected (the canvas is the crop) */
+.frow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; background:transparent; }
+.frow:hover { background:rgba(127,127,127,.06); }
+.frow.sel { background:var(--bg2); }
+.frow.sup { opacity:.66; background:var(--bg0); }
+.frow.sup.sel { background:var(--bg2); }
+.frow.unsaved { background:rgba(229,72,77,.09); border-left-color:var(--critical); }
+.fhead { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.fbadge { width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-sizing:border-box; }
+.fbadge.critical { background:var(--critical); } .fbadge.major { background:var(--major); } .fbadge.minor { background:var(--minor); }
+.fbadge.sup { background:transparent; border:1.5px dashed currentColor; }
+.fbadge.sup.critical { color:var(--critical); } .fbadge.sup.major { color:var(--major); } .fbadge.sup.minor { color:var(--minor); }
+.ftitle { font-size:12.5px; font-weight:600; line-height:1.3; }
+.frow.triaged-ignore .ftitle, .frow.triaged-snooze .ftitle { color:var(--txt2); }
+.fgroup { font-size:10.5px; font-weight:700; font-family:var(--font-mono); padding:1px 6px; border-radius:5px; background:var(--bg3); color:var(--txt); flex-shrink:0; }
+.freg { display:flex; align-items:center; gap:3px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:999px; background:var(--critical); color:#fff; flex-shrink:0; }
+.freg .msi { font-size:12px; }
+.fsuptag { font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px dashed var(--line); color:var(--txt2); flex-shrink:0; }
+.ftag { font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:999px; color:var(--txt2); background:var(--bg3); margin-left:auto; flex-shrink:0; white-space:nowrap; }
+.ftag.fix { color:#fff; background:var(--acc); }
+.frule { display:flex; align-items:center; gap:5px; margin:5px 0 0 28px; font-size:11px; color:var(--txt2); min-width:0; }
+.frule .msi { font-size:13px; flex-shrink:0; }
+.frule span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fprop { display:flex; align-items:center; gap:6px; margin:6px 0 0 28px; font-family:var(--font-mono); font-size:11px; min-width:0; }
+.fprop .p { color:var(--txt2); } .fprop .e { color:var(--txt); } .fprop .msi { font-size:12px; color:var(--txt2); } .fprop .a { color:var(--critical); }
+.fprop .e, .fprop .a { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.frow.sup .fprop .a { color:var(--txt2); }
+.finst { display:flex; align-items:center; gap:8px; margin:8px 0 0 28px; padding:7px 9px; border-radius:8px; background:var(--bg0); border:1px solid var(--line); }
+.finst > .msi { font-size:15px; color:var(--txt2); }
+.finst span { flex:1; font-size:11.5px; line-height:1.35; color:var(--txt2); }
+.finst button { padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--line); color:var(--txt); background:transparent; white-space:nowrap; }
+.factions { margin:10px 0 2px 28px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.fact { padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--line); color:var(--txt2); background:transparent; }
+.fact.on.fix { border-color:var(--fix); background:var(--fix); color:#fff; }
+.fact.on.ignore { border-color:var(--ignore); background:var(--ignore); color:#fff; }
+.fact.on.snooze { border-color:var(--snooze); background:var(--snooze); color:#fff; }
+.factions .until { font-size:11px; color:var(--txt2); }
+.fnote, .inote { display:block; margin:8px 0 2px 28px; width:calc(100% - 28px); box-sizing:border-box; background:var(--bg2); border:1px solid var(--line); border-radius:7px; padding:7px 10px; font-size:12px; color:var(--txt); }
+.fhint { margin:8px 0 2px 28px; font-size:11px; line-height:1.45; color:var(--txt2); }
+.fhint code { background:var(--bg0); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+/* The suppressed disclosure (gap 10): a row at the end of the list, the rows under it on demand.
+   Which rule hit and its reason come from findings.json; changing one means editing the manifest. */
+.sup-toggle { display:flex; align-items:center; gap:8px; padding:9px 12px; width:100%; border:0; border-bottom:1px solid var(--line); text-align:left; background:var(--bg0); cursor:pointer; flex-shrink:0; }
+.sup-toggle > .msi { font-size:16px; color:var(--txt2); }
+.sup-toggle .lbl { flex:1; font-size:11.5px; color:var(--txt2); }
+.sup-toggle .act { font-size:11.5px; font-weight:600; color:var(--acc); }
+/* ---- a comment row: badge · status; the text; the model's reply; the failed-save block;
+   and while selected the next instruction + Send / Mark done (+ our Reopen / implement / Delete) */
+.irow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; }
+.irow:hover { background:rgba(127,127,127,.06); }
+.irow.sel { background:var(--bg2); }
+.irow.unsaved { background:rgba(229,72,77,.09); border-left-color:var(--critical); }
+.ihead { display:flex; align-items:center; gap:8px; }
+.ibadge { width:20px; height:20px; border-radius:6px; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ibadge.open { background:var(--open); } .ibadge.implemented { background:var(--implemented); } .ibadge.done { background:var(--done); }
+.istatus { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-left:auto; flex-shrink:0; }
+.istatus.open { color:var(--open); } .istatus.implemented { color:var(--implemented); } .istatus.done { color:var(--done); }
+.itext { font-size:12.5px; line-height:1.45; margin:6px 0 0 28px; white-space:pre-wrap; }
+.irow.done .itext { color:var(--txt2); }
+.ireply { margin:8px 0 0 28px; padding:8px 10px; border-left:2px solid var(--acc); background:var(--bg2); border-radius:0 7px 7px 0; font-size:12px; color:var(--txt2); line-height:1.45; white-space:pre-wrap; }
+.imeta { margin:6px 0 0 28px; font-size:11px; color:var(--txt2); line-height:1.4; }
+.iactions { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 2px 28px; }
+.iactions button { padding:4px 12px; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer; border:1px solid var(--line); color:var(--txt2); background:transparent; }
+.iactions .primary { border-color:var(--acc); background:var(--acc); color:#fff; }
+.iactions .danger { color:var(--critical); }
+/* A failed save (section C): cloud_off + Not saved + the real endpoint and status + Retry, on the
+   row it concerns; the row tints red; the canvas badge gets a halo; the sheet summary says "unsaved". */
+.saveerr { display:flex; align-items:center; gap:7px; margin:8px 0 0 28px; }
+.saveerr > .msi { font-size:15px; color:var(--critical); flex-shrink:0; }
+.saveerr .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.saveerr .t { font-size:11.5px; font-weight:700; color:var(--critical); }
+.saveerr .d { font-size:10.5px; font-family:var(--font-mono); color:var(--txt2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.saveerr button { padding:3px 10px; border:0; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; background:var(--critical); color:#fff; flex-shrink:0; }
+.vmark.ann.unsaved { box-shadow:0 0 0 3px rgba(229,72,77,.6), 0 1px 4px rgba(0,0,0,.4); }
+/* The draft composer at the top of Comments, while a shape waits for its instruction. */
+.draft { padding:12px; border-bottom:1px solid var(--line); background:var(--bg2); }
+.draft .kind { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--open); margin-bottom:8px; }
+.dnote { display:block; width:100%; box-sizing:border-box; background:var(--bg0); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font-size:12.5px; color:var(--txt); }
+.draft .imeta { margin:6px 0 0; }
+.dactions { display:flex; gap:8px; margin-top:8px; justify-content:flex-end; }
+.dactions button { padding:5px 12px; border:0; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; color:var(--txt2); background:transparent; }
+.dactions .primary { padding:5px 14px; background:var(--acc); color:#fff; }
+/* One line at the foot of the rail, only when there is something to say: a save that failed
+   (with its endpoint), or a page that is not served and keeps its changes in this browser. */
+.rail-status { padding:6px 12px; border-top:1px solid var(--line); font-size:11px; line-height:1.4; color:var(--txt2); flex-shrink:0; }
+.rail-status[hidden] { display:none; }
+.rail-status.err { color:var(--critical); }
+/* ---- the viewer: the tool strip beside the canvas */
 .tools { width:44px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 0; background:var(--bg1); border-right:1px solid var(--line); }
 .tool { width:32px; height:32px; padding:0; border:0; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
 .tool .msi { font-size:18px; }
@@ -478,16 +593,6 @@ body.single .align-wrap { bottom:58px; }
 .wipe-line { position:absolute; top:0; bottom:0; left:13px; width:2px; background:var(--acc); }
 .wipe-knob { position:relative; z-index:1; width:24px; height:24px; border-radius:50%; background:var(--acc); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.35); }
 .wipe-knob .msi { font-size:14px; }
-/* ---- the detail panel (phase 4 folds it into the rail) */
-.detail { border-top:1px solid var(--line); padding:8px 12px; max-height:34%; overflow:auto; background:var(--bg1); }
-.detail:empty { display:none; }
-.detail h2 { margin:0 0 4px; font-size:13px; }
-.detail table { border-collapse:collapse; margin:6px 0; }
-.detail td,.detail th { border:1px solid var(--line); padding:2px 8px; text-align:left; font-weight:500; }
-.detail th { color:var(--txt2); }
-.detail .crops { display:flex; gap:12px; flex-wrap:wrap; }
-.detail .crops figure { margin:0; } .detail .crops img { max-height:160px; max-width:45vw; border:1px solid var(--line); background:#fff; }
-.detail figcaption { color:var(--txt2); font-size:11px; }
 /* annotations */
 .pane.annotating .marks rect, .pane.annotating .vmarks .vmark, .pane.annotating .marks .ann { pointer-events:none; }
 .marks.anns { pointer-events:none; }
@@ -496,6 +601,8 @@ body.single .align-wrap { bottom:58px; }
 .marks.anns rect.ann { fill-opacity:.12; stroke-width:2; vector-effect:non-scaling-stroke; }
 .marks.anns .open { stroke:var(--open); fill:var(--open); } .marks.anns .implemented { stroke:var(--implemented); fill:var(--implemented); } .marks.anns .done { stroke:var(--done); fill:var(--done); }
 .marks.anns .stale { stroke-dasharray:4 3; }
+/* The other pane's copy of a note: same place through the alignment, drawn lighter. */
+.marks.anns .mirror { fill-opacity:.06; stroke-opacity:.7; }
 .marks.anns .sel { stroke-width:4; }
 .marks.anns rect.band { fill:rgba(143,126,231,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
 .marks.anns rect.focus-rect { fill:rgba(91,141,239,.10); stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
@@ -505,35 +612,15 @@ body.single .align-wrap { bottom:58px; }
 .marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
 /* The layer segment: Comments off hides the comment shapes and badges, never the focus region. */
 body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body.layer-no-anns .marks.anns rect.band { display:none; }
-.num.open { background:var(--open); } .num.implemented { background:var(--implemented); color:#111; } .num.done { background:var(--done); }
-.row.ann .msg { white-space:pre-wrap; }
-.row.ann.done .msg { color:var(--txt2); text-decoration:line-through; }
-.detail textarea { width:100%; min-height:64px; margin:6px 0; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg0); color:var(--txt); font:inherit; resize:vertical; }
-.detail .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-.detail .actions button { background:var(--bg1); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 10px; cursor:pointer; }
-.detail .actions button.primary { border-color:var(--acc); color:var(--acc); }
-.detail .actions button.danger { border-color:var(--critical); color:var(--critical); }
-.detail .actions .hint { color:var(--txt2); font-size:11px; }
-.detail .status { display:inline-block; padding:0 8px; border-radius:999px; font-weight:600; font-size:11px; color:#fff; }
-.detail .status.open { background:var(--open); } .detail .status.implemented { background:var(--implemented); color:#111; } .detail .status.done { background:var(--done); }
 /* Between the phone and the comps' 1120px "narrow" width the pair title goes; the layer labels shorten (JS). */
 @media (max-width: 1119px) { .tb-left .pair-title { display:none; } }
 /* phone (the comps' < 760px): the page scrolls, the viewer sticks, one side at a time, the tools float */
 @media (max-width: 759px) {
-  html, body { height:auto; }
-  body { min-height:100vh; min-height:100svh; }
   .tb-left .brand-name, #seg-layout, #seg-layer { display:none; }
   .layer-strip { display:flex; }
   .delta-strip { flex-wrap:wrap; gap:8px; padding:7px 10px; min-height:0; }
   .delta-strip .regsub { display:none; }
   .delta-strip .review { margin-left:0; }
-  main { display:flex; flex-direction:column; min-height:0; }
-  #viewer { order:-1; display:flex; flex-direction:column; position:sticky; top:0; z-index:6; background:var(--bg1); border-bottom:1px solid var(--line); }
-  /* A collapsed rail is not a reason to keep the canvas small: it grows into
-     the room the rail gave back (chrome = topbar + layer strip + summary bar). */
-  .work { flex:none; height:calc(100vh - 150px); height:calc(100svh - 150px); }
-  body.rail-open .work { height:52vh; height:52svh; }
-  body.has-detail .work { height:38vh; height:38svh; }
   .tools { position:absolute; left:8px; bottom:56px; z-index:15; width:auto; flex-direction:row; padding:4px; border:1px solid var(--line); border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
   .zoom-pill { left:12px; top:12px; bottom:auto; }
   .side-fab { bottom:56px; }
@@ -544,30 +631,23 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   .align-menu { bottom:auto; top:calc(100% + 8px); width:248px; }
   .pane-label { display:none; }
   .pane + .pane { border-left:0; }
-  /* iOS Safari zooms the page when a focused field is under 16px. The note
-     textarea needs naming: .detail textarea { font:inherit } outranks a bare
-     element selector, and it is the field the phone actually focuses. */
-  input, textarea, select, .detail textarea, .filters input { font-size:16px; }
-  .detail { max-height:30vh; max-height:30svh; }
-  aside { border-right:0; border-top:1px solid var(--line); flex:1; }
-  body:not(.rail-open) main { grid-template-columns:1fr; }
-  /* Pinned to the BOTTOM while the rail is open: selecting a finding scrolls the list, and the
-     summary bar used to end up UNDER the sticky canvas — visible by coordinates, untappable, so
-     the rail could not be closed again. At the bottom it is always reachable. */
-  .rail-toggle { position:sticky; bottom:0; z-index:5; border-top:1px solid var(--line); writing-mode:horizontal-tb; height:auto; width:100%; padding:9px 12px; }
-  /* scrollIntoView knows nothing about the sticky canvas above; this keeps a focused row clear of it. */
-  .row { scroll-margin-top:calc(52vh + 96px); scroll-margin-top:calc(52svh + 96px); scroll-margin-bottom:56px; }
-  body.has-detail .row { scroll-margin-top:calc(38vh + 96px); scroll-margin-top:calc(38svh + 96px); }
-  aside .rail-body { display:none; }
-  body.rail-open aside .rail-body { display:block; }
-  .list { overflow:visible; flex:none; }
-  details { max-height:none; }
-  details[open] .list { max-height:none; }
+  /* The rail is the comps' bottom sheet: 44px of grip + summary over the canvas, 52% of the
+     height when open with the tabs and lists inside it. The canvas keeps the whole screen. */
+  .rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:44px; border-left:0; border-top:1px solid var(--line);
+    border-radius:12px 12px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.25); overflow:hidden; z-index:20; transition:height .25s ease; }
+  body.rail-open .rail { height:52%; }
+  .rail-handle { display:flex; }
+  .rail-head { display:none; }
+  body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }
+  /* iOS Safari zooms the page when a focused field is under 16px. */
+  .fnote, .inote, .dnote, .fsearch input { font-size:16px; }
 }
 `
 
 // The client. Plain JS, kept free of template literals so it can live inside
-// this TypeScript template string. It shares the module scope with the
+// this TypeScript template string — no backtick ANYWHERE in it, comments and
+// the CSS block above included: one in a comment closes the template and
+// surfaces as unrelated TS errors hundreds of lines away. It shares the module scope with the
 // embedded view-math.js (fitView, zoomAt, designImageTransform, …).
 //
 // It is delivered two ways and knows about neither: an emitted report.html
@@ -596,7 +676,7 @@ function readControls() {
 function saveControls() {
   try {
     localStorage.setItem(CONTROLS_KEY, JSON.stringify({
-      align: state.align, lock: state.lock, layer: state.layer, showMembers: state.showMembers,
+      align: state.align, lock: state.lock, layer: state.layer, showMembers: state.showMembers, showSup: state.showSup,
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
       diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
@@ -615,6 +695,8 @@ const state = {
   // showMembers: every instance of an aggregate marked, or the primary only (the comps' default —
   // a ×15 aggregate carpets the artboard otherwise, gap 12).
   layer: 'all', showMarks: true, showMembers: false,
+  // The rail: which tab, and whether the suppressed rows are unfolded (persisted).
+  tab: 'findings', showSup: false,
   selected: null, sev: { critical: true, major: true, minor: true }, q: '',
   dprD: 1, dprI: 1, userMoved: false, side: 'design', move: true, single: false,
   // A region of the canvas to work inside (world px). While set, findings whose boxes fall outside
@@ -674,7 +756,10 @@ const ann = {
   set: { version: 1, pair: '', annotations: [] },
   mode: null, draft: null, selected: null, band: null,
   elements: { design: [], impl: [] }, elementsLoaded: false,
-  storage: location.protocol.startsWith('http') ? 'api' : 'local', saveTimer: null, status: '',
+  storage: location.protocol.startsWith('http') ? 'api' : 'local', saveTimer: null,
+  // ids changed since the last save that succeeded, and why the last one did not (section C);
+  // the text typed into the composer / a row's next-instruction field, so a re-render keeps it.
+  unsaved: new Set(), saveError: null, noteDrafts: {}, draftText: '',
 };
 let byId = new Map();
 
@@ -684,9 +769,11 @@ let byId = new Map();
 // written before that field existed carry no key; those findings cannot be triaged (the panel says
 // so) rather than being filed against an id that will mean something else tomorrow.
 const TRIAGE_LABELS = { fix: 'to fix', ignore: 'ignored', snooze: 'snoozed' };
-const triage = { set: { version: 1, pair: '', entries: [] }, saveTimer: null };
+const triage = { set: { version: 1, pair: '', entries: [] }, saveTimer: null, unsaved: new Set(), saveError: null, noteDrafts: {} };
 const nowIso = () => new Date().toISOString();
 function triageStateOf(f) { return effectiveState(findTriage(triage.set, f.key), nowIso()); }
+// A verdict that did not reach triage.json gets the same surfaces as a comment that did not reach
+// annotations.json (section C left it to this phase): the row tints, names the endpoint, offers Retry.
 function persistTriage() {
   clearTimeout(triage.saveTimer);
   triage.saveTimer = setTimeout(async () => {
@@ -695,12 +782,13 @@ function persistTriage() {
       try {
         const res = await fetch(page.triageUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
         if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
-        setAnnStatus('triage saved · triage.json', false);
-      } catch (e) { setAnnStatus('triage save failed: ' + e.message, true); }
+        triage.saveError = null; triage.unsaved.clear();
+      } catch (e) { triage.saveError = 'PUT ' + page.triageUrl + ' · ' + e.message; }
     } else {
-      try { localStorage.setItem('vc-triage:' + report.pair, body); setAnnStatus('triage saved in this browser only', false); }
-      catch (e) { setAnnStatus('cannot save triage: ' + e.message, true); }
+      try { localStorage.setItem('vc-triage:' + report.pair, body); triage.saveError = null; triage.unsaved.clear(); }
+      catch (e) { triage.saveError = 'localStorage · ' + e.message; }
     }
+    renderRail();
   }, 250);
 }
 async function loadTriage() {
@@ -722,8 +810,10 @@ function applyTriage(verdict, note) {
   triage.set = verdict === null
     ? clearTriage(triage.set, f.key)
     : setTriage(triage.set, f.key, verdict, Object.assign({ now: nowIso() }, note === undefined ? {} : { note }));
+  delete triage.noteDrafts[f.key];
+  triage.unsaved.add(f.key);
   persistTriage();
-  renderList(); renderMarks(); renderDetail(); renderRailToggle();
+  renderRail(); renderMarks();
 }
 
 // ---- focus region --------------------------------------------------------
@@ -741,7 +831,7 @@ function setFocusing(on) {
 }
 function setFocus(rect, persist) {
   state.focus = rect;
-  renderFocusChip(); renderList(); renderMarks(); renderDetail(); renderRailToggle(); renderFocusBand();
+  renderFocusChip(); renderRail(); renderMarks(); renderFocusBand();
   if (persist !== false) persistFocus();
 }
 // The region is the handover: it lands in focus.json + focus.md so "work in the focused region"
@@ -754,11 +844,14 @@ function persistFocus() {
     try {
       const res = await fetch(page.focusUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
       if (!res.ok) throw new Error(res.status);
-      setAnnStatus(state.focus ? 'focus saved · focus.md' : 'focus cleared', false);
-    } catch (e) { setAnnStatus('focus save failed: ' + e.message, true); }
+      focusSaveError = null;
+    } catch (e) { focusSaveError = 'PUT ' + page.focusUrl + ' · ' + e.message; }
+    renderRailStatus();
   }, 250);
 }
 let focusSaveTimer = null;
+// A region that did not reach focus.json: the rail's status line says so (the region has no row).
+let focusSaveError = null;
 async function loadFocus() {
   state.focus = null; state.focusLabel = '';
   let raw = null;
@@ -811,7 +904,7 @@ function focusEditDown(pane, e, handle) {
 }
 function focusEditMove(pane, e) {
   state.focus = resizeRect(state.focus, focusDrag.handle, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z);
-  renderFocusChip(); renderList(); renderMarks(); renderFocusBand();
+  renderFocusChip(); renderRail(); renderMarks(); renderFocusBand();
 }
 function focusEditUp() { focusDrag = null; persistFocus(); }
 // World-space, so it lives in the same layers as the marks and appears on both sides at once.
@@ -935,8 +1028,8 @@ function applyControls(saved) {
     onion: amount && typeof amount.onion === 'number' ? amount.onion : (typeof amount === 'number' ? amount : 55),
     difference: amount && typeof amount.difference === 'number' ? amount.difference : 100,
   };
+  state.showSup = saved.showSup === true;
   applyAlignMode(); applyLock(); applyLayer();
-  $('members').checked = state.showMembers;
   for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
     $(id).classList.toggle('on', on);
     $(id).setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -1033,9 +1126,6 @@ function setLock(on) {
 function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }
 function setViewOf(side, v) { if (side === 'design' && !state.lock) state.viewD = v; else state.view = v; }
 function setView(v) { state.view = v; state.viewD = v; }
-function updateRailToggle() {
-  $('rail-toggle').setAttribute('aria-expanded', document.body.classList.contains('rail-open') ? 'true' : 'false');
-}
 
 function applyView() {
   const v = state.view, vd = viewOf('design');
@@ -1104,11 +1194,15 @@ function renderDeltaStrip() {
 }
 function setRegOnly(on) {
   state.regOnly = on; state.selected = null;
-  document.body.classList.add('rail-open'); updateRailToggle();
-  renderDeltaStrip(); renderList(); renderMarks(); renderDetail();
+  setTab('findings'); openRail(true);
+  renderDeltaStrip(); renderRail(); renderMarks();
 }
 
-// ---- list ---------------------------------------------------------------
+// ---- the review rail ----------------------------------------------------
+// The comps' right-hand panel: Findings · N / Comments · N tabs, the severity chips, one row per
+// finding with its prop expected → actual line, the suppressed disclosure, the comments with the
+// model's replies. Selecting a row focuses the canvas on the element (gap 13) — the canvas is the
+// crop — and the row grows its actions in place. Every string here comes from the data.
 // Focus is per BOX, not per finding. An aggregated finding ("×26 rows") can have instances in the
 // content AND in the header, so admitting the whole finding drew its header marks straight back
 // onto the canvas — you focused the content and the chrome still lit up.
@@ -1137,42 +1231,198 @@ function visible(f) {
   if (verdict === 'snooze' && !state.showTriaged.snooze) return false;
   return true;
 }
-function rowHtml(f) {
-  const n = f.instances && f.instances > 1 ? '×' + f.instances : '';
-  const verdict = triageStateOf(f);
-  return '<li class="row' + (state.selected === f.id ? ' sel' : '') + (verdict ? ' triaged-' + verdict : '') + '" data-id="' + f.id + '">' +
-    '<span class="num ' + f.severity + '">' + f.mark + '</span>' +
-    '<span><div class="msg">' + esc(f.message) + '</div><div class="meta"><span class="tag">' + esc(f.type) + '</span>' +
-    (f.role ? '<span class="tag">' + esc(f.role) + '</span>' : '') + (n ? '<span class="tag">' + n + '</span>' : '') +
-    (verdict ? '<span class="verdict ' + verdict + '">' + TRIAGE_LABELS[verdict] + '</span>' : '') +
-    (f.isSuppressed ? '<span class="tag">suppressed: ' + esc(f.suppressedBy) + ' ' + esc(f.rule) + '</span>' : '') +
-    '</div></span></li>';
+// Comments follow the focus region too (the comps' visItems): a point is a 0×0 box.
+function visibleItems() { return ann.set.annotations.filter((a) => boxInFocus(shapeBox(a.shape))); }
+const SEV_CHIP_LABELS = { critical: 'Critical', major: 'Major', minor: 'Minor' };
+const TRIAGE_TAGS = { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' };
+const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };
+function saveErrHtml(detail, act) {
+  return '<div class="saveerr"><span class="msi" aria-hidden="true">cloud_off</span><div class="txt"><span class="t">Not saved</span><span class="d" title="' + esc(detail) + '">' + esc(detail) + '</span></div><button type="button" data-act="' + act + '">Retry</button></div>';
 }
-function renderList() {
-  const kept = report.findings.filter(visible);
-  $('list').innerHTML = kept.map(rowHtml).join('');
-  $('count').textContent = kept.length + ' of ' + report.findings.length + ' findings shown';
-  const sup = report.suppressed.filter(visible);
-  $('suppressed').innerHTML = sup.map((s) => rowHtml(byId.get(s.id))).join('');
-  $('suppressed-summary').textContent = report.suppressed.length + ' suppressed (' + sup.length + ' shown) — still reported, not part of the verdict';
+// The verdict row (gap 11): To fix / Ignore / Snooze, the active one again clears it; the note
+// under it is stored with the verdict and read by the fix loop. Filed against f.key, so a report
+// captured before that field existed can only say so.
+function triageActionsHtml(f) {
+  if (!f.key) return '<div class="fhint">no stable key on this finding — re-run the compare to triage it</div>';
+  const entry = findTriage(triage.set, f.key);
+  const verdict = triageStateOf(f);
+  const btn = (v, label) => '<button type="button" data-triage="' + v + '" class="fact ' + v + (verdict === v ? ' on' : '') + '">' + label + '</button>';
+  const until = entry && entry.snoozeUntil && verdict === 'snooze' ? '<span class="until">until ' + esc(entry.snoozeUntil.slice(0, 10)) + '</span>' : '';
+  const noteVal = Object.prototype.hasOwnProperty.call(triage.noteDrafts, f.key) ? triage.noteDrafts[f.key] : (entry ? entry.note : '');
+  // An "ignore" only hides the finding from THIS view; the next run reports it again. Saying so
+  // here is the difference between a decision that sticks and one that is re-taken every run —
+  // and the note is what becomes its reason, so an empty one is refused at harvest time.
+  const stick = verdict === 'ignore'
+    ? '<div class="fhint">hidden here only — <code>refdiff accept ' + esc(report.pair) + '</code> turns this into a policy rule that suppresses it in every run (and lapses if the measurement changes). Needs the note.</div>'
+    : '';
+  return '<div class="factions">' + btn('fix', 'To fix') + btn('ignore', 'Ignore') + btn('snooze', 'Snooze') + until + '</div>' +
+    '<input class="fnote" data-key="' + esc(f.key) + '" placeholder="Note for the model…" value="' + esc(noteVal) + '" title="why — stored with the verdict, read by the fix loop">' + stick;
+}
+function findingRowHtml(f, suppressed) {
+  const sel = state.selected === f.id;
+  const verdict = suppressed ? undefined : triageStateOf(f);
+  const isReg = regressionIds().has(f.id);
+  const agg = (f.instances || 1) > 1;
+  const unsaved = !suppressed && !!triage.saveError && !!f.key && triage.unsaved.has(f.key);
+  let h = '<div class="frow' + (sel ? ' sel' : '') + (suppressed ? ' sup' : '') + (verdict ? ' triaged-' + verdict : '') + (unsaved ? ' unsaved' : '') + '" data-id="' + f.id + '">';
+  h += '<div class="fhead"><span class="fbadge ' + f.severity + (suppressed ? ' sup' : '') + '">' + f.mark + '</span>' +
+    '<span class="ftitle" title="' + esc(f.type + (f.role ? ' · ' + f.role : '') + ' · ' + f.severity) + '">' + esc(f.message) + '</span>';
+  if (agg) h += '<span class="fgroup" title="one cause in ' + f.instances + ' places — every one is in members[]">×' + f.instances + '</span>';
+  if (isReg) h += '<span class="freg" title="fixed in an earlier run, back in this one"><span class="msi" aria-hidden="true">undo</span><span>Regression</span></span>';
+  if (suppressed) h += '<span class="fsuptag"><span>Suppressed</span></span>';
+  if (verdict) h += '<span class="ftag ' + verdict + '"><span>' + TRIAGE_TAGS[verdict] + '</span></span>';
+  h += '</div>';
+  if (suppressed) h += '<div class="frule" title="' + esc(f.suppressedBy + ': ' + f.rule) + '"><span class="msi" aria-hidden="true">filter_alt_off</span><span>' + esc(f.suppressedBy + ' · ' + f.rule) + '</span></div>';
+  for (const r of propRows(f.expected, f.actual, f.type)) {
+    h += '<div class="fprop"><span class="p">' + esc(r.prop) + '</span><span class="e" title="design">' + esc(r.expected) + '</span><span class="msi" aria-hidden="true">arrow_right_alt</span><span class="a" title="implementation">' + esc(r.actual) + '</span></div>';
+  }
+  if (sel && suppressed) h += '<div class="fhint">Suppression rules live in the project manifest — edit it to change what gets hidden.</div>';
+  if (sel && !suppressed) {
+    if (agg) {
+      h += '<div class="finst"><span class="msi" aria-hidden="true">select_all</span><span>' + (state.showMembers ? 'All ' + f.instances + ' instances marked on canvas' : 'Only the primary instance is marked') + '</span>' +
+        '<button type="button" data-act="inst">' + (state.showMembers ? 'Show primary only' : 'Show all instances') + '</button></div>';
+    }
+    if (unsaved) h += saveErrHtml(triage.saveError, 'retry-triage');
+    h += triageActionsHtml(f);
+  }
+  return h + '</div>';
+}
+function itemRowHtml(a, i) {
+  const sel = ann.selected === a.id;
+  const unsaved = !!ann.saveError && ann.unsaved.has(a.id);
+  let h = '<div class="irow ' + a.status + (sel ? ' sel' : '') + (unsaved ? ' unsaved' : '') + '" data-ann="' + a.id + '">';
+  h += '<div class="ihead"><span class="ibadge ' + a.status + '">' + (i + 1) + '</span><span class="istatus ' + a.status + '">' + STATUS_LABELS[a.status] + '</span></div>';
+  h += '<div class="itext">' + (a.note.trim() ? esc(a.note.trim()) : '<i>(no text)</i>') + '</div>';
+  if (unsaved) h += saveErrHtml(ann.saveError, 'retry');
+  if (a.reply) h += '<div class="ireply" title="the model’s reply">' + esc(a.reply) + '</div>';
+  if (sel) {
+    h += '<div class="imeta">' + a.side + ' · ' + esc(describeAnchor(a.anchor)) + (a.stale ? ' · <b>stale</b>: its element is not in the current capture' : '') +
+      ' · created ' + esc(a.createdAt.slice(0, 16).replace('T', ' ')) + ' · ' + esc(a.id) + '</div>';
+    h += '<input class="inote" data-ann="' + a.id + '" placeholder="Add another instruction…" value="' + esc(ann.noteDrafts[a.id] || '') + '">';
+    h += '<div class="iactions"><button type="button" class="primary" data-act="send" data-ann="' + a.id + '" title="appends to the note and reopens it for the model">Send</button>' +
+      (a.status !== 'done' ? '<button type="button" data-act="done" data-ann="' + a.id + '">Mark done</button>' : '') +
+      (a.status !== 'open' ? '<button type="button" data-act="reopen" data-ann="' + a.id + '">Reopen</button>' : '') +
+      (a.status === 'open' ? '<button type="button" data-act="implement" data-ann="' + a.id + '" title="normally the agent does this: refdiff-annotator <run-dir> --mark-implemented ' + esc(a.id) + ' --reply …">Mark implemented</button>' : '') +
+      '<button type="button" class="danger" data-act="delete" data-ann="' + a.id + '">Delete</button></div>';
+  }
+  return h + '</div>';
+}
+function draftHtml(d) {
+  return '<div class="draft"><div class="kind">' + (d.shape.kind === 'rect' ? 'Region comment' : 'Point comment') + '</div>' +
+    '<input class="dnote" id="draft-note" placeholder="Instruction for the model…" value="' + esc(ann.draftText) + '">' +
+    '<div class="imeta">on the ' + d.side + ' side · anchored to ' + esc(describeAnchor(d.anchor)) + (ann.elementsLoaded ? '' : ' (elements.json not loaded — no snapping)') + '</div>' +
+    '<div class="dactions"><button type="button" data-act="cancel-draft">Cancel</button><button type="button" class="primary" data-act="save-draft">Send to model</button></div></div>';
+}
+function renderSevChips() {
+  const triaged = triageCounts(triage.set, nowIso());
+  // The label is its own span, as the comps' runtime renders an interpolated label: the extractor's
+  // leaf is then the text (no border of its own) on both sides, instead of our bordered <button>.
+  const chip = (cls, on, key, val, label) => '<button type="button" class="sevchip ' + cls + (on ? ' on' : '') + '" data-' + key + '="' + val + '"><span class="dot" aria-hidden="true"></span><span>' + label + '</span></button>';
   // Triage chips sit with the severity chips because they do the same job — decide what the list
   // shows. A verdict HIDES its finding, so without these there would be no way back to it.
-  const triaged = triageCounts(triage.set, nowIso());
-  $('sev-chips').innerHTML = SEV.map((s) => '<span class="chip ' + s + (state.sev[s] ? ' on' : '') + '" data-sev="' + s + '">' + s + '</span>').join('') +
-    (triaged.ignore ? '<span class="chip triage-chip ignore' + (state.showTriaged.ignore ? ' on' : '') + '" data-triaged="ignore">ignored ' + triaged.ignore + '</span>' : '') +
-    (triaged.snooze ? '<span class="chip triage-chip snooze' + (state.showTriaged.snooze ? ' on' : '') + '" data-triaged="snooze">snoozed ' + triaged.snooze + '</span>' : '');
-  renderRailToggle();
+  $('sev-chips').innerHTML = SEV.map((s) => chip(s, state.sev[s], 'sev', s, SEV_CHIP_LABELS[s] + ' ' + report.findings.filter((f) => f.severity === s).length)).join('') +
+    (triaged.ignore ? chip('tri ignore', state.showTriaged.ignore, 'triaged', 'ignore', 'Ignored ' + triaged.ignore) : '') +
+    (triaged.snooze ? chip('tri snooze', state.showTriaged.snooze, 'triaged', 'snooze', 'Snoozed ' + triaged.snooze) : '');
 }
-// The collapsed rail has to say what it is hiding, so the summary carries the
-// severity counts and the note count the lists would otherwise show.
-function renderRailToggle() {
-  const counts = SEV.map((s) => report.findings.filter((f) => f.severity === s).length);
-  const notes = ann.set.annotations.length;
-  const shown = report.findings.filter(visible).length;
-  const scope = shown === report.findings.length ? String(report.findings.length) : shown + ' of ' + report.findings.length;
-  $('rail-toggle').innerHTML =
-    '<span>' + scope + ' findings <span class="num critical">' + counts[0] + '</span> <span class="num major">' + counts[1] + '</span> <span class="num minor">' + counts[2] + '</span>' +
-    (notes ? ' · ' + notes + (notes === 1 ? ' note' : ' notes') : '') + '</span><span class="chev">▾</span>';
+function applyTab() {
+  for (const b of document.querySelectorAll('.rtab')) b.classList.toggle('on', b.dataset.tab === state.tab);
+  $('panel-findings').hidden = state.tab !== 'findings';
+  $('panel-items').hidden = state.tab !== 'items';
+}
+function setTab(tab) { state.tab = tab; applyTab(); }
+// Open on desktop = the 320px column; on the phone = the sheet raised to 52%. One flag, persisted.
+function openRail(open) { document.body.classList.toggle('rail-open', open); renderRailSummary(); saveControls(); }
+// The collapsed rail has to say what it is hiding — and a failed save shows through it (section C).
+function renderRailSummary() {
+  const text = railSummary(report.findings.filter(visible).length, visibleItems().length, ann.saveError ? ann.unsaved.size : 0);
+  $('rail-summary').textContent = text;
+  $('rail-fab-summary').textContent = text;
+  const open = document.body.classList.contains('rail-open');
+  $('rail-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  $('rail-toggle').querySelector('.chev').textContent = open ? 'expand_more' : 'expand_less';
+}
+function renderRailStatus() {
+  const parts = [];
+  if (ann.saveError) parts.push('comments not saved · ' + ann.saveError);
+  if (triage.saveError) parts.push('triage not saved · ' + triage.saveError);
+  if (focusSaveError) parts.push('focus not saved · ' + focusSaveError);
+  const err = parts.length > 0;
+  if (!err && ann.storage !== 'api') parts.push('not served — notes stay in this browser; serve the run dir (--serve) to persist them to annotations.json');
+  const el = $('rail-status');
+  el.hidden = parts.length === 0;
+  el.className = 'rail-status' + (err ? ' err' : '');
+  el.textContent = parts.join(' · ');
+}
+function renderRail() {
+  const kept = report.findings.filter(visible);
+  const items = visibleItems();
+  $('tab-f-count').textContent = kept.length;
+  $('tab-i-count').textContent = items.length;
+  applyTab();
+  renderSevChips();
+  // The instance chip (gap 12) exists only while an aggregate is listed.
+  const aggs = aggregateCount(kept);
+  $('inst-row').hidden = aggs === 0;
+  $('inst-row').innerHTML = aggs
+    ? '<button type="button" class="instchip' + (state.showMembers ? ' on' : '') + '" data-act="inst" title="Repeated differences share one row and one number. Toggle whether every instance is marked on the canvas or only the primary one."><span class="msi" aria-hidden="true">' + (state.showMembers ? 'select_all' : 'crop_free') + '</span><span>' + instanceChipLabel(state.showMembers, kept) + '</span></button>'
+    : '';
+  const sup = report.suppressed.filter(visible);
+  let h = kept.length ? kept.map((f) => findingRowHtml(f, false)).join('') : '<div class="rail-empty">No findings match the current filters.</div>';
+  if (sup.length) {
+    h += '<button type="button" class="sup-toggle" id="sup-toggle" title="Findings a policy rule excused — still reported in findings.json, not part of the verdict"><span class="msi" aria-hidden="true">' + (state.showSup ? 'visibility_off' : 'visibility') + '</span><span class="lbl">' + SUPPRESSED_LABEL(sup.length) + '</span><span class="act">' + (state.showSup ? 'Hide' : 'Show') + '</span></button>';
+    if (state.showSup) h += sup.map((s) => findingRowHtml(byId.get(s.id), true)).join('');
+  }
+  $('flist').innerHTML = h;
+  let ih = ann.draft ? draftHtml(ann.draft) : '';
+  if (items.length === 0 && !ann.draft) ih += '<div class="rail-empty">No comments yet. Pick the comment tool, then tap a point or drag a region on either pane.</div>';
+  else ih += ann.set.annotations.map((a, i) => (items.includes(a) ? itemRowHtml(a, i) : '')).join('');
+  $('ilist').innerHTML = ih;
+  renderRailSummary();
+  renderRailStatus();
+}
+function openSearch() { $('fsearch').hidden = false; $('q').focus(); }
+function closeSearch() { state.q = ''; $('q').value = ''; $('fsearch').hidden = true; renderRail(); renderMarks(); }
+function railAction(act, id) {
+  const now = nowIso();
+  if (act === 'inst') { state.showMembers = !state.showMembers; saveControls(); renderRail(); renderMarks(); return; }
+  if (act === 'retry') { persist(); return; }
+  if (act === 'retry-triage') { persistTriage(); return; }
+  if (act === 'save-draft') {
+    if (!ann.draft) return;
+    const a = createAnnotation({ id: uid(), side: ann.draft.side, shape: ann.draft.shape, note: ann.draftText, now }, ann.elements[ann.draft.side]);
+    ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.concat([a]) });
+    ann.draft = null; ann.draftText = ''; ann.unsaved.add(a.id);
+    persist(); selectAnn(a.id, false); return;
+  }
+  if (act === 'cancel-draft') { ann.draft = null; ann.draftText = ''; renderAnnMarks(); renderRail(); return; }
+  const i = annIndex(id); if (i < 0) return;
+  const a = ann.set.annotations[i];
+  if (act === 'delete') {
+    ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.filter((x) => x.id !== id) });
+    ann.unsaved.delete(id); persist(); selectAnn(null, false); return;
+  }
+  if (act === 'send') {
+    // The comps' Send: the instruction is appended and the note goes back to open — the model has
+    // to act again. The reply it gave before stays as history.
+    const text = (ann.noteDrafts[id] || '').trim();
+    if (!text) { const el = $('side').querySelector('.inote'); if (el) el.focus(); return; }
+    let next = editNote(a, a.note + ' — ' + text, now);
+    if (next.status !== 'open') next = transition(next, 'reopen', now);
+    delete ann.noteDrafts[id];
+    replaceAnn(next);
+  } else if (act === 'done' || act === 'reopen' || act === 'implement') {
+    replaceAnn(transition(a, act, now));
+  } else return;
+  ann.unsaved.add(id); persist(); renderRail(); renderAnnMarks();
+}
+function select(id, focus) {
+  state.selected = id;
+  if (id) { ann.selected = null; ann.draft = null; ann.draftText = ''; setTab('findings'); if (narrow.matches) openRail(true); renderAnnMarks(); }
+  renderRail(); renderMarks();
+  const f = id ? byId.get(id) : null;
+  const box = f && (f.implBox || f.designBox);
+  if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }
+  const row = $('side').querySelector('.frow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
 // ---- marks --------------------------------------------------------------
@@ -1442,65 +1692,6 @@ function applyWipe() {
   $('wipe').style.left = (sx - 14) + 'px';
 }
 
-// ---- detail -------------------------------------------------------------
-function kv(obj) { return obj ? Object.entries(obj).map(([k, v]) => k + ': ' + (typeof v === 'object' ? JSON.stringify(v) : v)).join(', ') : '—'; }
-// The panel shares the sticky viewer with the panes on a phone, so its
-// presence shrinks them (body.has-detail) instead of pushing them off screen.
-function setDetail(html) {
-  $('detail').innerHTML = html;
-  document.body.classList.toggle('has-detail', html !== '');
-}
-function renderDetail() {
-  if (ann.draft || ann.selected) { renderAnnDetail(); return; }
-  const f = state.selected ? byId.get(state.selected) : null;
-  if (!f) { setDetail(''); return; }
-  const keys = Array.from(new Set(Object.keys(f.expected || {}).concat(Object.keys(f.actual || {}))));
-  const table = keys.length ? '<table><tr><th></th><th>design (expected)</th><th>impl (actual)</th></tr>' +
-    keys.map((k) => '<tr><th>' + esc(k) + '</th><td>' + esc(kv({ [k]: (f.expected || {})[k] }).replace(k + ': ', '')) + '</td><td>' + esc(kv({ [k]: (f.actual || {})[k] }).replace(k + ': ', '')) + '</td></tr>').join('') + '</table>' : '';
-  const box = (b) => b ? Math.round(b.x) + ',' + Math.round(b.y) + ' ' + Math.round(b.w) + '×' + Math.round(b.h) : '—';
-  setDetail(
-    '<h2><span class="num ' + f.severity + '" style="padding:0 6px;border-radius:5px">' + f.mark + '</span> ' + esc(f.message) + '</h2>' +
-    '<div class="meta"><span class="tag">' + esc(f.type) + '</span> <span class="tag">' + esc(f.severity) + '</span>' + (f.role ? ' <span class="tag">' + esc(f.role) + '</span>' : '') +
-    (f.instances ? ' <span class="tag">×' + f.instances + ' instances</span>' : '') + (f.isSuppressed ? ' <span class="tag">suppressed by ' + esc(f.suppressedBy) + ': ' + esc(f.rule) + '</span>' : '') +
-    ' · design box ' + box(f.designBox) + ' · impl box ' + box(f.implBox) + ' (impl CSS px)</div>' + table +
-    triageHtml(f) +
-    (f.crops ? '<div class="crops"><figure><img src="' + esc(page.base + f.crops.design) + '" alt=""><figcaption>design crop</figcaption></figure><figure><img src="' + esc(page.base + f.crops.impl) + '" alt=""><figcaption>impl crop</figcaption></figure></div>' : ''),
-  );
-}
-// The verdict row: what to do about this finding, and why. Filed against f.key, so a report
-// captured before that field existed can only say so.
-function triageHtml(f) {
-  if (!f.key) {
-    return '<div class="meta triage-none">no stable key on this finding — re-run the compare to triage it</div>';
-  }
-  const entry = findTriage(triage.set, f.key);
-  const verdict = triageStateOf(f);
-  const button = (value, label) =>
-    '<button data-triage="' + value + '" class="verdict-btn ' + value + (verdict === value ? ' on' : '') + '">' + label + '</button>';
-  const until = entry && entry.snoozeUntil && verdict === 'snooze' ? ' <span class="kv">until ' + esc(entry.snoozeUntil.slice(0, 10)) + '</span>' : '';
-  // An "ignore" only hides the finding from THIS view; the next run reports it
-  // again. Saying so here is the difference between a decision that sticks and
-  // one that is re-taken every run — and the note is what becomes its reason,
-  // so an empty one is refused at harvest time.
-  const stick = verdict === 'ignore'
-    ? '<div class="meta">hidden here only — <code>refdiff accept ' + esc(report.pair) + '</code> turns this into a policy rule that suppresses it in every run (and lapses if the measurement changes). Needs the note below.</div>'
-    : '';
-  return '<div class="triage"><div class="actions">' +
-    button('fix', 'To fix') + button('ignore', 'Ignore') + button('snooze', 'Snooze') +
-    (verdict ? '<button data-triage="clear">Clear</button>' : '') + until +
-    '</div><textarea id="triage-note" placeholder="why — stored with the verdict, read by the fix loop">' + esc(entry ? entry.note : '') + '</textarea>' + stick + '</div>';
-}
-
-function select(id, focus) {
-  state.selected = id;
-  if (id) { ann.selected = null; ann.draft = null; renderAnnList(); renderAnnMarks(); }
-  renderList(); renderMarks(); renderDetail();
-  const f = id ? byId.get(id) : null;
-  const box = f && (f.implBox || f.designBox);
-  if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }
-  const row = document.querySelector('.row.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
-}
-
 // ---- interaction --------------------------------------------------------
 function wire() {
   for (const pane of Object.values(panes)) {
@@ -1585,44 +1776,62 @@ function wire() {
   $('align-lock').addEventListener('click', () => setLock(!state.lock));
   $('align-menu').addEventListener('click', (e) => { const o = e.target.closest('[data-align]'); if (o) setAlign(o.dataset.align); });
   document.addEventListener('pointerdown', (e) => { if (state.alignOpen && !(e.target.closest && e.target.closest('.align-wrap'))) toggleAlignMenu(false); });
-  $('detail').addEventListener('click', (e) => {
-    const b = e.target.closest && e.target.closest('button[data-triage]');
-    if (!b) return;
-    const note = document.getElementById('triage-note');
-    applyTriage(b.dataset.triage === 'clear' ? null : b.dataset.triage, note ? note.value : undefined);
+  // The rail: one delegated listener per event kind, since its rows are re-rendered as HTML.
+  $('rail-toggle').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
+  $('rail-collapse').addEventListener('click', () => openRail(false));
+  $('rail-expand').addEventListener('click', () => openRail(true));
+  $('side').addEventListener('click', (e) => {
+    const t = e.target;
+    const tab = t.closest('.rtab'); if (tab) { setTab(tab.dataset.tab); return; }
+    const chip = t.closest('.sevchip');
+    if (chip) {
+      if (chip.dataset.triaged) { state.showTriaged[chip.dataset.triaged] = !state.showTriaged[chip.dataset.triaged]; saveControls(); }
+      else state.sev[chip.dataset.sev] = !state.sev[chip.dataset.sev];
+      renderRail(); renderMarks(); renderFocusChip(); return;
+    }
+    if (t.closest('#sup-toggle')) { state.showSup = !state.showSup; saveControls(); renderRail(); return; }
+    const tri = t.closest('button[data-triage]');
+    if (tri) {
+      // The active verdict pressed again clears it (the comps' toggle).
+      const cur = state.selected ? triageStateOf(byId.get(state.selected)) : null;
+      const note = $('side').querySelector('.fnote');
+      applyTriage(tri.dataset.triage === cur ? null : tri.dataset.triage, note ? note.value : undefined);
+      return;
+    }
+    const act = t.closest('[data-act]'); if (act) { railAction(act.dataset.act, act.dataset.ann); return; }
+    if (t.closest('input, textarea, button, a')) return;
+    const frow = t.closest('.frow'); if (frow) { select(frow.dataset.id === state.selected ? null : frow.dataset.id, true); return; }
+    const irow = t.closest('.irow'); if (irow) selectAnn(irow.dataset.ann === ann.selected ? null : irow.dataset.ann, true);
   });
-  $('detail').addEventListener('change', (e) => {
-    if (e.target.id !== 'triage-note') return;
+  $('side').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'q') { state.q = t.value.trim().toLowerCase(); renderRail(); renderMarks(); }
+    else if (t.id === 'draft-note') ann.draftText = t.value;
+    else if (t.classList.contains('inote')) ann.noteDrafts[t.dataset.ann] = t.value;
+    else if (t.classList.contains('fnote')) triage.noteDrafts[t.dataset.key] = t.value;
+  });
+  $('side').addEventListener('change', (e) => {
+    const t = e.target;
+    if (!t.classList.contains('fnote')) return;
     const f = state.selected ? byId.get(state.selected) : null;
     if (!f || !f.key) return;
-    triage.set = setTriageNote(triage.set, f.key, e.target.value, nowIso());
-    persistTriage(); renderList(); renderRailToggle();
+    delete triage.noteDrafts[f.key];
+    triage.set = setTriageNote(triage.set, f.key, t.value, nowIso());
+    triage.unsaved.add(f.key); persistTriage(); renderRail();
   });
-  $('rail-toggle').addEventListener('click', () => {
-    document.body.classList.toggle('rail-open');
-    updateRailToggle(); saveControls();
-    if (!state.userMoved) fit();
+  $('side').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.id === 'draft-note') railAction('save-draft');
+    else if (e.key === 'Enter' && e.target.classList.contains('inote')) railAction('send', e.target.dataset.ann);
+    else if (e.key === 'Escape' && e.target.id === 'q') closeSearch();
   });
   narrow.addEventListener('change', () => { applyLayout(); applySide(); applyNarrow(); applyAlignMode(); if (state.userMoved) applyView(); else fit(); });
   narrowish.addEventListener('change', applyNarrow);
   // On a phone the comment tool stays on until switched off (a thumb cannot re-pick it per note);
   // on desktop it is one-shot, like the comps' tool that snaps back to pan after a gesture.
   $('ann-draw').addEventListener('click', () => { setAnnMode(ann.mode ? null : 'draw', narrow.matches); saveControls(); });
-  $('ann-list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) selectAnn(row.dataset.ann === ann.selected ? null : row.dataset.ann, true); });
-  $('detail').addEventListener('click', (e) => { const b = e.target.closest('button[data-act]'); if (b) annAction(b.dataset.act, b.dataset.ann); });
-  $('list').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
-  $('suppressed').addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) select(row.dataset.id === state.selected ? null : row.dataset.id, true); });
-  $('sev-chips').addEventListener('click', (e) => {
-    const c = e.target.closest('.chip'); if (!c) return;
-    if (c.dataset.triaged) { state.showTriaged[c.dataset.triaged] = !state.showTriaged[c.dataset.triaged]; saveControls(); }
-    else state.sev[c.dataset.sev] = !state.sev[c.dataset.sev];
-    renderList(); renderMarks(); renderFocusChip();
-  });
-  $('q').addEventListener('input', (e) => { state.q = e.target.value.trim().toLowerCase(); renderList(); renderMarks(); });
   $('zoom-in').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
   $('zoom-out').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
   $('fit').addEventListener('click', fit);
-  $('members').addEventListener('change', (e) => { state.showMembers = e.target.checked; saveControls(); renderMarks(); });
   $('diff-toggle').addEventListener('click', () => setDiff(!state.diff));
   $('dim-toggle').addEventListener('click', () => setDim(!state.dim));
   $('strobe-toggle').addEventListener('click', () => setStrobe(!state.strobe));
@@ -1633,8 +1842,10 @@ function wire() {
     saveControls(); applyLab();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') { e.target.blur(); } return; }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape' && e.target.id !== 'q') { e.target.blur(); } return; }
     const p = paneSize();
+    // The text filter has no drawn home (gap 31): / opens it, Esc in it clears and closes it.
+    if (e.key === '/') { e.preventDefault(); setTab('findings'); openSearch(); return; }
     if (e.key === '+' || e.key === '=') { setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
     else if (e.key === '-') { setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
     else if (e.key === '0') fit();
@@ -1674,7 +1885,6 @@ function wire() {
 // elements.json). Status: open → implemented (agent) → done (designer).
 const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-function setAnnStatus(text, isError) { ann.status = text; const el = $('ann-status'); el.textContent = text; el.className = 'annstatus' + (isError ? ' err' : ''); }
 // One annotate mode, not two: the gesture already said which shape was meant — a click is a note on
 // the element under it, a drag is a region — so a second button only made you declare it twice.
 function setAnnMode(mode, sticky) {
@@ -1687,6 +1897,9 @@ function setAnnMode(mode, sticky) {
   document.body.classList.toggle('ann-mode', !!mode);
   applyTools();
 }
+// The whole set is one PUT. A failure is shown on the rows changed since the last one that
+// succeeded (ann.unsaved), with the REAL endpoint and status, and a Retry — never a silent
+// "saved" over a file that did not change (section C).
 function persist() {
   clearTimeout(ann.saveTimer);
   ann.saveTimer = setTimeout(async () => {
@@ -1695,12 +1908,13 @@ function persist() {
       try {
         const res = await fetch(page.annotationsUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body });
         if (!res.ok) throw new Error(res.status + ' ' + (await res.text()));
-        setAnnStatus('saved · annotations.json', false);
-      } catch (e) { setAnnStatus('save failed: ' + e.message, true); }
+        ann.saveError = null; ann.unsaved.clear();
+      } catch (e) { ann.saveError = 'PUT ' + page.annotationsUrl + ' · ' + e.message; }
     } else {
-      try { localStorage.setItem('vc-annotations:' + report.pair, body); setAnnStatus('saved in this browser only — serve the run dir (--serve) to persist to annotations.json', false); }
-      catch (e) { setAnnStatus('cannot save: ' + e.message, true); }
+      try { localStorage.setItem('vc-annotations:' + report.pair, body); ann.saveError = null; ann.unsaved.clear(); }
+      catch (e) { ann.saveError = 'localStorage · ' + e.message; }
     }
+    renderRail(); renderAnnMarks();
   }, 250);
 }
 function replaceAnn(next) { ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.map((a) => (a.id === next.id ? next : a)) }); }
@@ -1718,8 +1932,7 @@ function paneWorld(pane, e) {
 function annPointerDown(pane, e) {
   // A sticky mode keeps drawing after each shape, so an unsaved draft with
   // text in it must not be thrown away by the next tap.
-  const ta = document.querySelector('#detail textarea');
-  if (ann.draft && ta && ta.value.trim()) { setAnnStatus('save or cancel the open note first', true); return; }
+  if (ann.draft && ann.draftText.trim()) { setTab('items'); if (narrow.matches) openRail(true); const el = $('draft-note'); if (el) el.focus(); return; }
   const p = paneWorld(pane, e);
   ann.band = { pointerId: e.pointerId, side: pane.dataset.side, start: p, end: p };
   pane.setPointerCapture(e.pointerId);
@@ -1738,56 +1951,33 @@ function annPointerUp(pane, e) {
   const drawn = dragged(b);
   const shape = drawn ? { kind: 'rect', x, y, w, h } : { kind: 'point', x: b.end.x, y: b.end.y };
   ann.draft = { side: b.side, shape, anchor: anchorFor(shape, ann.elements[b.side]) };
+  ann.draftText = '';
   ann.selected = null; state.selected = null;
   if (!ann.sticky) setAnnMode(null);
-  renderList(); renderMarks(); renderAnnMarks(); renderDetail();
-  const ta = document.querySelector('#detail textarea'); if (ta) ta.focus();
+  // The comps' flow: the composer opens in Comments (the sheet rises on the phone) and waits for
+  // the instruction.
+  setTab('items'); if (narrow.matches) openRail(true);
+  renderRail(); renderMarks(); renderAnnMarks();
+  const el = $('draft-note'); if (el) el.focus();
 }
 function selectAnn(id, focus) {
-  ann.selected = id; ann.draft = null;
-  if (id) state.selected = null;
+  ann.selected = id; ann.draft = null; ann.draftText = '';
+  if (id) { state.selected = null; setTab('items'); if (narrow.matches) openRail(true); }
   const picked = id ? ann.set.annotations[annIndex(id)] : null;
   if (picked && narrow.matches && picked.side !== state.side) setSide(picked.side);
-  renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderDetail();
-  const a = id ? ann.set.annotations[annIndex(id)] : null;
-  if (focus && a) { setView(focusView(shapeBox(a.shape).w ? shapeBox(a.shape) : { x: a.shape.x - 20, y: a.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view)); state.userMoved = true; applyView(); }
-  const row = document.querySelector('#ann-list .row.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
-}
-function annAction(act, id) {
-  const now = nowIso();
-  if (act === 'save-draft') {
-    const note = document.querySelector('#detail textarea').value;
-    const a = createAnnotation({ id: uid(), side: ann.draft.side, shape: ann.draft.shape, note, now }, ann.elements[ann.draft.side]);
-    ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.concat([a]) });
-    ann.draft = null; persist(); selectAnn(a.id, false); return;
-  }
-  if (act === 'cancel-draft') { ann.draft = null; renderAnnMarks(); renderDetail(); return; }
-  const i = annIndex(id); if (i < 0) return;
-  const a = ann.set.annotations[i];
-  if (act === 'delete') { ann.set = Object.assign({}, ann.set, { annotations: ann.set.annotations.filter((x) => x.id !== id) }); persist(); selectAnn(null, false); return; }
-  if (act === 'save-note') { replaceAnn(editNote(a, document.querySelector('#detail textarea').value, now)); }
-  else replaceAnn(transition(a, act, now));
-  persist(); renderAnnList(); renderAnnMarks(); renderDetail();
+  renderRail(); renderMarks(); renderAnnMarks();
+  if (focus && picked) { setView(focusView(shapeBox(picked.shape).w ? shapeBox(picked.shape) : { x: picked.shape.x - 20, y: picked.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view)); state.userMoved = true; applyView(); }
+  const row = $('side').querySelector('.irow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
-function annRowHtml(a, i) {
-  const n = i + 1;
-  return '<li class="row ann ' + a.status + (ann.selected === a.id ? ' sel' : '') + '" data-ann="' + a.id + '">' +
-    '<span class="num ' + a.status + '">' + n + '</span>' +
-    '<span><div class="msg">' + (a.note.trim() ? esc(a.note.trim()) : '<i>(no text)</i>') + '</div><div class="meta"><span class="tag">' + a.side + '</span><span class="tag">' + a.status + '</span>' +
-    (a.stale ? '<span class="tag">stale</span>' : '') + ' ' + esc(describeAnchor(a.anchor)) + '</div></span></li>';
-}
-function renderAnnList() {
-  const c = counts(ann.set);
-  $('ann-summary').textContent = ann.set.annotations.length + ' annotations — ' + c.open + ' open · ' + c.implemented + ' implemented · ' + c.done + ' done';
-  $('ann-list').innerHTML = ann.set.annotations.map(annRowHtml).join('');
-  renderRailToggle();
-}
 // The comps' comment badge: a 22px rounded square in the status colour, centred on the shape's
-// top-left corner (a point's badge sits on the point). HTML, like the finding badges.
-function annLabel(x, y, n, status, id, note) {
+// top-left corner (a point's badge sits on the point). HTML, like the finding badges. A comment
+// whose save failed wears the red halo (section C, surface 3). Drawn on BOTH panes, as the comps
+// do: the shape lives in shared world space, and on a phone only one side is on screen — a note
+// placed on the impl was invisible while the design showed.
+function annLabel(x, y, n, a) {
   const d = document.createElement('div');
-  d.className = 'vmark ann ' + status; d.dataset.ann = id; d.title = note;
+  d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : ''); d.dataset.ann = a.id; d.title = a.note;
   d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px';
   d.textContent = n;
   return d;
@@ -1798,19 +1988,17 @@ function renderAnnMarks() {
     layer.replaceChildren();
     for (const b of blayer.querySelectorAll('.vmark.ann')) b.remove();
     ann.set.annotations.forEach((a, i) => {
-      if (a.side !== side) return;
-      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '');
+      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (a.side === side ? '' : ' mirror');
       if (a.shape.kind === 'rect') {
         const r = document.createElementNS(SVG, 'rect');
         r.setAttribute('x', a.shape.x); r.setAttribute('y', a.shape.y); r.setAttribute('width', Math.max(a.shape.w, 0.5)); r.setAttribute('height', Math.max(a.shape.h, 0.5));
         r.setAttribute('class', cls); r.dataset.ann = a.id; layer.append(r);
-        blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id, a.note));
       } else {
         const c = document.createElementNS(SVG, 'circle');
         c.setAttribute('cx', a.shape.x); c.setAttribute('cy', a.shape.y); c.setAttribute('r', 7 / state.view.z);
         c.setAttribute('class', cls); c.dataset.ann = a.id; layer.append(c);
-        blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a.status, a.id, a.note));
       }
+      blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a));
     });
     const live = ann.band && ann.band.side === side ? ann.band : null;
     const d = ann.draft && ann.draft.side === side ? ann.draft : null;
@@ -1829,34 +2017,11 @@ function renderAnnMarks() {
   }
   applyView();
 }
-function renderAnnDetail() {
-  const d = ann.draft;
-  if (d) {
-    setDetail('<h2>New ' + (d.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + d.side + '</b> side</h2>' +
-      '<div class="meta">anchored to ' + esc(describeAnchor(d.anchor)) + (ann.elementsLoaded ? '' : ' (elements.json not loaded — no snapping)') + ' · world ' + Math.round(d.shape.x) + ',' + Math.round(d.shape.y) + '</div>' +
-      '<textarea placeholder="what should change here?"></textarea>' +
-      '<div class="actions"><button class="primary" data-act="save-draft">Save note</button><button data-act="cancel-draft">Cancel</button></div>');
-    return;
-  }
-  const i = annIndex(ann.selected); const a = ann.set.annotations[i];
-  if (!a) { setDetail(''); return; }
-  const when = (k) => (a[k] ? ' · ' + k.replace('At', '') + ' ' + esc(a[k]) : '');
-  setDetail('<h2><span class="num ' + a.status + '" style="padding:0 6px;border-radius:5px">' + (i + 1) + '</span> <span class="status ' + a.status + '">' + a.status + '</span> ' +
-    (a.shape.kind === 'rect' ? 'region' : 'note') + ' on the <b>' + a.side + '</b> side' + (a.stale ? ' · <b>stale</b>: its element is not in the current capture' : '') + '</h2>' +
-    '<div class="meta">anchored to ' + esc(describeAnchor(a.anchor)) + ' · created ' + esc(a.createdAt) + when('implementedAt') + when('doneAt') + ' · id ' + a.id + '</div>' +
-    '<textarea>' + esc(a.note) + '</textarea>' +
-    '<div class="actions"><button class="primary" data-act="save-note" data-ann="' + a.id + '">Save note</button>' +
-    (a.status !== 'done' ? '<button data-act="done" data-ann="' + a.id + '">Mark done</button>' : '') +
-    (a.status !== 'open' ? '<button data-act="reopen" data-ann="' + a.id + '">Reopen</button>' : '') +
-    (a.status === 'open' ? '<button data-act="implement" data-ann="' + a.id + '" title="normally the agent does this via --mark-implemented">Mark implemented</button>' : '') +
-    '<button class="danger" data-act="delete" data-ann="' + a.id + '">Delete</button>' +
-    '<span class="hint">editing the text of an implemented note reopens it</span></div>');
-}
 async function loadAnnotations() {
   if (ann.storage === 'api') {
     try {
       const res = await fetch(page.annotationsUrl);
-      if (res.ok) { const p = parseAnnotationSet(await res.json(), report.pair); if (p.ok) { ann.set = p.value; setAnnStatus('annotations.json · ' + ann.set.annotations.length + ' loaded', false); return; } }
+      if (res.ok) { const p = parseAnnotationSet(await res.json(), report.pair); if (p.ok) { ann.set = p.value; return; } }
       else if (res.status === 404) { ann.storage = 'local'; }
       else throw new Error('HTTP ' + res.status);
     } catch (e) { ann.storage = 'local'; }
@@ -1865,7 +2030,6 @@ async function loadAnnotations() {
     const raw = localStorage.getItem('vc-annotations:' + report.pair);
     if (raw) { const p = parseAnnotationSet(JSON.parse(raw), report.pair); if (p.ok && p.value.annotations.length >= ann.set.annotations.length) ann.set = p.value; }
   } catch (e) { /* embedded copy stays */ }
-  setAnnStatus(ann.set.annotations.length + ' annotations · not served: changes stay in this browser', false);
 }
 async function loadElements() {
   try {
@@ -1886,20 +2050,22 @@ function openReport(reportData, annotationSet, pageData) {
   page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null }, pageData || {});
   byId = new Map(report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s))).map((f) => [f.id, f]));
   ann.set = annotationSet || { version: 1, pair: report.pair, annotations: [] };
-  ann.mode = null; ann.draft = null; ann.selected = null; ann.band = null; ann.sticky = false;
+  ann.mode = null; ann.draft = null; ann.draftText = ''; ann.selected = null; ann.band = null; ann.sticky = false;
   ann.elements = { design: [], impl: [] }; ann.elementsLoaded = false;
-  state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = '';
+  ann.unsaved = new Set(); ann.saveError = null; ann.noteDrafts = {};
+  triage.unsaved = new Set(); triage.saveError = null; triage.noteDrafts = {}; focusSaveError = null;
+  state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = ''; state.tab = 'findings';
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; focusBand = null; focusDrag = null;
   state.diffIndex = -1; state.regOnly = false; state.deltaDismissed = false; state.alignOpen = false;
   state.wipeX = report.impl.width / 2;
-  document.body.classList.remove('has-detail', 'ann-mode');
-  $('q').value = '';
+  document.body.classList.remove('ann-mode');
+  $('q').value = ''; $('fsearch').hidden = true;
   applyControls(readControls());
   document.title = report.pair + ' — refdiff';
-  renderTopbar(); renderDeltaStrip(); renderList(); renderDetail(); renderAnnList();
+  renderTopbar(); renderDeltaStrip(); renderRail();
   if (!wired) { wire(); wired = true; }
-  applyLayout(); applySide(); applyNarrow(); updateRailToggle(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
+  applyLayout(); applySide(); applyNarrow(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
   return Promise.all([
     loadImage(imgs.design, page.base + report.artifacts.designPng),
     loadImage(imgs.impl, page.base + report.artifacts.implPng),
@@ -1920,7 +2086,7 @@ function openReport(reportData, annotationSet, pageData) {
     if (!okD) $('label-design').textContent += ' — image missing';
     if (!okI) $('label-impl').textContent += ' — image missing';
     setLab(state.lab);
-    renderList(); renderMarks(); renderAnnList(); renderAnnMarks(); renderRailToggle(); renderDetail(); fit();
+    renderRail(); renderMarks(); renderAnnMarks(); renderFocusChip(); fit();
   });
 }
 `

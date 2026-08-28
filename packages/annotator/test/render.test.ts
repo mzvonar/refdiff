@@ -47,6 +47,10 @@ const report: ComparisonReport = {
 
 const viewMathSource = "export const IDENTITY_ALIGNMENT = { scale: 1, offsetX: 0, offsetY: 0 };"
 const annotationsSource = "export const STATUSES = ['open', 'implemented', 'done'];"
+const triageSource = "export const TRIAGE_STATES = ['fix', 'ignore', 'snooze'];"
+const focusSource = "export const FOCUS_HANDLES = ['nw', 'ne', 'se', 'sw', 'move'];"
+const railSource = "export const SUPPRESSED_LABEL = (n) => n + ' suppressed by policy rules';"
+const sources = { viewMathSource, annotationsSource, triageSource, focusSource, railSource }
 const annotations: AnnotationSet = {
   version: 1,
   pair: "doc-detail-owner-desktop",
@@ -70,7 +74,7 @@ const annotations: AnnotationSet = {
 }
 
 describe("renderReport", () => {
-  const html = renderReport(report, { viewMathSource, annotationsSource, annotations })
+  const html = renderReport(report, { ...sources, annotations })
 
   it("is a self-contained page referencing the run dir's full images relatively", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true)
@@ -84,6 +88,12 @@ describe("renderReport", () => {
     )
     expect(html).toContain(viewMathSource)
     expect(html).toContain(annotationsSource)
+    // The client calls into triage.js (loadTriage), focus.js (renderFocusBand) and rail.js
+    // (renderRail) too: an emitted report that embeds only two of the five modules throws a
+    // ReferenceError in openReport and shows nothing at all.
+    expect(html).toContain(triageSource)
+    expect(html).toContain(focusSource)
+    expect(html).toContain(railSource)
   })
 
   it("strobes on hard keyframe stops, never `steps(1) … alternate`", () => {
@@ -185,11 +195,14 @@ describe("renderReport", () => {
     expect(html).toContain(".vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%;")
     // Comment badges: the 22px rounded square in the status colour.
     expect(html).toContain(".vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }")
-    expect(html).toContain("d.className = 'vmark ann ' + status; d.dataset.ann = id;")
+    expect(html).toContain("d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : ''); d.dataset.ann = a.id;")
     expect(html).not.toContain("g.lbl")
     // The comps mark the primary instance only by default: a ×15 aggregate must not carpet the artboard (gap 12).
     expect(html).toContain("layer: 'all', showMarks: true, showMembers: false,")
-    expect(html).toContain('<input type="checkbox" id="members"> all instances')
+    // …and the toggle is the comps' instance chip above the list, plus the box in a selected aggregate's row.
+    expect(html).not.toContain('id="members"')
+    expect(html).toContain("instanceChipLabel(state.showMembers, kept)")
+    expect(html).toContain("'Show primary only' : 'Show all instances'")
   })
 
   it("carries the phone layout (< 760px, the comps' breakpoint): scrolling page, sticky viewer, floating tools", () => {
@@ -198,24 +211,67 @@ describe("renderReport", () => {
     const rules = mobile![1]!
     expect(html).toContain("const narrow = window.matchMedia('(max-width: 759px)');")
     expect(html).not.toContain("max-width: 900px")
-    // The desktop page is height-locked (only the inner lists scroll); on a
-    // phone that left each pane ~50px tall with no way to reach the rest.
-    expect(rules).toContain("html, body { height:auto; }")
-    expect(rules).toContain("position:sticky")
     // The tool strip floats bottom-left over the canvas, the zoom pill moves top-left, the layer
     // strip appears under the topbar and the brand + the two desktop segments go.
     expect(rules).toContain(".tools { position:absolute; left:8px; bottom:56px;")
     expect(rules).toContain(".zoom-pill { left:12px; top:12px; bottom:auto; }")
     expect(rules).toContain(".layer-strip { display:flex; }")
     expect(rules).toContain(".tb-left .brand-name, #seg-layout, #seg-layer { display:none; }")
-    // The lists flow into the page scroll instead of clipping inside their own boxes.
-    expect(rules).toContain(".list { overflow:visible; flex:none; }")
-    // The rail is collapsed until asked for; pinned to the bottom so it stays tappable.
-    expect(rules).toContain(".rail-toggle { position:sticky; bottom:0;")
-    expect(rules).toContain("body:not(.rail-open) main { grid-template-columns:1fr; }")
-    expect(rules).toContain("aside .rail-body { display:none; }")
-    expect(html).toContain("body:not(.rail-open) main { grid-template-columns:38px 1fr; }")
-    expect(html).toContain('aria-expanded="false" aria-controls="rail-body"')
+    // The rail is the comps' bottom sheet: 44px of handle over the canvas, 52% when open, the
+    // tabs and lists hidden while it is down. The page itself never scrolls.
+    expect(rules).toContain(".rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:44px;")
+    expect(rules).toContain("body.rail-open .rail { height:52%; }")
+    expect(rules).toContain("body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }")
+    expect(rules).not.toContain("position:sticky")
+    expect(html).not.toContain("html, body { height:auto; }")
+    expect(html).toContain('id="rail-toggle" aria-expanded="false" aria-controls="rail-panels"')
+  })
+
+  it("puts the review rail on the RIGHT at the comps' 320px, with tabs, chips, prop lines and a collapse chip", () => {
+    // Phase 4: the 340px left aside is gone; the rail follows the viewer in the DOM and the flex row.
+    expect(html.indexOf('<section id="viewer">')).toBeLessThan(html.indexOf('<aside id="side" class="rail">'))
+    expect(html).toContain(".rail { width:320px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }")
+    expect(html).not.toContain("grid-template-columns:340px 1fr")
+    expect(html).toContain('<span class="rail-title">Review</span>')
+    expect(html).toContain(">right_panel_close</span>")
+    expect(html).toContain('id="rail-expand"')
+    expect(html).toContain(">right_panel_open</span>")
+    expect(html).toContain('data-tab="findings" role="tab">Findings · <span id="tab-f-count"></span>')
+    expect(html).toContain('data-tab="items" role="tab">Comments · <span id="tab-i-count"></span>')
+    // Severity chips with dots, counted; the instance chip; the suppressed disclosure.
+    expect(html).toContain("SEV_CHIP_LABELS[s] + ' ' + report.findings.filter((f) => f.severity === s).length")
+    expect(html).toContain('id="inst-row"')
+    expect(html).toContain("SUPPRESSED_LABEL(sup.length)")
+    // A row: badge, title, ×N, the Regression tag, the mono prop line with the actual in red.
+    expect(html).toContain("'<span class=\"fgroup\" title=\"one cause in ' + f.instances + ' places")
+    expect(html).toContain(">undo</span><span>Regression</span></span>")
+    // Comment shapes and badges are drawn on BOTH panes (the comps' ovA.im / ovB.im): on a phone
+    // only one side is on screen, and a note placed on the impl was invisible while the design showed.
+    expect(html).not.toContain("if (a.side !== side) return;")
+    expect(html).toContain("(a.side === side ? '' : ' mirror')")
+    expect(html).toContain("for (const r of propRows(f.expected, f.actual, f.type))")
+    expect(html).toContain(".fprop .a { color:var(--critical); }")
+    // Selecting focuses the canvas (gap 13): no detail panel, no crop images in the page.
+    expect(html).not.toContain('id="detail"')
+    expect(html).not.toContain("f.crops")
+    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }")
+    // The comments tab: composer, rows with the status label and the model's reply (gap 19).
+    expect(html).toContain('placeholder="Instruction for the model…"')
+    expect(html).toContain(">Send to model</button>")
+    expect(html).toContain('placeholder="Add another instruction…"')
+    expect(html).toContain("if (a.reply) h += '<div class=\"ireply\"")
+    expect(html).toContain("const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };")
+    // A failed save (section C): the row, the endpoint, Retry, the halo on the canvas badge, the summary.
+    expect(html).toContain("ann.saveError = 'PUT ' + page.annotationsUrl + ' · ' + e.message;")
+    expect(html).toContain('<span class="t">Not saved</span>')
+    expect(html).toContain(".vmark.ann.unsaved { box-shadow:0 0 0 3px rgba(229,72,77,.6)")
+    expect(html).toContain("railSummary(report.findings.filter(visible).length, visibleItems().length, ann.saveError ? ann.unsaved.size : 0)")
+    // Triage (gap 11) lives in the selected row; the active verdict pressed again clears it.
+    expect(html).toContain('placeholder="Note for the model…"')
+    expect(html).toContain("applyTriage(tri.dataset.triage === cur ? null : tri.dataset.triage")
+    // The text filter kept, off the drawn chrome (gap 31): `/` opens it.
+    expect(html).toContain('<div class="fsearch" id="fsearch" hidden>')
+    expect(html).toContain("if (e.key === '/') { e.preventDefault(); setTab('findings'); openSearch(); return; }")
   })
 
   it("makes one-side-at-a-time a mode, not a breakpoint: the Split / Full segment drives body.single", () => {
@@ -265,7 +321,7 @@ describe("renderReport", () => {
       html,
     )
     expect(JSON.parse(m![1]!)).toEqual(annotations)
-    const bare = renderReport(report, { viewMathSource, annotationsSource })
+    const bare = renderReport(report, { ...sources })
     const m2 = /<script type="application\/json" id="annotations-data">([\s\S]*?)<\/script>/.exec(
       bare,
     )
@@ -280,16 +336,13 @@ describe("renderReport", () => {
   })
 
   it("refuses an embedded module source that would close the module script", () => {
-    expect(() =>
-      renderReport(report, { viewMathSource: "</script><script>alert(1)", annotationsSource }),
-    ).toThrow()
-    expect(() =>
-      renderReport(report, { viewMathSource, annotationsSource: "</script><script>alert(1)" }),
-    ).toThrow()
+    for (const key of Object.keys(sources) as (keyof typeof sources)[]) {
+      expect(() => renderReport(report, { ...sources, [key]: "</script><script>alert(1)" })).toThrow()
+    }
   })
 
   it("honours a custom title", () => {
-    expect(renderReport(report, { viewMathSource, annotationsSource, title: "T & U" })).toContain(
+    expect(renderReport(report, { ...sources, title: "T & U" })).toContain(
       "<title>T &amp; U</title>",
     )
   })
@@ -300,8 +353,7 @@ describe("renderReport", () => {
     expect(html).toContain('"indexHref":null')
     expect(html).toContain('page.indexHref ? \'<a class="back"')
     const inSet = renderReport(report, {
-      viewMathSource,
-      annotationsSource,
+      ...sources,
       indexHref: "../index.html",
     })
     expect(inSet).toContain('"indexHref":"../index.html"')
