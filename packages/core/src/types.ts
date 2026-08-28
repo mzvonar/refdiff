@@ -204,6 +204,11 @@ export interface CaptureScope {
   selector: string
   /** Debug aid: what the heuristic saw when it picked. */
   candidates?: number
+  /**
+   * The frame sized itself from the viewport (full-bleed comp), so the canvas was
+   * snapped to the pair's exact viewport before capture instead of the padded one.
+   */
+  fluid?: boolean
 }
 
 /** Result of aligning the two frames before any comparison. */

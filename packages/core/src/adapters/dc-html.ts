@@ -28,7 +28,7 @@ import {
   waitForFonts,
 } from "./browser.js"
 import { extractElementTree } from "./extract.js"
-import { pickLargestChild, type ScopeCandidate } from "./scope.js"
+import { CANVAS_SLACK, isFluidFrame, pickLargestChild, type ScopeCandidate } from "./scope.js"
 
 /**
  * Resolve the node to capture inside the frame, in priority order:
@@ -143,9 +143,12 @@ export async function captureDcHtml(
   const identity = ref ?? `${source.file}#${source.frame}`
   const server = await serveDir(source.dir)
   const viewportWidth = source.viewport?.width ?? 1440
+  // Wider than the frame so the canvas never reflows a FIXED frame; a fluid frame
+  // is detected after hydration and the window snapped back to the exact viewport.
+  const canvas = { width: viewportWidth + CANVAS_SLACK, height: source.viewport?.height ?? 1000 }
+  let fluid = false
   const opened = await openPage(browser, {
-    // Wider than the frame so the canvas never reflows the target frame.
-    viewport: { width: viewportWidth + 120, height: source.viewport?.height ?? 1000 },
+    viewport: canvas,
     deviceScaleFactor: DPR,
   })
   if ("error" in opened) {
@@ -209,6 +212,20 @@ export async function captureDcHtml(
       })
     }
 
+    // A fluid comp (full-bleed page, no fixed frame size) has grown into the
+    // canvas slack and is now CANVAS_SLACK wider than the impl viewport. Snap
+    // the window to the pair's exact viewport so both sides render at the same
+    // width and height, then let fonts/layout settle again.
+    const frameWidth = await page
+      .locator(selector)
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().width)
+    fluid = isFluidFrame(frameWidth, canvas.width)
+    if (fluid && source.viewport) {
+      await page.setViewportSize({ width: source.viewport.width, height: source.viewport.height })
+      await waitForFonts(page)
+    }
+
     await page.addStyleTag({ content: FREEZE_CSS })
 
     // Scope: the component inside the artboard, not the artboard.
@@ -221,7 +238,7 @@ export async function captureDcHtml(
         scope: source.scope ?? "",
       })
     }
-    const scope = scoped.value
+    const scope: CaptureScope = fluid ? { ...scoped.value, fluid: true } : scoped.value
 
     const locator = page.locator(scope.selector).first()
     await locator.scrollIntoViewIfNeeded()
@@ -238,7 +255,7 @@ export async function captureDcHtml(
       return err({
         kind: "blank-render",
         ref: identity,
-        detail: `frame "${source.frame}" scope "${scope.selector}" (${scope.mode}) rendered no visible leaf elements (${extraction.width}x${extraction.height})`,
+        detail: `frame "${source.frame}" scope "${scope.selector}" (${scope.mode}${scope.fluid ? ", fluid frame" : ""}) rendered no visible leaf elements (${extraction.width}x${extraction.height})`,
       })
     }
 
