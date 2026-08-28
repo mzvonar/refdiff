@@ -182,7 +182,8 @@ Common:
   --storybook-open        let the auto-started Storybook open its browser tab
   --out <dir>             run directory (default: out/<pair>)
   --fail-threshold <sev>  critical|major|minor (default major)
-  --max-gamma <px>        element-match cutoff (default 100)
+  --max-gamma <px>        element-match cutoff (default 100). Elements that share
+                          a repeated text pair by text first, within 2× this
 
 Suppressed findings are never dropped: findings.json lists them under
 \`suppressed\` with the rule that hit each one. When --out already holds a

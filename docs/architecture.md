@@ -600,6 +600,17 @@ to `localStorage` otherwise (and says so).
   px = 0.4 px). A new `FindingType` member rather than a `pixel-region`
   note: it is neither a region nor an element. Not accepted-able — the fix
   is the size difference it names.
+- **Same-text pairs before nearest-box — decided 2026-08-28 (plan-next
+  §15).** `matchElements` pass 1 pairs UNIQUE texts by content; "Figma" /
+  "Claude Design" repeat on the Library's cards, so pass 2's greedy γ paired
+  design "Claude Design" (x 435) with impl "Figma" (x 446) after the undrawn
+  `Pending` chip shifted the row 78 px — a text tie only broke EQUAL γ — and
+  one cause became six findings. Pass 1b now assigns candidates sharing a
+  normalized text greedily by γ within `textMaxGamma` (2 × `maxGamma`, Mato
+  2026-08-28) before any mixed-text candidate; the band keeps a `5` badge
+  from pairing with a `5` chip three rows away. `via: "text"` on those
+  matches. Measured on the four dogfood pairs and the uctoinak doc-detail
+  baseline before merging (numbers in plan-next §15).
 - **`accepted[].contents: true` — decided 2026-08-28 (plan-next §14).**
   Decision D6 (the thumbnail is the run's own `impl.png`; the comp draws a
   grey plate with bars) cost 8 findings forever: the bars are textless boxes

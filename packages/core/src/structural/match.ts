@@ -18,6 +18,14 @@ export interface MatchOptions {
    */
   maxGamma?: number;
   /**
+   * Max γ for pairing two elements that share a NON-unique text (pass 1b)
+   * before any mixed-text candidate is considered. Wider than `maxGamma`
+   * because a shared text is evidence geometry is not: a chip row shifted
+   * 78 px by a missing sibling is still the same chips. Default 2 × maxGamma.
+   * Bounded so a `5` badge never pairs with a `5` chip three rows away.
+   */
+  textMaxGamma?: number;
+  /**
    * Max width-blind distance (|Δx|+|Δy|+|Δh|) for the slot pass that pairs
    * leftover TEXT elements sharing an anchor and line height but not a
    * width — value slots rendering different data (a block-width cell vs a
@@ -64,7 +72,11 @@ function uniqueTextIndices(elements: readonly ElementNode[]): Map<string, number
 export function matchElements(
   design: readonly ElementNode[],
   impl: readonly ElementNode[],
-  { maxGamma = DEFAULT_MAX_GAMMA, slotMaxGamma = DEFAULT_SLOT_MAX_GAMMA }: MatchOptions = {},
+  {
+    maxGamma = DEFAULT_MAX_GAMMA,
+    textMaxGamma = 2 * maxGamma,
+    slotMaxGamma = DEFAULT_SLOT_MAX_GAMMA,
+  }: MatchOptions = {},
 ): MatchResult {
   const designTaken = new Set<number>();
   const implTaken = new Set<number>();
@@ -87,6 +99,43 @@ export function matchElements(
       gamma: gamma(design[di]!, impl[ii]!),
       via: "text",
     });
+  }
+
+  // Pass 1b — same text, several times: "Figma" on ten cards is not unique,
+  // but a design "Claude Design" still belongs with an impl "Claude Design",
+  // not with the impl "Figma" that happens to be 11 px nearer after a missing
+  // chip shifted the whole row (the Library's `Pending` chip: one cause read
+  // as six findings when the nearest box won). Among candidates sharing a
+  // normalized text, assign greedily by γ within `textMaxGamma` BEFORE any
+  // mixed-text candidate; what the band rejects falls through to pass 2.
+  interface TextCandidate {
+    di: number;
+    ii: number;
+    gamma: number;
+  }
+  const implByText = new Map<string, number[]>();
+  for (let ii = 0; ii < impl.length; ii++) {
+    if (implTaken.has(ii)) continue;
+    const key = normText(impl[ii]!.text);
+    if (key === undefined || key.length === 0) continue;
+    implByText.set(key, [...(implByText.get(key) ?? []), ii]);
+  }
+  const sameText: TextCandidate[] = [];
+  for (let di = 0; di < design.length; di++) {
+    if (designTaken.has(di)) continue;
+    const key = normText(design[di]!.text);
+    if (key === undefined) continue;
+    for (const ii of implByText.get(key) ?? []) {
+      const g = gamma(design[di]!, impl[ii]!);
+      if (g <= textMaxGamma) sameText.push({ di, ii, gamma: g });
+    }
+  }
+  sameText.sort((a, b) => a.gamma - b.gamma);
+  for (const c of sameText) {
+    if (designTaken.has(c.di) || implTaken.has(c.ii)) continue;
+    designTaken.add(c.di);
+    implTaken.add(c.ii);
+    matches.push({ design: design[c.di]!, impl: impl[c.ii]!, gamma: c.gamma, via: "text" });
   }
 
   // Pass 2 — GVT geometric assignment for everything else: greedy from the

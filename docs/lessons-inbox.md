@@ -15,3 +15,20 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 - **Context:** what work / branch / file this came from
 - **Lesson:** the durable insight, stated as an actionable rule (what to do, and why)
 - **Candidate home:** (optional guess) skill:<name> · CLAUDE.md · ADR · anchor · wiki · memory · discard
+
+## 2026-08-28 — a matcher change invalidates a run dir's ledger (session 13, item 15)
+
+Pass 1b (same-text pairs before nearest-box) changed what several findings
+ARE on `refdiff-compare-desktop`: numerals the old γ had mis-paired with a
+neighbour (reported as `text reads "6", design says "4"`) now pair by text and
+read as `position`, so `resolved-ledger.json` entries from phases 3–4 named 8
+of them as "back" — `REGRESSION: 8` on a run with no app change. Item 12's
+"absent from the previous run" test cannot help: under the new pairing they
+WERE absent. Documented in `SKILL.md` §4 as a shape to recognise (check
+`resolvedAt` against the upgrade). Candidate rule for the tool: stamp the
+ledger with a matcher/identity version (`ResolvedLedger.identity`) and, when
+the running version differs, print "ledger written under an older pairing —
+its N entries are not comparable" and drop them visibly rather than cry
+wolf. Route: `docs/architecture.md` Open decisions (small feature), or
+discard if the churn stays rare.
+

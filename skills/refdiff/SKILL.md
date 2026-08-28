@@ -327,6 +327,13 @@ repo bindings). Read `delta`:
   two identical `#6B7280` prop lines re-pairing after a hairline change)
   is `introduced`, never a regression — the key never left the previous
   run. Read it as a side-effect like any other introduced finding.
+  One shape that is NOT an app regression: a refdiff upgrade that changes
+  how elements PAIR (the matcher) changes what a finding IS, so the run
+  dir's ledger — written under the old pairing — can name findings the old
+  pairing had hidden (a numeral it mis-paired with a neighbour now reads as
+  its own `position`). Check the regressed entries' `resolvedAt` in
+  `resolved-ledger.json` against the upgrade: all older → the delta churns
+  once, say so in the report, and carry on; the next run is clean.
 - Findings that know their element's `text` are identified by content
   (type, role, text), not by coordinates — so a data-parity iteration that
   moves the alignment does NOT churn them; textless findings (icons, boxes)
@@ -462,7 +469,12 @@ items is now a typed finding — read it there:
   holds both trees in world space if you need a box the findings do not show.
 - **Presence** → `missing-element` / `extra-element` with the element's text
   or role and size. Icons and glyph swaps (Upload vs ChevronsUpDown) land
-  here or in `pixel-region`. The extractor sees DOM text only: a number or
+  here or in `pixel-region`. Elements pair by content before geometry: a
+  unique text is the same element wherever it moved, and a REPEATED text
+  ("Figma" on ten cards) still pairs with the same text within 2× the γ
+  cutoff (200 px) before any nearer box of another text — so a chip row
+  shifted by one missing chip reads as `position ×N` plus ONE
+  `missing-element`, not as a chain of missing + extra + `text-content`. The extractor sees DOM text only: a number or
   label drawn as SVG `<text>` (a badge, a chart tick) measures as MISSING
   however right it looks — whatever the comp draws as DOM text must be DOM
   text in the impl to be matched at all.
