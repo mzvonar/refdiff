@@ -41,6 +41,23 @@ input{outline:none}
     <div style="flex:1;min-width:4px"></div>
     <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
   </div>
+  <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
+    <div style="{{deltaStyle}}">
+      <span class="msi" style="{{deltaIconStyle}}">{{deltaIcon}}</span>
+      <span style="{{runLabelStyle}}">{{runLabel}}</span>
+      <span style="{{addStyle}}">{{addLabel}}</span>
+      <span style="{{resStyle}}">{{resLabel}}</span>
+      <sc-if value="{{regShow}}" hint-placeholder-val="{{true}}">
+        <span style="width:1px;height:16px;background:var(--line);flex-shrink:0"></span>
+        <span style="{{regMsgStyle}}">{{regMsg}}</span>
+        <span style="{{regSubStyle}}">{{regSub}}</span>
+        <div style="{{regBtnStyle}}" onClick="{{regBtn}}">{{regBtnLabel}}</div>
+      </sc-if>
+      <sc-if value="{{deltaDismissShow}}" hint-placeholder-val="{{false}}">
+        <div style="margin-left:auto;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{dismissDelta}}" title="Dismiss for this run"><span class="msi" style="font-size:16px">close</span></div>
+      </sc-if>
+    </div>
+  </sc-if>
   <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
     <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
       <span style="font-size:10.5px;color:var(--txt2);flex-shrink:0">Show</span>
@@ -116,6 +133,14 @@ input{outline:none}
           <div style="{{fabI.style}}" onClick="{{fabI.onClick}}">Impl</div>
         </div>
       </sc-if>
+      <sc-if value="{{opShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{opWrapStyle}}" title="{{opTip}}">
+          <span class="msi" style="font-size:16px;color:var(--txt2)">opacity</span>
+          <span style="font-size:11.5px;font-weight:600;white-space:nowrap">{{opLabel}}</span>
+          <input type="range" min="0" max="100" step="1" value="{{opVal}}" onChange="{{onOp}}" style="{{opSliderStyle}}">
+          <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);min-width:34px;text-align:right">{{opPct}}</span>
+        </div>
+      </sc-if>
       <sc-if value="{{alignShow}}" hint-placeholder-val="{{false}}">
         <div style="{{alignWrapStyle}}">
           <div style="{{alignPillStyle}}">
@@ -125,6 +150,9 @@ input{outline:none}
               <span style="font-size:11.5px;font-weight:600">{{alignLabel}}</span>
               <span class="msi" style="font-size:15px;color:var(--txt2)">{{alignChev}}</span>
             </div>
+            <sc-if value="{{confWarn}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(245,166,35,0.16);color:#f5a623;cursor:help;flex-shrink:0" title="{{confWarnTip}}"><span class="msi" style="font-size:14px">warning</span></div>
+            </sc-if>
           </div>
           <sc-if value="{{alignOpen}}" hint-placeholder-val="{{false}}">
             <div style="{{alignMenuStyle}}">
@@ -135,6 +163,9 @@ input{outline:none}
                   <div style="flex:1;display:flex;flex-direction:column;gap:2px">
                     <span style="font-size:12px;font-weight:600">{{o.name}}</span>
                     <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{o.desc}}</span>
+                    <sc-if value="{{o.warnShow}}" hint-placeholder-val="{{false}}">
+                      <span style="display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:11px;line-height:1.35;color:#f5a623"><span class="msi" style="font-size:13px;margin-top:1px">warning</span>{{o.warnText}}</span>
+                    </sc-if>
                   </div>
                   <sc-if value="{{o.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
                 </div>
@@ -171,18 +202,33 @@ input{outline:none}
         <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
       </div>
       <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
-        <div style="display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
-          <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+          </div>
+          <sc-if value="{{instChipShow}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex">
+              <div style="{{instChipStyle}}" onClick="{{onInstChip}}" title="{{instChipTip}}"><span class="msi" style="font-size:14px">{{instChipIcon}}</span>{{instChipLabel}}</div>
+            </div>
+          </sc-if>
         </div>
         <div style="flex:1;overflow-y:auto;min-height:0">
           <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center">No findings match the current filters.</div></sc-if>
           <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="4">
             <div style="{{f.rowStyle}}" onClick="{{f.select}}">
-              <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
                 <div style="{{f.badgeStyle}}">{{f.num}}</div>
                 <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}"><span style="{{f.groupStyle}}">{{f.groupLabel}}</span></sc-if>
+                <sc-if value="{{f.isReg}}" hint-placeholder-val="{{false}}"><span style="{{f.regStyle}}"><span class="msi" style="font-size:12px">undo</span>{{f.regLabel}}</span></sc-if>
                 <sc-if value="{{f.hasTag}}" hint-placeholder-val="{{false}}"><span style="{{f.tagStyle}}">{{f.tagLabel}}</span></sc-if>
               </div>
+              <sc-if value="{{f.hasCause}}" hint-placeholder-val="{{false}}">
+                <div style="margin:5px 0 0 28px;font-size:11.5px;line-height:1.4;color:var(--txt2)">{{f.cause}}</div>
+              </sc-if>
+              <sc-if value="{{f.isSup}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+              </sc-if>
               <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
                 <span style="color:var(--txt2)">{{f.prop}}</span>
                 <span style="color:var(--txt)">{{f.expected}}</span>
@@ -190,6 +236,14 @@ input{outline:none}
                 <span style="color:#e5484d">{{f.actual}}</span>
               </div>
               <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:8px;margin:8px 0 0 28px;padding:7px 9px;border-radius:8px;background:var(--bg0);border:1px solid var(--line)">
+                    <span class="msi" style="font-size:15px;color:var(--txt2)">select_all</span>
+                    <span style="flex:1;font-size:11.5px;line-height:1.35;color:var(--txt2)">{{f.instMsg}}</span>
+                    <div style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt)" onClick="{{f.instToggle}}">{{f.instToggleLabel}}</div>
+                  </div>
+                </sc-if>
+
                 <div style="margin:10px 0 2px 28px;display:flex;gap:6px">
                   <sc-for list="{{f.actions}}" as="a" hint-placeholder-count="3"><div style="{{a.style}}" onClick="{{a.onClick}}">{{a.label}}</div></sc-for>
                 </div>
@@ -197,6 +251,32 @@ input{outline:none}
               </sc-if>
             </div>
           </sc-for>
+          <sc-if value="{{supShow}}" hint-placeholder-val="{{true}}">
+            <div style="{{supRowStyle}}" onClick="{{supToggle}}" title="Findings hidden by preset rules — known-safe differences like font smoothing or dynamic copy.">
+              <span class="msi" style="font-size:16px;color:var(--txt2)">{{supIcon}}</span>
+              <span style="flex:1;font-size:11.5px;color:var(--txt2)">{{supLabel}}</span>
+              <span style="font-size:11.5px;font-weight:600;color:var(--acc)">{{supActionLabel}}</span>
+            </div>
+            <sc-for list="{{supRows}}" as="f" hint-placeholder-count="0">
+              <div style="{{f.rowStyle}}" onClick="{{f.select}}">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                  <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                  <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px dashed var(--line);color:var(--txt2);flex-shrink:0">Suppressed</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                  <span style="color:var(--txt2)">{{f.prop}}</span>
+                  <span style="color:var(--txt)">{{f.expected}}</span>
+                  <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                  <span style="color:var(--txt2)">{{f.actual}}</span>
+                </div>
+                <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                  <div style="margin:9px 0 2px 28px;font-size:11px;line-height:1.45;color:var(--txt2)">Suppression rules live in the project manifest — edit it to change what gets hidden.</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </sc-if>
         </div>
       </sc-if>
       <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
@@ -219,6 +299,16 @@ input{outline:none}
                 <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
               </div>
               <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px">{{it.text}}</div>
+              <sc-if value="{{it.saveErr}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex;align-items:center;gap:7px;margin:8px 0 0 28px">
+                  <span class="msi" style="font-size:15px;color:#e5484d;flex-shrink:0">cloud_off</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:11.5px;font-weight:700;color:#e5484d">Not saved</span>
+                    <span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{it.saveErrDetail}}</span>
+                  </div>
+                  <div style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:#e5484d;color:#fff;flex-shrink:0" onClick="{{it.retrySave}}">Retry</div>
+                </div>
+              </sc-if>
               <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}">
                 <div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45">{{it.reply}}</div>
               </sc-if>
@@ -244,18 +334,20 @@ input{outline:none}
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:820},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:280,&quot;max&quot;:400,&quot;step&quot;:10,&quot;default&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;paneLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Canvas&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:820},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:280,&quot;max&quot;:400,&quot;step&quot;:10,&quot;default&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;paneLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Canvas&quot;},&quot;anchorConfidence&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.42,&quot;section&quot;:&quot;Canvas&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;showDeltaStrip&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;section&quot;:&quot;Debug&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
 const W = 680, H = 740;
 const SEV = { high: '#e5484d', medium: '#f5a623', low: '#4c9aff' };
-const SEVL = { high: 'High', medium: 'Med', low: 'Low' };
-const STC = { new: '#8f7ee7', update: '#f5a623', done: '#46a758' };
+const SEVL = { high: 'Critical', medium: 'Major', low: 'Minor' };
+const CONF_MIN = 0.5;
+const REP = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
+const STC = { open: '#8f7ee7', implemented: '#f5a623', done: '#46a758' };
 const ALIGN = {
   anchors: { label: 'Anchors', icon: 'hub', desc: 'Locks the views on matched UI elements \u2014 corresponding parts stay aligned even when sizes drift.' },
   width: { label: 'Width', icon: 'width', desc: 'Matches zoom so both refs render at the same width; panning stays independent per pane.' },
   'top-left': { label: 'Top left', icon: 'north_west', desc: 'Locks both views to a shared top-left origin \u2014 classic overlay for left-aligned layouts.' },
   'top-right': { label: 'Top right', icon: 'north_east', desc: 'Locks views by the top-right corner \u2014 useful for right-aligned or RTL layouts.' }
 };
-const STL = { new: 'New', update: 'Update', done: 'Done' };
+const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
 
 class Component extends DCLogic {
   constructor(p) {
@@ -265,20 +357,28 @@ class Component extends DCLogic {
     this.state = {
       theme: null, mode: 'split', pane: 'design', variant: 'none', blinkOn: true,
       layer: 'all', railTab: 'findings', railOpen: false, railCollapsed: false,
-      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
+      strobe: false, ovlOp: { onion: 0.55, diff: 1 },
+      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, alignConf: 0.42, highlight: false, dim: false, wipeX: 340,
       tA: { x: 24, y: 24, s: 0.55 }, tB: { x: 24, y: 24, s: 0.55 }, anim: false,
       sevOn: { high: true, medium: true, low: true },
+      showSup: false, allInst: false, regOnly: false, deltaDismissed: false,
+      run: { n: 47, prev: 46, add: 3, res: 6 },
       focusRect: null, selected: null, draft: null, draftText: '', isMobile: false, isNarrow: false,
       findings: [
-        { id: 'f1', num: 1, sev: 'high', title: 'Primary button color mismatch', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
+        { id: 'f1', num: 1, sev: 'high', reg: true, regRun: 44, title: 'Primary button color mismatch', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
         { id: 'f2', num: 2, sev: 'high', title: 'Dropzone inner padding reduced', prop: 'padding', expected: '32px', actual: '20px', rect: { x: 36, y: 368, w: 608, h: 190 }, status: 'open', comment: '' },
         { id: 'f3', num: 3, sev: 'medium', title: 'Heading font-size drift', prop: 'font-size', expected: '28px', actual: '24px', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 'g1', num: 7, sev: 'medium', title: 'Label color drift', cause: 'Muted label token resolves to the wrong grey', prop: 'color', expected: '#6B7280', actual: '#94A3B8', rect: { x: 56, y: 214, w: 120, h: 16 }, inst: REP(14, i => ({ x: 56 + (i % 3) * 196, y: 214 + ((i / 3) | 0) * 36, w: 120, h: 16 })), status: 'open', comment: '' },
+        { id: 'g2', num: 8, sev: 'low', reg: true, regRun: 45, title: 'Row baseline shifted 23px', cause: 'Section padding change pushes the whole row down', prop: 'translateY', expected: '0px', actual: '23px', rect: { x: 36, y: 380, w: 608, h: 22 }, inst: REP(5, i => ({ x: 36, y: 414 + i * 34, w: 608, h: 22 })), status: 'open', comment: '' },
+        { id: 's1', num: 9, sev: 'low', sup: true, rule: 'Preset · font smoothing', title: 'Text renders 0.4px wider', prop: 'font-smooth', expected: 'antialiased', actual: 'auto', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 's2', num: 10, sev: 'low', sup: true, rule: 'Preset · scrollbar gutter', title: 'Content 15px narrower', prop: 'width', expected: '680px', actual: '665px', rect: { x: 0, y: 0, w: 680, h: 740 }, status: 'open', comment: '' },
+        { id: 's3', num: 11, sev: 'medium', sup: true, rule: 'Preset · dynamic copy', title: 'Placeholder copy differs', prop: 'content', expected: 'Front side of ID', actual: 'Front of document', rect: { x: 56, y: 470, w: 300, h: 22 }, status: 'open', comment: '' },
         { id: 'f4', num: 4, sev: 'medium', title: 'Card corner radius mismatch', prop: 'border-radius', expected: '12px', actual: '6px', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' },
         { id: 'f5', num: 5, sev: 'low', title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
         { id: 'f6', num: 6, sev: 'low', title: 'Footer text color drift', prop: 'color', expected: '#6B7280', actual: '#9CA3AF', rect: { x: 36, y: 664, w: 608, h: 24 }, status: 'open', comment: '' }],
       items: [
-        { id: 'c1', num: 1, status: 'update', text: 'Logo should use the darker navy from the brand kit', reply: 'Fetched brand token \u2014 logo color maps to #1E2A5A. Queued for the next impl build.', note: '', rect: { x: 36, y: 14, w: 150, h: 36 } },
-        { id: 'c2', num: 2, status: 'new', text: 'Check spacing between document cards at tablet width', reply: '', note: '', rect: { x: 36, y: 204, w: 608, h: 140 } },
+        { id: 'c1', num: 1, status: 'implemented', text: 'Logo should use the darker navy from the brand kit', reply: 'Fetched brand token \u2014 logo color maps to #1E2A5A. Queued for the next impl build.', note: '', rect: { x: 36, y: 14, w: 150, h: 36 } },
+        { id: 'c2', num: 2, status: 'open', saveErr: 'Out root is read-only \u00b7 PUT /api/comments 403', text: 'Check spacing between document cards at tablet width', reply: '', note: '', rect: { x: 36, y: 204, w: 608, h: 140 } },
         { id: 'c3', num: 3, status: 'done', text: 'Continue button should be full width on mobile', reply: 'Confirmed \u2014 impl build 342 makes the button fluid below 480px.', note: '', rect: { x: 36, y: 586, w: 280, h: 48 } }]
     };
   }
@@ -390,7 +490,14 @@ class Component extends DCLogic {
     const isFull = mode === 'full', V = S.variant;
     const railW = this.props.railWidth ?? 320;
     const showLabels = (this.props.paneLabels ?? true) && !isM && V === 'none';
-    const vis = S.findings.filter(f => S.sevOn[f.sev] && (!S.focusRect || this.inter(f.rect, S.focusRect)));
+    const inFocus = f => !S.focusRect || this.inter(f.rect, S.focusRect) || (f.inst || []).some(r => this.inter(r, S.focusRect));
+    const base = S.findings.filter(f => S.sevOn[f.sev] && inFocus(f));
+    const supList = base.filter(f => f.sup);
+    const active = base.filter(f => !f.sup && (!S.regOnly || f.reg));
+    const vis = S.showSup ? active.concat(supList) : active;
+    const regCount = S.findings.filter(f => f.reg && !f.sup).length;
+    const instTotal = active.reduce((n, f) => n + 1 + (f.inst || []).length, 0);
+    const groupCount = active.filter(f => f.inst && f.inst.length).length;
     const visItems = S.items.filter(i => !S.focusRect || this.inter(i.rect, S.focusRect));
     const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
     const segBtn = act => ({ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '16px' });
@@ -405,7 +512,8 @@ class Component extends DCLogic {
       ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
       ['comment', 'add_comment', 'Comment \u2014 tap a point or drag a region', () => this.setState({ tool: 'comment' }), S.tool === 'comment'],
       ['hl', 'difference', 'Highlight changed parts', () => this.setState(s => ({ highlight: !s.highlight })), S.highlight],
-      ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim]];
+      ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim],
+      ['strobe', 'flare', 'Strobe \u2014 pulse the differences in colour', () => this.setState(s => ({ strobe: !s.strobe })), S.strobe]];
     const toolBtns = toolDefs.map(([id, icon, title, onClick, act]) => ({ id, icon, title, onClick, style: toolBtn(act) }));
     const toolStripStyle = isM
       ? { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }
@@ -421,18 +529,22 @@ class Component extends DCLogic {
     let ovlStyle = { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' };
     if (V === 'none') ovlStyle.display = 'none';
     else if (V === 'wipe') ovlStyle.clipPath = 'inset(0 0 0 ' + S.wipeX + 'px)';
-    else if (V === 'onion') ovlStyle.opacity = 0.55;
+    else if (V === 'onion') ovlStyle.opacity = S.ovlOp.onion;
     else if (V === 'blink') { ovlStyle.opacity = S.blinkOn ? 1 : 0; ovlStyle.transition = 'opacity 0.1s'; }
-    else if (V === 'diff') { ovlStyle.mixBlendMode = 'difference'; ovlStyle.opacity = 1; }
+    else if (V === 'diff') { ovlStyle.mixBlendMode = 'difference'; ovlStyle.opacity = S.ovlOp.diff; }
     const ov = t => {
       const s = t.s, out = { fm: [], im: [], hl: [], sel: [] };
       const cs = Math.min(2.4, 1 / s);
       if (showF) for (const f of vis) {
-        out.fm.push({ num: f.num, title: f.title, select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: f.rect.x - 12, top: f.rect.y - 12, width: 24, height: 24, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.9)', transform: 'scale(' + cs + ')', transformOrigin: 'center', opacity: (f.status === 'ignore' || f.status === 'snooze') ? 0.45 : 1, zIndex: 6 } });
+        out.fm.push({ num: f.num, title: f.title, select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: f.rect.x - 12, top: f.rect.y - 12, width: 24, height: 24, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.9)', transform: 'scale(' + cs + ')', transformOrigin: 'center', opacity: (f.status === 'ignore' || f.status === 'snooze') ? 0.45 : (f.sup ? 0.5 : 1), zIndex: 6, filter: f.sup ? 'grayscale(0.7)' : 'none', borderStyle: f.sup ? 'dashed' : 'solid' } });
+        if (S.allInst) for (const r of (f.inst || [])) {
+          out.fm.push({ num: f.num, title: f.title + ' \u2014 repeat instance', select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: r.x - 9, top: r.y - 9, width: 18, height: 18, borderRadius: '50%', background: '#fff', color: SEV[f.sev], fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1.5px solid ' + SEV[f.sev], boxShadow: '0 1px 3px rgba(0,0,0,0.35)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
+          out.hl.push({ style: { position: 'absolute', left: r.x, top: r.y, width: r.w, height: r.h, border: (1.2 / s) + 'px dashed ' + SEV[f.sev], borderRadius: 3, pointerEvents: 'none', zIndex: 4 } });
+        }
         if (S.selected && S.selected.type === 'f' && S.selected.id === f.id) out.sel.push({ style: { position: 'absolute', left: f.rect.x - 4, top: f.rect.y - 4, width: f.rect.w + 8, height: f.rect.h + 8, border: (2 / s) + 'px solid ' + SEV[f.sev], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
       }
       if (showI) for (const it of visItems) {
-        out.im.push({ label: it.num, title: it.text, select: () => this.selItem(it), stop: e => e.stopPropagation(), style: { position: 'absolute', left: it.rect.x - 11, top: it.rect.y - 11, width: 22, height: 22, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
+        out.im.push({ label: it.num, title: it.text, select: () => this.selItem(it), stop: e => e.stopPropagation(), style: { position: 'absolute', left: it.rect.x - 11, top: it.rect.y - 11, width: 22, height: 22, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid rgba(255,255,255,0.9)', boxShadow: it.saveErr ? '0 0 0 3px rgba(229,72,77,0.6), 0 1px 4px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
         if (S.selected && S.selected.type === 'i' && S.selected.id === it.id) out.sel.push({ style: { position: 'absolute', left: it.rect.x - 4, top: it.rect.y - 4, width: it.rect.w + 8, height: it.rect.h + 8, border: (2 / s) + 'px solid ' + STC[it.status], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
       }
       if (S.highlight) for (const f of vis) out.hl.push({ style: { position: 'absolute', left: f.rect.x, top: f.rect.y, width: f.rect.w, height: f.rect.h, border: (1.5 / s) + 'px solid #ff5cd0', background: 'rgba(255,92,208,0.08)', borderRadius: 4, pointerEvents: 'none', zIndex: 4 } });
@@ -449,41 +561,60 @@ class Component extends DCLogic {
       return out;
     };
     const ovA = ov(S.tA), ovB = ov(S.tB);
+    const R = S.run;
+    const conf = this.props.anchorConfidence ?? S.alignConf;
+    const anchorLow = conf < CONF_MIN, confWarn = anchorLow && S.lockstep && S.alignMode === 'anchors';
     const dimRects = vis.map(f => ({ x: f.rect.x - 6, y: f.rect.y - 6, w: f.rect.w + 12, h: f.rect.h + 12 }));
     const railStyle = isM
       ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }
       : (S.railCollapsed ? { display: 'none' } : { width: railW, flexShrink: 0, background: 'var(--bg1)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 });
     const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
     const sevChips = ['high', 'medium', 'low'].map(sv => {
-      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv).length;
+      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv && !f.sup).length;
       return { label: SEVL[sv] + ' ' + n, onClick: () => this.setState(s => ({ sevOn: { ...s.sevOn, [sv]: !s.sevOn[sv] } })), style: { display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (on ? SEV[sv] : 'var(--line)'), color: on ? SEV[sv] : 'var(--txt2)', background: 'transparent', opacity: on ? 1 : 0.6 }, dotStyle: { width: 7, height: 7, borderRadius: '50%', background: on ? SEV[sv] : 'var(--bg3)' } };
     });
     const selId = S.selected ? S.selected.id : null;
     const rowBase = sel => ({ padding: '10px 12px', borderBottom: '1px solid var(--line)', cursor: 'pointer', background: sel ? 'var(--bg2)' : 'transparent' });
     const actBtn = (act, color) => ({ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (act ? color : 'var(--line)'), color: act ? '#fff' : 'var(--txt2)', background: act ? color : 'transparent' });
-    const findingRows = vis.map(f => {
+    const mkRow = f => {
       const sel = selId === f.id && S.selected.type === 'f';
       return {
         id: f.id, num: f.num, title: f.title, prop: f.prop, expected: f.expected, actual: f.actual,
-        isSel: sel, select: () => this.selFinding(f), rowStyle: rowBase(sel),
-        badgeStyle: { width: 20, height: 20, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        isSel: sel, select: () => this.selFinding(f), rowStyle: { ...rowBase(sel), opacity: f.sup ? 0.66 : 1, background: sel ? 'var(--bg2)' : (f.sup ? 'var(--bg0)' : 'transparent') },
+        badgeStyle: f.sup
+          ? { width: 20, height: 20, borderRadius: '50%', background: 'transparent', border: '1.5px dashed ' + SEV[f.sev], color: SEV[f.sev], fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }
+          : { width: 20, height: 20, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        hasGroup: !!(f.inst && f.inst.length), groupLabel: '\u00d7' + (1 + (f.inst || []).length),
+        groupStyle: { fontSize: 10.5, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", padding: '1px 6px', borderRadius: 5, background: 'var(--bg3)', color: 'var(--txt)', flexShrink: 0 },
+        isReg: !!f.reg, regLabel: 'Regression',
+        regStyle: { display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 999, background: '#e5484d', color: '#fff', flexShrink: 0 },
+        hasCause: !!f.cause, cause: f.cause,
+        isSup: !!f.sup, ruleLabel: f.rule,
+        instMsg: S.allInst ? 'All ' + (1 + (f.inst || []).length) + ' instances marked on canvas' : 'Only the primary instance is marked',
+        instToggleLabel: S.allInst ? 'Show primary only' : 'Show all instances',
+        instToggle: e => { e.stopPropagation(); this.setState(s => ({ allInst: !s.allInst })); },
+        unsuppress: e => { e.stopPropagation(); this.setState(s => ({ findings: s.findings.map(x => x.id === f.id ? { ...x, sup: false } : x) })); },
         hasTag: f.status !== 'open', tagLabel: { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' }[f.status] || '',
         tagStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 999, color: f.status === 'fix' ? '#fff' : 'var(--txt2)', background: f.status === 'fix' ? 'var(--acc)' : 'var(--bg3)', marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap' },
         actions: [['fix', 'To fix', 'var(--acc)'], ['ignore', 'Ignore', '#6b7280'], ['snooze', 'Snooze', '#8f7ee7']].map(([st, label, color]) => ({ label, onClick: e => { e.stopPropagation(); this.setFStatus(f.id, st); }, style: actBtn(f.status === st, color) })),
         commentVal: f.comment, onComment: e => { const v = e.target.value; this.setState(s => ({ findings: s.findings.map(x => x.id === f.id ? { ...x, comment: v } : x) })); },
         stop: e => e.stopPropagation()
       };
-    });
+    };
+    const findingRows = active.map(mkRow);
+    const supRows = S.showSup ? supList.map(mkRow) : [];
     const itemRows = visItems.map(it => {
       const sel = selId === it.id && S.selected.type === 'i';
       return {
         id: it.id, num: it.num, text: it.text, reply: it.reply, hasReply: !!it.reply, isSel: sel,
-        select: () => this.selItem(it), rowStyle: rowBase(sel),
+        select: () => this.selItem(it), rowStyle: { ...rowBase(sel), background: it.saveErr ? 'rgba(229,72,77,0.09)' : (sel ? 'var(--bg2)' : 'transparent'), borderLeft: it.saveErr ? '3px solid #e5484d' : '3px solid transparent' },
+        saveErr: !!it.saveErr, saveErrDetail: it.saveErr || '',
+        retrySave: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, saveErr: null } : x) })); },
         badgeStyle: { width: 20, height: 20, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
         statusLabel: STL[it.status], statusStyle: { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: STC[it.status], marginLeft: 'auto', flexShrink: 0 },
         noteVal: it.note, onNote: e => { const v = e.target.value; this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, note: v } : x) })); },
-        send: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id && x.note ? { ...x, text: x.text + ' \u2014 ' + x.note, note: '', status: 'new' } : x) })); },
-        done: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, status: x.status === 'done' ? 'new' : 'done' } : x) })); },
+        send: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id && x.note ? { ...x, text: x.text + ' \u2014 ' + x.note, note: '', status: 'open' } : x) })); },
+        done: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, status: x.status === 'done' ? 'open' : 'done' } : x) })); },
         doneLabel: it.status === 'done' ? 'Reopen' : 'Mark done',
         stop: e => e.stopPropagation()
       };
@@ -519,28 +650,73 @@ class Component extends DCLogic {
       fabD: { style: fabBtn(S.pane === 'design'), onClick: () => this.setState({ pane: 'design' }) },
       fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
       alignShow: isM || !isFull || V !== 'none',
+      alignWarnIcon: confWarn ? 'warning' : '',
+      deltaShow: (this.props.showDeltaStrip ?? false) && (R.add > 0 || R.res > 0 || regCount > 0) && !S.deltaDismissed,
+      deltaStyle: { display: 'flex', alignItems: 'center', gap: isM ? 8 : 12, flexWrap: isM ? 'wrap' : 'nowrap', padding: isM ? '7px 10px' : '0 12px', minHeight: isM ? 0 : 38, flexShrink: 0, background: regCount ? 'rgba(229,72,77,0.13)' : 'var(--bg2)', borderBottom: '1px solid var(--line)', borderLeft: regCount ? '3px solid #e5484d' : '3px solid transparent' },
+      deltaIcon: regCount ? 'warning' : 'compare_arrows',
+      deltaIconStyle: { fontSize: 17, color: regCount ? '#e5484d' : 'var(--txt2)', flexShrink: 0 },
+      runLabel: 'Run ' + R.n + ' vs ' + R.prev,
+      runLabelStyle: { fontSize: 11.5, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--txt2)', whiteSpace: 'nowrap', display: S.isNarrow && isM ? 'none' : 'block' },
+      addLabel: '+' + R.add + ' introduced', resLabel: '\u2212' + R.res + ' resolved',
+      addStyle: { fontSize: 12, fontWeight: 600, color: '#e5484d', whiteSpace: 'nowrap' },
+      resStyle: { fontSize: 12, fontWeight: 600, color: '#46a758', whiteSpace: 'nowrap' },
+      regShow: regCount > 0,
+      regMsg: regCount + (regCount === 1 ? ' regression' : ' regressions'),
+      regSub: 'fixed earlier, back again \u2014 fix plan halted',
+      regMsgStyle: { fontSize: 12, fontWeight: 700, color: '#e5484d', whiteSpace: 'nowrap' },
+      regSubStyle: { fontSize: 11.5, color: 'var(--txt2)', whiteSpace: 'nowrap', display: isM ? 'none' : 'block' },
+      regBtnLabel: S.regOnly ? 'Show all findings' : 'Review',
+      regBtnStyle: { marginLeft: isM ? 0 : 'auto', padding: '4px 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: S.regOnly ? 'transparent' : '#e5484d', border: '1px solid ' + (S.regOnly ? 'var(--line)' : '#e5484d'), color: S.regOnly ? 'var(--txt2)' : '#fff', whiteSpace: 'nowrap', flexShrink: 0 },
+      regBtn: () => this.setState(s => ({ regOnly: !s.regOnly, railTab: 'findings', railOpen: true, railCollapsed: false, selected: null })),
+      deltaDismissShow: regCount === 0,
+      dismissDelta: () => this.setState({ deltaDismissed: true }),
+      instChipShow: groupCount > 0,
+      instChipLabel: S.allInst ? 'All instances \u00b7 ' + instTotal : 'Primary only \u00b7 ' + active.length,
+      instChipStyle: { display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (S.allInst ? 'var(--acc)' : 'var(--line)'), color: S.allInst ? '#fff' : 'var(--txt2)', background: S.allInst ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' },
+      instChipIcon: S.allInst ? 'select_all' : 'crop_free',
+      instChipTip: 'Repeated differences share one row and one number. Toggle whether every instance is marked on the canvas or only the primary one.',
+      onInstChip: () => this.setState(s => ({ allInst: !s.allInst })),
+      supRows, supShow: supList.length > 0,
+      supLabel: supList.length + ' suppressed by preset rules',
+      supActionLabel: S.showSup ? 'Hide' : 'Show',
+      supIcon: S.showSup ? 'visibility_off' : 'visibility',
+      supRowStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--line)', background: 'var(--bg0)', cursor: 'pointer', flexShrink: 0 },
+      supToggle: () => this.setState(s => ({ showSup: !s.showSup })),
+      opShow: V === 'onion' || V === 'diff',
+      opWrapStyle: isM
+        ? { position: 'absolute', left: '50%', bottom: 107, transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '5px 10px 5px 8px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }
+        : { position: 'absolute', bottom: isFull ? 107 : 61, left: '50%', transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 14px 6px 11px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      opLabel: V === 'diff' ? 'Diff' : 'Onion',
+      opTip: V === 'diff' ? 'Opacity of the difference blend' : 'Opacity of the overlaid ref',
+      opVal: Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100),
+      opPct: Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100) + '%',
+      opSliderStyle: { width: isM ? 92 : 132, height: 4, accentColor: 'var(--acc)', cursor: 'pointer', margin: 0 },
+      onOp: e => { const v = Number(e.target.value) / 100, k = V === 'diff' ? 'diff' : 'onion'; this.setState(s => ({ ovlOp: { ...s.ovlOp, [k]: v } })); },
       alignOpen: S.alignOpen,
       alignWrapStyle: isM
         ? { position: 'absolute', top: 10, right: 8, zIndex: 16 }
         : { position: 'absolute', bottom: isFull ? 58 : 12, right: 12, zIndex: 16 },
-      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: confWarn ? '0 4px 16px rgba(0,0,0,0.25),0 0 0 3px rgba(245,166,35,0.16)' : '0 4px 16px rgba(0,0,0,0.25)' },
+      confWarn, confPct: Math.round(conf * 100) + '%',
+      confWarnTip: 'Anchor confidence ' + Math.round(conf * 100) + '% \u2014 below the ' + Math.round(CONF_MIN * 100) + '% threshold. Overlay positions may be unreliable; try Width or Top left.',
       lockIcon: S.lockstep ? 'link' : 'link_off',
       lockTip: S.lockstep ? 'Lockstep on \u2014 panes move together. Click to unlink.' : 'Lockstep off \u2014 panes move independently. Click to link.',
       lockBtnStyle: { width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', flexShrink: 0 },
       lockToggle: () => this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }),
       alignIcon: ALIGN[S.alignMode].icon,
       alignLabel: ALIGN[S.alignMode].label,
-      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc,
+      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc + (confWarn ? ' \u2014 anchor confidence ' + Math.round(conf * 100) + '%, positions unreliable.' : ''),
       alignChev: S.alignOpen ? (isM ? 'expand_less' : 'expand_more') : (isM ? 'expand_more' : 'expand_less'),
       alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen })),
       alignMenuStyle: isM
         ? { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 248, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 }
         : { position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, width: 264, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 },
       alignOpts: Object.keys(ALIGN).map(id => {
-        const a = ALIGN[id], act = S.alignMode === id;
+        const a = ALIGN[id], act = S.alignMode === id, warn = id === 'anchors' && anchorLow;
         return {
-          name: a.label, desc: a.desc, tip: a.desc,
-          iconStyle: { fontSize: 17, color: act ? 'var(--acc)' : 'var(--txt2)', flexShrink: 0, marginTop: 1 },
+          name: a.label, desc: a.desc, tip: warn ? a.desc + ' Anchor confidence is only ' + Math.round(conf * 100) + '%.' : a.desc,
+          warnShow: warn, warnText: 'Only ' + Math.round(conf * 100) + '% anchor match \u2014 positions unreliable',
+          iconStyle: { fontSize: 17, color: warn ? '#f5a623' : (act ? 'var(--acc)' : 'var(--txt2)'), flexShrink: 0, marginTop: 1 },
           icon: a.icon, checkShow: act,
           style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
           onClick: () => this.setState(s => ({ alignMode: id, alignOpen: false, lockstep: true, tB: id === 'width' ? s.tB : s.tA }))
@@ -548,7 +724,7 @@ class Component extends DCLogic {
       }),
       hasFocus: !!S.focusRect, focusMsg: 'Region focus \u00b7 ' + vis.length + ' of ' + S.findings.length + ' findings', clearFocus: () => this.setState({ focusRect: null }),
       railStyle, isMobile: isM, railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })),
-      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments',
+      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments' + (S.items.some(i => i.saveErr) ? ' \u00b7 ' + S.items.filter(i => i.saveErr).length + ' unsaved' : ''),
       railChev: S.railOpen ? 'expand_more' : 'expand_less',
       isDesk: !isM,
       railContentShow: !isM || S.railOpen,
@@ -565,7 +741,7 @@ class Component extends DCLogic {
       cancelDraft: () => this.setState({ draft: null, draftText: '' }),
       saveDraftFn: () => {
         const { draft, draftText } = this.state; if (!draft) return;
-        this.setState(s => ({ items: [...s.items, { id: 'c' + Date.now(), num: s.items.length + 1, status: 'new', text: draftText || '(no instruction)', reply: '', note: '', rect: draft.point ? { x: draft.x, y: draft.y, w: 0, h: 0 } : { x: draft.x, y: draft.y, w: draft.w, h: draft.h } }], draft: null, draftText: '' }));
+        this.setState(s => ({ items: [...s.items, { id: 'c' + Date.now(), num: s.items.length + 1, status: 'open', text: draftText || '(no instruction)', reply: '', note: '', rect: draft.point ? { x: draft.x, y: draft.y, w: 0, h: 0 } : { x: draft.x, y: draft.y, w: draft.w, h: draft.h } }], draft: null, draftText: '' }));
       },
       emptyI: visItems.length === 0 && !S.draft, itemRows
     };
