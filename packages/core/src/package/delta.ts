@@ -14,6 +14,16 @@
  * `resolved`; a new finding with no counterpart in the previous run is
  * `introduced`. Ids under `resolved` are the PREVIOUS run's, under
  * `introduced` the new run's.
+ *
+ * A `regression` is stricter than `introduced`: the finding must ALSO be
+ * absent from the previous run under its identity (no finding with the
+ * same key there — for a textless one, none within `boxTolerance`) AND
+ * match something an earlier run resolved (the ledger). An introduced
+ * finding whose key the previous run still showed did not "come back" —
+ * its multiplicity changed (two identical `#6B7280` prop lines under
+ * reordered rows re-pair after a hairline change, the count goes 1 → 2, the
+ * one-to-one pairing lists the spare as introduced) and the loop must not
+ * halt on it.
  */
 
 import type { Box, ComparisonReport, Finding } from "../types.js";
@@ -111,7 +121,9 @@ export function diffReports(
   ledger?: ResolvedLedger,
 ): ReportDelta {
   const delta = diffFindings(prev.findings, next.findings, options);
-  const regressions = ledger ? findRegressions(ledger, next.findings, delta.introduced, options) : [];
+  const regressions = ledger
+    ? findRegressions(ledger, next.findings, delta.introduced, prev.findings, options)
+    : [];
   return {
     previousRun: prev.createdAt,
     ...delta,
@@ -143,23 +155,46 @@ export interface ResolvedLedger {
 
 export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [] });
 
-const matchesEntry = (e: LedgerEntry, f: Finding, tolerance: number): boolean =>
-  e.key === identityKey(f) && (!needsBox(e) || boxDistance(e.box, anchor(f)) <= tolerance);
+/**
+ * Does a ledger entry name this finding? The key must match; the box is
+ * required for a textless entry (geometry is all it has) and, when asked
+ * (`requireBox`), for a text entry whose key is not unique in the run —
+ * otherwise the box is only recorded, so a fixture shift cannot un-regress
+ * a real regression.
+ */
+const matchesEntry = (e: LedgerEntry, f: Finding, tolerance: number, requireBox = false): boolean =>
+  e.key === identityKey(f) && (!(needsBox(e) || requireBox) || boxDistance(e.box, anchor(f)) <= tolerance);
+
+/** The same identity `diffFindings` pairs by: key, plus the box within tolerance for a textless finding. */
+const sameIdentity = (a: Finding, b: Finding, tolerance: number): boolean =>
+  identityKey(a) === identityKey(b) && (!needsBox(a) || boxDistance(anchor(a), anchor(b)) <= tolerance);
 
 /**
- * Pure: ids (of `next`) among `introduced` that an earlier run had resolved.
- * Same identity as `diffFindings`: key + nearest box within tolerance.
+ * Pure: ids (of `next`) among `introduced` that are ABSENT from `prev` under
+ * their identity and that an earlier run had resolved (the ledger). An
+ * introduced finding whose identity `prev` still holds is a multiplicity
+ * change of a shared key, not a fix undone. Among several `next` findings
+ * with the same text key, a ledger entry names only the one at its box.
  */
 export function findRegressions(
   ledger: ResolvedLedger,
   next: readonly Finding[],
   introduced: readonly string[],
+  prev: readonly Finding[],
   { boxTolerance = 5 }: DeltaOptions = {},
 ): string[] {
   const byId = new Map(next.map((f) => [f.id, f]));
+  const keyCount = new Map<string, number>();
+  for (const f of next) {
+    const key = identityKey(f);
+    keyCount.set(key, (keyCount.get(key) ?? 0) + 1);
+  }
   return introduced.filter((id) => {
     const f = byId.get(id);
-    return f !== undefined && ledger.entries.some((e) => matchesEntry(e, f, boxTolerance));
+    if (f === undefined) return false;
+    if (prev.some((p) => sameIdentity(p, f, boxTolerance))) return false;
+    const requireBox = (keyCount.get(identityKey(f)) ?? 0) > 1;
+    return ledger.entries.some((e) => matchesEntry(e, f, boxTolerance, requireBox));
   });
 }
 

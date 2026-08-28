@@ -185,8 +185,11 @@ What the model receives — every item evidence-backed (research §4):
   `findRegressions`; the CLI persists `resolved-ledger.json` in the run
   dir): every finding a run resolved is remembered by identity + place, so
   an introduced finding matching one — even three iterations later — is
-  listed under `delta.regressions` and printed as `REGRESSION:`. The loop's
-  loud failure lives in the tool, not in the model's memory.
+  listed under `delta.regressions` and printed as `REGRESSION:`. A
+  regression must also be ABSENT from the previous run under its identity
+  (`findRegressions` gets `prev.findings`): a shared-text key whose count
+  grew is introduced, not back. The loop's loud failure lives in the tool,
+  not in the model's memory.
 - **Accepted deviations** (`IgnorePolicy.accepted[] { type, expected?,
   actual?, reason }`): intended differences the loop has reviewed (an
   app-wide token when one comp is the outlier) are suppressed as
@@ -566,13 +569,16 @@ to `localStorage` otherwise (and says so).
   text run as a leaf without the parent's decoration on both sides, which
   would make the comparison markup-shape-agnostic. Decide after the redesign
   lands; measure the phantom `border` count on a real set first.
-- **`delta.ts` and N same-text findings.** Findings pair across runs by
-  identity key + nearest box; when several findings share a text (the "3" on
-  five badges) and every box moves at once (a font swap, a rail move), one
-  instance can enter the resolved ledger and read as a regression the next
-  run — seen in every phase of the annotator redesign. Worth a unit test with
-  N same-text findings and a whole-set shift, and possibly pairing by relative
-  order within the same-text group before nearest box.
+- **`delta.ts` and N same-text findings — decided 2026-08-28 (plan-next
+  §12).** When several findings share a text (two `#6B7280` prop lines) and
+  the pairing re-shuffles, the key's count goes 2 → 1 → 2 and one instance
+  enters the ledger, then reads as "back" — every annotator phase spent a
+  paragraph on it. A regression now requires the finding to be absent from
+  the PREVIOUS run under its identity (key; key + box for a textless one),
+  and a text-keyed ledger entry needs its box when the key is not unique in
+  the run. Multiplicity changes are `introduced` only. The box stays a
+  tie-break for a unique key so a fixture shift cannot un-regress a real
+  regression. Tests in `delta.test.ts` name the case.
 - `@blazediff/agent` — **decided 2026-08-26: skip as a dependency,
   reference its protocol.** Evaluated against blazediff.dev/apis/agent
   (time-boxed). It is a CLI-driven visual-regression harness (route

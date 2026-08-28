@@ -304,17 +304,14 @@ repo bindings). Read `delta`:
   element is now unmatched instead — not fine).
 - `introduced` — ids of THIS run that are new. Every one of them is your
   change's side-effect until proven otherwise.
-- `regressions` (also printed as `REGRESSION: …`) — introduced findings that
-  an EARLIER iteration had resolved. This is the loud failure: stop the
-  plan, undo or fix that regression first, and count the iteration.
-  One false positive to recognise before you undo anything: when several
-  findings share a text (the "3" on five badges, "Figma" on ten cards), the
-  one-to-one pairing between runs can re-shuffle after an iteration that
-  changed every text's metrics (a font swap), so one instance lands in the
-  ledger as "resolved" and the next run reports it "back". Check the
-  regressed finding's message and place against the PREVIOUS run's
-  findings.json: if the same finding was there too, nothing came undone —
-  say so in the report and keep going.
+- `regressions` (also printed as `REGRESSION: …`) — findings that are
+  introduced AND absent from the previous run under their identity AND
+  resolved by an earlier iteration (the ledger). This is the loud failure:
+  stop the plan, undo or fix that regression first, and count the
+  iteration. A shared-text key whose COUNT grew (the "3" on five badges,
+  two identical `#6B7280` prop lines re-pairing after a hairline change)
+  is `introduced`, never a regression — the key never left the previous
+  run. Read it as a side-effect like any other introduced finding.
 - Findings that know their element's `text` are identified by content
   (type, role, text), not by coordinates — so a data-parity iteration that
   moves the alignment does NOT churn them; textless findings (icons, boxes)

@@ -186,7 +186,9 @@ Suppressed findings are never dropped: findings.json lists them under
 findings.json from a previous run, the new report carries \`delta\`
 { previousRun, resolved, introduced, regressions? } (identity by content +
 place, not id). resolved-ledger.json in the run dir remembers everything
-earlier runs resolved; an introduced finding matching it is a regression.
+earlier runs resolved; an introduced finding that is ABSENT from the previous
+run and matches the ledger is a regression (a shared-text key whose count
+grew is only introduced — the key never left).
 
 Set summary — reading one findings.json per cell does not scale to a 41-variant
 set, so a multi-pair run ends with ONE table (pair → verdict, counts, alignment

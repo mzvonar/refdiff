@@ -230,6 +230,55 @@ describe("resolved ledger", () => {
     expect(delta.regressions).toBeUndefined()
   })
 
+  // Phase 5 of the annotator redesign: the rail draws two identical "#6B7280"
+  // prop lines under order-moved rows; a hairline change re-pairs them, the
+  // key's count goes 1 → 2, the spare is `introduced`, and by key alone it
+  // matched a ledger entry from two iterations back — REGRESSION cried wolf.
+  const propLine = (id: string, y: number): Finding => {
+    const { expected: _e, actual: _a, ...f } = finding(id, {
+      type: "missing-element",
+      role: "text",
+      text: "#6B7280",
+      designBox: { x: 40, y, w: 50, h: 14 },
+      implBox: { x: 40, y, w: 50, h: 14 },
+      message: "missing \"#6B7280\"",
+    })
+    return f
+  }
+
+  it("two identical #6B7280 prop lines, one present in the previous run — not a regression", () => {
+    // run1 showed two lines; run2 one (count 2 → 1) → the y=300 instance enters the ledger.
+    const run1 = report([propLine("f1", 100), propLine("f2", 300)], "t1")
+    const run2 = report([propLine("f1", 100)], "t2")
+    const ledger = recordResolved(emptyLedger("p"), run1, diffReports(run1, run2), "t2")
+    expect(ledger.entries).toHaveLength(1)
+    // run3: count 1 → 2 again; the y=100 one pairs, the y=300 one is the spare — the key never left.
+    const run3 = report([propLine("f1", 100), propLine("f2", 300)], "t3")
+    const delta = diffReports(run2, run3, {}, ledger)
+    expect(delta.introduced).toEqual(["f2"])
+    expect(delta.regressions).toBeUndefined()
+  })
+
+  it("the same key absent from the previous run and in the ledger — still a regression, box or no box", () => {
+    const run1 = report([propLine("f1", 300)], "t1")
+    const run2 = report([], "t2")
+    const ledger = recordResolved(emptyLedger("p"), run1, diffReports(run1, run2), "t2")
+    // Back after a fixture shift moved every box: the box is a tie-break only for a unique key.
+    const run3 = report([propLine("f1", 340)], "t3")
+    const delta = diffReports(run2, run3, {}, ledger)
+    expect(delta.regressions).toEqual(["f1"])
+  })
+
+  it("among several new same-text findings a ledger entry names only the one at its place", () => {
+    const run1 = report([propLine("f1", 300)], "t1")
+    const run2 = report([], "t2")
+    const ledger = recordResolved(emptyLedger("p"), run1, diffReports(run1, run2), "t2")
+    const run3 = report([propLine("f1", 100), propLine("f2", 302)], "t3")
+    const delta = diffReports(run2, run3, {}, ledger)
+    expect(delta.introduced).toEqual(["f1", "f2"])
+    expect(delta.regressions).toEqual(["f2"])
+  })
+
   it("parses a ledger file and rejects a foreign pair's", async () => {
     const { parseLedger } = await import("./delta.js")
     const raw = { pair: "p", entries: [{ key: "k", message: "m", resolvedAt: "t" }, { junk: 1 }] }
