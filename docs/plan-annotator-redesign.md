@@ -1081,6 +1081,138 @@ What shipped:
 
 ---
 
+## 7. The phone's minimal layout + settings popover — DONE (2026-08-29, session 16)
+
+**The comp refetch (2026-08-29, DesignSync `get_file`):** the Tool comp's
+phone header trades the light/dark toggle for a `settings` button whose
+popover holds **Layout — Minimal / Default** over **Theme — Dark / Light**
+(desktop keeps the plain toggle); Focus moved AFTER Comment in the tool
+strip (both comps); the × is drawn in the regression state
+(`deltaDismissShow: true`) and `showDeltaStrip` defaults to true in the
+REMOTE project (gap 29 closed for good — a refetch no longer reverts it);
+the header's left and right parts are equal flex shares on desktop
+(`flex: 1 1 0`, the groups centre on the SCREEN) and hug their content on
+the phone. A new comp, **`RefDiff Mobile Minimal.dc.html`** (a 390×844 phone
+frame inside a dark 460×950 showcase canvas, `layout` prop default
+`minimal`), draws the minimal layout: a **44px** header — back, **16px**
+brand, the pair title, a `tune` button (the Compare / Show segments fold
+into a panel dropped over the canvas) and `settings`; no layer strip, no
+zoom pill, no delta strip; the bottom row = the tool strip (**28px** tools
++ a divider + **Fit**) left, the **Design / Impl SWAP** (one value +
+`swap_horiz`) and the **rail button** with a count badge right; the align
+control is an icon-only 34px button with a "!" badge for the confidence
+warning, its menu carrying the lockstep row; the rail a **58%** sheet that
+is off screen while closed; fit margin **16** (the Tool comp's is 24).
+The "default" layout is the existing phone layout, still measured against
+the Tool comp.
+
+**Built (`render.ts`, one shell for both deliveries):** `.tb-right` with the
+theme toggle (desktop) and the settings popover (phone; `#settings-menu`,
+`data-mlayout` / `data-theme` segments); `#view-toggle` + `#view-panel`
+(`#seg-variant-m`, `#seg-layer-p` drive the same `setLab` / `setLayer`);
+`#fit-m`, `#pane-swap`, `#rail-btn` + `#rail-count`; `#conf-bang`; the
+lock row in `renderAlignMenu()` when `minimalOn()`; `body.layout-minimal`
+(phone only, whatever the preference says) with every rule under the
+759px media query; the preference in `vc-controls.layout`, written alone
+like the theme (`savePref`), preset for one load by **`?layout=minimal|
+default`** on the page URL (how the pair is captured; a shareable link;
+not a rendered element, so item 16's rule holds); Escape and an outside
+tap close the popover / the panel. The manifest pair
+`refdiff-compare-mobile-minimal`: `design.scope: ".cc-theme-dark"` picks
+the phone node out of the showcase canvas (the fluid outer frame reloads at
+390×844 first, so the phone lands at x 0), `MINIMAL_IGNORE` =
+`COMPARE_IGNORE` + the abbreviated title (gap 37).
+
+**Numbers (2026-08-29, Linux devbox, `out/refdiff/summary.md`; findings /
+inst / supp / conf):**
+
+| pair | 2026-08-28 baseline | run 1 (built, unfixed) | after (3 runs) |
+| --- | --- | --- | --- |
+| refdiff-library-desktop | 2 / 11 / 25 / 0.89 | 2 / 11 / 25 / 0.89 | 2 / 11 / 25 / 0.89 — unchanged |
+| refdiff-compare-desktop | 32 / 46 / 66 / 0.71 | 32 / 46 / 66 / 0.72 | 32 / 46 / 66 / 0.72 — unchanged |
+| refdiff-library-mobile | 0 / 0 / 16 / 1.00 | **1** (1/0/0) / 1 / 16 / 1.00 — `REGRESSION` | 0 / 0 / 16 / 1.00 |
+| refdiff-compare-mobile | 3 / 13 / 31 / 0.90 | 6 (0/6/0) / 16 / 32 / 0.88 | 3 / 13 / 32 / 0.91 |
+| refdiff-compare-mobile-minimal | — | 13 (0/8/5) / 20 / 25 / 0.93 | **0** / 0 / 26 / **1.00** — then **10** (1/6/3) / 19 / 36 / 0.87 with the delta strip kept (decision below; all ten are the strip the comp lacks, and the shifted anchors cost the confidence) |
+
+Alignment at the identity (`1 / 0,0`) on all FIVE pairs in every run.
+The staircase on the new pair, 13 → 2 → 0, and what each step was:
+
+1. **The icon subset** (8 of the 13, plus 2 on `refdiff-compare-mobile`):
+   `tune`, `settings`, `list_alt` and `swap_horiz` were not among the 52
+   glyphs in `assets/fonts/material-symbols-outlined.woff2`, so the ligature
+   rendered as its NAME in letters — `"settings" renders 152×23, design says
+   19×23`, and every neighbour in the row moved with it. The list is now
+   DERIVED (`packages/annotator/scripts/icon-subset.mjs`: quoted tokens in
+   the comps + this package's source ∩ Google's codepoints list, 93 glyphs,
+   the generated `src/icon-names.ts`, `--check` for drift; the font URL is
+   versioned by that list's hash, because the day-long `Cache-Control` kept
+   the OLD face on Mato's phone after the restart). Same-shape lesson as
+   phase 1's fonts: a matching `fontFamily` proves nothing about the glyph.
+2. **Fit margin** (4, the badges `position ×6 (7.1, 7.8)` …): the Minimal
+   comp fits with `r.width − 32` (16px a side), the Tool comp with `− 48`;
+   `fit()` now takes 16 under `minimalOn()`; the phone's zoom reads 53%
+   there against the default layout's 50%.
+3. **The title** (1): the comp's header says "Onboarding — Document", the
+   app the pair's name "Onboarding — Document step" — demo data, accepted
+   (gap 37).
+4. Run 2's two survivors were ONE cause: `.tb-right` had no `gap`, so
+   `tune` sat 13px from `settings` where the comp's 7px header gap makes
+   20 — `position (7, 0)` + `spacing 13 vs 20`; `gap:8px` (desktop, one
+   child) / `7px` (minimal).
+
+**What the harness caught that eyeballing would not:**
+
+- The **`REGRESSION` on `refdiff-library-mobile`**: `design "light_mode" has
+  no counterpart`. The phone rule that hides the report's theme toggle
+  (`.theme-toggle { display:none }`) lives in the CSS the app shell shares
+  with the Library route, whose comp is UNCHANGED and keeps the toggle —
+  scoped to `.topbar .theme-toggle`. One shell, two routes: a rule for one
+  route's chrome must name that route's container.
+- **The × on the phone** (`"close" offset (−184, 0.5)`): the app's phone CSS
+  put the dismiss right after Review (`.review + .dismiss { margin-left:0 }`);
+  the comp keeps the ×'s auto margin (only Review loses it), so it ends the
+  row it wraps to. Phone-only fix; the desktop matched either way.
+- The stale `accepted` rule for the × (`extra-element`, `text: "close"`,
+  phase 5's decision that the comp hid it) stopped hitting the moment the
+  comp drew it, exactly as `SKILL.md` §3a promises; removed.
+
+**Decisions (session 16):**
+
+- **The delta strip renders in the minimal layout as in the default one.**
+  The Minimal comp draws none; first built to the comp (hidden, one rule),
+  then Mato (2026-08-29): "the strip should render the same — under the
+  header — I just didn't put it in the minimal design". Rule flipped; the
+  strip's two glyphs (`warning`, `close`) are excused by content on the
+  minimal pair (`MINIMAL_IGNORE`), its copy by the shared patterns. What no
+  rule may hide: the app's canvas starts ~66px lower than the comp's (the
+  wrapped strip), so the pair reads **10 findings** until the comp carries
+  the strip — the align button `(0, 66)` ×2, the badges `(0, 32.5)` ×10,
+  and the badge "1" mis-paired with the artboard's step numeral "1" (5
+  findings of that one mis-pair). Gap 36 is now the ask: add the strip to
+  the Minimal comp; the pair returns to 0 by itself.
+- **The lockstep lock stays in every view — reverted the same day.** First
+  hidden outside split at Mato's request ("we don't need the align-lock
+  button when the mode is not split screen"), then restored on his second
+  thought: with ONE pane and an overlay on (wipe / onion / blink) the design
+  is drawn onto the impl, so unlocking — or picking another anchor mode — is
+  exactly what fixes a bad landing. Hiding it cost a `missing-element` on
+  the comp's `link` and, before the pill was given the lock's height, a
+  `spacing 29 vs 31.5`; both are gone again and no rule was left behind.
+  The minimal layout's icon-only button keeps its lockstep row in the MENU
+  (the Minimal comp's `lockRow`).
+- `?layout=` presets, never persists: a link opens in one layout without
+  changing the phone's saved preference.
+
+Light theme and the open states (popover, panel, sheet, align menu) ship
+UNMEASURED by decision (gap 20 / section C), exercised headlessly at 390 and
+1360 with zero console errors (`settings` → Default → Minimal → Light, tap
+outside, `tune` → Onion → tap outside, swap, rail open / close, align menu
++ lock row, Fit at 53%, `vc-controls.layout` persisted; the Library keeps
+its toggle on the phone). `pnpm test` 270 + 171 green (three new
+`render.test.ts` cases: tool order, the popover, the minimal layout).
+
+---
+
 ## Design gaps — things the annotator does that the comps never drew
 
 **STATUS 2026-08-28: the design is COMPLETE for phases 0–5.** Every gap below
@@ -1411,6 +1543,24 @@ comp's side. Each carries its measured cost.
   numbers mean what they say, but it is a runtime change, not a design one —
   for Mato's information only.
 
+36. **The Minimal comp draws no delta strip** (2026-08-29, session 16) — an
+    omission, per Mato the same day: the strip renders under the header in
+    the minimal layout as in the default one, and the app does. **Ask: add
+    the strip to `RefDiff Mobile Minimal.dc.html`** (the Tool comp's
+    `deltaStyle` block, `showDeltaStrip: true`). Cost until then: 10
+    findings on `refdiff-compare-mobile-minimal` — the canvas ~66px lower
+    than the comp's (align button ×2, badges ×10) and badge "1" mis-paired
+    with the artboard's step numeral (5). The strip's glyphs are accepted by
+    content; the offsets cannot be rules.
+38. ~~**The align pill's lock on the phone**~~ — WITHDRAWN the same day
+    (2026-08-29). Hidden outside split at Mato's request, then restored: an
+    overlay superimposes the design on the impl even with one pane, which is
+    when the lock and the anchor mode matter most. Nothing to ask on the
+    comps' side; the acceptance rule that had excused the comp's `link` was
+    removed with it.
+37. **The Minimal comp's header title is "Onboarding — Document"** — the demo
+    data shortened by hand; the app shows the pair's name, as the Library
+    card does. Accepted on the minimal pair (`MINIMAL_IGNORE`).
 35. **The comp's phone fit centres the frame in the WHOLE canvas, under the
     sheet** (found 2026-08-28, session 15; 1 finding ×11 on
     `refdiff-compare-mobile`). With the bottom sheet open (52%) the comp's

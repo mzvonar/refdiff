@@ -145,7 +145,7 @@ describe("renderReport", () => {
 
   it("Fit centres in the visible canvas — the phone sheet is an inset, and the phone hides the highlight count", () => {
     // Fit measured the whole pane and centred the frame under the phone's bottom sheet (2026-08-28).
-    expect(html).toContain("fitView(worldBox(), paneSize(), 24, 1.6, paneInsetsNow())")
+    expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
     expect(html).toContain("paneInsets(pane, [$('side'), $('tools')].map(")
     // Focusing a finding centres it in the same visible area (both call sites).
     expect(html.split(", paneSize(), state.view, 1, paneInsetsNow()))").length).toBe(3)
@@ -186,6 +186,14 @@ describe("renderReport", () => {
     expect(html).toContain("$('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)'")
     // Pane labels go while an overlay is on (the panes no longer show one side each).
     expect(html).toContain("body.lab-on .pane-label { display:none; }")
+  })
+
+  it("keeps the lockstep lock in every view — with one pane and an overlay on, the registration is exactly what needs changing (2026-08-29)", () => {
+    // Briefly hidden outside split that day, then restored: wipe / onion / blink draw the design
+    // ONTO the impl, so unlocking or picking another anchor mode is what fixes a bad landing.
+    expect(html).not.toContain("$('align-lock').hidden = single();")
+    expect(html).not.toContain("no-lock")
+    expect(html).toContain("function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }")
   })
 
   it("offers the align modes as the comps' pill + dropdown, with the lock and the confidence warning", () => {
@@ -311,7 +319,7 @@ describe("renderReport", () => {
     expect(html).toContain("ann.saveError = saveErrorText(!!page.readOnly, page.annotationsUrl, e.message);")
     expect(html).toContain('<span class="t">Not saved</span>')
     expect(html).toContain(".vmark.ann.unsaved { box-shadow:0 0 0 3px rgba(229,72,77,.6)")
-    expect(html).toContain("railSummary(report.findings.filter(visible).length, visibleItems().length, ann.saveError ? ann.unsaved.size : 0)")
+    expect(html).toContain("railSummary(kept, items, ann.saveError ? ann.unsaved.size : 0)")
     // Triage (gap 11) lives in the selected row; the active verdict pressed again clears it.
     expect(html).toContain('placeholder="Note for the model…"')
     expect(html).toContain("applyTriage(tri.dataset.triage === cur ? null : tri.dataset.triage")
@@ -410,7 +418,7 @@ describe("renderReport", () => {
     expect(html).toContain("@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:100 700;")
     expect(html).toContain("@font-face { font-family:'IBM Plex Mono'; font-style:normal; font-weight:400;")
     expect(html).toContain("@font-face { font-family:'Material Symbols Outlined';")
-    expect(html).toMatch(/src:url\(fonts\/ibm-plex-sans-latin\.woff2\) format\('woff2'\)/)
+    expect(html).toMatch(/src:url\(fonts\/[a-z0-9]+\/ibm-plex-sans-latin\.woff2\) format\('woff2'\)/)
     expect(html).toContain("font:13px/1.4 var(--font-sans)")
     expect(html).toContain("--font-sans:'IBM Plex Sans',system-ui")
     // Icons are ligatures in the comps' face, so the rule must match theirs verbatim.
@@ -429,6 +437,57 @@ describe("renderReport", () => {
       expect(html).not.toContain(gone)
     }
     expect(html).toContain(".pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }")
+  })
+
+  it("orders the tool strip as both comps do: pan, comment, focus, highlight, dim, strobe (Focus moved after Comment on 2026-08-29)", () => {
+    const ids = ["move-toggle", "ann-draw", "focus-toggle", "diff-toggle", "dim-toggle", "strobe-toggle"].map((id) => html.indexOf('id="' + id + '"'))
+    expect(ids.every((i) => i > 0)).toBe(true)
+    expect([...ids].sort((a, b) => a - b)).toEqual(ids)
+  })
+
+  it("trades the theme toggle for a settings popover on the phone: Layout (Minimal / Default) over Theme (Dark / Light)", () => {
+    const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)![1]!
+    expect(html).toContain('id="settings-toggle" aria-expanded="false" aria-controls="settings-menu" title="Settings"')
+    expect(html).toContain('data-mlayout="minimal"')
+    expect(html).toContain('data-theme="light"')
+    // Desktop never shows it; the phone swaps it in for the toggle.
+    expect(html).toContain(".settings-wrap, .view-toggle { display:none;")
+    // Scoped to the comparison topbar: the Library keeps its toggle on the phone (its comp is unchanged).
+    expect(mobile).toContain(".topbar .theme-toggle { display:none; }")
+    expect(mobile).toContain(".delta-strip .review + .dismiss { margin-left:auto; }")
+    expect(mobile).toContain(".settings-wrap { display:block; }")
+    // The comp's header: equal flex shares on desktop (the groups centre on the SCREEN), hugging on the phone.
+    expect(html).toContain(".tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }")
+    expect(mobile).toContain(".tb-left, .tb-right { flex:0 0 auto; }")
+    expect(html).not.toContain("tb-spacer")
+    // The layout is a chrome preference like the theme: persisted, preset by ?layout= on the URL for one load.
+    expect(html).toContain("theme: currentTheme(), layout: state.mlayout,")
+    expect(html).toContain("state.mlayout = urlLayout() || (saved.layout === 'minimal' ? 'minimal' : 'default');")
+    expect(html).toContain("function saveTheme() { savePref('theme', currentTheme()); }")
+  })
+
+  it("carries the minimal phone layout (the Mobile Minimal comp): 44px header with tune + settings, the segments in a panel over the canvas, tools + Fit bottom-left, swap + rail button bottom-right, icon-only align, no zoom pill / layer strip (the delta strip stays), a 58% sheet off screen while closed", () => {
+    const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)![1]!
+    expect(mobile).toContain("body.layout-minimal .topbar { height:calc(44px + 1px); padding:0 8px; gap:7px; }")
+    expect(html).toContain('id="view-panel" hidden')
+    expect(html).toContain('id="seg-variant-m"')
+    expect(html).toContain('id="seg-layer-p"')
+    expect(mobile).toContain("body.layout-minimal #seg-variant, body.layout-minimal .layer-strip, body.layout-minimal .zoom-pill, body.layout-minimal .side-fab { display:none; }")
+    expect(mobile).toContain("body.layout-minimal .tools { left:8px; bottom:9px; padding:3px; gap:1px; }")
+    for (const id of ["fit-m", "pane-swap", "rail-btn", "rail-count"]) expect(html).toContain('id="' + id + '"')
+    expect(html).toContain(".pane-swap { right:calc(8px + 38px + 6px);")
+    expect(mobile).toContain("body.layout-minimal .align-pill { position:relative; width:calc(34px + 2px); height:calc(34px + 2px);")
+    expect(html).toContain('id="conf-bang" hidden>!</span>')
+    expect(mobile).toContain("body.layout-minimal .rail { display:none; height:58%; transition:none; }")
+    expect(mobile).toContain("body.layout-minimal.rail-open .rail { display:flex; }")
+    // The icon-only button has no lock, so the menu carries the comp's lockstep row.
+    expect(html).toContain("const lockRow = minimalOn()")
+    // Off the phone the class never applies, whatever the preference says.
+    expect(html).toContain("function minimalOn() { return narrow.matches && state.mlayout === 'minimal'; }")
+    // The Minimal comp fits with a 16px margin where the Tool comp uses 24.
+    expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
+    // The overlay segment in the panel drives the same state as the topbar's.
+    expect(html).toContain("for (const b of document.querySelectorAll('[data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);")
   })
 
   it("has a theme toggle in the header, persisted with the other controls but written on its own", () => {

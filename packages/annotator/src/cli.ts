@@ -96,7 +96,10 @@ Options:
                    Single run dir only — a set writes each report in place.
   --serve          run the app: one page at /, the pair list from /api/pairs
                    and each pair's findings.json loaded at request time
-                   (nothing is written; add --emit to also write the files)
+                   (nothing is written; add --emit to also write the files).
+                   On a phone the header's settings popover picks the layout
+                   (default / minimal) and theme; ?layout=minimal|default on
+                   the page URL presets the layout for that load only
   --emit           write the self-contained report.html files (and index.html
                    for a set) — the default when not serving. Needed only to
                    read a report off disk with no server

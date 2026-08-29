@@ -36,7 +36,11 @@
  * row focuses the canvas on the element — the canvas is the crop; the crop
  * PNGs stay in the run dir for the model. On a phone (< 760px) one side
  * shows at a time, the tools float over the canvas and the rail is the
- * comps' bottom sheet.
+ * comps' bottom sheet; the header's settings popover picks the theme and
+ * the phone LAYOUT — default (as above) or minimal (the RefDiff Mobile
+ * Minimal comp: the segments fold behind a tune button, the tool strip +
+ * Fit, the Design/Impl swap and the rail button share the bottom row, the
+ * align control is icon-only, no zoom pill / layer strip).
  */
 
 import type { ComparisonReport } from "@refdiff/core"
@@ -135,7 +139,6 @@ export const VIEWPORT_META =
  */
 export const REPORT_BODY = `<header id="hdr" class="topbar">
   <div class="tb-left" id="hdr-left"></div>
-  <span class="tb-spacer"></span>
   <div class="seg" id="seg-layout" role="group" aria-label="layout">
     <button type="button" data-layout="split" title="both sides side by side">Split</button>
     <button type="button" data-layout="full" title="one side at a time">Full</button>
@@ -153,8 +156,25 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
     <button type="button" data-layer="all">All</button>
     <button type="button" data-layer="none">Clean</button>
   </div>
-  <span class="tb-spacer"></span>
-  <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
+  <div class="tb-right" id="hdr-right">
+    <button type="button" class="theme-toggle" id="theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
+    <button type="button" class="hdr-btn view-toggle" id="view-toggle" aria-pressed="false" aria-controls="view-panel" title="View options"><span class="msi" aria-hidden="true">tune</span></button>
+    <div class="settings-wrap" id="settings-wrap">
+      <button type="button" class="hdr-btn settings-btn" id="settings-toggle" aria-expanded="false" aria-controls="settings-menu" title="Settings"><span class="msi" aria-hidden="true">settings</span></button>
+      <div class="settings-menu" id="settings-menu" hidden>
+        <span class="sm-label">Layout</span>
+        <div class="seg seg-full" id="seg-mlayout" role="group" aria-label="phone layout">
+          <button type="button" data-mlayout="minimal" title="Toolbars behind the header's tune button; more room for the canvas">Minimal</button>
+          <button type="button" data-mlayout="default" title="The toolbars over and under the canvas">Default</button>
+        </div>
+        <span class="sm-label gap">Theme</span>
+        <div class="seg seg-full" id="seg-theme" role="group" aria-label="chrome theme">
+          <button type="button" data-theme="dark">Dark</button>
+          <button type="button" data-theme="light">Light</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </header>
 <div id="delta-strip" class="delta-strip" hidden></div>
 <div class="layer-strip" id="layer-strip"><span class="layer-strip-label">Show</span>
@@ -170,13 +190,34 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
     <div class="work">
       <div class="tools" id="tools">
         <button type="button" id="move-toggle" class="tool on" aria-pressed="true" title="Pan / move (Esc)"><span class="msi" aria-hidden="true">pan_tool</span></button>
-        <button type="button" id="focus-toggle" class="tool" aria-pressed="false" title="Focus region — drag to limit findings (press again to clear)"><span class="msi" aria-hidden="true">center_focus_strong</span></button>
         <button type="button" id="ann-draw" class="tool" aria-pressed="false" title="Comment — tap a point or drag a region (n)"><span class="msi" aria-hidden="true">add_comment</span></button>
+        <button type="button" id="focus-toggle" class="tool" aria-pressed="false" title="Focus region — drag to limit findings (press again to clear)"><span class="msi" aria-hidden="true">center_focus_strong</span></button>
         <button type="button" id="diff-toggle" class="tool" aria-pressed="false" title="Highlight changed parts (d) — [ and ] step through them"><span class="msi" aria-hidden="true">difference</span></button>
         <button type="button" id="dim-toggle" class="tool" aria-pressed="false" title="Dim unchanged parts (g)"><span class="msi" aria-hidden="true">tonality</span></button>
         <button type="button" id="strobe-toggle" class="tool" aria-pressed="false" title="Strobe — pulse the differences in colour (s)"><span class="msi" aria-hidden="true">flare</span></button>
+        <span class="tool-sep" aria-hidden="true"></span>
+        <button type="button" id="fit-m" class="tool fit-m" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
       </div>
       <div class="panes" id="panes">
+        <div class="view-panel" id="view-panel" hidden>
+          <div class="vp-row"><span class="vp-label">Compare</span>
+            <div class="seg seg-p" id="seg-variant-m" role="group" aria-label="comparison overlay">
+              <button type="button" data-lab="none" title="No comparison overlay">Off</button>
+              <button type="button" data-lab="swipe" title="Wipe slider between refs">Wipe</button>
+              <button type="button" data-lab="onion" title="Onion-skin: the design over the impl">Onion</button>
+              <button type="button" data-lab="blink" title="Alternate refs">Blink</button>
+              <button type="button" data-lab="difference" title="Pixel difference blend">Diff</button>
+            </div>
+          </div>
+          <div class="vp-row"><span class="vp-label">Show</span>
+            <div class="seg seg-p" id="seg-layer-p" role="group" aria-label="canvas layer">
+              <button type="button" data-layer="findings">Findings</button>
+              <button type="button" data-layer="items">Comments</button>
+              <button type="button" data-layer="all">All</button>
+              <button type="button" data-layer="none">Clean</button>
+            </div>
+          </div>
+        </div>
         <div class="pane" id="pane-design" data-side="design">
           <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg><div class="vmarks" id="vmarks-design"></div></div>
           <div class="pane-label" id="label-design">DESIGN</div>
@@ -192,12 +233,15 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <button type="button" id="fit" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
         </div>
         <div class="side-fab" id="side-switch" role="group" aria-label="which side"><button type="button" data-side="design">Design</button><button type="button" data-side="impl">Impl</button></div>
+        <button type="button" class="pane-swap" id="pane-swap" title="Switch design / implementation"><span class="msi" aria-hidden="true">swap_horiz</span><span id="pane-swap-label">Design</span></button>
+        <button type="button" class="rail-btn" id="rail-btn" title="Review panel"><span class="msi" aria-hidden="true">list_alt</span><span class="rail-count" id="rail-count">0</span></button>
         <div class="op-pill" id="op-pill" hidden><span class="msi" aria-hidden="true">opacity</span><span id="op-label" class="op-label">Onion</span><input type="range" id="lab-amount" min="0" max="100" step="1" value="55" aria-label="overlay opacity"><span id="op-pct" class="op-pct">55%</span></div>
         <div class="align-wrap" id="align-wrap">
           <div class="align-pill" id="align-pill">
             <button type="button" class="lock on" id="align-lock" aria-pressed="true" title="Lockstep on — panes move together. Click to unlink."><span class="msi" aria-hidden="true">link</span></button>
             <button type="button" class="align-cur" id="align-mode" aria-expanded="false" aria-controls="align-menu"><span class="msi" id="align-icon" aria-hidden="true">hub</span><span id="align-label">Anchors</span><span class="msi chev" id="align-chev" aria-hidden="true">expand_less</span></button>
             <span class="conf-warn" id="conf-warn" hidden><span class="msi" aria-hidden="true">warning</span></span>
+            <span class="conf-bang" id="conf-bang" hidden>!</span>
           </div>
           <div class="align-menu" id="align-menu" hidden></div>
         </div>
@@ -267,16 +311,18 @@ button, input, select, textarea { font:inherit; }
 html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
 body { display:flex; flex-direction:column; }
 /* ---- topbar: the comps' 46px bar — back arrow, brand, pair title; the three
-   segmented groups (layout / overlay / layer) centred; the theme toggle right. */
+   segmented groups (layout / overlay / layer) centred; the theme toggle right.
+   Left and right are equal flex shares (the comp's hdrLeftStyle / hdrRightStyle,
+   flex 1 1 0), so the groups centre on the SCREEN, not in what the title leaves. */
 .topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px); flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
-.tb-left { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
+.tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }
+.tb-right { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:1 1 0; min-width:4px; }
 .tb-left .back { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--txt2); text-decoration:none; flex-shrink:0; }
 .tb-left .back:hover { background:var(--bg3); color:var(--txt); }
 .tb-left .back .msi { font-size:19px; }
 .tb-left .brand { width:18px; height:18px; border-radius:5px; background:var(--acc); flex-shrink:0; }
 .tb-left .brand-name { font-size:13px; font-weight:700; letter-spacing:.02em; }
 .tb-left .pair-title { font-size:12px; color:var(--txt2); white-space:nowrap; }
-.tb-spacer { flex:1; min-width:4px; }
 .seg { display:flex; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:2px; gap:2px; flex-shrink:0; }
 .seg button { padding:5px 10px; border:0; border-radius:6px; font-size:12px; font-weight:500; line-height:16px; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
 .seg button.on { color:var(--txt); font-weight:600; background:var(--bg3); }
@@ -285,11 +331,33 @@ body { display:flex; flex-direction:column; }
 /* The phone's layer strip under the topbar ("Show · Findings Comments All Clean"). */
 .layer-strip { display:none; align-items:center; justify-content:center; gap:7px; padding:4px 10px; background:var(--bg1); border-bottom:1px solid var(--line); flex-shrink:0; }
 .layer-strip-label { font-size:10.5px; color:var(--txt2); flex-shrink:0; }
-/* The topbar icon button (theme): the comps' 32px / radius 7 square. */
-.theme-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+/* The topbar icon buttons (theme, and on the phone the tune + settings buttons): the comps' 32px /
+   radius 7 square; a pressed one is filled with the accent (the comps' hdrBtn). */
+.theme-toggle, .hdr-btn { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
   background:transparent; color:var(--txt2); cursor:pointer; }
-.theme-toggle:hover { background:var(--bg3); }
-.theme-toggle .msi { font-size:19px; }
+.theme-toggle:hover, .hdr-btn:hover { background:var(--bg3); }
+.theme-toggle .msi, .hdr-btn .msi { font-size:19px; }
+.hdr-btn.on { color:#fff; background:var(--acc); }
+/* The phone's settings popover (the comp's mobile header, 2026-08-29): the light/dark toggle
+   becomes a settings button opening Layout (Minimal / Default) over Theme (Dark / Light). Desktop
+   keeps the plain theme toggle and never shows this; the view-options button is the minimal
+   layout's alone. Widths are the comp's content-box numbers plus padding and border. */
+.settings-wrap, .view-toggle { display:none; position:relative; flex-shrink:0; }
+.settings-menu { position:absolute; top:calc(100% + 6px); right:0; z-index:40; width:calc(198px + 22px); background:var(--bg1); border:1px solid var(--line); border-radius:11px;
+  padding:10px 10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.35); display:flex; flex-direction:column; gap:6px; }
+.settings-menu[hidden] { display:none; }
+.sm-label { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--txt2); }
+.sm-label.gap { margin-top:6px; }
+.seg.seg-full { width:100%; }
+.seg.seg-full button, .seg.seg-p button { flex:1; text-align:center; padding:3px 9px; font-size:11px; line-height:15px; }
+.seg.seg-p button { flex:none; }
+/* The minimal layout's view panel: the Compare (overlay) and Show (layer) segments folded behind
+   the header's tune button, dropped over the top of the canvas. */
+.view-panel { position:absolute; top:0; left:0; right:0; z-index:25; background:var(--bg1); border-bottom:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.3);
+  padding:10px 12px; display:flex; flex-direction:column; gap:9px; }
+.view-panel[hidden] { display:none; }
+.vp-row { display:flex; align-items:center; gap:8px; }
+.vp-label { width:52px; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--txt2); flex-shrink:0; }
 /* ---- delta strip (gap 15): under the topbar, only when the run changed something;
    red-tinted with a 3px edge when a regression is in it — the loop's stop signal. */
 .delta-strip { display:flex; align-items:center; gap:12px; padding:0 12px; min-height:calc(38px + 1px); flex-shrink:0; background:var(--bg2);
@@ -463,6 +531,8 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .tool .msi { font-size:18px; }
 .tool:hover { background:var(--bg3); }
 .tool.on { color:#fff; background:var(--acc); }
+/* The minimal layout's strip carries the fit button after a divider; the other layouts keep the zoom pill. */
+.tool-sep, .tool.fit-m { display:none; }
 .panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); }
 .pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }
 .pane + .pane { border-left:1px solid var(--line); }
@@ -490,6 +560,19 @@ body.lab-on .pane-label { display:none; }
 body.single .side-fab { display:flex; }
 .side-fab button { padding:7px 14px; border:0; border-radius:999px; font-size:12px; font-weight:600; line-height:normal; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
 .side-fab button.on { color:#fff; background:var(--acc); }
+/* The minimal layout's bottom row, right-hand side: the Design / Impl SWAP (one value + swap_horiz,
+   where the default layout shows both as a pill) and the rail button with its count badge. Both
+   float at the comp's 36px content height plus the 1px border. */
+.pane-swap, .rail-btn { display:none; position:absolute; bottom:8px; z-index:15; align-items:center; justify-content:center; height:calc(36px + 2px); padding:0; border:1px solid var(--line); border-radius:10px;
+  background:var(--bg1); color:var(--txt2); cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.3); flex-shrink:0; }
+.pane-swap { right:calc(8px + 38px + 6px); gap:6px; padding:0 10px; }
+.pane-swap > .msi { font-size:16px; color:var(--txt2); }
+.pane-swap span:last-child { font-size:12px; font-weight:600; color:var(--txt); }
+.rail-btn { right:8px; width:calc(36px + 2px); }
+.rail-btn:hover { color:var(--txt); }
+.rail-btn > .msi { font-size:18px; }
+.rail-count { position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; background:var(--acc); color:#fff; font-size:9.5px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; box-sizing:border-box; line-height:1; }
 .op-pill { position:absolute; bottom:61px; left:50%; transform:translateX(-50%); z-index:16; display:flex; align-items:center; gap:10px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:6px 14px 6px 11px; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 .op-pill[hidden] { display:none; }
 body.single .op-pill { bottom:107px; }
@@ -513,6 +596,20 @@ body.single .align-wrap { bottom:58px; }
 .conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
 .conf-warn[hidden] { display:none; }
 .conf-warn .msi { font-size:14px; }
+/* The minimal layout's icon-only align button has no lock on it, so its menu carries the lockstep
+   row (the Mobile Minimal comp's lockRow): icon, label + description, a 30×18 toggle knob. The lock
+   itself stays in every view — with one pane and an overlay on (wipe / onion / blink) the
+   registration still decides what the ghost lands on, so it is exactly then that unlocking or
+   changing the anchor mode helps (Mato, 2026-08-29). */
+.align-lockrow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; cursor:pointer; margin:0 0 2px; border-bottom:1px solid var(--line); }
+.align-lockrow > .msi { font-size:17px; color:var(--txt2); flex-shrink:0; margin-top:1px; }
+.align-lockrow .knob { width:30px; height:18px; border-radius:999px; background:var(--bg3); position:relative; flex-shrink:0; transition:background .15s; }
+.align-lockrow .knob .dot { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition:left .15s; }
+.align-lockrow.on .knob { background:var(--acc); }
+.align-lockrow.on .knob .dot { left:14px; }
+/* The minimal layout's confidence warning: a "!" badge on the icon-only align button. */
+.conf-bang { display:none; position:absolute; top:-4px; right:-4px; width:calc(14px + 3px); height:calc(14px + 3px); border-radius:999px; background:var(--major); color:#1c1c1e;
+  font-size:9.5px; font-weight:800; align-items:center; justify-content:center; line-height:1; border:1.5px solid var(--bg1); }
 .align-menu { position:absolute; bottom:calc(100% + 8px); right:0; width:calc(264px + 10px); background:var(--bg1); border:1px solid var(--line); border-radius:11px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:17; }
 .align-menu[hidden] { display:none; }
 .align-menu h3 { margin:0; padding:8px 10px 4px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); }
@@ -625,6 +722,14 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
 /* phone (the comps' < 760px): the page scrolls, the viewer sticks, one side at a time, the tools float */
 @media (max-width: 759px) {
   .tb-left .brand-name, #seg-layout, #seg-layer { display:none; }
+  /* The comp's mobile header: left and right hug their content (flex 0 0 auto), the overlay
+     segment centres in what is left (margin auto); the theme toggle gives way to the settings button. */
+  .tb-left, .tb-right { flex:0 0 auto; }
+  #seg-variant { margin:0 auto; }
+  .topbar .theme-toggle { display:none; }
+  .settings-wrap { display:block; }
+  /* The comp's × keeps its auto margin on the phone (only Review loses it), so it ends the row it wraps to. */
+  .delta-strip .review + .dismiss { margin-left:auto; }
   .layer-strip { display:flex; }
   .delta-strip { flex-wrap:wrap; gap:8px; padding:7px 10px; min-height:0; }
   .delta-strip .regsub { display:none; }
@@ -653,6 +758,43 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }
   /* iOS Safari zooms the page when a focused field is under 16px. */
   .fnote, .inote, .dnote, .fsearch input { font-size:16px; }
+  /* ---- the MINIMAL phone layout (the RefDiff Mobile Minimal comp, 2026-08-29; chosen in the
+     settings popover, body.layout-minimal): the canvas gets the room. A 44px header — back,
+     16px brand, the pair title, the tune button (the Compare / Show segments fold into a panel
+     over the canvas) and settings; no layer strip, no zoom pill; the delta strip stays (the comp omits
+     it — Mato, 2026-08-29: it renders as in the default layout). The bottom row is
+     the tool strip (28px tools + a divider + Fit) left, the Design / Impl swap and the rail button
+     right; the align control is icon-only with a "!" badge for the confidence warning (its lockstep
+     row moves into the menu); the rail
+     is a 58% sheet that is not on screen at all while closed. */
+  body.layout-minimal .topbar { height:calc(44px + 1px); padding:0 8px; gap:7px; }
+  body.layout-minimal .tb-left { flex:1 1 0; min-width:4px; gap:7px; }
+  body.layout-minimal .tb-right { gap:7px; }
+  body.layout-minimal .tb-left .brand { width:16px; height:16px; }
+  body.layout-minimal .tb-left .pair-title { display:inline; overflow:hidden; text-overflow:ellipsis; }
+  body.layout-minimal .view-toggle { display:inline-flex; }
+  body.layout-minimal #seg-variant, body.layout-minimal .layer-strip, body.layout-minimal .zoom-pill, body.layout-minimal .side-fab { display:none; }
+  /* The bottom row is 38px tall (the comp's 36 + border); the 36px strip centres in it, so it sits 1px up. */
+  body.layout-minimal .tools { left:8px; bottom:9px; padding:3px; gap:1px; }
+  body.layout-minimal .tool { width:28px; height:28px; }
+  body.layout-minimal .tool .msi { font-size:16px; }
+  body.layout-minimal .tool-sep { display:block; width:1px; height:18px; background:var(--line); margin:0 2px; flex-shrink:0; }
+  body.layout-minimal .tool.fit-m { display:flex; }
+  body.layout-minimal .pane-swap, body.layout-minimal .rail-btn { display:flex; }
+  body.layout-minimal .op-pill { bottom:54px; }
+  body.layout-minimal .align-wrap { top:8px; right:8px; }
+  body.layout-minimal .align-pill { position:relative; width:calc(34px + 2px); height:calc(34px + 2px); padding:0; border-radius:9px; justify-content:center; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+  body.layout-minimal .align-pill.is-warn { border-color:var(--major); box-shadow:0 4px 16px rgba(0,0,0,.25); }
+  body.layout-minimal .align-pill .lock, body.layout-minimal .align-cur #align-label, body.layout-minimal .align-cur .chev, body.layout-minimal .conf-warn { display:none; }
+  body.layout-minimal .align-cur { padding:0; }
+  body.layout-minimal .align-cur #align-icon { font-size:18px; }
+  body.layout-minimal .align-pill.is-warn .conf-bang { display:flex; }
+  body.layout-minimal .align-menu { width:calc(250px + 10px); }
+  body.layout-minimal .focus-chip { left:8px; transform:none; gap:8px; padding:4px 6px 4px 12px; font-size:11.5px; }
+  body.layout-minimal .focus-chip > .msi { font-size:14px; }
+  body.layout-minimal .focus-chip button { padding:3px 9px; font-size:11px; }
+  body.layout-minimal .rail { display:none; height:58%; transition:none; }
+  body.layout-minimal.rail-open .rail { display:flex; }
 }
 `
 
@@ -692,7 +834,7 @@ function saveControls() {
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
       diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
-      theme: currentTheme(),
+      theme: currentTheme(), layout: state.mlayout,
     }));
   } catch (e) { /* private mode: the controls just do not persist */ }
 }
@@ -724,6 +866,10 @@ const state = {
   diff: false, dim: false, strobe: false, lab: 'none', labAmount: { onion: 55, difference: 100 }, wipeX: 0, diffIndex: -1,
   // The delta strip (gap 15): its Review button narrows the list to the regressions.
   regOnly: false, deltaDismissed: false, alignOpen: false,
+  // The phone's layout — 'default' (the toolbars over and under the canvas) or 'minimal' (folded
+  // behind the header's tune button, the canvas gets the room) — chosen in the settings popover,
+  // persisted like the theme, preset by ?layout= on the URL. Desktop ignores it.
+  mlayout: 'default', settingsOpen: false, viewOpen: false,
 };
 // The comps' breakpoints: under 760px the phone layout (one side at a time,
 // the tools float over the canvas), under 1120px the topbar shortens.
@@ -741,20 +887,53 @@ function applyTheme(theme) {
   const light = theme === 'light';
   document.body.classList.toggle('cc-theme-light', light);
   for (const el of document.querySelectorAll('.theme-toggle .msi')) el.textContent = light ? 'dark_mode' : 'light_mode';
+  for (const b of document.querySelectorAll('[data-theme]')) b.classList.toggle('on', b.dataset.theme === (light ? 'light' : 'dark'));
 }
-function saveTheme() {
+// One key of the controls record, written alone (the theme, the phone layout).
+function savePref(key, value) {
   try {
     const saved = readControls();
-    saved.theme = currentTheme();
+    saved[key] = value;
     localStorage.setItem(CONTROLS_KEY, JSON.stringify(saved));
   } catch (e) { /* private mode */ }
 }
+function saveTheme() { savePref('theme', currentTheme()); }
 function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }
 document.addEventListener('click', (e) => {
   const t = e.target.closest && e.target.closest('.theme-toggle');
   if (t) toggleTheme();
 });
 applyTheme(readControls().theme);
+// ---- the phone's layout ----------------------------------------------------
+// ?layout=minimal|default on the page URL presets it for this load without touching the saved
+// preference — a link that opens in one layout, and how the harness captures the minimal comp.
+function urlLayout() {
+  try { const v = new URLSearchParams(location.search).get('layout'); return v === 'minimal' || v === 'default' ? v : null; } catch (e) { return null; }
+}
+function minimalOn() { return narrow.matches && state.mlayout === 'minimal'; }
+function setPhoneLayout(layout) {
+  state.mlayout = layout === 'minimal' ? 'minimal' : 'default';
+  savePref('layout', state.mlayout);
+  setSettingsOpen(false);
+  applyLayout(); applyAlignMode(); renderRailSummary();
+  if (state.userMoved) applyView(); else fit();
+}
+function setSettingsOpen(open) {
+  state.settingsOpen = open;
+  $('settings-toggle').classList.toggle('on', open);
+  $('settings-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  $('settings-menu').hidden = !open;
+  for (const b of document.querySelectorAll('[data-mlayout]')) b.classList.toggle('on', b.dataset.mlayout === state.mlayout);
+  if (open) setViewOpen(false);
+}
+// The minimal layout's view panel (Compare / Show) behind the header's tune button.
+function setViewOpen(open) {
+  state.viewOpen = open;
+  $('view-toggle').classList.toggle('on', open);
+  $('view-toggle').setAttribute('aria-pressed', open ? 'true' : 'false');
+  $('view-panel').hidden = !open;
+  if (open) { setSettingsOpen(false); toggleAlignMenu(false); }
+}
 const panes = { design: $('pane-design'), impl: $('pane-impl') };
 const imgs = { design: $('img-design'), impl: $('img-impl'), ghost: $('img-ghost'), mask: $('img-mask') };
 const layers = { design: $('marks-design'), impl: $('marks-impl') };
@@ -983,6 +1162,10 @@ function paneInsetsNow() {
 }
 function applyLayout() {
   document.body.classList.toggle('single', single());
+  document.body.classList.toggle('layout-minimal', minimalOn());
+  // The popover and the panel are phone chrome; leaving the breakpoint closes them.
+  if (!narrow.matches && state.settingsOpen) setSettingsOpen(false);
+  if (!minimalOn() && state.viewOpen) setViewOpen(false);
   for (const b of document.querySelectorAll('#seg-layout [data-layout]')) b.classList.toggle('on', (b.dataset.layout === 'full') === state.single);
   // With one side and no overlay nothing is registered onto anything, so the align pill goes (the comp's alignShow).
   $('align-wrap').hidden = single() && !narrow.matches && state.lab === 'none';
@@ -994,6 +1177,8 @@ function setLayout(isSingle) {
 function applySide() {
   for (const side of ['design', 'impl']) panes[side].classList.toggle('active', side === state.side);
   for (const b of document.querySelectorAll('#side-switch [data-side]')) b.classList.toggle('on', b.dataset.side === state.side);
+  // The minimal layout's swap shows the CURRENT side only (the comp's paneLabel).
+  $('pane-swap-label').textContent = state.side === 'design' ? 'Design' : 'Impl';
 }
 function setSide(side) {
   if (state.side === side) return;
@@ -1050,6 +1235,7 @@ function applyControls(saved) {
     difference: amount && typeof amount.difference === 'number' ? amount.difference : 100,
   };
   state.showSup = saved.showSup === true;
+  state.mlayout = urlLayout() || (saved.layout === 'minimal' ? 'minimal' : 'default');
   applyAlignMode(); applyLock(); applyLayer();
   for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
     $(id).classList.toggle('on', on);
@@ -1109,7 +1295,13 @@ function applyAlignMode() {
   renderAlignMenu();
 }
 function renderAlignMenu() {
-  $('align-menu').innerHTML = '<h3>Align lock mode</h3>' + ALIGN_MODES.map((m) => {
+  // The minimal layout's align button has no lock on it, so the row lives in the menu (the comp's lockRow).
+  const lockRow = minimalOn()
+    ? '<div class="align-lockrow' + (state.lock ? ' on' : '') + '" data-lockrow><span class="msi" aria-hidden="true">' + (state.lock ? 'link' : 'link_off') + '</span>' +
+      '<div class="txt"><span class="name">' + (state.lock ? 'Lockstep on' : 'Lockstep off') + '</span><span class="desc">' + (state.lock ? 'Panes move together — tap to unlink.' : 'Panes move independently — tap to link.') + '</span></div>' +
+      '<span class="knob" aria-hidden="true"><span class="dot"></span></span></div>'
+    : '';
+  $('align-menu').innerHTML = '<h3>Align lock mode</h3>' + lockRow + ALIGN_MODES.map((m) => {
     const act = state.align === m, warn = m === 'anchors' && anchorLow();
     return '<div class="align-opt' + (act ? ' on' : '') + (warn ? ' is-warn' : '') + '" data-align="' + m + '" title="' + esc(ALIGN_DESCRIPTIONS[m] + (warn ? ' Anchor confidence is only ' + confPct() + '.' : '')) + '">' +
       '<span class="msi" aria-hidden="true">' + ALIGN_ICONS[m] + '</span>' +
@@ -1178,7 +1370,8 @@ function applyView() {
   $('zoom-pct').textContent = Math.round(v.z * 100) + '%';
   applyWipe();
 }
-function fit() { setView(fitView(worldBox(), paneSize(), 24, 1.6, paneInsetsNow())); state.userMoved = false; applyView(); }
+// The comps' fit margins: 24px (the Tool comp's r.width − 48), 16px in the minimal layout (the Minimal comp's r.width − 32).
+function fit() { setView(fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())); state.userMoved = false; applyView(); }
 
 // ---- topbar + delta strip -------------------------------------------------
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -1354,13 +1547,19 @@ function applyTab() {
   $('panel-items').hidden = state.tab !== 'items';
 }
 function setTab(tab) { state.tab = tab; applyTab(); }
-// Open on desktop = the 320px column; on the phone = the sheet raised to 52%. One flag, persisted.
-function openRail(open) { document.body.classList.toggle('rail-open', open); renderRailSummary(); saveControls(); }
+// Open on desktop = the 320px column; on the phone = the sheet raised to 52% (58% in the minimal
+// layout, where the closed sheet is off screen and there is no height transition to re-fit after).
+function openRail(open) {
+  document.body.classList.toggle('rail-open', open); renderRailSummary(); saveControls();
+  if (minimalOn() && !state.userMoved) fit();
+}
 // The collapsed rail has to say what it is hiding — and a failed save shows through it (section C).
 function renderRailSummary() {
-  const text = railSummary(report.findings.filter(visible).length, visibleItems().length, ann.saveError ? ann.unsaved.size : 0);
+  const kept = report.findings.filter(visible).length, items = visibleItems().length;
+  const text = railSummary(kept, items, ann.saveError ? ann.unsaved.size : 0);
   $('rail-summary').textContent = text;
   $('rail-fab-summary').textContent = text;
+  $('rail-count').textContent = kept + items;
   const open = document.body.classList.contains('rail-open');
   $('rail-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
   $('rail-toggle').querySelector('.chev').textContent = open ? 'expand_more' : 'expand_less';
@@ -1676,7 +1875,7 @@ function stepDiff(delta) {
 let blinkTimer = null;
 function setLab(mode) {
   state.lab = mode;
-  for (const b of document.querySelectorAll('#seg-variant [data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);
+  for (const b of document.querySelectorAll('[data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);
   // While an overlay is on the panes no longer show one side each, so the pane labels go (the comp's showLabels).
   document.body.classList.toggle('lab-on', mode !== 'none');
   const hasAmount = mode === 'onion' || mode === 'difference';
@@ -1790,8 +1989,21 @@ function wire() {
   wipe.addEventListener('click', (e) => e.stopPropagation());
   $('side-switch').addEventListener('click', (e) => { const b = e.target.closest('[data-side]'); if (b) setSide(b.dataset.side); });
   $('seg-layout').addEventListener('click', (e) => { const b = e.target.closest('[data-layout]'); if (b) setLayout(b.dataset.layout === 'full'); });
-  $('seg-variant').addEventListener('click', (e) => { const b = e.target.closest('[data-lab]'); if (b) setLab(b.dataset.lab); });
-  for (const id of ['seg-layer', 'seg-layer-m']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer); });
+  for (const id of ['seg-variant', 'seg-variant-m']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-lab]'); if (b) setLab(b.dataset.lab); });
+  for (const id of ['seg-layer', 'seg-layer-m', 'seg-layer-p']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer); });
+  // The phone's settings popover and the minimal layout's view panel; a tap anywhere else closes them.
+  $('settings-toggle').addEventListener('click', () => setSettingsOpen(!state.settingsOpen));
+  $('seg-mlayout').addEventListener('click', (e) => { const b = e.target.closest('[data-mlayout]'); if (b) setPhoneLayout(b.dataset.mlayout); });
+  $('seg-theme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (b) { applyTheme(b.dataset.theme); saveTheme(); } });
+  $('view-toggle').addEventListener('click', () => setViewOpen(!state.viewOpen));
+  document.addEventListener('pointerdown', (e) => {
+    const inside = (sel) => e.target.closest && e.target.closest(sel);
+    if (state.settingsOpen && !inside('.settings-wrap')) setSettingsOpen(false);
+    if (state.viewOpen && !inside('#view-panel') && !inside('#view-toggle')) setViewOpen(false);
+  });
+  $('fit-m').addEventListener('click', fit);
+  $('pane-swap').addEventListener('click', () => setSide(state.side === 'design' ? 'impl' : 'design'));
+  $('rail-btn').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
   $('move-toggle').addEventListener('click', setPan);
   $('focus-toggle').addEventListener('click', () => {
     if (state.focus) { setFocus(null); setFocusing(false); return; }  // second press clears
@@ -1804,7 +2016,11 @@ function wire() {
   });
   $('align-mode').addEventListener('click', () => toggleAlignMenu());
   $('align-lock').addEventListener('click', () => setLock(!state.lock));
-  $('align-menu').addEventListener('click', (e) => { const o = e.target.closest('[data-align]'); if (o) setAlign(o.dataset.align); });
+  $('align-menu').addEventListener('click', (e) => {
+    // The lockstep row (minimal layout) toggles in place; a mode closes the menu.
+    if (e.target.closest('[data-lockrow]')) { setLock(!state.lock); return; }
+    const o = e.target.closest('[data-align]'); if (o) setAlign(o.dataset.align);
+  });
   document.addEventListener('pointerdown', (e) => { if (state.alignOpen && !(e.target.closest && e.target.closest('.align-wrap'))) toggleAlignMenu(false); });
   // The rail: one delegated listener per event kind, since its rows are re-rendered as HTML.
   $('rail-toggle').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
@@ -1895,7 +2111,9 @@ function wire() {
     else if (e.key === ']') stepDiff(1);
     else if (e.key === '[') stepDiff(-1);
     else if (e.key === 'Escape') {
-      if (state.alignOpen) toggleAlignMenu(false);
+      if (state.settingsOpen) setSettingsOpen(false);
+      else if (state.viewOpen) setViewOpen(false);
+      else if (state.alignOpen) toggleAlignMenu(false);
       else if (state.focusing) setFocusing(false);
       else if (state.lab !== 'none') setLab('none');
       else if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); }

@@ -13,7 +13,10 @@
 // capture viewport is narrow (Library < 640px, Comparison Tool < 760px), so the
 // mobile pairs reuse the desktop comps at 390×844. `RefDiff Mobile.dc.html` is
 // only the designer's phone-frame showcase (a toggle + <dc-import> of the two
-// pages) and is deliberately not a pair.
+// pages) and is deliberately not a pair. The phone's MINIMAL layout has its
+// own comp, `RefDiff Mobile Minimal.dc.html` (2026-08-29) — a fixed 390×844
+// phone frame inside a showcase canvas — and its own pair below, scoped to
+// the phone node.
 //
 // The impl route for the comparison page is a hash route into one run dir of
 // the served demo root — the pair the comps open (`fixtures/make-demo-root.ts`
@@ -125,16 +128,6 @@ COMPARE_IGNORE.accepted.push(
     reason: "gap 33: the comp's g2 says ×6 for five distinct places — see ×14",
   },
   {
-    // The delta strip's × in the REGRESSION state. The comp hides it there
-    // (`deltaDismissShow: regCount === 0`); decided otherwise 2026-08-28 — the
-    // strip stops the reader once, the rail keeps the Regression tag — so the
-    // 16×20 `close` glyph next to Review is the app's, on purpose.
-    type: "extra-element",
-    role: "text",
-    text: "close",
-    reason: "decided 2026-08-28: the delta strip is closable while a regression is in it too; the comp hides its × there (deltaDismissShow: regCount === 0) and the rail keeps the Regression tag",
-  },
-  {
     type: "text-content",
     expected: { text: "8 findings · 3 comments · 1 unsaved" },
     actual: { text: "8 findings · 3 comments" },
@@ -142,7 +135,10 @@ COMPARE_IGNORE.accepted.push(
   },
 )
 // gap 29 (RESOLVED 2026-08-28: `showDeltaStrip` defaults to true in the comp,
-// flipped at Mato's request): both sides draw the delta strip. Its COPY is
+// flipped at Mato's request; in the REMOTE project too since the 2026-08-29
+// refetch, which also draws the × in the regression state — the app's
+// decision of 2026-08-28, so the former `close` rule went): both sides draw
+// the delta strip. Its COPY is
 // still designer data — the Tool comp says "Run 47 vs 46 · −6 resolved", the
 // Library card "−1 resolved" (gap 23), the app the fixture's real delta — so
 // the strip's vocabulary is excused; the layout underneath is measured. The
@@ -150,6 +146,36 @@ COMPARE_IGNORE.accepted.push(
 COMPARE_IGNORE.textPatterns.push(
   "^(\\+\\d+ introduced|[−-]\\d+ resolved|\\d+ regressions?|vs run \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}|fixed earlier, back again — fix plan halted)$",
 )
+
+// The minimal layout's comp abbreviates the pair title in its 44px header ("Onboarding — Document");
+// the app shows the pair's name — data, not copy.
+const MINIMAL_IGNORE = {
+  textPatterns: COMPARE_IGNORE.textPatterns,
+  accepted: COMPARE_IGNORE.accepted.concat([
+    {
+      type: "text-content",
+      expected: { text: "Onboarding — Document" },
+      actual: { text: "Onboarding — Document step" },
+      reason: "the Minimal comp's header shows a shortened demo title; the app shows the pair's name as the Library card does",
+    },
+    // The Minimal comp draws no delta strip; Mato (2026-08-29): it renders as in the default
+    // layout. Its copy is excused by the patterns above; its two glyphs are excused here by
+    // content. The canvas below it sits ~66px lower than the comp's, which no rule may hide
+    // (positions lapse) — the ask is the strip in the comp (plan gap 36).
+    {
+      type: "extra-element",
+      role: "text",
+      text: "warning",
+      reason: "gap 36: the delta strip's icon — the Minimal comp omits the strip; Mato 2026-08-29: render it as in the default layout",
+    },
+    {
+      type: "extra-element",
+      role: "text",
+      text: "close",
+      reason: "gap 36: the delta strip's × — the Minimal comp omits the strip; Mato 2026-08-29: render it as in the default layout",
+    },
+  ]),
+}
 
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
@@ -183,5 +209,17 @@ export const manifest = [
     design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool" },
     app: { source: "live", route: COMPARE_ROUTE, viewport: mobile, waitFor: "#panes" },
     ignore: COMPARE_IGNORE,
+  },
+  {
+    // The phone's MINIMAL layout (2026-08-29): its own comp, a 390×844 phone frame drawn inside a
+    // dark 460×950 showcase canvas — `scope` picks the phone (the one `.cc-theme-dark` node) so
+    // the showcase padding and its caption are never compared. The app renders that layout when
+    // the settings popover says so; `?layout=minimal` presets it for this capture without
+    // touching the saved preference.
+    id: "refdiff-compare-mobile-minimal",
+    title: "RefDiff · Comparison tool (mobile, minimal layout)",
+    design: { file: "RefDiff Mobile Minimal.dc.html", frame: "RefDiff mobile minimal", scope: ".cc-theme-dark" },
+    app: { source: "live", route: "/?layout=minimal" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
+    ignore: MINIMAL_IGNORE,
   },
 ]

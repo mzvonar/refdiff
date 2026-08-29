@@ -10,7 +10,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | what | where |
 | --- | --- |
 | manifest | `design/refdiff.manifest.mjs` |
-| design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`, files fetched with DesignSync `get_file` (`RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html`, `parts/*`, `support.js`). Re-fetch to refresh; never edit a comp to make a finding go away |
+| design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`, files fetched with DesignSync `get_file` (`RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html`, `RefDiff Mobile Minimal.dc.html`, `parts/*`, `support.js`; `ios-frame.jsx` is an unused starter). Re-fetch to refresh; never edit a comp to make a finding go away. After a refetch run `node packages/annotator/scripts/icon-subset.mjs` — a new icon in a comp renders as its NAME until the subset has it |
 | impl | the annotator app itself serving the demo root: `refdiff-annotator fixtures/demo-root --serve` (default port 7378; on the Linux devbox `svc up annotator` — `services.toml` — which hands out the next free port, 7379 while another worktree's annotator holds 7378) |
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
 | viewing from a laptop / phone | `svc up annotator-tailnet` — the same read-only instance bound to the devbox's Tailscale IP only (`http://uctoinak-dev.tail31a8b9.ts.net:7390/`, `svc ports` for the port). Never `--host 0.0.0.0` here: the box has a public interface and no firewall. Tailscale Serve is NOT enabled on the tailnet (admin console), which is why a second instance rather than a proxy of 7379 |
@@ -48,12 +48,14 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture.** The protected baseline
-  (redesign phases 0–6 + harness items 12–16 + the Library thumb fix + the
-  session-15 product changes, all landed 2026-08-28) is **2 / 32 / 0 / 3
-  findings**, suppressed 25 / 66 / 16 / 33, confidence **0.89 / 0.71 / 1.00 /
-  0.90** (the Library desktop reads 0.89 since the comp's `smartphone` icon
-  stopped being a shared anchor — see the textPatterns bullet), alignment at
-  the identity (`1 / 0,0`) on ALL FOUR pairs. The Library desktop's 2 = the chip row `position ×10` and
+  (redesign phases 0–7 + harness items 12–16 + the Library thumb fix + the
+  session-15 product changes; session 16, 2026-08-29, added the fifth pair)
+  is **2 / 32 / 0 / 3 / 10 findings** (library-desktop / compare-desktop /
+  library-mobile / compare-mobile / compare-mobile-minimal), suppressed 25 /
+  66 / 16 / 32 / 36, confidence **0.89 / 0.72 / 1.00 / 0.91 / 0.87** (the
+  Library desktop reads 0.89 since the comp's `smartphone` icon stopped being
+  a shared anchor — see the textPatterns bullet), alignment at the identity
+  (`1 / 0,0`) on ALL FIVE pairs. The Library desktop's 2 = the chip row `position ×10` and
   the search `size` (both the comp's demo data, section H). Its former
   `alignment` note (`align 1×0.997 / 0,0.2`) was the card `.thumb` rendered
   at 132 px against the comp's content-box 132 + 1 px border — 1 px per card
@@ -87,16 +89,41 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
   draws the run's PNGs), the two screenshots (`accepted`), and the delta
   strip's copy (the comps disagree with each other and with the fixture's
-  real delta, gaps 23/29), and the strip's × in the regression state
-  (`accepted`, `text: "close"` — the comp hides it there, the app keeps it,
-  decided 2026-08-28). Visible in `findings.json` under `suppressed`.
-- **`showDeltaStrip` defaults to true in the LOCAL Tool comp** (gap 29, flipped
-  2026-08-28). The remote project could not be written through DesignSync;
-  a refetch reverts the flip unless the prop default was changed in the app.
+  real delta, gaps 23/29). Visible in `findings.json` under `suppressed`.
+  (The former `accepted` rule for the strip's × in the regression state went
+  on 2026-08-29: the refetched comp draws the × there, as the app decided on
+  2026-08-28, so the rule stopped hitting — §3a's lapse working as designed.)
+- **`showDeltaStrip` defaults to true in the Tool comp, remotely too** since
+  the 2026-08-29 refetch (gap 29, closed): a refetch no longer reverts it.
+- **The phone's MINIMAL layout is its own pair**, `refdiff-compare-mobile-minimal`:
+  the comp `RefDiff Mobile Minimal.dc.html` draws a fixed 390×844 phone inside
+  a dark showcase canvas, so the pair's `design.scope: ".cc-theme-dark"` picks
+  the phone node (its design line reads `scope explicit fluid`, 390×844); the
+  app renders that layout when `?layout=minimal` is on the URL
+  (`/?layout=minimal#/onboarding-document-step` — the preset never persists).
+  The Minimal comp has no delta strip; Mato (2026-08-29): the app renders
+  it there as in the default layout, so until the comp carries the strip
+  the pair reads **10** — the canvas ~66px lower than the comp's (the align
+  button ×2, the badges ×10) and badge "1" mis-paired with the artboard's
+  step numeral "1" (5) — none of them the app's (plan gap 36, the ask is
+  the strip in the comp). The strip's `warning` / `close` glyphs and the
+  comp's shortened title are accepted by content (`MINIMAL_IGNORE`, gaps
+  36 / 37). Measured at 0 with the strip hidden, so the layout itself is
+  closed.
+- **A comp's new icon renders as its NAME until the subset has it.** The
+  served icon font is Google's subset of exactly the glyphs in
+  `packages/annotator/src/icon-names.ts` (generated); `settings` / `tune` /
+  `list_alt` / `swap_horiz` measured `152×23` against the comp's `19×23`
+  before `node packages/annotator/scripts/icon-subset.mjs` (network) rebuilt
+  it. `--check` says whether the list is current; the tell in a run is a
+  `size` finding on an icon whose width is a word's, not a glyph's. A phone
+  that had the page open keeps the OLD face for a day (`max-age=86400`)
+  unless the URL changes — it does: `fonts/<hash of the list>/<file>`.
 - **The Tool comp fits its artboard ONCE, on load.** The dc-html adapter
   therefore reloads a fluid comp at the pair viewport after detecting it;
   if the comp's zoom pill reads anything but the app's (66% at 1360, 50% at
-  390) the reload did not happen and every badge/canvas finding is noise.
+  390, 53% on the minimal pair — its comp fits with a 16px margin) the
+  reload did not happen and every badge/canvas finding is noise.
 - **ORDER before anything else on a list page.** refdiff matches card N to
   card N; a list in a different order than the comp reads as a text-content
   and colour finding on every pill, badge and chip (phase 2: 208 → 101
@@ -113,11 +140,13 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   thumbnail boxes are excused by `contents: true` since harness item 14.
 - Both comps are full-bleed pages, so the design line must say `scope
   screen-label fluid` and the same css px as the pair viewport (1180×800 /
-  1360×820 / 390×844). If it reports the viewport +120 instead, the fluid-frame
-  detection did not fire — fix the capture before reading any position finding.
+  1360×820 / 390×844); the minimal pair's says `scope explicit fluid` (the
+  showcase frame is fluid, the phone inside it is the scope) at 390×844. If it
+  reports the viewport +120 instead, the fluid-frame detection did not fire —
+  fix the capture before reading any position finding.
 - Mobile pairs reuse the desktop comps at a 390px viewport — the comps switch
   layout by `window.innerWidth`; `RefDiff Mobile.dc.html` is a showcase wrapper,
-  not a pair.
+  not a pair. The minimal layout's comp is fixed-size and scoped (above).
 - The fixture's timestamps are fixed to the comps' clock (`DEMO_NOW`,
   2026-08-28T14:22:05Z) in git; the Library renders "12 min ago" against the
   wall clock, so measure IMMEDIATELY after `node fixtures/make-demo-root.ts

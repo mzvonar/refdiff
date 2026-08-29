@@ -21,14 +21,13 @@ input{outline:none}
 </style>
 </helmet>
 <div class="cc-theme-dark {{themeClass}}" style="position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;user-select:none;overflow:hidden" data-screen-label="RefDiff comparison tool">
-  <div style="display:flex;align-items:center;gap:8px;padding:0 10px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+  <div style="position:relative;display:flex;align-items:center;gap:8px;padding:0 10px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+    <div style="{{hdrLeftStyle}}">
       <a href="./RefDiff Library.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);text-decoration:none;flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
-      <div style="width:18px;height:18px;border-radius:5px;background:var(--acc)"></div>
+      <div style="width:18px;height:18px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
       <span style="{{brandStyle}}">RefDiff</span>
       <span style="{{projStyle}}">Onboarding — Document step</span>
     </div>
-    <div style="flex:1;min-width:4px"></div>
     <div style="{{grpMainStyle}}">
       <sc-for list="{{mainBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
     </div>
@@ -38,8 +37,24 @@ input{outline:none}
     <div style="{{grpLayerStyle}}">
       <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
     </div>
-    <div style="flex:1;min-width:4px"></div>
-    <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+    <div style="{{hdrRightStyle}}">
+    <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+      <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+    </sc-if>
+    <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
+      <div style="position:relative;flex-shrink:0">
+        <div style="{{setBtnStyle}}" onClick="{{settingsToggle}}" title="Settings"><span class="msi" style="font-size:19px">settings</span></div>
+        <sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:40;width:198px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:10px 10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2)">Layout</span>
+            <div style="{{grpFullStyle}}"><sc-for list="{{layoutBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+            <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);margin-top:6px">Theme</span>
+            <div style="{{grpFullStyle}}"><sc-for list="{{themeBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+    </div>
   </div>
   <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
     <div style="{{deltaStyle}}">
@@ -509,8 +524,8 @@ class Component extends DCLogic {
     const toolBtn = act => ({ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
     const toolDefs = [
       ['pan', 'pan_tool', 'Pan / move', () => this.setState({ tool: 'pan' }), S.tool === 'pan'],
-      ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
       ['comment', 'add_comment', 'Comment \u2014 tap a point or drag a region', () => this.setState({ tool: 'comment' }), S.tool === 'comment'],
+      ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
       ['hl', 'difference', 'Highlight changed parts', () => this.setState(s => ({ highlight: !s.highlight })), S.highlight],
       ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim],
       ['strobe', 'flare', 'Strobe \u2014 pulse the differences in colour', () => this.setState(s => ({ strobe: !s.strobe })), S.strobe]];
@@ -624,10 +639,25 @@ class Component extends DCLogic {
       themeClass: light ? 'cc-theme-light' : '',
       themeIcon: light ? 'dark_mode' : 'light_mode',
       toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
+      isDesk: !isM, isMob: isM,
+      settingsOpen: !!S.settingsOpen,
+      settingsToggle: () => this.setState(s => ({ settingsOpen: !s.settingsOpen })),
+      setBtnStyle: { width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.settingsOpen ? '#fff' : 'var(--txt2)', background: S.settingsOpen ? 'var(--acc)' : 'transparent', flexShrink: 0 },
+      grpFullStyle: { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, width: '100%', boxSizing: 'border-box' },
+      layoutBtns: [['minimal', 'Minimal'], ['default', 'Default']].map(([id, label]) => {
+        const act = id === 'default';
+        return { label, style: { flex: 1, textAlign: 'center', padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', lineHeight: '15px' }, onClick: () => { if (id === 'minimal') window.location.href = './RefDiff Mobile Minimal.dc.html'; else this.setState({ settingsOpen: false }); } };
+      }),
+      themeBtns: [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => {
+        const act = th === id;
+        return { label, style: { flex: 1, textAlign: 'center', padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', lineHeight: '15px' }, onClick: () => this.setState({ theme: id }) };
+      }),
       brandStyle: { fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', display: isM ? 'none' : 'block' },
       projStyle: { fontSize: 12, color: 'var(--txt2)', whiteSpace: 'nowrap', display: (isM || S.isNarrow) ? 'none' : 'block' },
       grpMainStyle: { ...grp, display: isM ? 'none' : 'flex' },
-      grpStyle: grp,
+      grpStyle: isM ? { ...grp, margin: '0 auto' } : grp,
+      hdrLeftStyle: { display: 'flex', alignItems: 'center', gap: 8, flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
+      hdrRightStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
       grpMobStyle: { ...grp, padding: 2, borderRadius: 7 },
       grpLayerStyle: { ...grp, display: isM ? 'none' : 'flex' },
       mainBtns, variantBtns, layerBtns, toolBtns, toolStripStyle, canvasStyle,
@@ -651,7 +681,7 @@ class Component extends DCLogic {
       fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
       alignShow: isM || !isFull || V !== 'none',
       alignWarnIcon: confWarn ? 'warning' : '',
-      deltaShow: (this.props.showDeltaStrip ?? false) && (R.add > 0 || R.res > 0 || regCount > 0) && !S.deltaDismissed,
+      deltaShow: (this.props.showDeltaStrip ?? true) && (R.add > 0 || R.res > 0 || regCount > 0) && !S.deltaDismissed,
       deltaStyle: { display: 'flex', alignItems: 'center', gap: isM ? 8 : 12, flexWrap: isM ? 'wrap' : 'nowrap', padding: isM ? '7px 10px' : '0 12px', minHeight: isM ? 0 : 38, flexShrink: 0, background: regCount ? 'rgba(229,72,77,0.13)' : 'var(--bg2)', borderBottom: '1px solid var(--line)', borderLeft: regCount ? '3px solid #e5484d' : '3px solid transparent' },
       deltaIcon: regCount ? 'warning' : 'compare_arrows',
       deltaIconStyle: { fontSize: 17, color: regCount ? '#e5484d' : 'var(--txt2)', flexShrink: 0 },
@@ -668,7 +698,7 @@ class Component extends DCLogic {
       regBtnLabel: S.regOnly ? 'Show all findings' : 'Review',
       regBtnStyle: { marginLeft: isM ? 0 : 'auto', padding: '4px 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: S.regOnly ? 'transparent' : '#e5484d', border: '1px solid ' + (S.regOnly ? 'var(--line)' : '#e5484d'), color: S.regOnly ? 'var(--txt2)' : '#fff', whiteSpace: 'nowrap', flexShrink: 0 },
       regBtn: () => this.setState(s => ({ regOnly: !s.regOnly, railTab: 'findings', railOpen: true, railCollapsed: false, selected: null })),
-      deltaDismissShow: regCount === 0,
+      deltaDismissShow: true,
       dismissDelta: () => this.setState({ deltaDismissed: true }),
       instChipShow: groupCount > 0,
       instChipLabel: S.allInst ? 'All instances \u00b7 ' + instTotal : 'Primary only \u00b7 ' + active.length,

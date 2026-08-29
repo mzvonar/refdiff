@@ -313,7 +313,10 @@ with `make-demo-root.ts --now` before a measure.
   Design / Impl fab), **Off / Wipe / Onion / Blink / Diff** (the
   superimposition, below) and the layer group **Findings / Comments / All /
   Clean** (`state.layer`; Comments off hides comment shapes, never the focus
-  region); the theme toggle. The pair verdict, c/M/m counts and source lines
+  region); the theme toggle — on the phone a **settings popover** instead
+  (Layout Minimal / Default over Theme Dark / Light, the comp's 2026-08-29
+  header). Left and right are equal flex shares (the comp's `flex: 1 1 0`),
+  so the groups centre on the screen. The pair verdict, c/M/m counts and source lines
   are NOT here (gap 14) — they live on the Library card you came from; the
   refs and the fit's numbers live in the pane labels' and align pill's
   `title`s.
@@ -323,6 +326,10 @@ with `make-demo-root.ts --now` before a measure.
   again — fix plan halted" and **Review**, which narrows the list to
   `delta.regressions`; a × dismisses it for the run in BOTH states (the comp
   hides the × while a regression shows; decided otherwise 2026-08-28).
+- **The lockstep lock is in every view** (2026-08-29, after briefly hiding
+  it outside split): an overlay draws the design ONTO the impl even with one
+  pane, so unlocking or changing the anchor mode is exactly the fix for a
+  bad landing. In the minimal phone layout its row lives in the align menu.
 - **Fit and focus centre in the VISIBLE canvas** (`paneInsets`, `view-math.ts`,
   2026-08-28): a panel drawn over the pane along a full edge — the phone's
   bottom sheet, 44px closed / 52% open — is an inset; floating pills (a
@@ -332,7 +339,7 @@ with `make-demo-root.ts --now` before a measure.
   than the comp's on purpose. The phone also hides the "N highlighted
   differences" pill (under the zoom / align pills); the stretch warning stays.
 - **Tool strip** (44px, left; a floating pill bottom-left on the phone):
-  `pan_tool` move · `center_focus_strong` focus · `add_comment` comment ·
+  `pan_tool` move · `add_comment` comment · `center_focus_strong` focus ·
   `difference` Highlight · `tonality` Dim · `flare` Strobe. Floating over the
   canvas: the **zoom pill** (`−` / mono `NN%` / `+` / `fit_screen`), the
   **align pill** (lock + mode + chevron, the amber `warning` treatment under
@@ -389,7 +396,27 @@ with `make-demo-root.ts --now` before a measure.
   a FIXED canvas — the page does not scroll; Full mode is forced; the layer
   segments sit under the topbar behind a "Show" label; the tool strip is the
   floating pill. Under 1120px the layer labels shorten (`Find.` / `Comm.`)
-  and the pair title drops.
+  and the pair title drops. **Two phone layouts** (2026-08-29, plan §7),
+  chosen in the settings popover, persisted as `vc-controls.layout`, preset
+  for one load by `?layout=minimal|default` on the URL, ignored on desktop:
+  *default* is the above; *minimal* (`body.layout-minimal`, the RefDiff
+  Mobile Minimal comp) folds the Compare / Show segments into a panel behind
+  a `tune` button in a 44px header, drops the layer strip and the zoom pill
+  (the delta strip stays — the comp omits it, gap 36), puts the tool strip + Fit,
+  the Design / Impl SWAP and the rail button (count badge) in one bottom row,
+  makes the align control icon-only (a "!" badge for the warning, its
+  lockstep row in the menu) and the rail a 58% sheet that is off screen
+  while closed; fit margin 16 (the default's 24).
+- **The icon font is a DERIVED subset.** `assets/fonts/material-symbols-
+  outlined.woff2` holds exactly the glyphs the comps and the app use
+  (the generated `src/icon-names.ts`, 93); a glyph outside it renders as its
+  NAME in letters and measures as such (`"settings" renders 152×23`,
+  2026-08-29). `node packages/annotator/scripts/icon-subset.mjs` rebuilds
+  both from the sources (`--check` reports drift); run it whenever a comp or
+  the app gains an icon. The font URLs are `fonts/<v>/<file>` with `<v>` a
+  hash of that list: the CLI serves the faces with `max-age=86400`, and a
+  re-subsetted face under an unchanged URL kept rendering the old subset on
+  a phone for a day (2026-08-29) — a new list is a new URL.
 - **Keyboard:** `j`/`k` next/previous finding, `[`/`]` step the highlighted
   boxes, `a`/`A` cycle align, `l` lock, `d`/`g`/`s` Highlight / Dim / Strobe,
   `b`/`o`/`w`/`x` blink / onion / swipe / difference, `n` annotate, `/`
@@ -693,8 +720,11 @@ fall through to the area rule, as do unlabelled artboards.
   suppression is a manifest file, not app state. Light theme, the error
   states, failed-save surfaces and every non-default state ship UNMEASURED
   (the comp captures its default state; no light frame exists). The Tool
-  comp's `showDeltaStrip` default was flipped to true in the LOCAL copy (gap
-  29) — a refetch reverts it. The finding text filter is `/` with nothing
+  comp's `showDeltaStrip` default is true — flipped locally on 2026-08-28
+  (gap 29), in the remote project since the 2026-08-29 refetch; the same
+  refetch draws the × in the regression state, so the app's 2026-08-28
+  "closable in both states" decision needs no rule any more. The finding
+  text filter is `/` with nothing
   drawn; the keyboard-shortcut hint has no drawn home (gap 18, deferred — a
   design question). What still holds `refdiff-compare-desktop` at 32
   findings is the comp's demo data, on Mato's side: its row order (gap 32,

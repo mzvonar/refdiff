@@ -106,3 +106,62 @@ test (`render.test.ts`, "no local of that name may shadow it") is the shape:
 extract the function's body from the shell and assert the declaration is
 absent. Route: `docs/architecture.md` "Annotator" (one line: the client is
 untested string, helpers' names are reserved) or discard. On process: decide.
+
+## 2026-08-29 — a self-hosted icon SUBSET fails by rendering the glyph's name (session 16)
+
+The annotator serves Google's subset of Material Symbols holding only the
+glyphs the comps used at the time. Four icons the refetched comps added
+(`settings`, `tune`, `list_alt`, `swap_horiz`) rendered as their names in
+letters — `"settings" renders 152×23, design says 19×23`, every neighbour
+shifted with it — and nothing in the console said so. The fix is structural:
+the list is DERIVED by a script (`packages/annotator/scripts/icon-subset.mjs`,
+sources ∩ Google's codepoints list, `--check` for drift), never typed. The
+skill-level shape: a `size` finding on an icon whose width is a WORD's is a
+missing glyph, not a layout bug — sibling of the "matching fontFamily proves
+nothing" pre-flight item. Route: `skills/refdiff/SKILL.md` "Environment
+pre-flight" (one bullet, general shape); the repo-specific recipe is already
+in the bindings and `docs/architecture.md`. On process: promote, remove.
+
+## 2026-08-29 — one shell, two routes: a route's chrome rule must name its container (session 16)
+
+`.theme-toggle { display:none }` under the phone media query was meant for the
+comparison tool's header (its comp replaced the toggle with a settings button)
+and hid the LIBRARY's toggle too — its comp is unchanged. The harness caught it
+as a `REGRESSION` on `refdiff-library-mobile` (`design "light_mode" has no
+counterpart`); nobody looking at the compare page would have. Rule: in the
+shared shell CSS every rule about one route's chrome is scoped to that route's
+container (`.topbar …`, `.lib-top …`). Route: `docs/architecture.md`
+"Annotator" already carries the `lib-` prefix rule for NAMES; extend that
+sentence to rules. On process: promote, remove.
+
+## 2026-08-29 — a comp that omits a state is the spec; flag the omission, do not invent (session 16)
+
+The Mobile Minimal comp draws no delta strip while the Tool comp does. Two
+readings: deliberate (more room for the canvas) or an omission. Built to the
+comp (hidden in that layout, one CSS rule), recorded as gap 36 with the
+question for Mato, rather than inventing a place for the strip that no comp
+drew. General shape: when a sibling comp lacks an element the others have,
+match the comp you are measuring against, keep the difference to one
+flippable rule, and put the question in the plan's gaps — never a design of
+your own. Route: `skills/refdiff/SKILL.md` classification table, the
+"needs a human" row (already close); maybe discard. On process: decide.
+
+Outcome (same day): Mato answered the flag within the hour — an omission, the
+strip belongs in the minimal layout too. One rule flipped, the ask moved to
+the comp's side (gap 36), the pair's 10 residual findings are all the comp's.
+The lesson holds: flagging cost one rule; inventing would have cost a design.
+
+## 2026-08-29 — a control that looks redundant in one mode may be load-bearing in another (session 16)
+
+"We don't need the align-lock when the mode is not split screen" — true for
+two panes side by side, wrong the moment an OVERLAY is on: wipe / onion /
+blink superimpose the design on the impl with a single pane, and then the
+lock and the anchor mode are the only things that fix a bad landing. Hidden,
+then restored within the hour. Cheap because the change was one predicate and
+one accepted rule, and the measure named the cost immediately (a
+`missing-element` on the comp's `link`, a `spacing 29 vs 31.5` from the pill
+shrinking). Rule: before removing a control "because this mode doesn't need
+it", enumerate the OTHER states that mode can be in — here, four overlay
+variants — and check the control against each. Route: discard, or one line in
+`docs/architecture.md` "Annotator" (the lock's rationale already states it).
+On process: decide.

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;overscroll-behavior:none}
+a{color:#5b8def}a:hover{color:#7da4f2}
+input{outline:none}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,132,140,.4);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--canvas:#232427}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--canvas:#c6c9ce}
+.msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0f1012;padding:24px;box-sizing:border-box;font-family:'IBM Plex Sans',system-ui,sans-serif" data-screen-label="RefDiff mobile minimal">
+  <div class="cc-theme-dark {{themeClass}}" style="position:relative;width:390px;height:844px;transform:translateZ(0);overflow:hidden;background:var(--bg0);color:var(--txt);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;user-select:none">
+    <div style="display:flex;align-items:center;gap:7px;padding:0 8px;height:44px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:30">
+      <a href="./RefDiff Library.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);text-decoration:none;flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
+      <div style="width:16px;height:16px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+      <sc-if value="{{isMin}}" hint-placeholder-val="{{true}}"><span style="font-size:12px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Onboarding — Document</span></sc-if>
+      <div style="flex:1;min-width:4px"></div>
+      <sc-if value="{{isDef}}" hint-placeholder-val="{{false}}">
+        <div style="{{grpStyle}}">
+          <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{isMin}}" hint-placeholder-val="{{true}}">
+        <div style="{{panelBtnStyle}}" onClick="{{panelToggle}}" title="View options"><span class="msi" style="font-size:19px">tune</span></div>
+      </sc-if>
+      <div style="{{setBtnStyle}}" onClick="{{settingsToggle}}" title="Settings"><span class="msi" style="font-size:19px">settings</span></div>
+    </div>
+    <sc-if value="{{isDef}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+        <span style="font-size:10.5px;color:var(--txt2);flex-shrink:0">Show</span>
+        <div style="{{grpStyle}}">
+          <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <div style="flex:1;position:relative;min-height:0;background:var(--canvas)">
+      <sc-if value="{{scrimShow}}" hint-placeholder-val="{{false}}"><div style="position:absolute;inset:0;z-index:12" onClick="{{scrimClose}}"></div></sc-if>
+      <div style="{{paneAStyle}}" ref="{{refA}}" onPointerDown="{{downA}}" onPointerMove="{{moveA}}" onPointerUp="{{upA}}" onWheel="{{wheelA}}">
+        <div style="{{tAStyle}}">
+          <dc-import name="parts/Artboard Design" hint-size="680px,740px" style="position:absolute;left:0;top:0;width:680px;height:740px"></dc-import>
+          <div style="{{ovlStyle}}"><dc-import name="parts/Artboard Impl" hint-size="680px,740px" style="position:absolute;inset:0"></dc-import></div>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{ovA.whStyle}}" onPointerDown="{{whDownA}}" onPointerMove="{{whMoveA}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{ovA.whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
+            <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
+              <defs><mask id="dimMa"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="rgba(15,17,20,0.5)" mask="url(#dimMa)"></rect>
+            </svg>
+          </sc-if>
+          <sc-for list="{{ovA.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{ovA.focus}}" hint-placeholder-val="{{false}}"><div style="{{ovA.focusStyle}}"></div></sc-if>
+          <sc-if value="{{ovA.draft}}" hint-placeholder-val="{{false}}"><div style="{{ovA.draftStyle}}"></div></sc-if>
+          <sc-for list="{{ovA.sel}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-for list="{{ovA.fm}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.num}}</div></sc-for>
+          <sc-for list="{{ovA.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
+        </div>
+      </div>
+      <div style="{{paneBStyle}}" ref="{{refB}}" onPointerDown="{{downB}}" onPointerMove="{{moveB}}" onPointerUp="{{upB}}" onWheel="{{wheelB}}">
+        <div style="{{tBStyle}}">
+          <dc-import name="parts/Artboard Impl" hint-size="680px,740px" style="position:absolute;left:0;top:0;width:680px;height:740px"></dc-import>
+          <div style="{{ovlStyle}}"><dc-import name="parts/Artboard Design" hint-size="680px,740px" style="position:absolute;inset:0"></dc-import></div>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{ovB.whStyle}}" onPointerDown="{{whDownB}}" onPointerMove="{{whMoveB}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{ovB.whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
+            <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
+              <defs><mask id="dimMb"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="rgba(15,17,20,0.5)" mask="url(#dimMb)"></rect>
+            </svg>
+          </sc-if>
+          <sc-for list="{{ovB.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{ovB.focus}}" hint-placeholder-val="{{false}}"><div style="{{ovB.focusStyle}}"></div></sc-if>
+          <sc-if value="{{ovB.draft}}" hint-placeholder-val="{{false}}"><div style="{{ovB.draftStyle}}"></div></sc-if>
+          <sc-for list="{{ovB.sel}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-for list="{{ovB.fm}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.num}}</div></sc-for>
+          <sc-for list="{{ovB.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
+        </div>
+      </div>
+      <sc-if value="{{panelOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;top:0;left:0;right:0;z-index:25;background:var(--bg1);border-bottom:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,0.3);padding:10px 12px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:52px;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);flex-shrink:0">Compare</span>
+            <div style="{{grpStyle}}"><sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:52px;font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);flex-shrink:0">Show</span>
+            <div style="{{grpStyle}}"><sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;top:6px;right:6px;z-index:40;width:198px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:10px 10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2)">Layout</span>
+          <div style="{{grpFullStyle}}"><sc-for list="{{layoutBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+          <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);margin-top:6px">Theme</span>
+          <div style="{{grpFullStyle}}"><sc-for list="{{themeBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+        </div>
+      </sc-if>
+      <div style="{{alignWrapStyle}}">
+        <sc-if value="{{isMin}}" hint-placeholder-val="{{true}}">
+          <div style="{{alignIconBtnStyle}}" onClick="{{alignMenuToggle}}" title="{{alignTip}}">
+            <span class="msi" style="font-size:18px">{{alignIcon}}</span>
+            <sc-if value="{{confWarn}}" hint-placeholder-val="{{false}}">
+              <div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:999px;background:#f5a623;color:#1c1c1e;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid var(--bg1)">!</div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{isDef}}" hint-placeholder-val="{{false}}">
+          <div style="{{alignPillStyle}}">
+            <div style="{{lockBtnStyle}}" onClick="{{lockToggle}}" title="{{lockTip}}"><span class="msi" style="font-size:15px">{{lockIcon}}</span></div>
+            <div style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:0 2px" onClick="{{alignMenuToggle}}" title="{{alignTip}}">
+              <span class="msi" style="font-size:16px;color:var(--txt2)">{{alignIcon}}</span>
+              <span style="font-size:11.5px;font-weight:600">{{alignLabel}}</span>
+              <span class="msi" style="font-size:15px;color:var(--txt2)">{{alignChev}}</span>
+            </div>
+            <sc-if value="{{confWarn}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(245,166,35,0.16);color:#f5a623;cursor:help;flex-shrink:0" title="{{confWarnTip}}"><span class="msi" style="font-size:14px">warning</span></div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{alignOpen}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute;top:calc(100% + 8px);right:0;width:250px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,0.35);z-index:17">
+            <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Align lock mode</div>
+            <div style="{{lockRowStyle}}" onClick="{{lockRowToggle}}">
+              <span class="msi" style="font-size:17px;color:var(--txt2);flex-shrink:0;margin-top:1px">{{lockRowIcon}}</span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:12px;font-weight:600">{{lockRowLabel}}</span>
+                <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{lockRowDesc}}</span>
+              </div>
+              <div style="{{lockRowKnob}}"><div style="{{lockRowDot}}"></div></div>
+            </div>
+            <sc-for list="{{alignOpts}}" as="o" hint-placeholder-count="4">
+              <div style="{{o.style}}" onClick="{{o.onClick}}" title="{{o.tip}}">
+                <span class="msi" style="{{o.iconStyle}}">{{o.icon}}</span>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12px;font-weight:600">{{o.name}}</span>
+                  <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{o.desc}}</span>
+                  <sc-if value="{{o.warnShow}}" hint-placeholder-val="{{false}}">
+                    <span style="display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:11px;line-height:1.35;color:#f5a623"><span class="msi" style="font-size:13px;margin-top:1px">warning</span>{{o.warnText}}</span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{o.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{isDef}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;left:12px;top:12px;z-index:14;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);background:var(--bg1);border:1px solid var(--line)" style-hover="color:var(--txt)" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:18px">fit_screen</span></div>
+        <div style="{{toolStripStyle}}">
+          <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:18px">{{b.icon}}</span></div></sc-for>
+        </div>
+        <div style="position:absolute;right:8px;bottom:56px;display:flex;gap:2px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:3px;z-index:15;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+          <div style="{{fabD.style}}" onClick="{{fabD.onClick}}">Design</div>
+          <div style="{{fabI.style}}" onClick="{{fabI.onClick}}">Impl</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{isMin}}" hint-placeholder-val="{{true}}">
+        <div style="position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;z-index:15">
+          <div style="display:flex;align-items:center;gap:1px;background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+            <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:16px">{{b.icon}}</span></div></sc-for>
+            <div style="width:1px;height:18px;background:var(--line);margin:0 2px;flex-shrink:0"></div>
+            <div style="{{fitBtnStyle}}" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:16px">fit_screen</span></div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:0 10px;height:36px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);flex-shrink:0" onClick="{{swapPane}}" title="Switch design / implementation">
+            <span class="msi" style="font-size:16px;color:var(--txt2)">swap_horiz</span>
+            <span style="font-size:12px;font-weight:600">{{paneLabel}}</span>
+          </div>
+          <div style="position:relative;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);box-shadow:0 4px 16px rgba(0,0,0,0.3);flex-shrink:0" style-hover="color:var(--txt)" onClick="{{railToggle}}" title="Review panel">
+            <span class="msi" style="font-size:18px">list_alt</span>
+            <div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--acc);color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{railCount}}</div>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{opShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{opWrapStyle}}" title="{{opTip}}">
+          <span class="msi" style="font-size:16px;color:var(--txt2)">{{opIcon}}</span>
+          <input type="range" min="0" max="100" step="1" value="{{opVal}}" onChange="{{onOp}}" style="width:110px;height:4px;accent-color:var(--acc);cursor:pointer;margin:0">
+          <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);min-width:32px;text-align:right">{{opPct}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{hasFocus}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;top:12px;left:8px;display:flex;align-items:center;gap:8px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;z-index:14;font-size:11.5px;color:var(--txt);white-space:nowrap">
+          <span class="msi" style="font-size:14px;color:var(--acc)">center_focus_strong</span>
+          <span>{{focusMsg}}</span>
+          <div style="padding:3px 9px;border-radius:999px;background:var(--bg3);cursor:pointer;font-weight:600;font-size:11px" onClick="{{clearFocus}}">Clear</div>
+        </div>
+      </sc-if>
+      <div style="{{railStyle}}">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 12px 8px;cursor:pointer;flex-shrink:0" onClick="{{railToggle}}">
+          <div style="width:36px;height:4px;border-radius:2px;background:var(--bg3);position:absolute;top:5px;left:50%;transform:translateX(-50%)"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--txt)">{{railSummary}}</span>
+          <span class="msi" style="font-size:18px;color:var(--txt2)">{{railChev}}</span>
+        </div>
+        <sc-if value="{{railContentShow}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0">
+          <div style="{{tabFStyle}}" onClick="{{onTabF}}">Findings · {{fCount}}</div>
+          <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
+        </div>
+        <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+            </div>
+            <sc-if value="{{instChipShow}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex">
+                <div style="{{instChipStyle}}" onClick="{{onInstChip}}" title="{{instChipTip}}"><span class="msi" style="font-size:14px">{{instChipIcon}}</span>{{instChipLabel}}</div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center">No findings match the current filters.</div></sc-if>
+            <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="4">
+              <div style="{{f.rowStyle}}" onClick="{{f.select}}">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                  <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                  <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}"><span style="{{f.groupStyle}}">{{f.groupLabel}}</span></sc-if>
+                  <sc-if value="{{f.isReg}}" hint-placeholder-val="{{false}}"><span style="{{f.regStyle}}"><span class="msi" style="font-size:12px">undo</span>{{f.regLabel}}</span></sc-if>
+                  <sc-if value="{{f.hasTag}}" hint-placeholder-val="{{false}}"><span style="{{f.tagStyle}}">{{f.tagLabel}}</span></sc-if>
+                </div>
+                <sc-if value="{{f.hasCause}}" hint-placeholder-val="{{false}}">
+                  <div style="margin:5px 0 0 28px;font-size:11.5px;line-height:1.4;color:var(--txt2)">{{f.cause}}</div>
+                </sc-if>
+                <sc-if value="{{f.isSup}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                </sc-if>
+                <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                  <span style="color:var(--txt2)">{{f.prop}}</span>
+                  <span style="color:var(--txt)">{{f.expected}}</span>
+                  <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                  <span style="color:#e5484d">{{f.actual}}</span>
+                </div>
+                <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                  <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex;align-items:center;gap:8px;margin:8px 0 0 28px;padding:7px 9px;border-radius:8px;background:var(--bg0);border:1px solid var(--line)">
+                      <span class="msi" style="font-size:15px;color:var(--txt2)">select_all</span>
+                      <span style="flex:1;font-size:11.5px;line-height:1.35;color:var(--txt2)">{{f.instMsg}}</span>
+                      <div style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt)" onClick="{{f.instToggle}}">{{f.instToggleLabel}}</div>
+                    </div>
+                  </sc-if>
+                  <div style="margin:10px 0 2px 28px;display:flex;gap:6px">
+                    <sc-for list="{{f.actions}}" as="a" hint-placeholder-count="3"><div style="{{a.style}}" onClick="{{a.onClick}}">{{a.label}}</div></sc-for>
+                  </div>
+                  <input style="margin:8px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Note for the model&#8230;" value="{{f.commentVal}}" onChange="{{f.onComment}}" onClick="{{f.stop}}" onPointerDown="{{f.stop}}">
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{supShow}}" hint-placeholder-val="{{true}}">
+              <div style="{{supRowStyle}}" onClick="{{supToggle}}" title="Findings hidden by preset rules — known-safe differences like font smoothing or dynamic copy.">
+                <span class="msi" style="font-size:16px;color:var(--txt2)">{{supIcon}}</span>
+                <span style="flex:1;font-size:11.5px;color:var(--txt2)">{{supLabel}}</span>
+                <span style="font-size:11.5px;font-weight:600;color:var(--acc)">{{supActionLabel}}</span>
+              </div>
+              <sc-for list="{{supRows}}" as="f" hint-placeholder-count="0">
+                <div style="{{f.rowStyle}}" onClick="{{f.select}}">
+                  <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                    <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                    <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                    <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px dashed var(--line);color:var(--txt2);flex-shrink:0">Suppressed</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                    <span style="color:var(--txt2)">{{f.prop}}</span>
+                    <span style="color:var(--txt)">{{f.expected}}</span>
+                    <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                    <span style="color:var(--txt2)">{{f.actual}}</span>
+                  </div>
+                  <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                    <div style="margin:9px 0 2px 28px;font-size:11px;line-height:1.45;color:var(--txt2)">Suppression rules live in the project manifest — edit it to change what gets hidden.</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{hasDraft}}" hint-placeholder-val="{{false}}">
+              <div style="padding:12px;border-bottom:1px solid var(--line);background:var(--bg2)">
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8f7ee7;margin-bottom:8px">{{draftKind}}</div>
+                <input style="width:100%;box-sizing:border-box;background:var(--bg0);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:12.5px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Instruction for the model&#8230;" value="{{draftText}}" onChange="{{onDraftText}}">
+                <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+                  <div style="padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--txt2)" onClick="{{cancelDraft}}">Cancel</div>
+                  <div style="padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{saveDraftFn}}">Send to model</div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{emptyI}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">No comments yet. Pick the comment tool, then tap a point or drag a region.</div></sc-if>
+            <sc-for list="{{itemRows}}" as="it" hint-placeholder-count="3">
+              <div style="{{it.rowStyle}}" onClick="{{it.select}}">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="{{it.badgeStyle}}">{{it.num}}</div>
+                  <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
+                </div>
+                <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px">{{it.text}}</div>
+                <sc-if value="{{it.saveErr}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:7px;margin:8px 0 0 28px">
+                    <span class="msi" style="font-size:15px;color:#e5484d;flex-shrink:0">cloud_off</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                      <span style="font-size:11.5px;font-weight:700;color:#e5484d">Not saved</span>
+                      <span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{it.saveErrDetail}}</span>
+                    </div>
+                    <div style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:#e5484d;color:#fff;flex-shrink:0" onClick="{{it.retrySave}}">Retry</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}">
+                  <div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45">{{it.reply}}</div>
+                </sc-if>
+                <sc-if value="{{it.isSel}}" hint-placeholder-val="{{false}}">
+                  <input style="margin:10px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Add another instruction&#8230;" value="{{it.noteVal}}" onChange="{{it.onNote}}" onClick="{{it.stop}}" onPointerDown="{{it.stop}}">
+                  <div style="display:flex;gap:6px;margin:8px 0 2px 28px">
+                    <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{it.send}}">Send</div>
+                    <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt2)" onClick="{{it.done}}">{{it.doneLabel}}</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:11.5px;color:#6d737c">Minimal layout — the settings button in the header switches layout and theme · <a href="./RefDiff Mobile.dc.html" style="color:#5b8def;text-decoration:none">standard mobile page</a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:950},&quot;layout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;minimal&quot;,&quot;default&quot;],&quot;default&quot;:&quot;minimal&quot;,&quot;tsType&quot;:&quot;'minimal'|'default'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;anchorConfidence&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.42,&quot;section&quot;:&quot;Canvas&quot;,&quot;tsType&quot;:&quot;number&quot;}}">
+const W = 680, H = 740;
+const SEV = { high: '#e5484d', medium: '#f5a623', low: '#4c9aff' };
+const SEVL = { high: 'Critical', medium: 'Major', low: 'Minor' };
+const CONF_MIN = 0.5;
+const REP = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
+const STC = { open: '#8f7ee7', implemented: '#f5a623', done: '#46a758' };
+const ALIGN = {
+  anchors: { label: 'Anchors', icon: 'hub', desc: 'Locks the views on matched UI elements \u2014 corresponding parts stay aligned even when sizes drift.' },
+  width: { label: 'Width', icon: 'width', desc: 'Matches zoom so both refs render at the same width; panning stays independent per pane.' },
+  'top-left': { label: 'Top left', icon: 'north_west', desc: 'Locks both views to a shared top-left origin \u2014 classic overlay for left-aligned layouts.' },
+  'top-right': { label: 'Top right', icon: 'north_east', desc: 'Locks views by the top-right corner \u2014 useful for right-aligned or RTL layouts.' }
+};
+const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.refA = React.createRef(); this.refB = React.createRef();
+    this._drag = null; this._wh = null; this._bt = null;
+    this.state = {
+      theme: null, layout: null, pane: 'design', variant: 'none', blinkOn: true,
+      layer: 'all', railTab: 'findings', railOpen: false, panelOpen: false, settingsOpen: false,
+      strobe: false, ovlOp: { onion: 0.55, diff: 1 },
+      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
+      tA: { x: 10, y: 10, s: 0.5 }, tB: { x: 10, y: 10, s: 0.5 }, anim: false,
+      sevOn: { high: true, medium: true, low: true }, showSup: false, allInst: false,
+      focusRect: null, selected: null, draft: null, draftText: '',
+      findings: [
+        { id: 'f1', num: 1, sev: 'high', reg: true, regRun: 44, title: 'Primary button color mismatch', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
+        { id: 'f2', num: 2, sev: 'high', title: 'Dropzone inner padding reduced', prop: 'padding', expected: '32px', actual: '20px', rect: { x: 36, y: 368, w: 608, h: 190 }, status: 'open', comment: '' },
+        { id: 'f3', num: 3, sev: 'medium', title: 'Heading font-size drift', prop: 'font-size', expected: '28px', actual: '24px', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 'g1', num: 7, sev: 'medium', title: 'Label color drift', cause: 'Muted label token resolves to the wrong grey', prop: 'color', expected: '#6B7280', actual: '#94A3B8', rect: { x: 56, y: 214, w: 120, h: 16 }, inst: REP(14, i => ({ x: 56 + (i % 3) * 196, y: 214 + ((i / 3) | 0) * 36, w: 120, h: 16 })), status: 'open', comment: '' },
+        { id: 'g2', num: 8, sev: 'low', reg: true, regRun: 45, title: 'Row baseline shifted 23px', cause: 'Section padding change pushes the whole row down', prop: 'translateY', expected: '0px', actual: '23px', rect: { x: 36, y: 380, w: 608, h: 22 }, inst: REP(5, i => ({ x: 36, y: 414 + i * 34, w: 608, h: 22 })), status: 'open', comment: '' },
+        { id: 's1', num: 9, sev: 'low', sup: true, rule: 'Preset \u00b7 font smoothing', title: 'Text renders 0.4px wider', prop: 'font-smooth', expected: 'antialiased', actual: 'auto', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 's2', num: 10, sev: 'low', sup: true, rule: 'Preset \u00b7 scrollbar gutter', title: 'Content 15px narrower', prop: 'width', expected: '680px', actual: '665px', rect: { x: 0, y: 0, w: 680, h: 740 }, status: 'open', comment: '' },
+        { id: 's3', num: 11, sev: 'medium', sup: true, rule: 'Preset \u00b7 dynamic copy', title: 'Placeholder copy differs', prop: 'content', expected: 'Front side of ID', actual: 'Front of document', rect: { x: 56, y: 470, w: 300, h: 22 }, status: 'open', comment: '' },
+        { id: 'f4', num: 4, sev: 'medium', title: 'Card corner radius mismatch', prop: 'border-radius', expected: '12px', actual: '6px', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' },
+        { id: 'f5', num: 5, sev: 'low', title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
+        { id: 'f6', num: 6, sev: 'low', title: 'Footer text color drift', prop: 'color', expected: '#6B7280', actual: '#9CA3AF', rect: { x: 36, y: 664, w: 608, h: 24 }, status: 'open', comment: '' }],
+      items: [
+        { id: 'c1', num: 1, status: 'implemented', text: 'Logo should use the darker navy from the brand kit', reply: 'Fetched brand token \u2014 logo color maps to #1E2A5A. Queued for the next impl build.', note: '', rect: { x: 36, y: 14, w: 150, h: 36 } },
+        { id: 'c2', num: 2, status: 'open', saveErr: 'Out root is read-only \u00b7 PUT /api/comments 403', text: 'Check spacing between document cards at tablet width', reply: '', note: '', rect: { x: 36, y: 204, w: 608, h: 140 } },
+        { id: 'c3', num: 3, status: 'done', text: 'Continue button should be full width on mobile', reply: 'Confirmed \u2014 impl build 342 makes the button fluid below 480px.', note: '', rect: { x: 36, y: 586, w: 280, h: 48 } }]
+    };
+  }
+  componentDidMount() { setTimeout(() => this.fit(false), 80); }
+  componentWillUnmount() { if (this._bt) clearInterval(this._bt); }
+  theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  layoutMode() { return this.state.layout ?? this.props.layout ?? 'minimal'; }
+  setVariant(v) {
+    if (this._bt) { clearInterval(this._bt); this._bt = null; }
+    if (v === 'blink') this._bt = setInterval(() => this.setState(s => ({ blinkOn: !s.blinkOn })), 650);
+    this.setState({ variant: v, blinkOn: true });
+  }
+  paneEl(p) { return (p === 'A' ? this.refA : this.refB).current; }
+  paneRect(p) {
+    let el = this.paneEl(p);
+    if (!el || el.offsetParent === null) el = this.paneEl(p === 'A' ? 'B' : 'A');
+    if (!el || el.offsetParent === null) return null;
+    return el.getBoundingClientRect();
+  }
+  getT(p) { return p === 'A' ? this.state.tA : this.state.tB; }
+  setT(p, t) {
+    const S = this.state;
+    if (!S.lockstep) { this.setState(p === 'A' ? { tA: t } : { tB: t }); return; }
+    if (S.alignMode === 'width') {
+      const o = { ...(p === 'A' ? S.tB : S.tA), s: t.s };
+      this.setState(p === 'A' ? { tA: t, tB: o } : { tB: t, tA: o });
+    } else this.setState({ tA: t, tB: t });
+  }
+  toArt(p, e) { const r = this.paneEl(p).getBoundingClientRect(), t = this.getT(p); return { x: (e.clientX - r.left - t.x) / t.s, y: (e.clientY - r.top - t.y) / t.s }; }
+  nrect(a, b) { return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) }; }
+  pDown(p, e) {
+    if (e.button && e.button !== 0) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    this._drag = { p, tool: this.state.tool, sx: e.clientX, sy: e.clientY, t0: { ...this.getT(p) }, a0: this.toArt(p, e), moved: false };
+    if (this.state.anim) this.setState({ anim: false });
+  }
+  pMove(p, e) {
+    const d = this._drag; if (!d || d.p !== p) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (d.tool === 'pan') { this.setT(p, { x: d.t0.x + dx, y: d.t0.y + dy, s: d.t0.s }); return; }
+    if (!d.moved) return;
+    const pr = this.paneEl(p).getBoundingClientRect();
+    const b = { x: (e.clientX - pr.left - d.t0.x) / d.t0.s, y: (e.clientY - pr.top - d.t0.y) / d.t0.s };
+    const r = this.nrect(d.a0, b);
+    if (d.tool === 'focus') this.setState({ focusRect: r });
+    else if (d.tool === 'comment') this.setState({ draft: { ...r, point: false } });
+  }
+  pUp(p, e) {
+    const d = this._drag; if (!d) return; this._drag = null;
+    if (d.tool === 'comment') {
+      if (!d.moved) { const a = d.a0; this.setState({ draft: { x: a.x, y: a.y, w: 0, h: 0, point: true } }); }
+      this.setState({ draftText: '', railTab: 'items', railOpen: true, selected: null, tool: 'pan' });
+    } else if (d.tool === 'focus') {
+      this.setState({ tool: 'pan', ...(d.moved ? {} : { focusRect: null }) });
+    }
+  }
+  wheel(p, e) {
+    if (e.cancelable) e.preventDefault();
+    const el = this.paneEl(p); if (!el) return;
+    const r = el.getBoundingClientRect(), t = this.getT(p);
+    const s2 = Math.min(4, Math.max(0.15, t.s * Math.exp(-e.deltaY * 0.0015)));
+    const k = s2 / t.s, mx = e.clientX - r.left, my = e.clientY - r.top;
+    this.setT(p, { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 });
+  }
+  fit(anim = true) {
+    const r = this.paneRect('A'); if (!r || r.width < 10) return;
+    const s = Math.min((r.width - 32) / W, (r.height - 32) / H, 1.6);
+    const t = { x: (r.width - W * s) / 2, y: (r.height - H * s) / 2, s };
+    this.setState({ tA: t, tB: t, anim });
+  }
+  focusOn(rect) {
+    const r = this.paneRect('A'); if (!r) return;
+    const w = Math.max(rect.w, 60) + 120, h = Math.max(rect.h, 60) + 120;
+    const s = Math.min(r.width / w, r.height / h, 2.2);
+    const t = { x: r.width / 2 - (rect.x + rect.w / 2) * s, y: r.height / 2 - (rect.y + rect.h / 2) * s, s };
+    this.setState({ tA: t, tB: t, anim: true });
+  }
+  whDown(p, e) { e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} this._wh = p; }
+  whMove(p, e) {
+    if (this._wh !== p) return;
+    const el = this.paneEl(p); if (!el) return;
+    const r = el.getBoundingClientRect(), t = this.getT(p);
+    const x = (e.clientX - r.left - t.x) / t.s;
+    this.setState({ wipeX: Math.min(W - 20, Math.max(20, x)) });
+  }
+  selFinding(f) { this.setState({ selected: { type: 'f', id: f.id }, railTab: 'findings', railOpen: true }); this.focusOn(f.rect); }
+  selItem(it) { this.setState({ selected: { type: 'i', id: it.id }, railTab: 'items', railOpen: true }); this.focusOn(it.rect); }
+  setFStatus(id, st) { this.setState(s => ({ findings: s.findings.map(f => f.id === id ? { ...f, status: f.status === st ? 'open' : st } : f) })); }
+  inter(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  renderVals() {
+    const S = this.state, th = this.theme(), light = th === 'light';
+    const lay = this.layoutMode(), isMin = lay === 'minimal', isDef = !isMin;
+    const V = S.variant;
+    const inFocus = f => !S.focusRect || this.inter(f.rect, S.focusRect) || (f.inst || []).some(r => this.inter(r, S.focusRect));
+    const base = S.findings.filter(f => S.sevOn[f.sev] && inFocus(f));
+    const supList = base.filter(f => f.sup);
+    const active = base.filter(f => !f.sup);
+    const vis = S.showSup ? active.concat(supList) : active;
+    const instTotal = active.reduce((n, f) => n + 1 + (f.inst || []).length, 0);
+    const groupCount = active.filter(f => f.inst && f.inst.length).length;
+    const visItems = S.items.filter(i => !S.focusRect || this.inter(i.rect, S.focusRect));
+    const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
+    const segBtnSm = act => ({ padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '15px' });
+    const grp = { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 };
+    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: segBtnSm(V === id), onClick: () => this.setVariant(id) }));
+    const layerBtns = [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']].map(([id, label]) => ({ id, label, style: segBtnSm(S.layer === id), onClick: () => this.setState({ layer: id }) }));
+    const layoutBtns = [['minimal', 'Minimal'], ['default', 'Default']].map(([id, label]) => ({ id, label, style: { ...segBtnSm(lay === id), flex: 1, textAlign: 'center' }, onClick: () => this.setState({ layout: id, settingsOpen: false }) }));
+    const themeBtns = [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => ({ id, label, style: { ...segBtnSm(th === id), flex: 1, textAlign: 'center' }, onClick: () => this.setState({ theme: id }) }));
+    const toolBtn = act => ({ width: isMin ? 28 : 32, height: isMin ? 28 : 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
+    const toolDefs = [
+      ['pan', 'pan_tool', 'Pan / move', () => this.setState({ tool: 'pan' }), S.tool === 'pan'],
+      ['comment', 'add_comment', 'Comment \u2014 tap a point or drag a region', () => this.setState({ tool: 'comment' }), S.tool === 'comment'],
+      ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
+      ['hl', 'difference', 'Highlight changed parts', () => this.setState(s => ({ highlight: !s.highlight })), S.highlight],
+      ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim],
+      ['strobe', 'flare', 'Strobe \u2014 pulse the differences in colour', () => this.setState(s => ({ strobe: !s.strobe })), S.strobe]];
+    const toolBtns = toolDefs.map(([id, icon, title, onClick, act]) => ({ id, icon, title, onClick, style: toolBtn(act) }));
+    const cursor = S.tool === 'pan' ? 'grab' : 'crosshair';
+    const paneBase = { position: 'absolute', inset: 0, overflow: 'hidden', background: 'var(--canvas)', touchAction: 'none', cursor };
+    const paneAStyle = S.pane === 'design' ? paneBase : { display: 'none' };
+    const paneBStyle = S.pane === 'impl' ? paneBase : { display: 'none' };
+    const tStyle = t => ({ position: 'absolute', left: 0, top: 0, width: W, height: H, transform: 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', transformOrigin: '0 0', transition: S.anim ? 'transform 0.35s cubic-bezier(0.2,0.8,0.2,1)' : 'none' });
+    let ovlStyle = { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' };
+    if (V === 'none') ovlStyle.display = 'none';
+    else if (V === 'wipe') ovlStyle.clipPath = 'inset(0 0 0 ' + S.wipeX + 'px)';
+    else if (V === 'onion') ovlStyle.opacity = S.ovlOp.onion;
+    else if (V === 'blink') { ovlStyle.opacity = S.blinkOn ? 1 : 0; ovlStyle.transition = 'opacity 0.1s'; }
+    else if (V === 'diff') { ovlStyle.mixBlendMode = 'difference'; ovlStyle.opacity = S.ovlOp.diff; }
+    const ov = t => {
+      const s = t.s, out = { fm: [], im: [], hl: [], sel: [] };
+      const cs = Math.min(2.4, 1 / s);
+      if (showF) for (const f of vis) {
+        out.fm.push({ num: f.num, title: f.title, select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: f.rect.x - 12, top: f.rect.y - 12, width: 24, height: 24, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.9)', transform: 'scale(' + cs + ')', transformOrigin: 'center', opacity: (f.status === 'ignore' || f.status === 'snooze') ? 0.45 : (f.sup ? 0.5 : 1), zIndex: 6, filter: f.sup ? 'grayscale(0.7)' : 'none', borderStyle: f.sup ? 'dashed' : 'solid' } });
+        if (S.allInst) for (const r of (f.inst || [])) {
+          out.fm.push({ num: f.num, title: f.title + ' \u2014 repeat instance', select: () => this.selFinding(f), stop: e => e.stopPropagation(), style: { position: 'absolute', left: r.x - 9, top: r.y - 9, width: 18, height: 18, borderRadius: '50%', background: '#fff', color: SEV[f.sev], fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1.5px solid ' + SEV[f.sev], boxShadow: '0 1px 3px rgba(0,0,0,0.35)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
+          out.hl.push({ style: { position: 'absolute', left: r.x, top: r.y, width: r.w, height: r.h, border: (1.2 / s) + 'px dashed ' + SEV[f.sev], borderRadius: 3, pointerEvents: 'none', zIndex: 4 } });
+        }
+        if (S.selected && S.selected.type === 'f' && S.selected.id === f.id) out.sel.push({ style: { position: 'absolute', left: f.rect.x - 4, top: f.rect.y - 4, width: f.rect.w + 8, height: f.rect.h + 8, border: (2 / s) + 'px solid ' + SEV[f.sev], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
+      }
+      if (showI) for (const it of visItems) {
+        out.im.push({ label: it.num, title: it.text, select: () => this.selItem(it), stop: e => e.stopPropagation(), style: { position: 'absolute', left: it.rect.x - 11, top: it.rect.y - 11, width: 22, height: 22, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '2px solid rgba(255,255,255,0.9)', boxShadow: it.saveErr ? '0 0 0 3px rgba(229,72,77,0.6), 0 1px 4px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', transformOrigin: 'center', zIndex: 6 } });
+        if (S.selected && S.selected.type === 'i' && S.selected.id === it.id) out.sel.push({ style: { position: 'absolute', left: it.rect.x - 4, top: it.rect.y - 4, width: it.rect.w + 8, height: it.rect.h + 8, border: (2 / s) + 'px solid ' + STC[it.status], borderRadius: 6, pointerEvents: 'none', zIndex: 5 } });
+      }
+      if (S.highlight) for (const f of vis) out.hl.push({ style: { position: 'absolute', left: f.rect.x, top: f.rect.y, width: f.rect.w, height: f.rect.h, border: (1.5 / s) + 'px solid #ff5cd0', background: 'rgba(255,92,208,0.08)', borderRadius: 4, pointerEvents: 'none', zIndex: 4 } });
+      const fr = S.focusRect;
+      out.focus = !!fr;
+      out.focusStyle = fr ? { position: 'absolute', left: fr.x, top: fr.y, width: fr.w, height: fr.h, border: (1.5 / s) + 'px dashed var(--acc)', boxShadow: '0 0 0 4000px rgba(15,17,20,0.45)', pointerEvents: 'none', zIndex: 3 } : null;
+      const dr = S.draft;
+      out.draft = !!dr;
+      out.draftStyle = dr ? (dr.point
+        ? { position: 'absolute', left: dr.x - 13, top: dr.y - 13, width: 26, height: 26, borderRadius: '50% 50% 50% 4px', background: '#8f7ee7', border: '2px solid #fff', boxShadow: '0 1px 5px rgba(0,0,0,0.4)', transform: 'scale(' + cs + ')', zIndex: 7 }
+        : { position: 'absolute', left: dr.x, top: dr.y, width: dr.w, height: dr.h, border: (1.5 / s) + 'px dashed #8f7ee7', background: 'rgba(143,126,231,0.12)', zIndex: 7 }) : null;
+      out.whStyle = { position: 'absolute', left: S.wipeX - 14, top: 0, width: 28, height: H, cursor: 'ew-resize', zIndex: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none' };
+      out.whKnob = { width: 24, height: 24, borderRadius: '50%', background: 'var(--acc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, boxShadow: '0 2px 8px rgba(0,0,0,0.35)', transform: 'scale(' + cs + ')' };
+      return out;
+    };
+    const ovA = ov(S.tA), ovB = ov(S.tB);
+    const conf = this.props.anchorConfidence ?? 0.42;
+    const anchorLow = conf < CONF_MIN, confWarn = anchorLow && S.lockstep && S.alignMode === 'anchors';
+    const dimRects = vis.map(f => ({ x: f.rect.x - 6, y: f.rect.y - 6, w: f.rect.w + 12, h: f.rect.h + 12 }));
+    const railStyle = isMin
+      ? (S.railOpen ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: '58%', background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' } : { display: 'none' })
+      : { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' };
+    const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
+    const sevChips = ['high', 'medium', 'low'].map(sv => {
+      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv && !f.sup).length;
+      return { label: SEVL[sv] + ' ' + n, onClick: () => this.setState(s => ({ sevOn: { ...s.sevOn, [sv]: !s.sevOn[sv] } })), style: { display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (on ? SEV[sv] : 'var(--line)'), color: on ? SEV[sv] : 'var(--txt2)', background: 'transparent', opacity: on ? 1 : 0.6 }, dotStyle: { width: 7, height: 7, borderRadius: '50%', background: on ? SEV[sv] : 'var(--bg3)' } };
+    });
+    const selId = S.selected ? S.selected.id : null;
+    const rowBase = sel => ({ padding: '10px 12px', borderBottom: '1px solid var(--line)', cursor: 'pointer', background: sel ? 'var(--bg2)' : 'transparent' });
+    const actBtn = (act, color) => ({ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (act ? color : 'var(--line)'), color: act ? '#fff' : 'var(--txt2)', background: act ? color : 'transparent' });
+    const mkRow = f => {
+      const sel = selId === f.id && S.selected.type === 'f';
+      return {
+        id: f.id, num: f.num, title: f.title, prop: f.prop, expected: f.expected, actual: f.actual,
+        isSel: sel, select: () => this.selFinding(f), rowStyle: { ...rowBase(sel), opacity: f.sup ? 0.66 : 1, background: sel ? 'var(--bg2)' : (f.sup ? 'var(--bg0)' : 'transparent') },
+        badgeStyle: f.sup
+          ? { width: 20, height: 20, borderRadius: '50%', background: 'transparent', border: '1.5px dashed ' + SEV[f.sev], color: SEV[f.sev], fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }
+          : { width: 20, height: 20, borderRadius: '50%', background: SEV[f.sev], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        hasGroup: !!(f.inst && f.inst.length), groupLabel: '\u00d7' + (1 + (f.inst || []).length),
+        groupStyle: { fontSize: 10.5, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", padding: '1px 6px', borderRadius: 5, background: 'var(--bg3)', color: 'var(--txt)', flexShrink: 0 },
+        isReg: !!f.reg, regLabel: 'Regression',
+        regStyle: { display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 999, background: '#e5484d', color: '#fff', flexShrink: 0 },
+        hasCause: !!f.cause, cause: f.cause,
+        isSup: !!f.sup, ruleLabel: f.rule,
+        instMsg: S.allInst ? 'All ' + (1 + (f.inst || []).length) + ' instances marked on canvas' : 'Only the primary instance is marked',
+        instToggleLabel: S.allInst ? 'Show primary only' : 'Show all instances',
+        instToggle: e => { e.stopPropagation(); this.setState(s => ({ allInst: !s.allInst })); },
+        hasTag: f.status !== 'open', tagLabel: { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' }[f.status] || '',
+        tagStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 999, color: f.status === 'fix' ? '#fff' : 'var(--txt2)', background: f.status === 'fix' ? 'var(--acc)' : 'var(--bg3)', marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap' },
+        actions: [['fix', 'To fix', 'var(--acc)'], ['ignore', 'Ignore', '#6b7280'], ['snooze', 'Snooze', '#8f7ee7']].map(([st, label, color]) => ({ label, onClick: e => { e.stopPropagation(); this.setFStatus(f.id, st); }, style: actBtn(f.status === st, color) })),
+        commentVal: f.comment, onComment: e => { const v = e.target.value; this.setState(s => ({ findings: s.findings.map(x => x.id === f.id ? { ...x, comment: v } : x) })); },
+        stop: e => e.stopPropagation()
+      };
+    };
+    const findingRows = active.map(mkRow);
+    const supRows = S.showSup ? supList.map(mkRow) : [];
+    const itemRows = visItems.map(it => {
+      const sel = selId === it.id && S.selected.type === 'i';
+      return {
+        id: it.id, num: it.num, text: it.text, reply: it.reply, hasReply: !!it.reply, isSel: sel,
+        select: () => this.selItem(it), rowStyle: { ...rowBase(sel), background: it.saveErr ? 'rgba(229,72,77,0.09)' : (sel ? 'var(--bg2)' : 'transparent'), borderLeft: it.saveErr ? '3px solid #e5484d' : '3px solid transparent' },
+        saveErr: !!it.saveErr, saveErrDetail: it.saveErr || '',
+        retrySave: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, saveErr: null } : x) })); },
+        badgeStyle: { width: 20, height: 20, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        statusLabel: STL[it.status], statusStyle: { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: STC[it.status], marginLeft: 'auto', flexShrink: 0 },
+        noteVal: it.note, onNote: e => { const v = e.target.value; this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, note: v } : x) })); },
+        send: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id && x.note ? { ...x, text: x.text + ' \u2014 ' + x.note, note: '', status: 'open' } : x) })); },
+        done: e => { e.stopPropagation(); this.setState(s => ({ items: s.items.map(x => x.id === it.id ? { ...x, status: x.status === 'done' ? 'open' : 'done' } : x) })); },
+        doneLabel: it.status === 'done' ? 'Reopen' : 'Mark done',
+        stop: e => e.stopPropagation()
+      };
+    });
+    const fabBtn = act => ({ padding: '10px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' });
+    const hdrBtn = act => ({ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
+    return {
+      themeClass: light ? 'cc-theme-light' : '',
+      isMin, isDef, grpStyle: grp, grpFullStyle: { ...grp, width: '100%', boxSizing: 'border-box' },
+      panelBtnStyle: hdrBtn(S.panelOpen), panelToggle: () => this.setState(s => ({ panelOpen: !s.panelOpen, settingsOpen: false })),
+      setBtnStyle: hdrBtn(S.settingsOpen), settingsToggle: () => this.setState(s => ({ settingsOpen: !s.settingsOpen, panelOpen: false })),
+      panelOpen: S.panelOpen, settingsOpen: S.settingsOpen,
+      scrimShow: S.settingsOpen || S.alignOpen,
+      scrimClose: () => this.setState({ panelOpen: false, settingsOpen: false, alignOpen: false }),
+      layoutBtns, themeBtns, variantBtns, layerBtns, toolBtns,
+      toolStripStyle: { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      fitBtnStyle: { width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt2)', flexShrink: 0 },
+      refA: this.refA, refB: this.refB,
+      paneAStyle, paneBStyle, tAStyle: tStyle(S.tA), tBStyle: tStyle(S.tB),
+      downA: e => this.pDown('A', e), moveA: e => this.pMove('A', e), upA: e => this.pUp('A', e), wheelA: e => this.wheel('A', e),
+      downB: e => this.pDown('B', e), moveB: e => this.pMove('B', e), upB: e => this.pUp('B', e), wheelB: e => this.wheel('B', e),
+      ovA, ovB, ovlStyle, dimOn: S.dim, dimRects, wipeOn: V === 'wipe',
+      whDownA: e => this.whDown('A', e), whMoveA: e => this.whMove('A', e),
+      whDownB: e => this.whDown('B', e), whMoveB: e => this.whMove('B', e),
+      whUp: () => { this._wh = null; },
+      fitFn: () => this.fit(),
+      fabD: { style: fabBtn(S.pane === 'design'), onClick: () => this.setState({ pane: 'design' }) },
+      fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
+      paneLabel: S.pane === 'design' ? 'Design' : 'Impl',
+      swapPane: () => this.setState(s => ({ pane: s.pane === 'design' ? 'impl' : 'design' })),
+      railCount: vis.length + visItems.length,
+      alignWrapStyle: { position: 'absolute', top: 8, right: 8, zIndex: 16 },
+      alignIconBtnStyle: { position: 'relative', width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt2)', background: 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: confWarn ? '0 4px 16px rgba(0,0,0,0.25),0 0 0 3px rgba(245,166,35,0.16)' : '0 4px 16px rgba(0,0,0,0.25)' },
+      confWarn,
+      confWarnTip: 'Anchor confidence ' + Math.round(conf * 100) + '% \u2014 below the ' + Math.round(CONF_MIN * 100) + '% threshold. Overlay positions may be unreliable; try Width or Top left.',
+      lockIcon: S.lockstep ? 'link' : 'link_off',
+      lockTip: S.lockstep ? 'Lockstep on \u2014 panes move together. Click to unlink.' : 'Lockstep off \u2014 panes move independently. Click to link.',
+      lockBtnStyle: { width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', flexShrink: 0 },
+      lockToggle: () => this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }),
+      alignIcon: ALIGN[S.alignMode].icon,
+      alignLabel: ALIGN[S.alignMode].label,
+      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc + (confWarn ? ' \u2014 anchor confidence ' + Math.round(conf * 100) + '%, positions unreliable.' : ''),
+      alignChev: S.alignOpen ? 'expand_less' : 'expand_more',
+      alignOpen: S.alignOpen,
+      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen, panelOpen: false, settingsOpen: false })),
+      lockRowStyle: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', margin: '0 0 2px', borderBottom: '1px solid var(--line)' },
+      lockRowIcon: S.lockstep ? 'link' : 'link_off',
+      lockRowLabel: S.lockstep ? 'Lockstep on' : 'Lockstep off',
+      lockRowDesc: S.lockstep ? 'Panes move together \u2014 tap to unlink.' : 'Panes move independently \u2014 tap to link.',
+      lockRowToggle: e => { e.stopPropagation(); this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }); },
+      lockRowKnob: { width: 30, height: 18, borderRadius: 999, background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', position: 'relative', flexShrink: 0, transition: 'background 0.15s' },
+      lockRowDot: { position: 'absolute', top: 2, left: S.lockstep ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' },
+      alignOpts: Object.keys(ALIGN).map(id => {
+        const a = ALIGN[id], act = S.alignMode === id, warn = id === 'anchors' && anchorLow;
+        return {
+          name: a.label, desc: a.desc, tip: warn ? a.desc + ' Anchor confidence is only ' + Math.round(conf * 100) + '%.' : a.desc,
+          warnShow: warn, warnText: 'Only ' + Math.round(conf * 100) + '% anchor match \u2014 positions unreliable',
+          iconStyle: { fontSize: 17, color: warn ? '#f5a623' : (act ? 'var(--acc)' : 'var(--txt2)'), flexShrink: 0, marginTop: 1 },
+          icon: a.icon, checkShow: act,
+          style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
+          onClick: () => this.setState(s => ({ alignMode: id, alignOpen: false, lockstep: true, tB: id === 'width' ? s.tB : s.tA }))
+        };
+      }),
+      opShow: V === 'onion' || V === 'diff',
+      opIcon: 'opacity',
+      opWrapStyle: { position: 'absolute', left: '50%', bottom: isMin ? 54 : 107, transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '5px 10px 5px 8px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      opTip: V === 'wipe' ? 'Wipe position' : (V === 'diff' ? 'Opacity of the difference blend' : 'Opacity of the overlaid ref'),
+      opVal: V === 'wipe' ? Math.round(S.wipeX / W * 100) : Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100),
+      opPct: (V === 'wipe' ? Math.round(S.wipeX / W * 100) : Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100)) + '%',
+      onOp: e => {
+        const v = Number(e.target.value) / 100;
+        if (V === 'wipe') this.setState({ wipeX: Math.min(W - 20, Math.max(20, v * W)) });
+        else { const k = V === 'diff' ? 'diff' : 'onion'; this.setState(s => ({ ovlOp: { ...s.ovlOp, [k]: v } })); }
+      },
+      hasFocus: !!S.focusRect, focusMsg: 'Focus \u00b7 ' + vis.length + ' of ' + S.findings.length, clearFocus: () => this.setState({ focusRect: null }),
+      railStyle, railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })),
+      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments' + (S.items.some(i => i.saveErr) ? ' \u00b7 ' + S.items.filter(i => i.saveErr).length + ' unsaved' : ''),
+      railChev: S.railOpen ? 'expand_more' : 'expand_less',
+      railContentShow: S.railOpen,
+      tabFStyle: tabStyle(S.railTab === 'findings'), tabIStyle: tabStyle(S.railTab === 'items'),
+      onTabF: () => this.setState({ railTab: 'findings' }), onTabI: () => this.setState({ railTab: 'items' }),
+      fCount: vis.length, iCount: visItems.length,
+      showFindTab: S.railTab === 'findings', showItemTab: S.railTab === 'items',
+      sevChips, emptyF: vis.length === 0, findingRows,
+      instChipShow: groupCount > 0,
+      instChipLabel: S.allInst ? 'All instances \u00b7 ' + instTotal : 'Primary only \u00b7 ' + active.length,
+      instChipStyle: { display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (S.allInst ? 'var(--acc)' : 'var(--line)'), color: S.allInst ? '#fff' : 'var(--txt2)', background: S.allInst ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' },
+      instChipIcon: S.allInst ? 'select_all' : 'crop_free',
+      instChipTip: 'Repeated differences share one row and one number. Toggle whether every instance is marked on the canvas or only the primary one.',
+      onInstChip: () => this.setState(s => ({ allInst: !s.allInst })),
+      supRows, supShow: supList.length > 0,
+      supLabel: supList.length + ' suppressed by preset rules',
+      supActionLabel: S.showSup ? 'Hide' : 'Show',
+      supIcon: S.showSup ? 'visibility_off' : 'visibility',
+      supRowStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--line)', background: 'var(--bg0)', cursor: 'pointer', flexShrink: 0 },
+      supToggle: () => this.setState(s => ({ showSup: !s.showSup })),
+      hasDraft: !!S.draft, draftKind: S.draft && S.draft.point ? 'Point comment' : 'Region comment',
+      draftText: S.draftText, onDraftText: e => this.setState({ draftText: e.target.value }),
+      cancelDraft: () => this.setState({ draft: null, draftText: '' }),
+      saveDraftFn: () => {
+        const { draft, draftText } = this.state; if (!draft) return;
+        this.setState(s => ({ items: [...s.items, { id: 'c' + Date.now(), num: s.items.length + 1, status: 'open', text: draftText || '(no instruction)', reply: '', note: '', rect: draft.point ? { x: draft.x, y: draft.y, w: 0, h: 0 } : { x: draft.x, y: draft.y, w: draft.w, h: draft.h } }], draft: null, draftText: '' }));
+      },
+      emptyI: visItems.length === 0 && !S.draft, itemRows
+    };
+  }
+}
+</script>
+</body>
+</html>
