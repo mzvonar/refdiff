@@ -13,11 +13,17 @@
  * ONE variable file per script subset (100–700), IBM Plex Mono as static 400
  * and 500, both in the `latin` and `latin-ext` subsets (Slovak diacritics
  * live in latin-ext). Material Symbols Outlined is Google's own subset of
- * the 52 glyphs the comps use (`icon_names=` — regenerate the list from the
- * comps if one changes: the static `class="msi"` markup AND the quoted names
- * in the comps' script arrays, which hold a third of them; a missed glyph
- * renders as its name in letters), variable on FILL / wght / GRAD / opsz like
+ * the glyphs the comps and the app use (`icon_names=`; the list is the
+ * generated `icon-names.ts`), variable on FILL / wght / GRAD / opsz like
  * the original, so the comps' `font-variation-settings` apply unchanged.
+ * A missed glyph renders as its NAME in letters (2026-08-29: "settings"
+ * measured 152×23 against the comp's 19×23), so the list is DERIVED, never
+ * typed — `node packages/annotator/scripts/icon-subset.mjs` reads the static
+ * `class="msi"` markup and every quoted token in the comps' script arrays
+ * (a third of their icons live there) and this package's source, keeps the
+ * ones in Google's codepoints list, and fetches the face; `--check` says
+ * whether the committed list is current. Run it whenever a comp or the app
+ * gains an icon.
  *
  * The emitted (`--emit`) report.html has no server behind it: its `fonts/`
  * URLs resolve to nothing on disk and the stacks below fall through to the
@@ -26,6 +32,8 @@
  * shell exists to avoid, and the emitted file is the offline READING copy,
  * not the measured surface.
  */
+
+import { ICON_NAMES } from "./icon-names.js"
 
 export interface FontFile {
   /** File name under `assets/fonts/`, and the last segment of its URL. */
@@ -54,8 +62,24 @@ export const FONT_FILES: readonly FontFile[] = [
   { file: "material-symbols-outlined.woff2", family: "Material Symbols Outlined", weight: "300 600", display: "block" },
 ]
 
-/** URL prefix the faces are served under, relative to the app root. */
-export const FONTS_ROUTE = "fonts/"
+/**
+ * The faces are served under a VERSIONED prefix, `fonts/<v>/`, where `<v>`
+ * hashes the icon glyph list and the file names: the CLI sends them with a
+ * day-long `Cache-Control`, so a re-subsetted icon face under the same URL
+ * kept rendering the OLD subset on a phone that had the page open the day
+ * before (2026-08-29 — "the settings icon is text"). A new list is a new URL.
+ */
+export const FONTS_VERSION = fnv1a(ICON_NAMES.join(",") + "|" + FONT_FILES.map((f) => f.file).join(","))
+export const FONTS_ROUTE = `fonts/${FONTS_VERSION}/`
+
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(36)
+}
 
 const faceRule = (f: FontFile): string =>
   `@font-face { font-family:'${f.family}'; font-style:normal; font-weight:${f.weight}; font-display:${f.display};` +
@@ -75,6 +99,7 @@ export const ICON_CSS =
  * A whitelist, not a path join: `/fonts/../cli.js` must never resolve.
  */
 export function fontFile(pathname: string): FontFile | undefined {
-  const m = /^\/fonts\/([a-z0-9-]+\.woff2)$/.exec(pathname)
+  // Any version segment resolves: a page rendered before a restart still gets its faces.
+  const m = /^\/fonts\/(?:[a-z0-9]+\/)?([a-z0-9-]+\.woff2)$/.exec(pathname)
   return m ? FONT_FILES.find((f) => f.file === m[1]) : undefined
 }

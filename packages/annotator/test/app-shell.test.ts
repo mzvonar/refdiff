@@ -97,7 +97,7 @@ describe("renderAppShell", () => {
     expect(html).toContain('class="theme-toggle" id="index-theme-toggle"')
     expect(html).toContain("e.target.closest('.theme-toggle')")
     // The faces are served by the CLI on fonts/, relative to the shell — never a CDN.
-    expect(html).toContain("src:url(fonts/material-symbols-outlined.woff2)")
+    expect(html).toMatch(/src:url\(fonts\/[a-z0-9]+\/material-symbols-outlined\.woff2\)/)
     expect(html).not.toMatch(/fonts\.googleapis|fonts\.gstatic/)
   })
 
