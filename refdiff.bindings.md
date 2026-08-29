@@ -13,6 +13,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`, files fetched with DesignSync `get_file` (`RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html`, `parts/*`, `support.js`). Re-fetch to refresh; never edit a comp to make a finding go away |
 | impl | the annotator app itself serving the demo root: `refdiff-annotator fixtures/demo-root --serve` (default port 7378; on the Linux devbox `svc up annotator` — `services.toml` — which hands out the next free port, 7379 while another worktree's annotator holds 7378) |
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
+| viewing from a laptop / phone | `svc up annotator-tailnet` — the same read-only instance bound to the devbox's Tailscale IP only (`http://uctoinak-dev.tail31a8b9.ts.net:7390/`, `svc ports` for the port). Never `--host 0.0.0.0` here: the box has a public interface and no firewall. Tailscale Serve is NOT enabled on the tailnet (admin console), which is why a second instance rather than a proxy of 7379 |
 | run dir | `out/refdiff/<pair>/` (gitignored results; never served) |
 | demo root | `fixtures/demo-root/` — COMMITTED. Regenerate the JSON with `node fixtures/make-demo-root.ts`; `--now` shifts every timestamp to the wall clock for a measure (the Library's relative "when" — regenerate WITHOUT it afterwards, never commit `--now` output); `--capture` re-shoots `design.png` / `impl.png` / `elements.json` for the opened pair from `design/refdiff/parts/` (needs the network) |
 | auth | none |
@@ -47,10 +48,12 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
 - **Low confidence is the layout, not the fixture.** The protected baseline
-  (redesign phases 0–6 + harness items 12–16 + the Library thumb fix, all
-  landed 2026-08-28) is **2 / 32 / 0 / 2 findings**, confidence
-  **0.90 / 0.71 / 1.00 / 0.90**, alignment at the identity (`1 / 0,0`) on
-  ALL FOUR pairs. The Library desktop's 2 = the chip row `position ×10` and
+  (redesign phases 0–6 + harness items 12–16 + the Library thumb fix + the
+  session-15 product changes, all landed 2026-08-28) is **2 / 32 / 0 / 3
+  findings**, suppressed 25 / 66 / 16 / 33, confidence **0.89 / 0.71 / 1.00 /
+  0.90** (the Library desktop reads 0.89 since the comp's `smartphone` icon
+  stopped being a shared anchor — see the textPatterns bullet), alignment at
+  the identity (`1 / 0,0`) on ALL FOUR pairs. The Library desktop's 2 = the chip row `position ×10` and
   the search `size` (both the comp's demo data, section H). Its former
   `alignment` note (`align 1×0.997 / 0,0.2`) was the card `.thumb` rendered
   at 132 px against the comp's content-box 132 + 1 px border — 1 px per card
@@ -60,7 +63,11 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `(inside)`). What holds `refdiff-compare-desktop` at 32 and 0.71 is the
   comp's demo ROW ORDER (plan gap 32 — its findings array lists
   1,2,3,7,8,4,5,6; refdiff lists by severity) and its two cause lines (gap
-  26); neither is the app's to fix. Do not tune the fixture to raise it — a
+  26); neither is the app's to fix. The compare MOBILE's 3 = gap 34's two
+  (`expand_less`, the summary) + gap 35: the comp centres its phone canvas in
+  the whole pane, the app above the bottom sheet (`paneInsets`, decided
+  2026-08-28), so the badges read `position ×11 (0, −22.4)` — left visible,
+  a rule on every badge would hide a real one. Do not tune the fixture to raise it — a
   fixture in the comp's order would carry marks out of list order, a shape
   refdiff never produces. The full converged list, item by item, is the
   plan's phase 5 Numbers; the asks on the comp's side are its section H.
@@ -80,7 +87,9 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   textPatterns` — the comp imports `parts/Artboard *` as live DOM, the app
   draws the run's PNGs), the two screenshots (`accepted`), and the delta
   strip's copy (the comps disagree with each other and with the fixture's
-  real delta, gaps 23/29). Visible in `findings.json` under `suppressed`.
+  real delta, gaps 23/29), and the strip's × in the regression state
+  (`accepted`, `text: "close"` — the comp hides it there, the app keeps it,
+  decided 2026-08-28). Visible in `findings.json` under `suppressed`.
 - **`showDeltaStrip` defaults to true in the LOCAL Tool comp** (gap 29, flipped
   2026-08-28). The remote project could not be written through DesignSync;
   a refetch reverts the flip unless the prop default was changed in the app.
@@ -94,9 +103,11 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   findings from the sort alone). The Library sorts newest first; the fixture's
   times reproduce the comp's hand order (`make-demo-root.ts`, `ago`).
 - The `Pending` / `Processing` / `Queued` / `running` / `waiting` words, the
-  relative times and the parser message on the broken card are excused by
-  `LIBRARY_IGNORE.textPatterns` in the manifest — visible in `findings.json`
-  under `suppressed`. What the Library desktop pair still reports (the
+  relative times, the parser message on the broken card and the topbar's
+  `smartphone` / `computer` icon (the comp's DESIGN-PREVIEW switch — Mato flips
+  the artboard's layout with it; the app has no such control since 2026-08-28,
+  the width decides) are excused by `LIBRARY_IGNORE.textPatterns` in the
+  manifest — visible in `findings.json` under `suppressed`. What the Library desktop pair still reports (the
   dropped `Pending` chip's 78px moving every chip after it, the search field's
   size) is deliberate — plan section H; the D6
   thumbnail boxes are excused by `contents: true` since harness item 14.

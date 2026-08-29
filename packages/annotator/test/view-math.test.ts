@@ -18,6 +18,8 @@ import {
   designWorldBox,
   fitView,
   focusView,
+  paneInsets,
+  NO_INSETS,
   implImageTransform,
   screenToWorld,
   unionBoxes,
@@ -301,6 +303,35 @@ describe("view operations", () => {
     expect(small.tx).toBeCloseTo(24 + (952 - 160) / 2, 5)
   })
 
+  it("paneInsets: the phone's bottom sheet hides the pane's bottom edge; a floating pill does not", () => {
+    const pane = { x: 0, y: 100, w: 390, h: 700 }
+    // The closed sheet: 45px anchored to the bottom across the width.
+    expect(paneInsets(pane, [{ x: 0, y: 755, w: 390, h: 45 }])).toEqual({ top: 0, right: 0, bottom: 45, left: 0 })
+    // The open sheet: 52% of the work area.
+    expect(paneInsets(pane, [{ x: 0, y: 436, w: 390, h: 364 }]).bottom).toBe(364)
+    // The phone's tool pill floats at left:8 / bottom:56 — a corner, not an edge: pills sit over the canvas.
+    expect(paneInsets(pane, [{ x: 8, y: 700, w: 200, h: 44 }])).toEqual(NO_INSETS)
+    // The desktop rail is a flex sibling beside the pane: no overlap, nothing.
+    expect(paneInsets(pane, [{ x: 390, y: 100, w: 321, h: 700 }])).toEqual(NO_INSETS)
+    // A hidden panel (display:none reads 0×0) is nothing.
+    expect(paneInsets(pane, [{ x: 0, y: 0, w: 0, h: 0 }])).toEqual(NO_INSETS)
+    // A left-anchored strip spanning the height is a left inset.
+    expect(paneInsets(pane, [{ x: 0, y: 100, w: 45, h: 700 }]).left).toBe(45)
+  })
+
+  it("fitView centres in the pane minus its insets — the phone sheet moves the frame up, not smaller", () => {
+    // The comps' phone: 680×740 artboard in a 390-wide pane is width-limited at 50% with or
+    // without the 45px sheet (the zoom pill reads the same); the frame is centred in the 655px that show.
+    const v = fitView({ x: 0, y: 0, w: 680, h: 740 }, { w: 390, h: 700 }, 24, 1.6, { top: 0, right: 0, bottom: 45, left: 0 })
+    expect(v.z).toBeCloseTo((390 - 48) / 680, 5)
+    expect(v.ty).toBeCloseTo(24 + (700 - 45 - 48 - 740 * v.z) / 2, 5)
+    expect(v.ty + (740 * v.z) / 2).toBeCloseTo((700 - 45) / 2, 5) // its centre is the visible area's centre
+    // A left inset shifts the centre right by itself; no inset is the old fit.
+    const l = fitView({ x: 0, y: 0, w: 100, h: 100 }, { w: 500, h: 500 }, 0, 1, { top: 0, right: 0, bottom: 0, left: 100 })
+    expect(l.tx).toBeCloseTo(100 + (400 - 100) / 2)
+    expect(fitView({ x: 0, y: 0, w: 100, h: 100 }, { w: 500, h: 500 }, 0, 1)).toEqual(fitView({ x: 0, y: 0, w: 100, h: 100 }, { w: 500, h: 500 }, 0, 1, NO_INSETS))
+  })
+
   it("fitView is limited by the tighter axis", () => {
     const v = fitView({ x: 10, y: 10, w: 100, h: 400 }, { w: 1000, h: 232 }, 16)
     expect(v.z).toBeCloseTo(0.5)
@@ -330,6 +361,14 @@ describe("view operations", () => {
     )
     expect(v.z).toBeGreaterThanOrEqual(1)
     const centre = screenToWorld(v, 400, 300)
+    expect(centre.x).toBeCloseTo(110)
+    expect(centre.y).toBeCloseTo(55)
+  })
+
+  it("focusView centres the box in the part of the pane above the phone's open sheet", () => {
+    // Tapping a finding in the open sheet (52% of the work area) centred it UNDER the sheet (2026-08-28).
+    const v = focusView({ x: 100, y: 50, w: 20, h: 10 }, { w: 800, h: 600 }, { z: 1, tx: 0, ty: 0 }, 1, { top: 0, right: 0, bottom: 312, left: 0 })
+    const centre = screenToWorld(v, 400, (600 - 312) / 2)
     expect(centre.x).toBeCloseTo(110)
     expect(centre.y).toBeCloseTo(55)
   })

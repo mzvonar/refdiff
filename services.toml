@@ -21,3 +21,11 @@ singleton = true
 # needs to save notes runs its own instance without the flag on another port.
 cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --read-only --port ${PORT:-7378}'"
 port_base = 7378
+
+[annotator-tailnet]
+# The same read-only demo-root instance, reachable from the tailnet only: bound to
+# this node's Tailscale IP (derived at start), never 0.0.0.0 — the devbox has a
+# public interface and no firewall. Tailscale Serve would proxy 127.0.0.1:<port>
+# instead, but it is not enabled on the tailnet. URL: http://<node>.<magicdns>:<PORT>/
+cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --read-only --host \"$(tailscale ip -4)\" --port ${PORT:-7390}'"
+port_base = 7390

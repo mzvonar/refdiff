@@ -77,3 +77,32 @@ relative-time anchors fall to `textPatterns`, and the Library desktop reads
 0.89 / 29 suppressed instead of 0.90 / 24 with no app change. Rule (this
 repo): `--now` and `compare` in the same command line. Fixed in the bindings;
 nothing to promote beyond it (repo-specific). On process: remove.
+
+## 2026-08-28 — a control drawn in a comp can be the DESIGNER's preview aid, not product (session 15)
+
+The Library comp's topbar `computer`/`smartphone` button switches the
+artboard between its desktop and mobile layouts. The app copied it as a
+feature (phase 3 even noted "the comp's preview aid" and built it anyway);
+Mato: it was never a product control. Rule for reading a comp: a control
+whose only effect is on the artboard's own presentation (layout switch,
+theme preview, `$preview` props, zoom) is the designer's, not the user's —
+ask before building it, and when it stays out, excuse its glyph by content
+so the comp's version reads as `suppressed`, not as a missing element.
+Route: `skills/refdiff/SKILL.md` (a line in the classification table or
+"Configuring a pair" — repo-agnostic); this repo's manifest already carries
+the instance. On process: promote, remove.
+
+## 2026-08-28 — "the button does nothing" in the annotator = a thrown TypeError in an untested template string (session 15)
+
+Dim did nothing: `renderDiffs` declared `const pad = 4000` (the sheet's
+reach) in the same scope that calls the `pad(box, n)` helper, so the first
+hole threw "pad is not a function" and the click ended silently. The client
+JS lives inside a template literal in `render.ts` (no backticks allowed, no
+unit coverage — the tests are string-contains on the rendered shell), so a
+shadowed helper is invisible to `tsc` and vitest alike. Rule: when a tool
+button "does nothing", open the console first — it is a throw, not a no-op;
+and never reuse a helper's name for a local in that file. The regression
+test (`render.test.ts`, "no local of that name may shadow it") is the shape:
+extract the function's body from the shell and assert the declaration is
+absent. Route: `docs/architecture.md` "Annotator" (one line: the client is
+untested string, helpers' names are reserved) or discard. On process: decide.

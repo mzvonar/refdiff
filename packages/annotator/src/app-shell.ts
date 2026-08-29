@@ -69,7 +69,6 @@ ${VIEWPORT_META}
     <span class="brand" aria-hidden="true"></span>
     <span class="brand-name">RefDiff</span>
     <span class="spacer"></span>
-    <button type="button" class="layout-toggle" id="lib-layout-toggle" title="Switch to mobile layout"><span class="msi" aria-hidden="true">smartphone</span></button>
     <button type="button" class="theme-toggle" id="index-theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
   </header>
   <div class="lib">
@@ -120,15 +119,16 @@ let serverReadOnly = false;
 const MOBILE_BREAKPOINT = 640;
 const RETRY_SECS = 30;
 // Library state. The filter survives opening a pair and coming back; the
-// layout is the comp's preview toggle — auto by width until forced.
-const lib = { filter: Object.assign({}, DEFAULT_FILTER), forceMobile: null, narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null };
+// layout follows the width alone (the comp's computer/smartphone button is
+// its DESIGN-PREVIEW switch, not a product control — the app has none).
+const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null };
 
 const routePair = () => {
   const hash = location.hash.replace(/^#\/?/, '');
   return hash ? decodeURIComponent(hash) : null;
 };
 
-const libMobile = () => lib.forceMobile === null ? lib.narrow : lib.forceMobile;
+const libMobile = () => lib.narrow;
 
 function renderChips(el, chips, active, onPick) {
   el.innerHTML = '';
@@ -145,8 +145,6 @@ function renderChips(el, chips, active, onPick) {
 function renderIndexView() {
   const mobile = libMobile();
   document.body.classList.toggle('lib-mobile', mobile);
-  $('lib-layout-toggle').querySelector('.msi').textContent = mobile ? 'computer' : 'smartphone';
-  $('lib-layout-toggle').title = mobile ? 'Switch to desktop layout' : 'Switch to mobile layout';
   renderChips($('src-chips'), SOURCE_CHIPS, lib.filter.source, (id) => { lib.filter.source = id; });
   renderChips($('state-chips'), STATE_CHIPS, lib.filter.state, (id) => { lib.filter.state = id; });
   const err = $('lib-error');
@@ -275,7 +273,6 @@ function measureNarrow() {
 }
 lib.narrow = window.innerWidth < MOBILE_BREAKPOINT;
 window.addEventListener('resize', measureNarrow);
-$('lib-layout-toggle').addEventListener('click', () => { lib.forceMobile = !libMobile(); renderIndexView(); });
 $('pair-q').addEventListener('input', () => { lib.filter.query = $('pair-q').value; renderIndexView(); });
 window.addEventListener('hashchange', route);
 // The back link is an in-page route, not a document load.
@@ -379,7 +376,7 @@ a.card:hover { border-color:var(--acc); }
 .warn { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--txt2); }
 .warn .msi { font-size:14px; }
 .tech { font-size:10.5px; color:var(--txt2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-/* ---- mobile: the row list (under 640px, or forced by the layout toggle) */
+/* ---- mobile: the row list (under 640px) */
 .cards.list { display:flex; flex-direction:column; gap:8px; margin:0 auto; }
 .cards.list.capped { max-width:420px; }
 .cards.list .card { flex-direction:row; align-items:flex-start; gap:11px; border-radius:11px; padding:10px; min-height:44px; overflow:visible; }

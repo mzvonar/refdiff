@@ -133,6 +133,41 @@ describe("renderReport", () => {
     expect(html).toContain(".marks.diffs rect.dim { fill:rgba(15,17,20,.5);")
   })
 
+  it("dim cuts its holes with the pad() helper — no local of that name may shadow it in renderDiffs", () => {
+    // The Dim button did nothing (2026-08-28): renderDiffs declared the sheet's
+    // reach as `const pad = 4000`, so `pad(r.box, 6)` for the first hole threw
+    // "pad is not a function" and the click ended before any sheet was drawn.
+    const body = html.match(/function renderDiffs\(\) \{([\s\S]*?)\n\}\n/)?.[1]
+    expect(body).toBeDefined()
+    expect(body).toContain("rect(pad(r.box, 6), 'dim-hole', r.id, 8)")
+    expect(body).not.toMatch(/\b(const|let|var)\s+pad\b/)
+  })
+
+  it("Fit centres in the visible canvas — the phone sheet is an inset, and the phone hides the highlight count", () => {
+    // Fit measured the whole pane and centred the frame under the phone's bottom sheet (2026-08-28).
+    expect(html).toContain("fitView(worldBox(), paneSize(), 24, 1.6, paneInsetsNow())")
+    expect(html).toContain("paneInsets(pane, [$('side'), $('tools')].map(")
+    // Focusing a finding centres it in the same visible area (both call sites).
+    expect(html.split(", paneSize(), state.view, 1, paneInsetsNow()))").length).toBe(3)
+    // The sheet animates its height: re-fit when it has settled, only if the reader has not moved the view.
+    expect(html).toContain("if (e.propertyName === 'height' && !state.userMoved) fit();")
+    // The "N highlighted differences" pill sits under the phone's zoom / align pills — gone there; the warning stays.
+    expect(html).toMatch(/@media \(max-width: 759px\) \{[\s\S]*\.lab-note:not\(\.warn\) \{ display:none; \}/)
+  })
+
+  it("the delta strip is closable in both states — the × sits beside Review when a regression is in it", () => {
+    // The comp hides the × while a regression shows (deltaDismissShow: regCount === 0);
+    // decided otherwise 2026-08-28 — the strip stops on the reader once, the rail keeps the tag.
+    const strip = html.match(/function renderDeltaStrip\(\) \{([\s\S]*?)\n\}\n/)?.[1] ?? ""
+    expect(strip).toContain('id="reg-review"')
+    // ONE dismiss, appended after the regression branch rather than as its alternative
+    // (the old shape: `regs ? …review… : '<button … class="dismiss"…'`).
+    expect(strip.split('id="delta-dismiss"').length).toBe(2)
+    expect(strip).not.toContain(`: '<button type="button" class="dismiss"`)
+    expect(strip.indexOf('id="reg-review"')).toBeLessThan(strip.indexOf('id="delta-dismiss"'))
+    expect(html).toContain(".delta-strip .review + .dismiss { margin-left:0; }")
+  })
+
   it("puts the overlay segment in the topbar: Off / Wipe / Onion / Blink / Diff, with the opacity pill and a wipe handle", () => {
     expect(html).toContain('id="seg-variant"')
     for (const [mode, label] of [["none", "Off"], ["swipe", "Wipe"], ["onion", "Onion"], ["blink", "Blink"], ["difference", "Diff"]]) {
@@ -265,7 +300,7 @@ describe("renderReport", () => {
     // Selecting focuses the canvas (gap 13): no detail panel, no crop images in the page.
     expect(html).not.toContain('id="detail"')
     expect(html).not.toContain("f.crops")
-    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }")
+    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }")
     // The comments tab: composer, rows with the status label and the model's reply (gap 19).
     expect(html).toContain('placeholder="Instruction for the model…"')
     expect(html).toContain(">Send to model</button>")

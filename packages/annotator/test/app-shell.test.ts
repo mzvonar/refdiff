@@ -85,7 +85,10 @@ describe("renderAppShell", () => {
   })
 
   it("switches layouts by width or by the topbar toggle, re-rendering the cards for the layout", () => {
-    expect(html).toContain('class="layout-toggle" id="lib-layout-toggle"')
+    // The comp's computer/smartphone button is its design-preview switch, not a
+    // product control (removed 2026-08-28): the width alone picks the layout.
+    expect(html).not.toContain('layout-toggle')
+    expect(html).not.toContain('forceMobile')
     expect(html).toContain("window.innerWidth < MOBILE_BREAKPOINT")
     expect(html).toContain("mobile ? 'mobile' : 'desktop'")
   })

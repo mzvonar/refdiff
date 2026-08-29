@@ -39,6 +39,16 @@ export interface Size {
   h: number
 }
 
+/** How much of each pane edge lies under a panel drawn over the pane, in px. */
+export interface Insets {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
+
 export const IDENTITY_ALIGNMENT: VAlignment = { scale: 1, offsetX: 0, offsetY: 0 }
 
 /** Design CSS px → world (impl CSS px). */
@@ -297,17 +307,48 @@ export function worldFromShown(
   return { x: kx === 0 ? p.x : (p.x - tx) / kx, y: ky === 0 ? p.y : (p.y - ty) / ky }
 }
 
-/** Zoom so `world` fits inside a pane of `pane` px with `pad` px of margin, centred. */
-export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6): View {
+/**
+ * The pane's edges hidden under panels drawn OVER it. The phone's rail is a
+ * bottom sheet on top of the canvas (44px closed, 52% open), so a fit into the
+ * whole pane centres the frame under the sheet. A panel counts only when it is
+ * anchored along a pane edge across that edge's full length; a floating pill
+ * (the phone's tool strip, the zoom pill) overlaps a corner and is ignored —
+ * pills are meant to sit over the canvas. A panel outside the pane (the
+ * desktop rail, a flex sibling) or hidden (0×0) contributes nothing. Screen px.
+ */
+export function paneInsets(pane: VBox, panels: VBox[], eps = 1): Insets {
+  const out = { ...NO_INSETS }
+  const pr = pane.x + pane.w
+  const pb = pane.y + pane.h
+  for (const p of panels) {
+    const r = p.x + p.w
+    const b = p.y + p.h
+    const overlaps = p.w > 0 && p.h > 0 && p.x < pr && r > pane.x && p.y < pb && b > pane.y
+    if (!overlaps) continue
+    const spansW = p.x <= pane.x + eps && r >= pr - eps
+    const spansH = p.y <= pane.y + eps && b >= pb - eps
+    if (spansW && b >= pb - eps) out.bottom = Math.max(out.bottom, pb - Math.max(p.y, pane.y))
+    if (spansW && p.y <= pane.y + eps) out.top = Math.max(out.top, Math.min(b, pb) - pane.y)
+    if (spansH && r >= pr - eps) out.right = Math.max(out.right, pr - Math.max(p.x, pane.x))
+    if (spansH && p.x <= pane.x + eps) out.left = Math.max(out.left, Math.min(r, pr) - pane.x)
+  }
+  return out
+}
+
+/**
+ * Zoom so `world` fits inside a pane of `pane` px with `pad` px of margin,
+ * centred in the part of the pane that `inset` leaves visible (see paneInsets).
+ */
+export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6, inset: Insets = NO_INSETS): View {
   // The comps' fit: 24px of air round the artboard, never blown up past 1.6× —
   // a small component fitted at 4× is a blur, not a reference.
-  const availW = Math.max(1, pane.w - 2 * pad)
-  const availH = Math.max(1, pane.h - 2 * pad)
+  const availW = Math.max(1, pane.w - inset.left - inset.right - 2 * pad)
+  const availH = Math.max(1, pane.h - inset.top - inset.bottom - 2 * pad)
   const z = Math.min(maxZoom, availW / Math.max(1e-6, world.w), availH / Math.max(1e-6, world.h))
   return {
     z,
-    tx: pad + (availW - world.w * z) / 2 - world.x * z,
-    ty: pad + (availH - world.h * z) / 2 - world.y * z,
+    tx: inset.left + pad + (availW - world.w * z) / 2 - world.x * z,
+    ty: inset.top + pad + (availH - world.h * z) / 2 - world.y * z,
   }
 }
 
@@ -330,15 +371,18 @@ export function panBy(view: View, dx: number, dy: number): View {
 }
 
 /**
- * Centre `box` in the pane at a zoom that shows it with context: at least
- * `minZoom`, at most what fits the box into a third of the pane.
+ * Centre `box` in the visible part of the pane (see paneInsets) at a zoom that
+ * shows it with context: at least `minZoom`, at most what fits the box into a
+ * third of that area.
  */
-export function focusView(box: VBox, pane: Size, current: View, minZoom = 1): View {
-  const fit = fitView(box, pane, Math.min(pane.w, pane.h) / 3)
+export function focusView(box: VBox, pane: Size, current: View, minZoom = 1, inset: Insets = NO_INSETS): View {
+  const vw = Math.max(1, pane.w - inset.left - inset.right)
+  const vh = Math.max(1, pane.h - inset.top - inset.bottom)
+  const fit = fitView(box, pane, Math.min(vw, vh) / 3, 1.6, inset)
   const z = Math.max(minZoom, Math.min(fit.z, Math.max(current.z, minZoom)))
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
-  return { z, tx: pane.w / 2 - cx * z, ty: pane.h / 2 - cy * z }
+  return { z, tx: inset.left + vw / 2 - cx * z, ty: inset.top + vh / 2 - cy * z }
 }
 
 /** Screen point in a pane → world point. */

@@ -71,7 +71,8 @@ unseen), so 9 → 10 there; 50/5/3 unchanged. Original spec below. **The note
 was named in session 15 (2026-08-28)**: undoing the fit on `elements.json`
 gave a −1 px step per card row — the Library card's `.thumb` at 132 px
 against the comp's content-box 132 + 1 px border (3 rows = the 3 px). Fixed
-in `app-shell.ts`; baseline 2 / 32 / 0 / 2, identity on all four pairs.
+in `app-shell.ts`; baseline 2 / 32 / 0 / 2 then, 2 / 32 / 0 / 3 after the
+same session's product changes (annotator plan gap 35), identity on all four.
 
 ### 13 (original spec, for reference)
 
@@ -235,8 +236,9 @@ merging, not only this repo's four pairs.
   the bindings' Library line still pointed at phase 2's D6 boxes, fixed);
   README status refreshed; the handoff is `docs/handoff-2026-08-28.md`. Docs
   only, no rendered output changed — the measure was skipped by the loop's
-  own rule and the baseline stood at 3 / 32 / 0 / 2 (2 / 32 / 0 / 2 since
-  session 15 named the Library desktop's alignment note, item 13 above).
+  own rule and the baseline stood at 3 / 32 / 0 / 2 (2 / 32 / 0 / 3 since
+  session 15: the Library desktop's alignment note, item 13 above, then the
+  annotator's product changes — its plan's gap 35).
 
 ---
 

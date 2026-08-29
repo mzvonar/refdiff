@@ -34,6 +34,10 @@ const LIBRARY_IGNORE = {
     "^(just now|\\d+ (min|h|d) ago|yesterday)$",
     // The degraded card quotes the real parser message; the comp a sample.
     "^findings\\.json · ",
+    // The topbar's computer/smartphone button is the comp's DESIGN-PREVIEW
+    // switch (Mato flips the artboard between layouts with it), not a product
+    // control: the app picks the layout by width alone (removed 2026-08-28).
+    "^(smartphone|computer)$",
   ],
   accepted: [
     {
@@ -119,6 +123,16 @@ COMPARE_IGNORE.accepted.push(
     type: "extra-element",
     text: "×5",
     reason: "gap 33: the comp's g2 says ×6 for five distinct places — see ×14",
+  },
+  {
+    // The delta strip's × in the REGRESSION state. The comp hides it there
+    // (`deltaDismissShow: regCount === 0`); decided otherwise 2026-08-28 — the
+    // strip stops the reader once, the rail keeps the Regression tag — so the
+    // 16×20 `close` glyph next to Review is the app's, on purpose.
+    type: "extra-element",
+    role: "text",
+    text: "close",
+    reason: "decided 2026-08-28: the delta strip is closable while a regression is in it too; the comp hides its × there (deltaDismissShow: regCount === 0) and the rail keeps the Regression tag",
   },
   {
     type: "text-content",

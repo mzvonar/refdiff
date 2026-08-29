@@ -268,9 +268,11 @@ digits invisible); index-route names carry a `lib-` prefix and a
 packages/annotator/src/app-shell.ts` precedes any new name.
 
 **Library** (`app-shell.ts` `#view-index` + pure `index-view.ts`): a 46px
-brand-only topbar (accent square, "RefDiff", spacer, a `computer` /
-`smartphone` layout toggle that forces the row list — the comp's preview aid,
-not persisted — and the theme toggle); the head row `Library · N of M
+brand-only topbar (accent square, "RefDiff", spacer, the theme toggle — the
+comp's `computer` / `smartphone` button is its DESIGN-PREVIEW switch, not a
+product control, and the app draws none since 2026-08-28: the width alone
+picks the layout, the icon is excused by content in the manifest); the head
+row `Library · N of M
 comparisons`; a filter row — search over name + route, source chips Both /
 Figma / Claude Design, state chips Any / Failing / Critical / Diverging / Low
 confidence / Has comments; then the grid (`auto-fill, minmax(250px, 1fr)`) or,
@@ -319,7 +321,16 @@ with `make-demo-root.ts --now` before a measure.
   impossible to miss): mono run label, `+N introduced` / `−M resolved`; on a
   regression the red tint + 3px edge, "N regressions · fixed earlier, back
   again — fix plan halted" and **Review**, which narrows the list to
-  `delta.regressions`.
+  `delta.regressions`; a × dismisses it for the run in BOTH states (the comp
+  hides the × while a regression shows; decided otherwise 2026-08-28).
+- **Fit and focus centre in the VISIBLE canvas** (`paneInsets`, `view-math.ts`,
+  2026-08-28): a panel drawn over the pane along a full edge — the phone's
+  bottom sheet, 44px closed / 52% open — is an inset; floating pills (a
+  corner) and the desktop's sibling rail / tool strip (no overlap) are not.
+  The sheet's height transition re-fits an untouched view when it ends. The
+  comp centres under its sheet (gap 35); the phone's badges read 22px higher
+  than the comp's on purpose. The phone also hides the "N highlighted
+  differences" pill (under the zoom / align pills); the stretch warning stays.
 - **Tool strip** (44px, left; a floating pill bottom-left on the phone):
   `pan_tool` move · `center_focus_strong` focus · `add_comment` comment ·
   `difference` Highlight · `tonality` Dim · `flare` Strobe. Floating over the

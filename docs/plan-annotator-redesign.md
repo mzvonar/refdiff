@@ -349,7 +349,9 @@ for a contrast blunder, none found — that is not a parity claim.
 
 - Sticky 46px topbar: accent rounded square, "RefDiff", `chevron_right`, the
   root/project name, spacer, layout toggle (`computer`/`smartphone`), theme
-  toggle. 1180px max-width container, 20px 16px 40px padding.
+  toggle. 1180px max-width container, 20px 16px 40px padding. (The layout
+  toggle turned out to be the comp's design-preview switch, not a product
+  control — removed 2026-08-28, its icon excused by content.)
 - Head row: "Library" 19px/700 + `N of M items`.
 - Filter row: search field with the `search` icon (36px, radius 9, flex 1,
   max 340) · type chips · 1px×20px divider · state chips. Chip geometry from
@@ -380,7 +382,8 @@ Design, state chips Any / Failing / Critical / Diverging / Low confidence /
 Has comments); `errorBox` + auto-retry (section C states A and B, from spec,
 unmeasured); the degraded card with the comp's copy. `app-shell.ts`: brand-only
 46px topbar with the layout toggle (`computer`/`smartphone`, forces the row
-list, not persisted — the comp's preview aid) and the theme toggle; the head
+list, not persisted — the comp's preview aid; REMOVED 2026-08-28, it is the
+comp's design-preview switch and no product control) and the theme toggle; the head
 row `N of M comparisons`; `INDEX_CSS` to the comp's values;
 `line-height:normal` on the Library (the comp sets none; the report's 1.4 made
 every row taller). `/api/pairs` gained `implRef`, `implPng` (only when the
@@ -540,8 +543,10 @@ in the pane labels' and align pill's `title`s; gap 18 stays deferred, keys
 in the tool titles). The **delta strip** (gap 15) under the topbar: mono run
 label, `+N introduced` / `−M resolved`, and on a regression the red tint +
 3px edge, "N regressions · fixed earlier, back again — fix plan halted" and
-**Review** (narrows the list to `delta.regressions`; dismiss `close` when
-there is none). The 44px **tool strip** (`pan_tool` · `center_focus_strong`
+**Review** (narrows the list to `delta.regressions`) and dismiss `close` —
+in BOTH states since 2026-08-28 (the comp hides the × while a regression is
+in it; decided otherwise: the strip stops the reader once, the rail keeps the
+tag; the app's × is `accepted` by content in the manifest). The 44px **tool strip** (`pan_tool` · `center_focus_strong`
 · `add_comment` · `difference` = Highlight · `tonality` = Dim · `flare` =
 Strobe; 32px, radius 7, `--acc` fill; floating pill bottom-left on the
 phone) — gaps 16 and 17 turned out RESOLVED IN THE COMP (`toolDefs` carries
@@ -1029,7 +1034,8 @@ measured it: **3 / 32 / 0 / 2** findings, confidence 0.90 / 0.71 / 1.00 /
 other three. `pnpm typecheck` and `pnpm test` green (no source touched).
 **Follow-up, session 15 (2026-08-28): the Library desktop's alignment note
 was the card `.thumb` 1 px short per row (content-box 132 + border); fixed,
-the set is now 2 / 32 / 0 / 2 with the fit at `1 / 0,0` on all four.**
+the set was 2 / 32 / 0 / 2 with the fit at `1 / 0,0` on all four; the
+session's later product changes left it at 2 / 32 / 0 / 3 (gap 35).**
 
 What shipped:
 
@@ -1389,6 +1395,10 @@ comp's side. Each carries its measured cost.
   field; the model's triage note is the nearest thing that exists).
 - **Gap 34 — `saveErr` on c2** (2 on the phone): set it to `null` in the demo
   data — the failed-save DESIGN stays (section C), only the demo state goes.
+- **Gap 35 — the phone fit under the sheet** (1 ×11 on `refdiff-compare-mobile`,
+  session 15): centre the comp's phone canvas in the area above the bottom
+  sheet, as the app does since 2026-08-28 (`paneInsets`); the badges then
+  agree again. Left visible — see 35 below.
 - **Gap 24 — the `Pending` chip** (6 on the Library): drop it from the comp,
   or name the refdiff state it filters. refdiff has no run-in-progress state
   (a run dir exists once `compare` wrote it), and a chip that can never match
@@ -1401,7 +1411,16 @@ comp's side. Each carries its measured cost.
   numbers mean what they say, but it is a runtime change, not a design one —
   for Mato's information only.
 
-35. _(reserved — no new product gap was found in phase 5)_
+35. **The comp's phone fit centres the frame in the WHOLE canvas, under the
+    sheet** (found 2026-08-28, session 15; 1 finding ×11 on
+    `refdiff-compare-mobile`). With the bottom sheet open (52%) the comp's
+    artboard sits half under it; Mato's decision: Fit (and focusing a
+    finding) centre in the visible part — `paneInsets` in `view-math.ts`,
+    the sheet is an inset, floating pills are not. The app's marks therefore
+    land 22.4px higher than the comp's on the phone (half the closed sheet).
+    Ask: fit the comp's phone canvas above the sheet too; until then the
+    `position ×11` on the phone's badges is the cost, left visible on
+    purpose — a position rule on every badge would hide a real regression.
 
 34. **The demo comment c2 carries a `saveErr`.** The failed-save DESIGN (section
     C) is right, but as demo data it shows through the phone sheet's summary

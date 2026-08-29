@@ -285,11 +285,11 @@ body { display:flex; flex-direction:column; }
 /* The phone's layer strip under the topbar ("Show · Findings Comments All Clean"). */
 .layer-strip { display:none; align-items:center; justify-content:center; gap:7px; padding:4px 10px; background:var(--bg1); border-bottom:1px solid var(--line); flex-shrink:0; }
 .layer-strip-label { font-size:10.5px; color:var(--txt2); flex-shrink:0; }
-/* The topbar icon buttons (theme, and on the Library the layout toggle): the comps' 32px / radius 7 square. */
-.theme-toggle, .layout-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+/* The topbar icon button (theme): the comps' 32px / radius 7 square. */
+.theme-toggle { flex:none; width:32px; height:32px; padding:0; border:0; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
   background:transparent; color:var(--txt2); cursor:pointer; }
-.theme-toggle:hover, .layout-toggle:hover { background:var(--bg3); }
-.theme-toggle .msi, .layout-toggle .msi { font-size:19px; }
+.theme-toggle:hover { background:var(--bg3); }
+.theme-toggle .msi { font-size:19px; }
 /* ---- delta strip (gap 15): under the topbar, only when the run changed something;
    red-tinted with a 3px edge when a regression is in it — the loop's stop signal. */
 .delta-strip { display:flex; align-items:center; gap:12px; padding:0 12px; min-height:calc(38px + 1px); flex-shrink:0; background:var(--bg2);
@@ -309,6 +309,7 @@ body { display:flex; flex-direction:column; }
 .delta-strip .review.on { background:transparent; border-color:var(--line); color:var(--txt2); }
 .delta-strip .dismiss { margin-left:auto; width:24px; height:24px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
 .delta-strip .dismiss:hover { background:var(--bg3); }
+.delta-strip .review + .dismiss { margin-left:0; }
 .delta-strip .dismiss .msi { font-size:16px; }
 /* ---- layout: the tool strip, the canvas, and the comps' 320px review rail on the RIGHT */
 main { flex:1; display:flex; min-height:0; position:relative; }
@@ -638,8 +639,12 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   .align-menu { bottom:auto; top:calc(100% + 8px); width:calc(248px + 10px); }
   .pane-label { display:none; }
   .pane + .pane { border-left:0; }
+  /* The highlight count sits between the zoom and align pills on a phone and is covered by
+     them — dropped; the stretch WARNING (a wrong superimposition) stays. */
+  .lab-note:not(.warn) { display:none; }
   /* The rail is the comps' bottom sheet: 44px of grip + summary over the canvas, 52% of the
-     height when open with the tabs and lists inside it. The canvas keeps the whole screen. */
+     height when open with the tabs and lists inside it. The canvas keeps the whole screen;
+     Fit centres in the part above the sheet (paneInsets). */
   .rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:calc(44px + 1px); border-left:0; border-top:1px solid var(--line);
     border-radius:12px 12px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.25); overflow:hidden; z-index:20; transition:height .25s ease; }
   body.rail-open .rail { height:52%; }
@@ -967,6 +972,15 @@ function worldBox() {
 function single() { return narrow.matches || state.single; }
 function visiblePane() { return single() ? panes[state.side] : panes.impl; }
 function paneSize() { const r = visiblePane().getBoundingClientRect(); return { w: r.width, h: r.height }; }
+// The pane's edges under the panels drawn over it: on the phone the rail is a
+// bottom sheet on the canvas, so Fit centres the frame in what the sheet leaves.
+// The desktop rail and tool strip are siblings (no overlap) and the floating
+// pills cover a corner only — paneInsets counts neither.
+function paneInsetsNow() {
+  const box = (r) => ({ x: r.left, y: r.top, w: r.width, h: r.height });
+  const pane = box(visiblePane().getBoundingClientRect());
+  return paneInsets(pane, [$('side'), $('tools')].map((el) => box(el.getBoundingClientRect())));
+}
 function applyLayout() {
   document.body.classList.toggle('single', single());
   for (const b of document.querySelectorAll('#seg-layout [data-layout]')) b.classList.toggle('on', (b.dataset.layout === 'full') === state.single);
@@ -1164,7 +1178,7 @@ function applyView() {
   $('zoom-pct').textContent = Math.round(v.z * 100) + '%';
   applyWipe();
 }
-function fit() { setView(fitView(worldBox(), paneSize())); state.userMoved = false; applyView(); }
+function fit() { setView(fitView(worldBox(), paneSize(), 24, 1.6, paneInsetsNow())); state.userMoved = false; applyView(); }
 
 // ---- topbar + delta strip -------------------------------------------------
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -1197,7 +1211,10 @@ function renderDeltaStrip() {
       ? '<span class="dsep"></span><span class="regmsg">' + regs + (regs === 1 ? ' regression' : ' regressions') + '</span>' +
         '<span class="regsub">fixed earlier, back again — fix plan halted</span>' +
         '<button type="button" class="review' + (state.regOnly ? ' on' : '') + '" id="reg-review">' + (state.regOnly ? 'Show all findings' : 'Review') + '</button>'
-      : '<button type="button" class="dismiss" id="delta-dismiss" title="Dismiss for this run"><span class="msi" aria-hidden="true">close</span></button>');
+      : '') +
+    // Closable in BOTH states (the comp hides the × while a regression is in it;
+    // decided otherwise 2026-08-28 — the reader has seen it, the rail keeps the tag).
+    '<button type="button" class="dismiss" id="delta-dismiss" title="Dismiss for this run"><span class="msi" aria-hidden="true">close</span></button>';
 }
 function setRegOnly(on) {
   state.regOnly = on; state.selected = null;
@@ -1431,7 +1448,7 @@ function select(id, focus) {
   renderRail(); renderMarks();
   const f = id ? byId.get(id) : null;
   const box = f && (f.implBox || f.designBox);
-  if (focus && box) { setView(focusView(box, paneSize(), state.view)); state.userMoved = true; applyView(); }
+  if (focus && box) { setView(focusView(box, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }
   const row = $('side').querySelector('.frow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
@@ -1549,7 +1566,10 @@ function diffRegions(side) {
 }
 function renderDiffs() {
   const world = worldBox();
-  const pad = 4000;   // the dim sheet must outlast a panned view, not just the frame
+  // The dim sheet must outlast a panned view, not just the frame. NOT named
+  // pad: that is the box helper the holes below are cut with, and a local of
+  // the same name made every Dim click throw before the sheet was drawn.
+  const reach = 4000;
   for (const side of ['design', 'impl']) {
     const layer = diffLayers[side];
     layer.replaceChildren();
@@ -1567,14 +1587,14 @@ function renderDiffs() {
       // box the mark layers use — so an unstated region masks everything away
       // and the sheet renders as nothing at all.
       mask.setAttribute('maskUnits', 'userSpaceOnUse');
-      mask.setAttribute('x', world.x - pad);
-      mask.setAttribute('y', world.y - pad);
-      mask.setAttribute('width', world.w + 2 * pad);
-      mask.setAttribute('height', world.h + 2 * pad);
+      mask.setAttribute('x', world.x - reach);
+      mask.setAttribute('y', world.y - reach);
+      mask.setAttribute('width', world.w + 2 * reach);
+      mask.setAttribute('height', world.h + 2 * reach);
       // Inline style, not a fill ATTRIBUTE: the stylesheet's .marks rect
       // fill:none outranks a presentation attribute, which silently makes the
       // whole mask black — i.e. dims nothing at all.
-      const keep = rect({ x: world.x - pad, y: world.y - pad, w: world.w + 2 * pad, h: world.h + 2 * pad }, 'dim-keep', '');
+      const keep = rect({ x: world.x - reach, y: world.y - reach, w: world.w + 2 * reach, h: world.h + 2 * reach }, 'dim-keep', '');
       keep.style.fill = '#fff';
       mask.append(keep);
       // The comps' holes: 6px round the box, 8px radius.
@@ -1584,7 +1604,7 @@ function renderDiffs() {
         mask.append(hole);
       }
       defs.append(mask);
-      const sheet = rect({ x: world.x - pad, y: world.y - pad, w: world.w + 2 * pad, h: world.h + 2 * pad }, 'dim', '');
+      const sheet = rect({ x: world.x - reach, y: world.y - reach, w: world.w + 2 * reach, h: world.h + 2 * reach }, 'dim', '');
       sheet.setAttribute('mask', 'url(#' + maskId + ')');
       layer.append(defs, sheet);
     }
@@ -1788,6 +1808,9 @@ function wire() {
   document.addEventListener('pointerdown', (e) => { if (state.alignOpen && !(e.target.closest && e.target.closest('.align-wrap'))) toggleAlignMenu(false); });
   // The rail: one delegated listener per event kind, since its rows are re-rendered as HTML.
   $('rail-toggle').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
+  // The phone sheet animates its height; the untouched view re-fits into what
+  // is left once the sheet has settled (the rect mid-transition is neither).
+  $('side').addEventListener('transitionend', (e) => { if (e.propertyName === 'height' && !state.userMoved) fit(); });
   $('rail-collapse').addEventListener('click', () => openRail(false));
   $('rail-expand').addEventListener('click', () => openRail(true));
   $('side').addEventListener('click', (e) => {
@@ -1976,7 +1999,7 @@ function selectAnn(id, focus) {
   const picked = id ? ann.set.annotations[annIndex(id)] : null;
   if (picked && narrow.matches && picked.side !== state.side) setSide(picked.side);
   renderRail(); renderMarks(); renderAnnMarks();
-  if (focus && picked) { setView(focusView(shapeBox(picked.shape).w ? shapeBox(picked.shape) : { x: picked.shape.x - 20, y: picked.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view)); state.userMoved = true; applyView(); }
+  if (focus && picked) { setView(focusView(shapeBox(picked.shape).w ? shapeBox(picked.shape) : { x: picked.shape.x - 20, y: picked.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }
   const row = $('side').querySelector('.irow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
