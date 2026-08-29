@@ -538,7 +538,12 @@ failure shapes that recur everywhere and impersonate product bugs.
 
 - **The served annotator WRITES into what it serves.** `refdiff-annotator
   <root> --serve` persists every note, verdict and focus region into the run
-  dir (`annotations.json` / `triage.json` / `focus.json` + digests). When
+  dir (`annotations.json` / `triage.json` / `focus.json` + digests). Read
+  `focus.md` before working "in the focused region": it names the rectangle in
+  impl CSS px and lists every in-scope finding — in scope meaning the region
+  covers most of the finding's box (or the box contains the region), so a
+  full-width element that merely runs through the rectangle is deliberately
+  OUT. When
   the served root is a committed fixture, or the impl a `compare` run is
   measuring, serve it `--read-only`: every PUT is refused with 405, the
   page is otherwise identical (the rail names the refusal only on the first

@@ -519,7 +519,9 @@ ship UNMEASURED by decision (gap 20, section C).
   (`north_east`) with the comps' description copy and a `check` on the active
   one. `AlignMode` already is `anchors | width | left | right` — only the lock
   (per-pane pan when unlocked) is new.
-- Focus chip top-center: `center_focus_strong` + message + "Clear".
+- Focus chip top-center: `center_focus_strong` + message + "Edit"/"Done" +
+  "Clear" (the toggle came 2026-08-29 with the settled/adjusting states: `edit`
+  when settled, `check` + "Done" while adjusting).
 - Mobile: the layer segment strip under the header with a "Show" label.
 - Canvas: `--canvas` background, pane label pills (mono 10px/700, letter
   spacing .1em, shown only when the variant is Off and not mobile), wipe
@@ -561,7 +563,7 @@ amount per blend, `labAmount { onion, difference }`), the **align pill**
 border under `CONF_MIN = 0.5` on Anchors only — gap 2) with the **Align lock
 mode** dropdown (`hub` / `width` / `north_west` / `north_east`, the comps'
 descriptions, the Anchors row's warning line, `check` on the active one),
-the **focus chip** ("Region focus · N of M findings · Clear") and a
+the **focus chip** ("Region focus · N of M findings · Edit · Clear") and a
 `lab-note` pill in the same slot for the stretch / highlight-count notes.
 Canvas: `--canvas` panes, `DESIGN` / `IMPLEMENTATION` mono-caps labels
 (hidden while an overlay is on, and on the phone), the **wipe handle** (a

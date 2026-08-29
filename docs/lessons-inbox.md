@@ -244,3 +244,131 @@ visible or it does not happen".
 Route: `docs/architecture.md` "Annotator" (already written up there) — and a
 candidate CLAUDE.md line, since the content-shaped-rule principle now has a
 second instance outside the ignore policy.
+
+## 2026-08-29 — a shared predicate passed straight to `.some()` gets the INDEX as its second argument (session 18)
+
+Scoping the annotator's canvas to the focus region, the client's private
+`boxInFocus(box)` was replaced by `focus.ts`'s shared
+`boxInFocus(box, region, minOverlap)` — every call site updated except
+`boxes.some(boxInFocus)`, which quietly kept working and started handing
+`.some`'s **index** in as `region`. Index 0 is falsy, and the predicate's first
+line is `if (!region) return true` = "no region, everything is in scope": the
+region filter reported "3 of 3 findings" over a canvas with no marks on it. No
+error, no type check (the client is plain JS inside a template string), and the
+failure looked like a rendering bug rather than an arity bug.
+
+The rule: **a predicate with optional parameters is never passed by reference
+to `some` / `filter` / `map` / `every`** — wrap it (`boxes.some((b) => inRegion(b))`).
+Sharpened by the fact that this repo deliberately shares pure modules between
+the CLI and the embedded client, so a signature grows a parameter on the TS
+side while the untyped call site keeps compiling.
+
+Second, procedural: `pnpm build` is not enough to test a served page — a running
+`refdiff-annotator --serve` holds the OLD `dist` in Node's module cache and
+keeps serving it. Two smoke runs were spent debugging a bug that was already
+fixed. Restart the server (or serve on a fresh port) after every rebuild.
+
+Route: CLAUDE.md (the `.some` rule is one line, general, and cheap to state next
+to the dist/rebuild note that already lives there) + the serve-restart half onto
+the existing "the CLIs run from dist" paragraph.
+
+## 2026-08-29 — chrome that scopes a region must not sit ON the region (session 18)
+
+The focus region shipped with a 10 % accent tint over its interior and five
+handles pinned to its corners and centre, permanently — the only way out of them
+was to delete the region. On a phone that is exactly the content the person
+asked to look at, covered by the thing that says they asked. Three moves fixed
+it, and they generalise to any selection/crop UI: **invert the paint** (dim the
+SURROUND, never the selection), **push the handles outside** the rectangle (draw
+AND hit-test at the same outward offset, or a handle you can see is not the one
+you grab), and **make the loud state an opt-in MODE** — a drawn region lands
+SETTLED and the handles come back through one Edit toggle on the chip that
+already names the region.
+
+Two corrections the user made to the first cut, both worth keeping. **A "done"
+affordance is only readable when the user chose to enter the mode it ends.**
+The first cut dropped you into adjusting the moment you finished drawing, and
+its tick read as "click when you are done with the focused WORK" — the wrong
+scope entirely. The fix was not a different icon but a different entry: a drawn
+region lands SETTLED, adjusting is opted into with a pencil, and the tick is
+right again once it finishes something you started. Second: **chrome that is
+only on screen during an interaction can afford the middle** — the move grip
+went back to the centre of the region as soon as it stopped being permanent.
+And the mode has to draw what it excludes, muted: adjusting an edge with
+nothing outside it to see is adjusting blind.
+
+A fourth, learned in the same pass: a filter whose predicate is "any overlap"
+reads as broken the moment the mark for an admitted item is drawn OUTSIDE the
+frame the person drew (badges anchor at their box's top-left corner). The
+threshold has to match what the gesture means — "mostly inside", measured
+against the smaller of the two areas so a containing element still counts.
+
+Route: `docs/architecture.md` "Focus a region" (written up there) — and a
+candidate SKILL.md line for the in-scope rule, which is agent-facing through
+`focus.md`.
+
+## 2026-08-29 — a "link the views" toggle has to reach every view, overlays included (session 18)
+
+The annotator's lockstep lock read as "the two frames move together", and that
+is how it was described — but it only ever switched the design PANE to its own
+view (`viewOf`). The superimposition modes (Wipe / Onion / Blink / Diff) draw
+the design ONTO the impl through the alignment and took `state.view` directly,
+so unlocking changed nothing in exactly the modes where the registration is the
+thing being questioned: "I disable align-locking and it still aligns in wipe,
+onion, diff."
+
+The general shape: **a control named after a relationship must be honoured by
+every renderer of that relationship, not just the one it was written for.** A
+second surface that reproduces the same relationship by another code path
+(here: the ghost, drawn from the shared view + alignment rather than from the
+panes) will silently ignore it. When adding such a control, grep for every
+place the relationship is materialised, not every place the flag is read —
+the flag is precisely what the missing site does not mention.
+
+The fix also re-scoped the note that explains the registration (the "design
+stretched +N% to superimpose" pill): it now appears only while the ghost really
+IS registered. A note describing a transform that is no longer applied is the
+stale-assertion failure in UI form.
+
+Route: `docs/architecture.md` "The lockstep lock is in every view" (written up
+there).
+
+## 2026-08-29 — a clamp must be measured against what is DRAWN, not against one of the inputs (session 18)
+
+The wipe curtain was clamped to `report.impl.width - 20`, which is the
+implementation's width — but the canvas draws, and fits, the UNION of both
+frames (`worldBox`). Whenever the design's world box is the wider one, the
+handle stopped short of the right-hand end of what was on screen (~80 % across,
+in the pair that surfaced it) and the last stretch of the overlay could never be
+wiped away. The left end looked fine because the impl's origin and the world's
+coincide, which is exactly the asymmetry that makes this class of bug read as
+"the drag is broken" rather than "the bound is wrong".
+
+The rule: **bound an interaction by the geometry it operates on.** When two
+sources are composited into one space, the clamp belongs to the composite, and
+the ±20px "keep it grabbable" margin belongs in screen units if it is about the
+finger — here it was worth dropping entirely, since "all design" and "all
+implementation" are both legitimate ends of a wipe.
+
+Route: CLAUDE.md or `docs/architecture.md` (the superimposition section) — the
+same "world box, not one frame" reasoning already governs `fit`.
+
+## 2026-08-29 — a control a dense layout drops still has to show its STATE there (session 18)
+
+The minimal phone layout collapses the align pill to one 34px square, hiding
+the label, the chevron and the lock button; the lockstep then lived only in the
+menu, so nothing on screen said whether the panes were linked — on the one
+layout where the overlay modes make the registration the live question. The
+first fix put the lock button back on the pill and was rejected for the right
+reason: one button IS the correct density there. What the layout owes is the
+SIGNAL, not the control — the button now goes accent while the lock is on and
+the menu keeps the toggle.
+
+The general rule: **collapsing a control out of a dense layout is a decision
+about the affordance, never about the state.** Whatever the compact surface
+shows must still say which mode you are in; hiding the toggle is fine, hiding
+the answer to "is it on?" is not.
+
+Route: `docs/architecture.md` "The lockstep lock is in every view" (written up
+there) — second correction in that same spot, so keep the rule, not the
+instance.

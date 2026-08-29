@@ -240,7 +240,7 @@ describe("renderReport", () => {
     expect(html).toContain(".vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%;")
     // Comment badges: the 22px rounded square in the status colour.
     expect(html).toContain(".vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }")
-    expect(html).toContain("d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : ''); d.dataset.ann = a.id;")
+    expect(html).toContain("d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : '') + (outside ? ' outside' : ''); d.dataset.ann = a.id;")
     expect(html).not.toContain("g.lbl")
     // The comps mark the primary instance only by default: a ×15 aggregate must not carpet the artboard (gap 12).
     expect(html).toContain("layer: 'all', showMarks: true, showMembers: false,")
@@ -365,6 +365,50 @@ describe("renderReport", () => {
     expect(html).toContain("'Region focus · '")
   })
 
+  /**
+   * The region used to keep its handles and its tint forever, sitting on exactly the content it was
+   * drawn around, and the only way out of them was to DELETE the region. Adjusting is now a state
+   * with a way in and a way out (the chip's Edit / Done), and the settled state draws no handles.
+   */
+  it("gives the focus chip an Edit/Done button and draws the handles only while adjusting", () => {
+    expect(html).toContain('id="focus-edit"')
+    expect(html).toContain("if (focusBand || !state.focusEdit) continue;")
+    // Adjusting shows what the region EXCLUDES, muted, so the corner drag is not made blind.
+    expect(html).toContain("const adjusting = state.focusEdit && !!state.focus;")
+    expect(html).toContain(".vmarks .vmark.outside { opacity:.3; }")
+    expect(html).toContain("$('focus-edit').addEventListener('click', () => setFocusEdit(!state.focusEdit));")
+    // Inverted: the surround is dimmed, nothing is painted over the region itself.
+    expect(html).toContain("rect.focus-scrim")
+    expect(html).toContain("rect.focus-rect { fill:none;")
+    expect(html).toContain("focusScrimParts")
+  })
+
+  /**
+   * The lock used to move the design PANE only: Wipe / Onion / Blink / Diff kept registering the
+   * overlay onto the impl however the panes had been moved, so unlinking them changed nothing in
+   * exactly the modes where the registration is what you are questioning.
+   */
+  it("draws the superimposed ghost with the design pane's own view once the lockstep is off", () => {
+    expect(html).toContain("function ghostView() { return state.lock ? state.view : viewOf('design'); }")
+    expect(html).toContain("function ghostRegistered() { return state.lock && state.align === 'anchors'; }")
+    expect(html).toContain("imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD);")
+    // The stretch note describes the registration, so it goes with it.
+    expect(html).toContain("const off = Math.abs(stretch - 1) >= 0.02 && ghostRegistered();")
+  })
+
+  /**
+   * The curtain was clamped to the IMPLEMENTATION's width, so a design whose world box is wider
+   * (the union is what gets drawn and fitted) stopped the handle short of the right-hand end of
+   * the frame — the last stretch of the overlay could not be wiped away at all.
+   */
+  it("lets the wipe curtain reach both ends of the drawn world, and keeps the lock on the phone pill", () => {
+    expect(html).toContain("const w = worldBox();")
+    expect(html).toContain("state.wipeX = Math.min(w.x + w.w, Math.max(w.x, x));")
+    expect(html).not.toContain("Math.min(report.impl.width - 20, Math.max(20, x))")
+    // The minimal layout keeps ONE button; its lock state shows on the pill instead.
+    expect(html).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
+  })
+
   it("embeds the whole report — findings, suppressed, delta, alignment — as data", () => {
     const m = /<script type="application\/json" id="report-data">([\s\S]*?)<\/script>/.exec(html)
     expect(m).not.toBeNull()
@@ -482,7 +526,10 @@ describe("renderReport", () => {
     expect(html).toContain('id="conf-bang" hidden>!</span>')
     expect(mobile).toContain("body.layout-minimal .rail { display:none; height:58%; transition:none; }")
     expect(mobile).toContain("body.layout-minimal.rail-open .rail { display:flex; }")
-    // The icon-only button has no lock, so the menu carries the comp's lockstep row.
+    // The icon-only button has no lock, so the menu carries the comp's lockstep row — and the
+    // button itself goes accent while the lock is on, so the state reads without opening it.
+    expect(mobile).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
+    expect(html).toContain("$('align-pill').classList.toggle('locked', state.lock);")
     expect(html).toContain("const lockRow = minimalOn()")
     // Off the phone the class never applies, whatever the preference says.
     expect(html).toContain("function minimalOn() { return narrow.matches && state.mlayout === 'minimal'; }")

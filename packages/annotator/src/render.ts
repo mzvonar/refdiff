@@ -245,7 +245,7 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           </div>
           <div class="align-menu" id="align-menu" hidden></div>
         </div>
-        <div class="focus-chip" id="focus-chip" hidden><span class="msi" aria-hidden="true">center_focus_strong</span><span id="focus-msg"></span><button type="button" id="focus-clear">Clear</button></div>
+        <div class="focus-chip" id="focus-chip" hidden><span class="msi" aria-hidden="true">center_focus_strong</span><span id="focus-msg"></span><button type="button" id="focus-edit"><span class="msi" aria-hidden="true">edit</span><span class="lbl" id="focus-edit-label">Edit</span></button><button type="button" id="focus-clear" title="Clear the region"><span class="msi" aria-hidden="true">close</span><span class="lbl">Clear</span></button></div>
         <div class="lab-note" id="lab-note" hidden></div>
         <button type="button" class="rail-fab" id="rail-expand" title="Open review panel"><span class="msi" aria-hidden="true">right_panel_open</span><span id="rail-fab-summary"></span></button>
       </div>
@@ -598,9 +598,10 @@ body.single .align-wrap { bottom:58px; }
 .conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
 .conf-warn[hidden] { display:none; }
 .conf-warn .msi { font-size:14px; }
-/* The minimal layout's icon-only align button has no lock on it, so its menu carries the lockstep
-   row (the Mobile Minimal comp's lockRow): icon, label + description, a 30×18 toggle knob. The lock
-   itself stays in every view — with one pane and an overlay on (wipe / onion / blink) the
+/* The minimal layout's icon-only align button has no lock ON it, so its menu carries the lockstep
+   row (the Mobile Minimal comp's lockRow): icon, label + description, a 30×18 toggle knob — and the
+   button itself goes accent while the lock is on, so the state is readable without opening the
+   menu. The lock stays in every view: with one pane and an overlay on (wipe / onion / blink) the
    registration still decides what the ghost lands on, so it is exactly then that unlocking or
    changing the anchor mode helps (Mato, 2026-08-29). */
 .align-lockrow { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; cursor:pointer; margin:0 0 2px; border-bottom:1px solid var(--line); }
@@ -630,7 +631,10 @@ body.single .align-wrap { bottom:58px; }
 .focus-chip { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; background:var(--bg1); border:1px solid var(--line); border-radius:999px; padding:5px 7px 5px 14px; z-index:14; font-size:12px; color:var(--txt); white-space:nowrap; }
 .focus-chip[hidden] { display:none; }
 .focus-chip > .msi { font-size:15px; color:var(--acc); }
-.focus-chip button { padding:3px 10px; border:0; border-radius:999px; background:var(--bg3); color:var(--txt); cursor:pointer; font-weight:600; font-size:11.5px; }
+.focus-chip button { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border:0; border-radius:999px; background:var(--bg3); color:var(--txt); cursor:pointer; font-weight:600; font-size:11.5px; }
+.focus-chip button .msi { font-size:14px; }
+/* Adjusting is the loud state: Done is the way out of it, Edit the quiet way back in. */
+.focus-chip button#focus-edit.on { background:var(--acc); color:#fff; }
 .lab-note { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:13; padding:5px 12px; border-radius:999px; background:var(--bg1); border:1px solid var(--line); font-size:11.5px; color:var(--txt2); white-space:nowrap; pointer-events:none; }
 .lab-note[hidden] { display:none; }
 .lab-note.warn { color:var(--major); border-color:var(--major); }
@@ -712,11 +716,19 @@ body.single .align-wrap { bottom:58px; }
 .marks.anns .mirror { fill-opacity:.06; stroke-opacity:.7; }
 .marks.anns .sel { stroke-width:4; }
 .marks.anns rect.band { fill:rgba(143,126,231,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
-.marks.anns rect.focus-rect { fill:rgba(91,141,239,.10); stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
+/* Inverted: nothing is drawn INSIDE the region (that is what you asked to look at) — the surround
+   is dimmed instead, and the outline is the crop's edge. */
+.marks.anns rect.focus-rect { fill:none; stroke:var(--acc); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:6 4; }
+.marks.anns rect.focus-rect.editing { stroke-dasharray:none; stroke-width:2; }
+.marks.anns rect.focus-scrim { fill:rgba(11,12,15,.55); stroke:none; pointer-events:none; }
 /* Handles are interactive; the region's BODY is not, so a drag inside it still pans. */
 .marks.anns circle.focus-handle { fill:var(--acc); stroke:var(--bg0); stroke-width:1.5; vector-effect:non-scaling-stroke; pointer-events:all; cursor:nwse-resize; }
 .marks.anns circle.focus-handle.move { cursor:move; fill:var(--bg0); stroke:var(--acc); stroke-width:2; }
 .marks.anns circle.focus-handle.ne, .marks.anns circle.focus-handle.sw { cursor:nesw-resize; }
+/* Adjusting a region draws what it excludes, muted — enough to see, never enough to read as
+   in scope. Applies to the finding badges, the comment pins and their boxes alike. */
+.vmarks .vmark.outside { opacity:.3; }
+.marks .outside { opacity:.3; }
 /* The layer segment: Comments off hides the comment shapes and badges, never the focus region. */
 body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body.layer-no-anns .marks.anns rect.band { display:none; }
 /* Between the phone and the comps' 1120px "narrow" width the pair title goes; the layer labels shorten (JS). */
@@ -786,15 +798,25 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   body.layout-minimal .op-pill { bottom:54px; }
   body.layout-minimal .align-wrap { top:8px; right:8px; }
   body.layout-minimal .align-pill { position:relative; width:calc(34px + 2px); height:calc(34px + 2px); padding:0; border-radius:9px; justify-content:center; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+  /* One button here, so the BUTTON carries the lockstep: accent while the panes are linked, the
+     plain surface when they are not (2026-08-29). The state was invisible in this layout — the
+     lock lives in the menu — on the one layout where an overlay makes the registration the live
+     question. Declared before .is-warn so a low-confidence border still wins. */
+  body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }
+  body.layout-minimal .align-pill.locked .align-cur #align-icon { color:#fff; }
   body.layout-minimal .align-pill.is-warn { border-color:var(--major); box-shadow:0 4px 16px rgba(0,0,0,.25); }
   body.layout-minimal .align-pill .lock, body.layout-minimal .align-cur #align-label, body.layout-minimal .align-cur .chev, body.layout-minimal .conf-warn { display:none; }
   body.layout-minimal .align-cur { padding:0; }
   body.layout-minimal .align-cur #align-icon { font-size:18px; }
   body.layout-minimal .align-pill.is-warn .conf-bang { display:flex; }
   body.layout-minimal .align-menu { width:calc(250px + 10px); }
-  body.layout-minimal .focus-chip { left:8px; transform:none; gap:8px; padding:4px 6px 4px 12px; font-size:11.5px; }
-  body.layout-minimal .focus-chip > .msi { font-size:14px; }
-  body.layout-minimal .focus-chip button { padding:3px 9px; font-size:11px; }
+  /* The chip shares this row with the align pill on EVERY phone layout, not just the minimal one:
+     centred, its two buttons ran under the pill and could not be tapped. Left-aligned, short
+     wording (JS) and icon-only buttons keep the whole chip reachable. */
+  .focus-chip { left:8px; transform:none; gap:8px; padding:4px 6px 4px 12px; font-size:11.5px; max-width:calc(100% - 150px); }
+  .focus-chip > .msi { font-size:14px; }
+  .focus-chip button { padding:4px 8px; font-size:11px; }
+  .focus-chip button .lbl { display:none; }
   body.layout-minimal .rail { display:none; height:58%; transition:none; }
   body.layout-minimal.rail-open .rail { display:flex; }
 }
@@ -858,7 +880,7 @@ const state = {
   // A region of the canvas to work inside (world px). While set, findings whose boxes fall outside
   // it are hidden from the list AND the marks — the way to read one column of a screen without the
   // chrome's findings burying it.
-  focus: null, focusLabel: '', focusing: false,
+  focus: null, focusLabel: '', focusing: false, focusEdit: false,
   showTriaged: { ignore: false, snooze: false },
   // The diff lab: Highlight boxes every listed difference (diff), Dim masks
   // everything else (dim), Strobe pulses the boxes, and one superimposition
@@ -917,7 +939,7 @@ function setPhoneLayout(layout) {
   state.mlayout = layout === 'minimal' ? 'minimal' : 'default';
   savePref('layout', state.mlayout);
   setSettingsOpen(false);
-  applyLayout(); applyAlignMode(); renderRailSummary();
+  applyLayout(); applyAlignMode(); renderRailSummary(); renderFocusChip();
   if (state.userMoved) applyView(); else fit();
 }
 function setSettingsOpen(open) {
@@ -1017,6 +1039,7 @@ let focusBand = null;
 let focusDrag = null;   // { handle, pointerId } while a handle is being dragged
 function setFocusing(on) {
   state.focusing = on;
+  if (on) state.focusEdit = false;
   $('focus-toggle').setAttribute('aria-pressed', on ? 'true' : 'false');
   for (const pane of Object.values(panes)) pane.classList.toggle('focusing', on);
   if (on) setAnnMode(null);
@@ -1024,8 +1047,24 @@ function setFocusing(on) {
 }
 function setFocus(rect, persist) {
   state.focus = rect;
-  renderFocusChip(); renderRail(); renderMarks(); renderFocusBand();
+  if (!rect) state.focusEdit = false;
+  // renderAnnMarks too (it ends in renderFocusBand): the comment pins are scoped by the region as
+  // the finding marks are, so a region drawn AFTER load left the out-of-region pins on the canvas.
+  renderFocusChip(); renderRail(); renderMarks(); renderAnnMarks();
   if (persist !== false) persistFocus();
+}
+// Adjusting is a STATE of the region, not a tool: settled, the region is a dashed outline and a
+// dimmed surround with nothing over the content; adjusting, it grows the five handles. Drawing a
+// region leaves you in it (nobody lands a rectangle first try with a thumb), the chip's Done
+// leaves it — the handles and the tint used to be permanent and sat on exactly the pixels the
+// region was drawn around.
+function setFocusEdit(on) {
+  state.focusEdit = on && !!state.focus;
+  if (state.focusEdit) { setFocusing(false); setAnnMode(null); }
+  // The marks are redrawn because entering and leaving the mode changes WHAT is drawn, not just
+  // the handles: adjusting reveals the excluded findings and comments, muted (renderAnnMarks ends
+  // in renderFocusBand, so the region comes with them).
+  renderFocusChip(); renderMarks(); renderAnnMarks();
 }
 // The region is the handover: it lands in focus.json + focus.md so "work in the focused region"
 // means the same rectangle to the agent as it does on the phone.
@@ -1065,7 +1104,22 @@ function renderFocusChip() {
   if (!state.focus) return;
   const r = state.focus;
   chip.title = 'region x ' + Math.round(r.x) + ', y ' + Math.round(r.y) + ', ' + Math.round(r.w) + '×' + Math.round(r.h) + ' (impl CSS px) — saved to focus.json / focus.md';
-  $('focus-msg').textContent = 'Region focus · ' + report.findings.filter(visible).length + ' of ' + report.findings.length + ' findings';
+  const kept = report.findings.filter(visible).length;
+  // The phone's chip shares its row with the align pill: two buttons only fit next to the short
+  // form (the words are dropped by CSS, the count never is — it is the whole point of the chip).
+  $('focus-msg').textContent = narrow.matches
+    ? 'Focus · ' + kept + ' of ' + report.findings.length
+    : 'Region focus · ' + kept + ' of ' + report.findings.length + ' findings';
+  // Edit (pencil) → Done (tick). The tick only earns its place because adjusting is something you
+  // CHOSE: it finishes the adjustment you started. While a drawn region still landed in adjusting,
+  // the same tick read as "I am done with the focused work", which is not what it does.
+  const edit = $('focus-edit');
+  edit.classList.toggle('on', state.focusEdit);
+  edit.setAttribute('aria-pressed', state.focusEdit ? 'true' : 'false');
+  edit.title = state.focusEdit ? 'Done adjusting — put the handles away' : 'Adjust the region';
+  edit.setAttribute('aria-label', edit.title);
+  edit.querySelector('.msi').textContent = state.focusEdit ? 'check' : 'edit';
+  $('focus-edit-label').textContent = state.focusEdit ? 'Done' : 'Edit';
 }
 function focusPointerDown(pane, e) {
   focusBand = { pointerId: e.pointerId, start: paneWorld(pane, e), end: paneWorld(pane, e) };
@@ -1079,41 +1133,77 @@ function focusPointerUp(pane, e) {
   setFocusing(false);
   // A tap rather than a drag means "never mind": focusing a 1px region would hide every finding,
   // which reads as the app breaking.
+  // A drawn region is FINISHED — the chrome settles the moment the finger lifts and the region
+  // shows what it scopes. Adjusting is opt-in (the chip's Edit), for the drag that missed.
   setFocus(rect.w * state.view.z >= 12 && rect.h * state.view.z >= 12 ? rect : null);
 }
 // ---- editing a drawn region ---------------------------------------------
 // Drawing a rectangle precisely with a thumb is not realistic, so the region is adjustable
-// afterwards: four corner handles resize, the centre grip moves. The BODY of the region stays
-// inert so a drag inside it still pans the canvas.
+// afterwards: four corner handles resize, the grip above the top edge moves it. They exist only
+// while ADJUSTING (the chip's Edit/Done), and every one of them is drawn and hit-tested outside
+// the rectangle — chrome that covers the region defeats the region. The BODY stays inert either
+// way, so a drag inside it still pans the canvas.
 const FOCUS_HANDLE_PX = 13;
+// The dots sit this far OUTSIDE their corner (screen px), so nothing inside the region is covered.
+const FOCUS_HANDLE_OUT = 9;
+function focusHandleOffset() { return FOCUS_HANDLE_OUT / state.view.z; }
 function focusHandleAt(pane, e) {
-  if (!state.focus || state.focusing) return null;
-  return handleAt(state.focus, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z);
+  if (!state.focus || !state.focusEdit || state.focusing) return null;
+  return handleAt(state.focus, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z, focusHandleOffset());
 }
+// The grab point is remembered as a DELTA from the corner: a handle drawn outside its corner (or
+// grabbed near its edge) would otherwise snap the corner onto the finger the moment you touch it.
 function focusEditDown(pane, e, handle) {
-  focusDrag = { handle: handle, pointerId: e.pointerId };
+  const w = paneWorld(pane, e);
+  const c = cornerOf(handle);
+  focusDrag = { handle: handle, pointerId: e.pointerId, grab: { x: c.x - w.x, y: c.y - w.y } };
   pane.setPointerCapture(e.pointerId);
   ann.suppressClick = true;
 }
+// Where the handle's corner (or the centre, for the grip) actually IS — the offset the dot is drawn
+// with is cosmetic and must not travel into the geometry.
+function cornerOf(handle) {
+  return handlePoints(state.focus, 0).find((h) => h.handle === handle);
+}
 function focusEditMove(pane, e) {
-  state.focus = resizeRect(state.focus, focusDrag.handle, paneWorld(pane, e), FOCUS_HANDLE_PX / state.view.z);
-  renderFocusChip(); renderRail(); renderMarks(); renderFocusBand();
+  const w = paneWorld(pane, e);
+  const at = { x: w.x + focusDrag.grab.x, y: w.y + focusDrag.grab.y };
+  state.focus = resizeRect(state.focus, focusDrag.handle, at, FOCUS_HANDLE_PX / state.view.z);
+  renderFocusChip(); renderRail(); renderMarks(); renderAnnMarks();
 }
 function focusEditUp() { focusDrag = null; persistFocus(); }
 // World-space, so it lives in the same layers as the marks and appears on both sides at once.
+// The region is drawn INVERTED: the surround is dimmed and the region itself is left alone. A tint
+// over the region darkened the one thing you asked to look at, and the crop it now reads as is the
+// same gesture every photo app uses.
+const FOCUS_SCRIM_REACH = 4000;
+function focusScrimParts(r) {
+  const far = FOCUS_SCRIM_REACH;
+  const [l, t, w, h] = [r.x, r.y, Math.max(r.w, 0), Math.max(r.h, 0)];
+  return [
+    { x: l - far, y: t - far, w: w + 2 * far, h: far },       // above
+    { x: l - far, y: t + h, w: w + 2 * far, h: far },         // below
+    { x: l - far, y: t, w: far, h: h },                       // left
+    { x: l + w, y: t, w: far, h: h },                         // right
+  ];
+}
 function renderFocusBand() {
   for (const side of ['design', 'impl']) {
     const layer = annLayers[side];
-    for (const old of layer.querySelectorAll('.focus-rect, .focus-handle')) old.remove();
+    for (const old of layer.querySelectorAll('.focus-rect, .focus-handle, .focus-scrim')) old.remove();
     const live = focusBand ? rectFromCorners(focusBand.start, focusBand.end) : state.focus;
     if (!live) continue;
+    // First, so the comments, the marks and the handles all paint over it.
+    for (const part of focusScrimParts(live)) layer.prepend(rect(part, 'focus-scrim', ''));
     const r = document.createElementNS(SVG, 'rect');
     r.setAttribute('x', live.x); r.setAttribute('y', live.y);
     r.setAttribute('width', Math.max(live.w, 0.5)); r.setAttribute('height', Math.max(live.h, 0.5));
-    r.setAttribute('class', 'focus-rect');
+    r.setAttribute('class', 'focus-rect' + (state.focusEdit ? ' editing' : ''));
     layer.append(r);
-    if (focusBand) continue;   // handles only once the drag has settled
-    for (const h of handlePoints(live)) {
+    // Handles while ADJUSTING only: settled, the region is an outline and nothing sits on the
+    // content. Never during the draw itself — the band has no corners to grab yet.
+    if (focusBand || !state.focusEdit) continue;
+    for (const h of handlePoints(live, focusHandleOffset())) {
       const dot = document.createElementNS(SVG, 'circle');
       dot.setAttribute('cx', h.x); dot.setAttribute('cy', h.y);
       dot.setAttribute('r', FOCUS_HANDLE_PX / 2 / state.view.z);
@@ -1140,7 +1230,15 @@ function projection() { return displayAlignment(state.align, report.alignment, r
 // The superimposed ghost has to LAND on the impl, which is what the run's full fit (stretch
 // included) is for; under a manual registration it follows that registration instead, so blink and
 // difference show what the panes show.
-function ghostAlignment() { return state.align === 'anchors' ? report.alignment : projection(); }
+//
+// UNLESS the lockstep is off. The lock used to move the design PANE only, so wipe / onion / blink /
+// difference kept registering the overlay onto the impl however the panes had been moved — you
+// unlinked them and the overlay carried on aligning itself. Unlocked, the overlay is literally what
+// the design pane is showing, at the design pane's own view, stacked over the impl at its own: move
+// or zoom either side and the modes lay them over each other as they now sit.
+function ghostRegistered() { return state.lock && state.align === 'anchors'; }
+function ghostAlignment() { return ghostRegistered() ? report.alignment : projection(); }
+function ghostView() { return state.lock ? state.view : viewOf('design'); }
 function worldBox() {
   // The design's world extent is its RAW capture size through the CURRENT
   // alignment — report.design.width already has the run's scale in it.
@@ -1212,6 +1310,7 @@ function setLayer(layer) { state.layer = layer; applyLayer(); saveControls(); re
 // Between 760 and 1120px the comp shortens the layer labels; the phone strip keeps the full words.
 const LAYER_LABELS = { findings: ['Findings', 'Find.'], items: ['Comments', 'Comm.'], all: ['All', 'All'], none: ['Clean', 'Clean'] };
 function applyNarrow() {
+  renderFocusChip();   // the chip's wording is per layout
   const short = narrowish.matches && !narrow.matches;
   for (const b of document.querySelectorAll('#seg-layer [data-layer]')) b.textContent = LAYER_LABELS[b.dataset.layer][short ? 1 : 0];
 }
@@ -1334,11 +1433,15 @@ function applyLock() {
   b.setAttribute('aria-pressed', state.lock ? 'true' : 'false');
   b.title = state.lock ? 'Lockstep on — panes move together. Click to unlink.' : 'Lockstep off — panes move independently. Click to link.';
   b.querySelector('.msi').textContent = state.lock ? 'link' : 'link_off';
+  // The minimal layout shows one button and hides this one, so the PILL carries the state there.
+  $('align-pill').classList.toggle('locked', state.lock);
 }
 function setLock(on) {
   state.lock = on;
   if (on) state.viewD = state.view;
-  applyLock(); applyAlignMode(); saveControls(); applyView();
+  // The note too: the overlay stops being registered when the lock goes, and a stretch note left
+  // standing would describe a distortion that is no longer on screen.
+  applyLock(); applyAlignMode(); saveControls(); applyView(); renderLabNote();
 }
 // Which view a pane is drawn with, and how a pane's gesture writes back.
 function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }
@@ -1354,7 +1457,7 @@ function applyView() {
   // judge type against a stretched reference); superimposing needs the opposite
   // trade, because a blink or a difference blend against a frame that does not
   // land on the impl compares nothing. #lab-note states the stretch.
-  imgs.ghost.style.transform = designImageTransform(v, ghostAlignment(), state.dprD);
+  imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD);
   imgs.mask.style.transform = implImageTransform(v, state.dprI);
   // Finding boxes and annotation shapes are baked into world space through the RUN's alignment, so
   // the design side re-maps them onto whatever registration is being drawn — otherwise every mark
@@ -1371,6 +1474,15 @@ function applyView() {
     const z = viewOf(side).z, cs = Math.min(2.4, 1 / z);
     markLayers[side].style.setProperty('--cs', cs);
     for (const c of panes[side].querySelectorAll('.marks.anns circle.ann, .marks.anns circle.focus-handle')) c.setAttribute('r', (c.classList.contains('ann') ? 7 : FOCUS_HANDLE_PX / 2) / z);
+    // The handles' outward offset is screen px too, so a zoom re-places them (the radius above is
+    // not enough: dots left at the old offset drift onto the content the region was drawn around).
+    if (state.focus && state.focusEdit) {
+      const at = handlePoints(state.focus, FOCUS_HANDLE_OUT / z);
+      for (const c of panes[side].querySelectorAll('.marks.anns circle.focus-handle')) {
+        const h = at.find((p) => p.handle === c.dataset.handle);
+        if (h) { c.setAttribute('cx', h.x); c.setAttribute('cy', h.y); }
+      }
+    }
   }
   $('zoom-pct').textContent = Math.round(v.z * 100) + '%';
   applyWipe();
@@ -1449,12 +1561,9 @@ function setRegOnly(on) {
 // Focus is per BOX, not per finding. An aggregated finding ("×26 rows") can have instances in the
 // content AND in the header, so admitting the whole finding drew its header marks straight back
 // onto the canvas — you focused the content and the chrome still lit up.
-function boxInFocus(box) {
-  if (!state.focus) return true;
-  if (!box) return false;
-  const r = state.focus;
-  return box.x < r.x + r.w && box.x + box.w > r.x && box.y < r.y + r.h && box.y + box.h > r.y;
-}
+// The test itself is focus.js's boxInFocus (mostly-inside, not any-touch), the SAME one focus.md is
+// written with: the list, the canvas and the handover cannot disagree about what is in the region.
+function inRegion(box) { return boxInFocus(box, state.focus); }
 // A finding is LISTED when at least one of its boxes is inside; the canvas then draws only the
 // boxes that actually are (renderMarks).
 function inFocus(f) {
@@ -1462,12 +1571,17 @@ function inFocus(f) {
   const boxes = [];
   for (const side of ['designBox', 'implBox']) if (f[side]) boxes.push(f[side]);
   if (f.members) for (const m of f.members) for (const side of ['designBox', 'implBox']) if (m[side]) boxes.push(m[side]);
-  return boxes.some(boxInFocus);
+  // Passed as a LAMBDA: boxes.some(boxInFocus) handed .some's index in as the region, which the
+  // shared predicate reads as "no region" on box 0 and admitted every finding.
+  return boxes.some((b) => inRegion(b));
 }
-function visible(f) {
+function visible(f) { return visibleExceptFocus(f) && inFocus(f); }
+// Split out because adjusting the region draws the findings it EXCLUDES, muted: dragging a corner
+// with nothing outside it to see is dragging blind — you cannot tell what the edge is about to
+// drop. Everything but the region is still applied to them (severity, search, triage).
+function visibleExceptFocus(f) {
   if (!state.sev[f.severity]) return false;
   if (state.q && !(f.message + ' ' + f.type + ' ' + (f.role || '')).toLowerCase().includes(state.q)) return false;
-  if (!inFocus(f)) return false;
   if (state.regOnly && !regressionIds().has(f.id)) return false;
   const verdict = triageStateOf(f);
   if (verdict === 'ignore' && !state.showTriaged.ignore) return false;
@@ -1475,7 +1589,7 @@ function visible(f) {
   return true;
 }
 // Comments follow the focus region too (the comps' visItems): a point is a 0×0 box.
-function visibleItems() { return ann.set.annotations.filter((a) => boxInFocus(shapeBox(a.shape))); }
+function visibleItems() { return ann.set.annotations.filter((a) => inRegion(shapeBox(a.shape))); }
 const SEV_CHIP_LABELS = { critical: 'Critical', major: 'Major', minor: 'Minor' };
 const TRIAGE_TAGS = { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' };
 const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };
@@ -1706,23 +1820,29 @@ function renderMarks() {
     blayer.classList.toggle('has-sel', !!state.selected);
     if (!state.showMarks) continue;
     const key = side === 'design' ? 'designBox' : 'implBox';
+    // While the region is being ADJUSTED the canvas shows what it leaves out, muted ('outside'):
+    // the edge you are dragging is a decision about those marks, and it cannot be made blind.
+    const adjusting = state.focusEdit && !!state.focus;
     const draw = (f, suppressed) => {
-      if (!visible(f) && state.selected !== f.id) return;
+      const shown = adjusting ? visibleExceptFocus(f) : visible(f);
+      if (!shown && state.selected !== f.id) return;
       const sel = state.selected === f.id;
       const verdict = triageStateOf(f);
       const cls = f.severity + (sel ? ' sel' : '') + (suppressed ? ' suppressed' : '') + (verdict === 'ignore' || verdict === 'snooze' ? ' triaged' : '');
+      const box = (b) => (inRegion(b) ? b : adjusting ? b : undefined);
+      const out = (b) => (inRegion(b) ? '' : ' outside');
       // Per-box, so an aggregate listed for its content instance does not redraw the header ones.
-      const primary = boxInFocus(f[key]) ? f[key] : undefined;
+      const primary = box(f[key]);
       if (primary) {
         // The box itself only while selected (the comps' 4px-padded outline); Highlight draws the rest.
-        if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel' + (suppressed ? ' suppressed' : ''), f.id, 6));
-        blayer.append(badge(primary, f, cls, false));
+        if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel' + (suppressed ? ' suppressed' : '') + out(primary), f.id, 6));
+        blayer.append(badge(primary, f, cls + out(primary), false));
       }
       if (state.showMembers && f.members) {
         f.members.slice(1).forEach((m) => {
-          if (!m[key] || !boxInFocus(m[key])) return;
-          layer.append(rect(m[key], f.severity + ' member', f.id, 3));
-          blayer.append(badge(m[key], f, cls + ' member', true));
+          if (!m[key] || !box(m[key])) return;
+          layer.append(rect(m[key], f.severity + ' member' + out(m[key]), f.id, 3));
+          blayer.append(badge(m[key], f, cls + ' member' + out(m[key]), true));
         });
       }
     };
@@ -1773,7 +1893,7 @@ function diffRegions(side) {
       // Older runs carry no regions: the union box is still where it is.
       const boxes = f.regions && f.regions.length ? f.regions : (f.implBox ? [f.implBox] : []);
       for (const b of boxes) {
-        if (!boxInFocus(b)) continue;
+        if (!inRegion(b)) continue;
         const box = side === 'impl' ? b : toDesignRegion(f, b);
         if (box && !tooBig(box, world)) out.push({ box: box, id: f.id });
       }
@@ -1782,9 +1902,9 @@ function diffRegions(side) {
     // A presence finding has a box on one side only; it is drawn on both, since the OTHER side is
     // where the eye goes looking for the missing thing.
     const b = f[key] || (side === 'design' ? f.implBox : f.designBox);
-    if (b && boxInFocus(b) && !tooBig(b, world)) out.push({ box: b, id: f.id });
+    if (b && inRegion(b) && !tooBig(b, world)) out.push({ box: b, id: f.id });
     if (state.showMembers && f.members) {
-      for (const m of f.members.slice(1)) if (m[key] && boxInFocus(m[key]) && !tooBig(m[key], world)) out.push({ box: m[key], id: f.id });
+      for (const m of f.members.slice(1)) if (m[key] && inRegion(m[key]) && !tooBig(m[key], world)) out.push({ box: m[key], id: f.id });
     }
   }
   return out;
@@ -1844,11 +1964,14 @@ function renderDiffs() {
 function renderLabNote() {
   const note = $('lab-note');
   const stretch = aspectStretch(report.alignment);
-  const off = Math.abs(stretch - 1) >= 0.02;
   // The superimposed design is drawn with the run's FULL fit, stretch included:
   // blink and difference are meaningless unless the two frames land on each
   // other. That distortion is exactly what the design PANE refuses to show, so
-  // it has to be stated here rather than left for the eye to misread.
+  // it has to be stated here rather than left for the eye to misread. Only when
+  // the overlay actually IS registered, though — under a manual mode or with the
+  // lockstep off it is drawn like the pane, and the note would name a stretch
+  // that is not on screen.
+  const off = Math.abs(stretch - 1) >= 0.02 && ghostRegistered();
   if (state.lab !== 'none' && off) {
     note.className = 'lab-note warn'; note.hidden = false;
     note.textContent = 'design stretched ' + (stretch > 1 ? '+' : '') + Math.round((stretch - 1) * 100) + '% vertically to superimpose';
@@ -2107,7 +2230,13 @@ function wire() {
     if (wiping !== e.pointerId) return;
     const r = panes.impl.getBoundingClientRect();
     const x = (e.clientX - r.left - state.view.tx) / state.view.z;
-    state.wipeX = Math.min(report.impl.width - 20, Math.max(20, x));
+    // Clamped to the WORLD box (both frames), not the impl's width: a design whose world box is
+    // wider than the implementation left the curtain stopping short of the right-hand end of what
+    // was drawn — the last stretch of the overlay could never be wiped away. The ends are included,
+    // so "all design" and "all implementation" are both reachable; the handle sits on the frame's
+    // edge there and stays grabbable (it is 28px wide, drawn centred on the curtain).
+    const w = worldBox();
+    state.wipeX = Math.min(w.x + w.w, Math.max(w.x, x));
     applyWipe();
   });
   const wipeUp = (e) => { if (wiping === e.pointerId) wiping = null; };
@@ -2139,6 +2268,7 @@ function wire() {
     if (state.focus) { setFocus(null); setFocusing(false); return; }  // second press clears
     setFocusing(!state.focusing);
   });
+  $('focus-edit').addEventListener('click', () => setFocusEdit(!state.focusEdit));
   $('focus-clear').addEventListener('click', () => { setFocus(null); setFocusing(false); });
   $('delta-strip').addEventListener('click', (e) => {
     if (e.target.closest('#reg-review')) setRegOnly(!state.regOnly);
@@ -2245,6 +2375,7 @@ function wire() {
       else if (state.viewOpen) setViewOpen(false);
       else if (state.alignOpen) toggleAlignMenu(false);
       else if (state.focusing) setFocusing(false);
+      else if (state.focusEdit) setFocusEdit(false);
       else if (state.lab !== 'none') setLab('none');
       else if (ann.mode || ann.draft || ann.selected) { setAnnMode(null); ann.draft = null; selectAnn(null, false); }
       else select(null, false);
@@ -2269,6 +2400,7 @@ const uid = () => 'n' + Date.now().toString(36) + Math.random().toString(36).sli
 // One annotate mode, not two: the gesture already said which shape was meant — a click is a note on
 // the element under it, a drag is a region — so a second button only made you declare it twice.
 function setAnnMode(mode, sticky) {
+  if (mode) state.focusEdit = false;
   ann.mode = mode;
   // A sticky mode survives drawing a shape: the corner toggle stays in
   // annotate until it is switched back, the desktop button is one-shot.
@@ -2356,20 +2488,27 @@ function selectAnn(id, focus) {
 // whose save failed wears the red halo (section C, surface 3). Drawn on BOTH panes, as the comps
 // do: the shape lives in shared world space, and on a phone only one side is on screen — a note
 // placed on the impl was invisible while the design showed.
-function annLabel(x, y, n, a) {
+function annLabel(x, y, n, a, outside) {
   const d = document.createElement('div');
-  d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : ''); d.dataset.ann = a.id; d.title = a.note;
+  d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : '') + (outside ? ' outside' : ''); d.dataset.ann = a.id; d.title = a.note;
   d.style.left = (x - 11) + 'px'; d.style.top = (y - 11) + 'px';
   d.textContent = n;
   return d;
 }
 function renderAnnMarks() {
+  const adjusting = state.focusEdit && !!state.focus;
   for (const side of ['design', 'impl']) {
     const layer = annLayers[side], blayer = markLayers[side];
     layer.replaceChildren();
     for (const b of blayer.querySelectorAll('.vmark.ann')) b.remove();
     ann.set.annotations.forEach((a, i) => {
-      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (a.side === side ? '' : ' mirror');
+      // The region scopes comments exactly as it scopes findings — the rail counted them that way
+      // (visibleItems) while the canvas drew every pin, so a focused view said "Comments · 0" over
+      // a canvas full of them. The selected one is drawn wherever it is, as a selected finding is,
+      // and while the region is being adjusted the excluded pins come back muted with the marks.
+      const inside = inRegion(shapeBox(a.shape));
+      if (!inside && ann.selected !== a.id && !adjusting) return;
+      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (a.side === side ? '' : ' mirror') + (inside ? '' : ' outside');
       if (a.shape.kind === 'rect') {
         const r = document.createElementNS(SVG, 'rect');
         r.setAttribute('x', a.shape.x); r.setAttribute('y', a.shape.y); r.setAttribute('width', Math.max(a.shape.w, 0.5)); r.setAttribute('height', Math.max(a.shape.h, 0.5));
@@ -2379,7 +2518,7 @@ function renderAnnMarks() {
         c.setAttribute('cx', a.shape.x); c.setAttribute('cy', a.shape.y); c.setAttribute('r', 7 / state.view.z);
         c.setAttribute('class', cls); c.dataset.ann = a.id; layer.append(c);
       }
-      blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a));
+      blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a, !inside));
     });
     const live = ann.band && ann.band.side === side ? ann.band : null;
     const d = ann.draft && ann.draft.side === side ? ann.draft : null;
@@ -2396,7 +2535,9 @@ function renderAnnMarks() {
       if (d.anchor) { const r = document.createElementNS(SVG, 'rect'); r.setAttribute('x', d.anchor.box.x); r.setAttribute('y', d.anchor.box.y); r.setAttribute('width', d.anchor.box.w); r.setAttribute('height', d.anchor.box.h); r.setAttribute('class', 'band'); layer.append(r); }
     }
   }
-  applyView();
+  // This layer was just replaceChildren'd and the region lives in it: without this, drawing a
+  // comment wiped the focus region off the canvas until something else redrew it.
+  renderFocusBand();
 }
 async function loadAnnotations() {
   if (ann.storage === 'api') {
@@ -2437,7 +2578,7 @@ function openReport(reportData, annotationSet, pageData) {
   triage.unsaved = new Set(); triage.saveError = null; triage.noteDrafts = {}; focusSaveError = null;
   state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = ''; state.tab = 'findings';
   state.sev = { critical: true, major: true, minor: true };
-  state.focus = null; state.focusLabel = ''; state.focusing = false; focusBand = null; focusDrag = null;
+  state.focus = null; state.focusLabel = ''; state.focusing = false; state.focusEdit = false; focusBand = null; focusDrag = null;
   state.diffIndex = -1; state.regOnly = false; state.deltaDismissed = false; state.alignOpen = false;
   state.wipeX = report.impl.width / 2;
   document.body.classList.remove('ann-mode');

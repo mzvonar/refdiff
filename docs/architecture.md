@@ -338,7 +338,20 @@ with `make-demo-root.ts --now` before a measure.
 - **The lockstep lock is in every view** (2026-08-29, after briefly hiding
   it outside split): an overlay draws the design ONTO the impl even with one
   pane, so unlocking or changing the anchor mode is exactly the fix for a
-  bad landing. In the minimal phone layout its row lives in the align menu.
+  bad landing. In the minimal phone layout its row lives in the align menu —
+  and the icon-only pill itself goes ACCENT while the lock is on (2026-08-29):
+  one button is the right density there, but the state has to be readable
+  without opening the menu, on the one layout where an overlay makes the
+  registration the live question.
+  **And the overlay obeys it** (2026-08-29): the lock used to switch the
+  design PANE to its own view and nothing else, so Wipe / Onion / Blink /
+  Diff went on registering the ghost onto the impl however the panes had been
+  moved — you unlinked them and the overlay carried on aligning itself.
+  Unlocked, the ghost is drawn exactly as the design pane is drawing it
+  (`ghostView` = the design's own view, `ghostAlignment` = the displayed
+  projection), stacked over the impl at its own view: move or zoom either
+  side and the modes lay the two over each other as they now sit. Re-locking
+  re-registers both.
 - **Fit and focus centre in the VISIBLE canvas** (`paneInsets`, `view-math.ts`,
   2026-08-28): a panel drawn over the pane along a full edge — the phone's
   bottom sheet, 44px closed / 52% open — is an inset; floating pills (a
@@ -356,8 +369,10 @@ with `make-demo-root.ts --now` before a measure.
   dropdown (Anchors / Width / Top left / Top right, `check` on the active
   one), the **opacity pill** for Onion and Diff (one amount per blend,
   `labAmount`), and a top-centre slot shared by the **focus chip** ("Region
-  focus · N of M findings · Clear") and the `lab-note` pill (the stretch /
-  highlight-count notes).
+  focus · N of M findings · Edit · Clear"; on the phone it moves to the
+  left of that row and goes icon-only — "Focus · N of M" — because the align
+  pill shares the row) and the `lab-note` pill (the stretch / highlight-count
+  notes).
 - **Canvas:** two `--canvas` panes with mono-caps `DESIGN` / `IMPLEMENTATION`
   labels (hidden while an overlay is on, and on the phone). Marks are the
   comps' badges as HTML divs, never SVG text (the extractor never saw an SVG
@@ -528,7 +543,11 @@ scale — 95.6 % of one page pair's raw mask lay inside text. Regions therefore
 come from the reported findings, never from the raw diff. The superimposed
 ghost uses the run's FULL alignment (per-axis stretch included) because a
 blink against a frame that does not land on the impl compares nothing; the
-design PANE keeps refusing that distortion, and the lab-note pill says so.
+design PANE keeps refusing that distortion, and the lab-note pill says so —
+but only while the ghost IS registered (`ghostRegistered`: locked, on
+Anchors). Under a manual mode, or with the lockstep off, the overlay is drawn
+like the pane and the stretch note would name a distortion that is not on
+screen.
 
 **One annotate gesture.** The pointer-up decides the shape by drag distance,
 so click = point, drag = region, with the live band appearing exactly when
@@ -581,7 +600,7 @@ reports written before `key` existed cannot be triaged, and the row says so
 rather than inventing a handle. `refdiff accept` turns every `ignore` verdict
 into an `accepted.json` decision beside the manifest (SKILL.md §3a).
 
-### Focus a region (2026-08-27)
+### Focus a region (2026-08-27, revised 2026-08-29)
 
 Drag a box on the canvas and the list, the marks and the counts narrow to it
 — the way to read one column of a screen without the chrome's findings
@@ -590,16 +609,45 @@ test lives in `visible()` alongside severity and search, so list and canvas
 cannot disagree. The canvas test is per BOX, not per finding: an aggregated
 finding can have instances in the content AND in the header, so admitting the
 whole finding drew its header marks straight back — `renderMarks` filters the
-primary box and every member through `boxInFocus`. A tap rather than a drag
-clears instead of focusing a 1px region. The region is editable (`focus.ts`
-`handleAt` / `resizeRect`, four corner handles + a centre grip, a minimum size
-so a corner dragged past its opposite cannot strand its own handles; the body
-stays inert so a drag inside it still pans) and it is an ARTIFACT: `focus.json`
-+ `focus.md` (`GET/PUT /api/pairs/<pair>/focus`) state the rectangle in impl
-CSS px, how many findings fall inside, that everything outside is out of
-scope, and each in-scope finding by mark, severity, message and key — "let's
-work in the focused region" means the same rectangle to the agent as on the
-phone.
+primary box and every member through `focus.ts`'s `boxInFocus`. Comments are
+scoped by the same test (`renderAnnMarks`), which the rail already did: a
+focused canvas full of pins over a "Comments · 0" tab was the canvas
+disagreeing with its own count. A tap rather than a drag clears instead of
+focusing a 1px region.
+
+**In scope is MOSTLY-INSIDE, not any-touch** (`FOCUS_MIN_OVERLAP = 0.8`,
+measured against the smaller of the box and the region, so an element that
+CONTAINS the region still counts). Any-touch read as a broken filter: a
+full-width row that merely runs through the region is drawn at its own
+top-left corner, so its badge landed hundreds of px outside the rectangle the
+person drew, on a phone where that rectangle is the whole point.
+
+The region has two chrome states. **Settled** — the state a drawn region lands
+in — is a dashed outline and a dimmed SURROUND (`focus-scrim`, four rects out
+to 4000px): nothing painted over the region itself, nothing grabbable, and the
+canvas scoped. **Adjusting** is opt-in through the chip's Edit (a pencil,
+which becomes a tick + "Done" while the mode is on); Escape or another tool
+leaves it too. The tick is only readable BECAUSE the mode is chosen — while a
+drawn region still landed in adjusting, the same tick read as "I am done with
+the focused work" rather than "I am done nudging this rectangle". It draws
+five handles (`handleAt` / `resizeRect`, four corners at an outward offset so
+they never cover the content, plus the centre `move` grip, which can afford the
+middle because it is only ever on screen while adjusting; a minimum size so a
+corner dragged past its opposite cannot strand its own handles; the grab point
+is kept as a delta so a handle does not snap the corner onto the finger) — and
+it brings back the findings and comments the region EXCLUDES, muted to 30 %
+(`.outside`, `visibleExceptFocus`), because dragging an edge with nothing
+outside it to see is dragging blind. The rail's counts stay scoped throughout:
+what is in the region is not a matter of which mode the chrome is in. The first
+version was permanently in the loud state, tint over the region and handles on
+its corners, and the only way out of them was to delete the region.
+
+It is an ARTIFACT: `focus.json` + `focus.md`
+(`GET/PUT /api/pairs/<pair>/focus`) state the rectangle in impl CSS px, the
+in-scope rule, how many findings fall inside, that everything outside is out
+of scope, and each in-scope finding by mark, severity, message and key —
+"let's work in the focused region" means the same rectangle to the agent as on
+the phone.
 
 ### The app, its server modes, and what a measurement sees
 

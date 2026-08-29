@@ -35,6 +35,7 @@ export const ICON_NAMES: readonly string[] = [
   "done",
   "draft",
   "draw",
+  "edit",
   "error",
   "expand_less",
   "expand_more",

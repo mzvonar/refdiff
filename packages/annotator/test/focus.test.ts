@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  boxIntersectsRect,
+  boxInFocus,
   emptyFocus,
   focusDigest,
   handleAt,
@@ -22,23 +22,53 @@ describe("rectFromCorners", () => {
   })
 })
 
-describe("boxIntersectsRect", () => {
+describe("boxInFocus", () => {
   it("no region means everything is in scope", () => {
-    expect(boxIntersectsRect({ x: 0, y: 0, w: 1, h: 1 }, null)).toBe(true)
+    expect(boxInFocus({ x: 0, y: 0, w: 1, h: 1 }, null)).toBe(true)
   })
 
   it("a box with no geometry cannot be inside a region", () => {
-    expect(boxIntersectsRect(undefined, REGION)).toBe(false)
+    expect(boxInFocus(undefined, REGION)).toBe(false)
   })
 
-  it("counts overlap, not containment — a half-in row is in scope", () => {
-    expect(boxIntersectsRect({ x: 90, y: 110, w: 20, h: 10 }, REGION)).toBe(true)
-    expect(boxIntersectsRect({ x: 150, y: 120, w: 10, h: 10 }, REGION)).toBe(true)
+  it("a box inside the region is in scope", () => {
+    expect(boxInFocus({ x: 150, y: 120, w: 10, h: 10 }, REGION)).toBe(true)
+  })
+
+  /**
+   * The phone report that prompted the rule: a region drawn over the middle of a form still listed
+   * the full-width card row and the full-width drop zone, because each RUNS THROUGH the region —
+   * ~55 % of the row's box, the rest of it outside. Their badges (drawn at the box's top-left
+   * corner) landed hundreds of px outside the rectangle, which reads as a broken filter.
+   */
+  it("a full-width row that only runs through the region is out of scope", () => {
+    const row = { x: 24, y: 110, w: 400, h: 40 }   // 176 of 400 px wide inside REGION: 0.44
+    expect(boxInFocus(row, REGION)).toBe(false)
+    expect(boxInFocus(row, REGION, 0.4)).toBe(true)   // the threshold is the whole rule
+  })
+
+  /**
+   * The other direction has to survive: focusing PART of a big element (a drop zone, a card) must
+   * keep that element's finding — measuring against the smaller area is what makes it symmetric.
+   */
+  it("an element that contains the region is in scope", () => {
+    expect(boxInFocus({ x: 0, y: 0, w: 1000, h: 1000 }, REGION)).toBe(true)
+  })
+
+  it("a box mostly inside is in scope even where it overhangs", () => {
+    // 190 of 200px wide, all of its height: 0.95 of the box.
+    expect(boxInFocus({ x: 110, y: 110, w: 200, h: 10 }, REGION)).toBe(true)
   })
 
   it("edge contact is not overlap", () => {
-    expect(boxIntersectsRect({ x: 60, y: 110, w: 40, h: 10 }, REGION)).toBe(false)
-    expect(boxIntersectsRect({ x: 300, y: 110, w: 40, h: 10 }, REGION)).toBe(false)
+    expect(boxInFocus({ x: 60, y: 110, w: 40, h: 10 }, REGION)).toBe(false)
+    expect(boxInFocus({ x: 300, y: 110, w: 40, h: 10 }, REGION)).toBe(false)
+  })
+
+  /** A comment pin is a 0×0 box: there is no share to measure, so landing inside IS the test. */
+  it("a point has no area to share — being inside the rectangle is the whole test", () => {
+    expect(boxInFocus({ x: 150, y: 150, w: 0, h: 0 }, REGION)).toBe(true)
+    expect(boxInFocus({ x: 50, y: 150, w: 0, h: 0 }, REGION)).toBe(false)
   })
 })
 
@@ -50,7 +80,7 @@ describe("resizeRect", () => {
     expect(nw).toEqual({ x: 50, y: 60, w: 250, h: 140 })
   })
 
-  it("moves by the centre", () => {
+  it("moves by the centre grip", () => {
     expect(resizeRect(REGION, "move", { x: 500, y: 500 })).toEqual({
       x: 400,
       y: 450,
@@ -82,12 +112,25 @@ describe("handleAt", () => {
   })
 
   it("misses cleanly so a drag inside the region still pans the canvas", () => {
-    expect(handleAt(REGION, { x: 160, y: 120 }, 10)).toBeNull()
+    expect(handleAt(REGION, { x: 160, y: 180 }, 10)).toBeNull()
     expect(handleAt(null, { x: 100, y: 100 }, 10)).toBeNull()
   })
 
   it("places five handles: four corners and the centre", () => {
     expect(handlePoints(REGION).map((h) => h.handle)).toEqual(["nw", "ne", "se", "sw", "move"])
+  })
+
+  /**
+   * The dots are drawn just OUTSIDE the region so they do not sit on the content it was drawn
+   * around; hit-testing takes the same offset, or the handle you see is not the handle you grab.
+   */
+  it("offsets the corners outward, leaving the grip at the centre", () => {
+    const out = handlePoints(REGION, 10)
+    expect(out[0]).toEqual({ handle: "nw", x: 90, y: 90 })
+    expect(out[2]).toEqual({ handle: "se", x: 310, y: 210 })
+    expect(out[4]).toEqual({ handle: "move", x: 200, y: 150 })   // the grip takes no offset
+    expect(handleAt(REGION, { x: 90, y: 90 }, 6, 10)).toBe("nw")
+    expect(handleAt(REGION, { x: 90, y: 90 }, 6)).toBeNull()
   })
 })
 
