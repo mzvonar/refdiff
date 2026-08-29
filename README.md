@@ -35,6 +35,12 @@ Current state and next steps:
 [`docs/handoff-2026-08-28.md`](docs/handoff-2026-08-28.md) and
 [`docs/plan-next.md`](docs/plan-next.md). Background:
 
+- [`docs/method.md`](docs/method.md) — the method in plain English: the
+  naive screenshot-comparison harnesses this replaced, why a VLM cannot be
+  the comparator, and what took its place.
+- [`docs/self-redesign.md`](docs/self-redesign.md) — the method applied to
+  refdiff's own annotator, with before/design/after screenshots and the
+  measured numbers from every step.
 - [`docs/research.md`](docs/research.md) — the evidence base (VLM failure
   modes, validated architectures, metric/human-correlation studies,
   tooling landscape).
