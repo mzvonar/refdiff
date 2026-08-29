@@ -372,3 +372,19 @@ the answer to "is it on?" is not.
 Route: `docs/architecture.md` "The lockstep lock is in every view" (written up
 there) — second correction in that same spot, so keep the rule, not the
 instance.
+
+## 2026-08-29 — a help cursor is a promise; make the click keep it (session 18)
+
+The align pill's low-confidence badge was a `<span>` with `cursor:help` and a
+`title`: hovering explained it, clicking did nothing. On a desktop the cursor
+reads as "there is more here", so the dead click is the affordance lying — and
+the explanation it points at (the Anchors row's "only 42 % anchor match" line,
+with Width / Top left as the remedy) was one menu away the whole time.
+
+Now a `<button>` that opens that menu — focusable, `aria-haspopup`,
+`aria-expanded`, and the title says "Click for the modes". The rule:
+**anything wearing an interactive cursor must have an action; a tooltip is not
+an action.** If there is genuinely nothing to do, the cursor is the thing to
+change.
+
+Route: `docs/architecture.md` (align pill, written up there).

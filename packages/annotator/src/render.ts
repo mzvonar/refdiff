@@ -240,7 +240,7 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <div class="align-pill" id="align-pill">
             <button type="button" class="lock on" id="align-lock" aria-pressed="true" title="Lockstep on — panes move together. Click to unlink."><span class="msi" aria-hidden="true">link</span></button>
             <button type="button" class="align-cur" id="align-mode" aria-expanded="false" aria-controls="align-menu"><span class="msi" id="align-icon" aria-hidden="true">hub</span><span id="align-label">Anchors</span><span class="msi chev" id="align-chev" aria-hidden="true">expand_less</span></button>
-            <span class="conf-warn" id="conf-warn" hidden><span class="msi" aria-hidden="true">warning</span></span>
+            <button type="button" class="conf-warn" id="conf-warn" hidden aria-haspopup="true" aria-controls="align-menu"><span class="msi" aria-hidden="true">warning</span></button>
             <span class="conf-bang" id="conf-bang" hidden>!</span>
           </div>
           <div class="align-menu" id="align-menu" hidden></div>
@@ -595,7 +595,10 @@ body.single .align-wrap { bottom:58px; }
 .align-cur #align-icon { font-size:16px; color:var(--txt2); }
 .align-cur #align-label { font-size:11.5px; font-weight:600; }
 .align-cur .chev { font-size:15px; color:var(--txt2); }
-.conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
+/* The badge is a BUTTON: it wore a help cursor and did nothing when clicked, which is the cursor
+   promising an explanation the click never delivered. It opens the align menu, where the Anchors
+   row states the confidence and the other modes are the remedy. */
+.conf-warn { display:flex; align-items:center; justify-content:center; width:22px; height:22px; padding:0; border:0; border-radius:999px; background:rgba(245,166,35,.16); color:var(--major); cursor:help; flex-shrink:0; }
 .conf-warn[hidden] { display:none; }
 .conf-warn .msi { font-size:14px; }
 /* The minimal layout's icon-only align button has no lock ON it, so its menu carries the lockstep
@@ -1389,7 +1392,9 @@ function applyAlignMode() {
   const warn = confWarn();
   $('align-pill').classList.toggle('is-warn', warn);
   $('conf-warn').hidden = !warn;
-  $('conf-warn').title = confWarnTip();
+  $('conf-warn').title = confWarnTip() + ' Click for the modes.';
+  $('conf-warn').setAttribute('aria-label', confWarnTip());
+  $('conf-warn').setAttribute('aria-expanded', state.alignOpen ? 'true' : 'false');
   const run = report.alignment;
   btn.title = 'Align mode: ' + ALIGN_LABELS[state.align] + ' — ' + ALIGN_HINTS[state.align] +
     ' · drawn x' + a.scale.toFixed(3) + ' @(' + Math.round(a.offsetX) + ', ' + Math.round(a.offsetY) + ')' +
@@ -2275,6 +2280,7 @@ function wire() {
     else if (e.target.closest('#delta-dismiss')) dismissDelta();
   });
   $('align-mode').addEventListener('click', () => toggleAlignMenu());
+  $('conf-warn').addEventListener('click', () => toggleAlignMenu());
   $('align-lock').addEventListener('click', () => setLock(!state.lock));
   $('align-menu').addEventListener('click', (e) => {
     // The lockstep row (minimal layout) toggles in place; a mode closes the menu.

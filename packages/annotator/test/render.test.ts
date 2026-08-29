@@ -409,6 +409,17 @@ describe("renderReport", () => {
     expect(html).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
   })
 
+  /**
+   * The badge wore a help cursor and did nothing when clicked — the cursor promising an
+   * explanation the click never delivered. It opens the align menu, where the Anchors row states
+   * the confidence and the other modes are the remedy.
+   */
+  it("makes the low-confidence badge a button that opens the align menu", () => {
+    expect(html).toContain('<button type="button" class="conf-warn" id="conf-warn" hidden')
+    expect(html).toContain("$('conf-warn').addEventListener('click', () => toggleAlignMenu());")
+    expect(html).toContain("$('conf-warn').setAttribute('aria-label', confWarnTip());")
+  })
+
   it("embeds the whole report — findings, suppressed, delta, alignment — as data", () => {
     const m = /<script type="application\/json" id="report-data">([\s\S]*?)<\/script>/.exec(html)
     expect(m).not.toBeNull()

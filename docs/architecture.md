@@ -365,7 +365,9 @@ with `make-demo-root.ts --now` before a measure.
   `difference` Highlight · `tonality` Dim · `flare` Strobe. Floating over the
   canvas: the **zoom pill** (`−` / mono `NN%` / `+` / `fit_screen`), the
   **align pill** (lock + mode + chevron, the amber `warning` treatment under
-  the 0.5 gate on Anchors only — the other modes are fixed geometry) with its
+  the 0.5 gate on Anchors only — the other modes are fixed geometry; the badge
+  is a BUTTON that opens the menu, since a help cursor over something inert is
+  a promise the click never keeps) with its
   dropdown (Anchors / Width / Top left / Top right, `check` on the active
   one), the **opacity pill** for Onion and Diff (one amount per blend,
   `labAmount`), and a top-centre slot shared by the **focus chip** ("Region
