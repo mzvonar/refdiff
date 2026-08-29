@@ -25,6 +25,8 @@ import {
   unionBoxes,
   worldLayerTransform,
   worldToDesign,
+  pinchOf,
+  pinchView,
   zoomAt,
 } from "../src/view-math.js"
 
@@ -350,6 +352,62 @@ describe("view operations", () => {
   it("zoomAt clamps to [min, max]", () => {
     expect(zoomAt({ z: 30, tx: 0, ty: 0 }, 10, 0, 0).z).toBe(40)
     expect(zoomAt({ z: 0.1, tx: 0, ty: 0 }, 0.01, 0, 0).z).toBe(0.05)
+  })
+
+  it("pinchOf needs two fingers and reads them relative to the pane", () => {
+    expect(pinchOf([{ x: 10, y: 10 }])).toBeNull()
+    const p = pinchOf(
+      [
+        { x: 100, y: 200 },
+        { x: 140, y: 230 },
+      ],
+      { x: 20, y: 50 },
+    )
+    expect(p).toEqual({ dist: 50, x: 100, y: 165 })
+  })
+
+  it("pinchOf ignores a third finger rather than giving up", () => {
+    // A palm or a third finger landing mid-gesture must not stop the zoom dead.
+    const two = pinchOf([
+      { x: 0, y: 0 },
+      { x: 30, y: 40 },
+    ])
+    const three = pinchOf([
+      { x: 0, y: 0 },
+      { x: 30, y: 40 },
+      { x: 500, y: 500 },
+    ])
+    expect(three).toEqual(two)
+  })
+
+  it("pinchView zooms by the change in span about the midpoint", () => {
+    const view = { z: 1, tx: 0, ty: 0 }
+    const prev = { dist: 100, x: 300, y: 200 }
+    const next = { dist: 200, x: 300, y: 200 }
+    const after = pinchView(view, prev, next)
+    expect(after.z).toBeCloseTo(2)
+    // the world point between the fingers stays under them
+    const before = screenToWorld(view, 300, 200)
+    const now = screenToWorld(after, 300, 200)
+    expect(now.x).toBeCloseTo(before.x)
+    expect(now.y).toBeCloseTo(before.y)
+  })
+
+  it("pinchView pans by the midpoint's travel as well as zooming", () => {
+    // Two fingers moving together with a constant span is a drag, not a no-op.
+    const after = pinchView({ z: 2, tx: 0, ty: 0 }, { dist: 80, x: 100, y: 100 }, { dist: 80, x: 140, y: 90 })
+    expect(after.z).toBeCloseTo(2)
+    expect(after.tx).toBeCloseTo(40)
+    expect(after.ty).toBeCloseTo(-10)
+  })
+
+  it("pinchView survives a zero span instead of poisoning the view with NaN", () => {
+    // Coalesced touches do report both fingers on one point; dist/0 killed the view for good.
+    const after = pinchView({ z: 1.5, tx: 10, ty: 20 }, { dist: 0, x: 50, y: 50 }, { dist: 0, x: 50, y: 50 })
+    expect(after).toEqual({ z: 1.5, tx: 10, ty: 20 })
+    const grown = pinchView({ z: 1, tx: 0, ty: 0 }, { dist: 0, x: 50, y: 50 }, { dist: 60, x: 50, y: 50 })
+    expect(Number.isFinite(grown.z)).toBe(true)
+    expect(grown.z).toBe(1)
   })
 
   it("focusView centres the box and never zooms below minZoom", () => {

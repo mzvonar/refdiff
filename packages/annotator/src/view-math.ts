@@ -370,6 +370,46 @@ export function panBy(view: View, dx: number, dy: number): View {
   return { z: view.z, tx: view.tx + dx, ty: view.ty + dy }
 }
 
+/** Two fingers, reduced to what a pinch is made of: their span and their midpoint, in pane px. */
+export interface Pinch {
+  dist: number
+  x: number
+  y: number
+}
+
+/**
+ * The pinch the currently tracked pointers describe, relative to a pane's top-left `origin`.
+ *
+ * Fingers past the first two are ignored rather than refused: a third finger landing mid-gesture
+ * must not stop the zoom dead, which is how a three-fingered grab used to read.
+ */
+export function pinchOf(
+  points: readonly { x: number; y: number }[],
+  origin: { x: number; y: number } = { x: 0, y: 0 },
+): Pinch | null {
+  if (points.length < 2) return null
+  const [a, b] = points as [{ x: number; y: number }, { x: number; y: number }]
+  return {
+    dist: Math.hypot(a.x - b.x, a.y - b.y),
+    x: (a.x + b.x) / 2 - origin.x,
+    y: (a.y + b.y) / 2 - origin.y,
+  }
+}
+
+/**
+ * The view after the fingers moved from `prev` to `next`: zoom by the change in span about the
+ * midpoint, then pan by the midpoint's own travel — a pinch is a zoom AND a drag, and dropping the
+ * second half makes the frame swim away from under the fingers.
+ *
+ * A zero span (both fingers reported on one point, which a coalesced touch does produce) would
+ * divide to Infinity and put NaN into the transform, killing the view for the rest of the session;
+ * it zooms by 1 instead.
+ */
+export function pinchView(view: View, prev: Pinch, next: Pinch): View {
+  const factor = prev.dist > 0 && next.dist > 0 ? next.dist / prev.dist : 1
+  return panBy(zoomAt(view, factor, next.x, next.y), next.x - prev.x, next.y - prev.y)
+}
+
 /**
  * Centre `box` in the visible part of the pane (see paneInsets) at a zoom that
  * shows it with context: at least `minZoom`, at most what fits the box into a

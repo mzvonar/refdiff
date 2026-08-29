@@ -144,3 +144,48 @@ export const aggregateCount = (listed: readonly { instances?: number }[]): numbe
   listed.filter((f) => (f.instances ?? 1) > 1).length
 
 export const SUPPRESSED_LABEL = (n: number): string => n + " suppressed by policy rules"
+
+/**
+ * A remembered dismissal of the delta strip — the banner over the canvas that states this run
+ * against the previous one, and shouts when a fixed finding is back (`delta.regressions`).
+ *
+ * The × was "for this run" and lived in memory only, so a reload put the banner straight back and
+ * the reader dismissed it again, and again. Persisting it (per pair, `vc-delta-dismissed:<pair>`
+ * in localStorage) needs an expiry that is not a clock: it is the CONTENT that must expire the
+ * rule, so the record names the regressions that were ON SCREEN when it was dismissed. A
+ * regression the reader has never seen is not covered by it and brings the strip back — the one
+ * thing that must not be missed (docs, gap 15) always breaks through, while the +introduced /
+ * −resolved counts, which are in findings.json and the run's own output, stay put once waved away.
+ */
+export interface DeltaDismissal {
+  version: 1
+  /** `ComparisonReport.createdAt` of the run whose strip was dismissed — provenance, not the test. */
+  run: string
+  /** Run-stable identity (`Finding.key`, else the id) of every regression that strip showed. */
+  regKeys: string[]
+  at: string
+}
+
+/** A stored record, or null for anything that is not one — a bad record must never hide a strip. */
+export function parseDeltaDismissal(raw: unknown): DeltaDismissal | null {
+  if (!raw || typeof raw !== "object") return null
+  const r = raw as Record<string, unknown>
+  if (r.version !== 1 || typeof r.run !== "string") return null
+  if (!Array.isArray(r.regKeys) || r.regKeys.some((k) => typeof k !== "string")) return null
+  return { version: 1, run: r.run, regKeys: r.regKeys as string[], at: typeof r.at === "string" ? r.at : "" }
+}
+
+/**
+ * Does `stored` still cover a strip whose regressions are `regKeys`?
+ *
+ * Every regression now on the strip must be one the dismissal already saw. No regressions at all
+ * (a delta of plain counts) is covered by any dismissal — that is what "dismissed" means for
+ * information the reader has judged uninteresting. One new key and the strip is back, whole.
+ */
+export function deltaStripDismissed(
+  stored: DeltaDismissal | null,
+  regKeys: readonly string[],
+): boolean {
+  if (!stored) return false
+  return regKeys.every((k) => stored.regKeys.includes(k))
+}

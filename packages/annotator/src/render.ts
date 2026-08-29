@@ -533,7 +533,9 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .tool.on { color:#fff; background:var(--acc); }
 /* The minimal layout's strip carries the fit button after a divider; the other layouts keep the zoom pill. */
 .tool-sep, .tool.fit-m { display:none; }
-.panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); }
+/* touch-action on the WHOLE canvas area, not just the panes: the floating pills sit over it as
+   siblings, and a pinch finger landing on one must not hand the gesture to the browser. */
+.panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); touch-action:none; }
 .pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }
 .pane + .pane { border-left:1px solid var(--line); }
 .pane.dragging { cursor:grabbing; }
@@ -1158,7 +1160,10 @@ function paneSize() { const r = visiblePane().getBoundingClientRect(); return { 
 function paneInsetsNow() {
   const box = (r) => ({ x: r.left, y: r.top, w: r.width, h: r.height });
   const pane = box(visiblePane().getBoundingClientRect());
-  return paneInsets(pane, [$('side'), $('tools')].map((el) => box(el.getBoundingClientRect())));
+  // The view panel counts too now that it stays open across canvas gestures: it is anchored across
+  // the top of the pane, so a fit that ignored it would centre the frame half under it. Hidden it
+  // measures 0x0 and paneInsets skips it.
+  return paneInsets(pane, [$('side'), $('tools'), $('view-panel')].map((el) => box(el.getBoundingClientRect())));
 }
 function applyLayout() {
   document.body.classList.toggle('single', single());
@@ -1388,10 +1393,31 @@ function renderTopbar() {
 // A regression is a finding an earlier run had fixed and this one brought back — the loop's stop
 // signal, which the fix skill halts on. The strip is the one place it cannot be missed (gap 15).
 function regressionIds() { return new Set(report.delta && report.delta.regressions ? report.delta.regressions : []); }
+// The × is remembered per pair (localStorage, like the focus fallback): it used to mean "for this
+// run" and lived in memory, so a reload put the banner straight back and it was dismissed again,
+// and again. What expires the record is CONTENT, not a clock — it names the regressions that were
+// on screen, and one the reader has never seen brings the whole strip back (gap 15). See
+// deltaStripDismissed in rail.ts.
+const DELTA_DISMISS_KEY = 'vc-delta-dismissed:';
+// Ids are renumbered every run; Finding.key is the run-stable identity. A report old enough to
+// have no key falls back to the id, which re-shows the strip more often, never less.
+function regressionKeys() {
+  return Array.from(regressionIds()).map((id) => { const f = byId.get(id); return (f && f.key) || id; }).sort();
+}
+function readDeltaDismissal() {
+  try { return parseDeltaDismissal(JSON.parse(localStorage.getItem(DELTA_DISMISS_KEY + report.pair))); } catch (e) { return null; }
+}
+function dismissDelta() {
+  state.deltaDismissed = true;
+  const rec = { version: 1, run: report.createdAt, regKeys: regressionKeys(), at: nowIso() };
+  try { localStorage.setItem(DELTA_DISMISS_KEY + report.pair, JSON.stringify(rec)); } catch (e) { /* private mode: this session only */ }
+  renderDeltaStrip();
+}
 function renderDeltaStrip() {
   const d = report.delta, el = $('delta-strip');
   const regs = regressionIds().size;
-  const show = !!d && !state.deltaDismissed && (d.introduced.length > 0 || d.resolved.length > 0 || regs > 0);
+  const dismissed = state.deltaDismissed || deltaStripDismissed(readDeltaDismissal(), regressionKeys());
+  const show = !!d && !dismissed && (d.introduced.length > 0 || d.resolved.length > 0 || regs > 0);
   el.hidden = !show;
   if (!show) { el.innerHTML = ''; return; }
   el.classList.toggle('reg', regs > 0);
@@ -1407,7 +1433,7 @@ function renderDeltaStrip() {
       : '') +
     // Closable in BOTH states (the comp hides the × while a regression is in it;
     // decided otherwise 2026-08-28 — the reader has seen it, the rail keeps the tag).
-    '<button type="button" class="dismiss" id="delta-dismiss" title="Dismiss for this run"><span class="msi" aria-hidden="true">close</span></button>';
+    '<button type="button" class="dismiss" id="delta-dismiss" title="Dismiss — stays closed until a new regression"><span class="msi" aria-hidden="true">close</span></button>';
 }
 function setRegOnly(on) {
   state.regOnly = on; state.selected = null;
@@ -1922,6 +1948,141 @@ function applyWipe() {
 }
 
 // ---- interaction --------------------------------------------------------
+// Pan and pinch are tracked ONCE for the whole canvas, not once per pane, because a pinch is two
+// fingers ANYWHERE over it and the second one habitually lands on something that is not bare
+// canvas. Wired per pane, such a finger was dropped: a finding badge returned early so that a tap
+// could still select it, and the floating chrome (the zoom and align pills, the FABs, the focus
+// chip) are SIBLINGS of the pane, so a finger there never reached its listener at all. Either way
+// only one pointer was ever tracked and the pinch silently degraded into a one-finger pan — which
+// is what 'the pinch is unreliable on mobile' was.
+//
+// So: every finger over the canvas counts toward a pinch, and only a finger on bare canvas may PAN
+// on its own — a tap on a badge still selects it, a tap on a pill still presses it.
+const gest = {
+  pts: new Map(),     // pointerId -> { x, y, side } for every pointer down over the canvas
+  pinch: null,        // { side, at } while two or more are down
+  pan: null,          // { id, side, pane } while one finger drags the canvas
+  swallowClick: false, // the click that ends a gesture that MOVED is not a tap on what it lands on
+};
+// How far from where it started a pointer may stray and still count as a tap (screen px, Manhattan
+// from the start point rather than path length, so a wobbly hold is still a tap).
+const PAN_TAP_PX = 8;
+function gestPaneOfEvent(e) { return (e.target.closest && e.target.closest('.pane')) || null; }
+// The pane a pointer belongs to survives the pointer leaving it (captured drags, a pinch whose
+// fingers wander over the chrome).
+function gestPaneOf(e) {
+  const p = gest.pts.get(e.pointerId);
+  return p && p.side ? panes[p.side] : gestPaneOfEvent(e);
+}
+// Which pane a pinch drives: the first finger that landed on one, else the pane on screen (two
+// fingers can both be on the pills).
+function gestSide() {
+  for (const p of gest.pts.values()) if (p.side) return p.side;
+  return visiblePane().dataset.side;
+}
+function gestPinchAt(side) {
+  const r = panes[side].getBoundingClientRect();
+  return pinchOf(Array.from(gest.pts.values()), { x: r.left, y: r.top });
+}
+// Two fingers mean 'navigate', whatever the first one had begun: a half-drawn region, a half-moved
+// handle or a half-dragged wipe would otherwise commit at the instant the pinch started.
+function gestCancelDrafts() {
+  if (gest.pan) { gest.pan.pane.classList.remove('dragging'); gest.pan = null; }
+  if (focusDrag) { focusDrag = null; persistFocus(); }
+  if (focusBand) { focusBand = null; renderFocusBand(); }
+  if (ann.band) { ann.band = null; renderAnnMarks(); }
+  wiping = null;
+}
+// A gesture that moved must not also select the badge it happened to start on — but a pinch often
+// ends in no click at all, so the flag cannot be left to a click to clear: the next pointerdown
+// clears it too, and a stale one can never reach a later tap.
+function gestTookTheClick() {
+  if (!gest.swallowClick) return false;
+  gest.swallowClick = false;
+  return true;
+}
+function wireCanvasGestures() {
+  const host = $('panes');
+  // Capture phase: the wipe handle stops pointerdown from propagating, and that finger still counts.
+  host.addEventListener('pointerdown', (e) => {
+    const pane = gestPaneOfEvent(e);
+    if (!gest.pts.size) gest.swallowClick = false;   // a fresh gesture: nothing owed from the last one
+    gest.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, side: pane ? pane.dataset.side : null });
+    if (gest.pts.size >= 2) {
+      gestCancelDrafts();
+      const side = gestSide();
+      gest.pinch = { side: side, at: gestPinchAt(side) };
+      return;
+    }
+    if (!pane) return;   // a finger on the chrome over the canvas: it may join a pinch, nothing else
+    // Focus and annotate modes both own the drag; they beat finding marks, because a backdrop
+    // finding can cover the whole pane and would swallow the gesture.
+    const grabbed = focusHandleAt(pane, e);
+    if (grabbed) { focusEditDown(pane, e, grabbed); return; }
+    if (state.focusing) { focusPointerDown(pane, e); return; }
+    if (ann.mode) { annPointerDown(pane, e); return; }
+    if (e.target.closest && e.target.closest('.wipe')) return;   // the wipe handle owns its drag
+    // A finger landing on a finding badge or a comment still DRAGS the canvas: a mark can sit
+    // exactly where you meant to grab, and 'the canvas will not move today' is not something a
+    // person attributes to the badge under their thumb. What the mark keeps is the TAP — the click
+    // below selects it only while the gesture stayed put (gest.swallowClick).
+    const onMark = !!(e.target.closest && (e.target.closest('.vmark[data-id]') || e.target.closest('[data-ann]')));
+    // Capturing the pointer would move the click off the mark and lose the tap, so a mark-started
+    // drag captures LATE, once it is unambiguously a drag (touch has its own implicit capture and
+    // needs none of this; a mouse leaving the canvas mid-drag does).
+    if (!onMark) pane.setPointerCapture(e.pointerId);
+    gest.pan = { id: e.pointerId, side: pane.dataset.side, pane: pane, sx: e.clientX, sy: e.clientY, moved: 0, captured: !onMark };
+    pane.classList.add('dragging');
+  }, true);
+  host.addEventListener('pointermove', (e) => {
+    const p = gest.pts.get(e.pointerId);
+    const dx = p ? e.clientX - p.x : 0, dy = p ? e.clientY - p.y : 0;
+    if (p) { p.x = e.clientX; p.y = e.clientY; }
+    if (gest.pinch) {
+      const at = gestPinchAt(gest.pinch.side);
+      if (!at) return;
+      setViewOf(gest.pinch.side, pinchView(viewOf(gest.pinch.side), gest.pinch.at, at));
+      gest.pinch.at = at;
+      state.userMoved = true; applyView();
+      return;
+    }
+    const pane = gestPaneOf(e);
+    if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditMove(pane, e); return; }
+    if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerMove(pane, e); return; }
+    if (ann.band && ann.band.pointerId === e.pointerId) { annPointerMove(pane, e); return; }
+    if (!gest.pan || gest.pan.id !== e.pointerId) return;
+    gest.pan.moved = Math.max(gest.pan.moved, Math.abs(e.clientX - gest.pan.sx) + Math.abs(e.clientY - gest.pan.sy));
+    if (!gest.pan.captured && gest.pan.moved > PAN_TAP_PX) { gest.pan.pane.setPointerCapture(e.pointerId); gest.pan.captured = true; }
+    setViewOf(gest.pan.side, panBy(viewOf(gest.pan.side), dx, dy));
+    state.userMoved = true; applyView();
+  }, true);
+  const up = (e) => {
+    const pane = gestPaneOf(e);
+    const pinching = !!gest.pinch;
+    gest.pts.delete(e.pointerId);
+    if (gest.pan && gest.pan.id === e.pointerId) {
+      gest.pan.pane.classList.remove('dragging');
+      // A drag that ended over a mark is not a tap on it.
+      if (gest.pan.moved > PAN_TAP_PX) gest.swallowClick = true;
+      gest.pan = null;
+    }
+    if (pinching) {
+      // The finger left over does not silently become a pan: the frame would jump under it.
+      if (gest.pts.size >= 2) gest.pinch = { side: gest.pinch.side, at: gestPinchAt(gest.pinch.side) };
+      else gest.pinch = null;
+      gest.swallowClick = true;
+      return;
+    }
+    if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditUp(); return; }
+    if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerUp(pane, e); return; }
+    if (ann.band && ann.band.pointerId === e.pointerId) { annPointerUp(pane, e); return; }
+  };
+  host.addEventListener('pointerup', up, true);
+  host.addEventListener('pointercancel', up, true);
+}
+// The wipe handle owns its drag; the pane under it must not pan. Module scope so a pinch that
+// starts on the handle can drop it (gestCancelDrafts).
+let wiping = null;
 function wire() {
   for (const pane of Object.values(panes)) {
     const side = pane.dataset.side;
@@ -1931,51 +2092,16 @@ function wire() {
       setViewOf(side, zoomAt(viewOf(side), Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top));
       state.userMoved = true; applyView();
     }, { passive: false });
-    const pointers = new Map();
-    let last = null;
-    pane.addEventListener('pointerdown', (e) => {
-      // Focus and annotate modes both own the drag; they beat finding marks, because a backdrop
-      // finding can cover the whole pane and would swallow the gesture.
-      const grabbed = focusHandleAt(pane, e);
-      if (grabbed) { focusEditDown(pane, e, grabbed); return; }
-      if (state.focusing) { focusPointerDown(pane, e); return; }
-      if (ann.mode) { annPointerDown(pane, e); return; }
-      if (e.target.closest && (e.target.closest('.vmark[data-id]') || e.target.closest('[data-ann]'))) return;
-      pane.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); pane.classList.add('dragging'); last = null;
-    });
-    pane.addEventListener('pointermove', (e) => {
-      if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditMove(pane, e); return; }
-      if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerMove(pane, e); return; }
-      if (ann.band && ann.band.pointerId === e.pointerId) { annPointerMove(pane, e); return; }
-      if (!pointers.has(e.pointerId)) return;
-      const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pointers.size === 1) { setViewOf(side, panBy(viewOf(side), e.clientX - prev.x, e.clientY - prev.y)); }
-      else if (pointers.size === 2) {
-        const [a, b] = Array.from(pointers.values());
-        const dist = Math.hypot(a.x - b.x, a.y - b.y); const r = pane.getBoundingClientRect();
-        const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
-        if (last) { setViewOf(side, panBy(zoomAt(viewOf(side), dist / last.dist, mid.x, mid.y), mid.x - last.mid.x, mid.y - last.mid.y)); }
-        last = { dist, mid };
-      }
-      state.userMoved = true; applyView();
-    });
-    const up = (e) => {
-      if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditUp(); return; }
-      if (focusBand && focusBand.pointerId === e.pointerId) { focusPointerUp(pane, e); return; }
-      if (ann.band && ann.band.pointerId === e.pointerId) { annPointerUp(pane, e); return; }
-      pointers.delete(e.pointerId); if (!pointers.size) pane.classList.remove('dragging'); last = null;
-    };
-    pane.addEventListener('pointerup', up); pane.addEventListener('pointercancel', up);
     pane.addEventListener('dblclick', (e) => { if (!ann.mode) fit(); });
     pane.addEventListener('click', (e) => {
+      if (gestTookTheClick()) return;                               // the click that ended a pan or a pinch
       if (ann.suppressClick) { ann.suppressClick = false; return; } // the click that ended a draft gesture
       const a = e.target.closest && e.target.closest('[data-ann]'); if (a) { selectAnn(a.dataset.ann, false); return; }
       const r = e.target.closest && e.target.closest('.vmark[data-id]'); if (r) select(r.dataset.id, false);
     });
   }
-  // The wipe handle owns its drag; the pane under it must not pan.
+  wireCanvasGestures();
   const wipe = $('wipe');
-  let wiping = null;
   wipe.addEventListener('pointerdown', (e) => { e.stopPropagation(); wipe.setPointerCapture(e.pointerId); wiping = e.pointerId; });
   wipe.addEventListener('pointermove', (e) => {
     if (wiping !== e.pointerId) return;
@@ -1991,15 +2117,19 @@ function wire() {
   $('seg-layout').addEventListener('click', (e) => { const b = e.target.closest('[data-layout]'); if (b) setLayout(b.dataset.layout === 'full'); });
   for (const id of ['seg-variant', 'seg-variant-m']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-lab]'); if (b) setLab(b.dataset.lab); });
   for (const id of ['seg-layer', 'seg-layer-m', 'seg-layer-p']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer); });
-  // The phone's settings popover and the minimal layout's view panel; a tap anywhere else closes them.
+  // The phone's settings popover closes on a tap anywhere else; the minimal layout's view panel
+  // does NOT — see the pointerdown handler below.
   $('settings-toggle').addEventListener('click', () => setSettingsOpen(!state.settingsOpen));
   $('seg-mlayout').addEventListener('click', (e) => { const b = e.target.closest('[data-mlayout]'); if (b) setPhoneLayout(b.dataset.mlayout); });
   $('seg-theme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (b) { applyTheme(b.dataset.theme); saveTheme(); } });
   $('view-toggle').addEventListener('click', () => setViewOpen(!state.viewOpen));
   document.addEventListener('pointerdown', (e) => {
     const inside = (sel) => e.target.closest && e.target.closest(sel);
+    // The settings popover is a MENU: you pick one thing and it is done, so a tap elsewhere closes
+    // it. The view panel is a set of switches you work the canvas THROUGH (Compare, Show) — closing
+    // it on the first pan or pinch meant re-opening it for every single change, so it stays until
+    // the tune button (or Escape, or leaving the minimal layout) puts it away.
     if (state.settingsOpen && !inside('.settings-wrap')) setSettingsOpen(false);
-    if (state.viewOpen && !inside('#view-panel') && !inside('#view-toggle')) setViewOpen(false);
   });
   $('fit-m').addEventListener('click', fit);
   $('pane-swap').addEventListener('click', () => setSide(state.side === 'design' ? 'impl' : 'design'));
@@ -2012,7 +2142,7 @@ function wire() {
   $('focus-clear').addEventListener('click', () => { setFocus(null); setFocusing(false); });
   $('delta-strip').addEventListener('click', (e) => {
     if (e.target.closest('#reg-review')) setRegOnly(!state.regOnly);
-    else if (e.target.closest('#delta-dismiss')) { state.deltaDismissed = true; renderDeltaStrip(); }
+    else if (e.target.closest('#delta-dismiss')) dismissDelta();
   });
   $('align-mode').addEventListener('click', () => toggleAlignMenu());
   $('align-lock').addEventListener('click', () => setLock(!state.lock));

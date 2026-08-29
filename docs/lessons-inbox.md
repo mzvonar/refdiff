@@ -165,3 +165,82 @@ it", enumerate the OTHER states that mode can be in — here, four overlay
 variants — and check the control against each. Route: discard, or one line in
 `docs/architecture.md` "Annotator" (the lock's rationale already states it).
 On process: decide.
+
+## 2026-08-29 — a touch gesture belongs to the CANVAS, not to the element under the finger (session 17)
+
+"The pinch is unreliable on mobile — I think the problem is when pinching over
+another clickable area like findings", and then: "moving the canvas has the
+same symptom — when I start dragging from a point where a finding or a comment
+is, it doesn't move." Both were the same defect. Pan/pinch were wired on each
+`.pane`, and two things over that pane never reached it: a finding badge, where
+`pointerdown` returned early so a TAP could still select it, and the floating
+pills (zoom, align, the FABs, the focus chip) which are SIBLINGS of the pane in
+`#panes`. Either way only one pointer was ever tracked; the pinch silently
+degraded into a one-finger pan and a drag from a badge did nothing at all.
+
+The rule: a viewport gesture is a property of the CANVAS AREA, so track every
+pointer on the container in the capture phase (nothing beneath can swallow a
+finger, `stopPropagation` included) and decide per pointer what it may do —
+here, anything may join a pinch, only bare canvas may start a pan on its own,
+and a mark may drag as well but keeps its tap. Two mechanics that are easy to
+get wrong: capturing a mark's pointer at `pointerdown` moves the `click` off
+the mark and loses the tap (capture LATE, once it is unambiguously a drag), and
+the "this gesture moved, so swallow its click" flag must be cleared by the next
+`pointerdown` as well as by the click — a pinch usually ends in no click, and a
+time-based guard ate a later double-click-to-fit instead.
+
+Verification worth repeating: the symptom is mobile-only and unreachable from
+unit tests, so it was driven with real touch through CDP
+(`Input.dispatchTouchEvent`) against the emitted `report.html`, run against the
+build BEFORE the fix as well — three cases failed there and passed after, while
+tap-to-select and the plain pan passed in both. Each case reloaded first and
+asserted `elementFromPoint` under the finger before acting: the first probe
+"passed" on the old build only because an earlier zoom had moved the badge out
+from under the coordinates.
+
+Route: `docs/architecture.md` "Annotator" (a bullet is already there) + maybe a
+CLAUDE.md line on proving a pointer-level fix against the pre-fix build.
+
+## 2026-08-29 — a panel of switches is not a menu: don't dismiss it on outside interaction (session 17)
+
+"Don't close the top panel in minimal mode on interaction with canvas so I can
+let it be opened if I want. It should close only upon the button click." The
+minimal layout's view panel (Compare / Show) was wired like the settings
+popover — a document-level `pointerdown` outside it closed it. But the two are
+different animals: a MENU is picked from once and dismissed, while these are
+switches you work the canvas THROUGH (change the overlay, pan, look, change it
+again), so every pan or pinch closed it and each change cost a re-open.
+
+Rule: before giving a panel light-dismiss, ask whether the user acts on the
+canvas BETWEEN two uses of it. If yes it is a mode surface, not a menu — close
+it only on its own control (plus Escape / leaving the layout). Second-order
+effect worth remembering: a panel that now persists over the canvas is
+edge-anchored chrome, so it has to join the `paneInsets` list or Fit centres
+the frame half underneath it.
+
+Route: `docs/architecture.md` "Annotator" (a sentence is already there); maybe
+a CLAUDE.md/skill line on the menu-vs-mode-surface distinction if it recurs.
+
+## 2026-08-29 — a persisted dismissal must expire on CONTENT, not on a clock or a run id (session 17)
+
+Asked to persist the delta strip's × ("so when closed it's shown only next time
+there is a regression"). The tempting keys are all wrong in the same way: a
+timestamp expires while nothing changed, and `createdAt` (the run) re-opens the
+banner on every recapture, which is the nagging that prompted the ask. The
+record instead names the REGRESSIONS that were on screen when it was dismissed
+(`Finding.key`, the run-stable identity — ids are renumbered every run), and
+the predicate is "every regression showing now is one this dismissal already
+saw". A regression the reader has never seen re-opens the strip whole; a delta
+of plain counts stays waved away. Same shape as the repo's ignore-policy rule —
+name the content being excused, not a position or a run — and it earns the same
+property: the rule cannot outlive what it excuses.
+
+Two guardrails that came with it: a record that does not parse SHOWS the strip
+(a corrupt dismissal must never hide a regression), and the dismissal hides a
+banner only — the regression tag, the Review filter and findings.json are
+untouched, which is what makes persisting it acceptable under "suppression is
+visible or it does not happen".
+
+Route: `docs/architecture.md` "Annotator" (already written up there) — and a
+candidate CLAUDE.md line, since the content-shaped-rule principle now has a
+second instance outside the ignore policy.

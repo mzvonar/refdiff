@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { aggregateCount, formatValue, instanceChipLabel, propRows, railStatusLine, railSummary, READ_ONLY_STATUS, saveErrorText, SUPPRESSED_LABEL } from "../src/rail.js"
+import { aggregateCount, formatValue, instanceChipLabel, propRows, railStatusLine, railSummary, READ_ONLY_STATUS, saveErrorText, SUPPRESSED_LABEL, parseDeltaDismissal, deltaStripDismissed } from "../src/rail.js"
 
 describe("propRows — the comps' `prop expected → actual` line from a finding's values", () => {
   it("prints one row per differing key, in CSS spelling, with px on the px keys", () => {
@@ -67,3 +67,36 @@ describe("railStatusLine / saveErrorText — a read-only server says so on the f
   })
 })
 
+
+describe("the delta strip's remembered dismissal", () => {
+  const rec = { version: 1, run: "2026-08-29T07:00:00.000Z", regKeys: ["color|Total"], at: "2026-08-29T07:01:00.000Z" }
+
+  it("no record means the strip shows", () => {
+    expect(deltaStripDismissed(null, ["color|Total"])).toBe(false)
+  })
+
+  it("stays dismissed while the same regression is the only one", () => {
+    expect(deltaStripDismissed(parseDeltaDismissal(rec), ["color|Total"])).toBe(true)
+  })
+
+  it("comes back for a regression the dismissal never saw", () => {
+    // The point of the strip (gap 15): a fix undone must not be silently hidden by an older ×.
+    expect(deltaStripDismissed(parseDeltaDismissal(rec), ["color|Total", "size|Row"])).toBe(false)
+  })
+
+  it("stays dismissed for a delta of plain counts", () => {
+    // "Show it again only next time there is a regression" — +introduced / −resolved do not re-open it.
+    expect(deltaStripDismissed(parseDeltaDismissal(rec), [])).toBe(true)
+  })
+
+  it("refuses a record it cannot trust rather than hiding the strip", () => {
+    for (const bad of [null, undefined, 42, "{}", {}, { version: 2, run: "x", regKeys: [] }, { version: 1, run: 1, regKeys: [] }, { version: 1, run: "x", regKeys: "color" }, { version: 1, run: "x", regKeys: [1] }]) {
+      expect(parseDeltaDismissal(bad)).toBeNull()
+      expect(deltaStripDismissed(parseDeltaDismissal(bad), ["color|Total"])).toBe(false)
+    }
+  })
+
+  it("keeps the run it was dismissed on, as provenance", () => {
+    expect(parseDeltaDismissal(rec)?.run).toBe("2026-08-29T07:00:00.000Z")
+  })
+})

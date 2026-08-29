@@ -146,7 +146,9 @@ describe("renderReport", () => {
   it("Fit centres in the visible canvas — the phone sheet is an inset, and the phone hides the highlight count", () => {
     // Fit measured the whole pane and centred the frame under the phone's bottom sheet (2026-08-28).
     expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
-    expect(html).toContain("paneInsets(pane, [$('side'), $('tools')].map(")
+    // The minimal layout's view panel joined them: it stays open across canvas gestures now, so a
+    // fit that ignored it would centre the frame half under it (2026-08-29).
+    expect(html).toContain("paneInsets(pane, [$('side'), $('tools'), $('view-panel')].map(")
     // Focusing a finding centres it in the same visible area (both call sites).
     expect(html.split(", paneSize(), state.view, 1, paneInsetsNow()))").length).toBe(3)
     // The sheet animates its height: re-fit when it has settled, only if the reader has not moved the view.

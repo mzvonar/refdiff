@@ -324,8 +324,17 @@ with `make-demo-root.ts --now` before a measure.
   impossible to miss): mono run label, `+N introduced` / `−M resolved`; on a
   regression the red tint + 3px edge, "N regressions · fixed earlier, back
   again — fix plan halted" and **Review**, which narrows the list to
-  `delta.regressions`; a × dismisses it for the run in BOTH states (the comp
-  hides the × while a regression shows; decided otherwise 2026-08-28).
+  `delta.regressions`; a × dismisses it in BOTH states (the comp hides the ×
+  while a regression shows; decided otherwise 2026-08-28). **The dismissal
+  persists** per pair (`vc-delta-dismissed:<pair>` in localStorage,
+  2026-08-29): it used to mean "for this run" and live in memory, so every
+  reload put the banner back. What expires it is CONTENT, not a clock — the
+  record names the regressions that were on screen (`Finding.key`, the
+  run-stable identity), and one the reader has never seen brings the whole
+  strip back, while a delta of plain counts stays waved away. A record that
+  does not parse shows the strip (`parseDeltaDismissal` /
+  `deltaStripDismissed` in `rail.ts`, unit-tested). It hides a BANNER only:
+  the regression tag, the Review filter and `findings.json` are untouched.
 - **The lockstep lock is in every view** (2026-08-29, after briefly hiding
   it outside split): an overlay draws the design ONTO the impl even with one
   pane, so unlocking or changing the anchor mode is exactly the fix for a
@@ -406,7 +415,13 @@ with `make-demo-root.ts --now` before a measure.
   the Design / Impl SWAP and the rail button (count badge) in one bottom row,
   makes the align control icon-only (a "!" badge for the warning, its
   lockstep row in the menu) and the rail a 58% sheet that is off screen
-  while closed; fit margin 16 (the default's 24).
+  while closed; fit margin 16 (the default's 24). **The view panel closes
+  only on its own button** (or Escape, or leaving the layout) — not on a tap
+  outside it, unlike the settings popover (2026-08-29): its switches are
+  worked THROUGH the canvas, so dismissing it on the first pan or pinch meant
+  re-opening it for every change. It is edge-anchored across the top of the
+  pane and therefore counts as a `paneInsets` inset while open, so Fit does
+  not centre the frame under it.
 - **The icon font is a DERIVED subset.** `assets/fonts/material-symbols-
   outlined.woff2` holds exactly the glyphs the comps and the app use
   (the generated `src/icon-names.ts`, 93); a glyph outside it renders as its
@@ -427,8 +442,22 @@ with `make-demo-root.ts --now` before a measure.
   lock, layer, members, suppressed, single/side, move, triaged, rail, diff,
   dim, strobe, lab + amount, theme): a preference, not per-pair state, so it
   follows you from pair to pair. The chrome never zooms (`user-scalable=no`,
-  `touch-action:manipulation`, `gesturestart` refused for iOS); the panes run
-  their own pan/pinch under `touch-action:none`.
+  `touch-action:manipulation`, `gesturestart` refused for iOS); the canvas
+  runs its own pan/pinch under `touch-action:none`.
+- **Canvas gestures are tracked on the canvas CONTAINER, not per pane**
+  (2026-08-29). A pinch is two fingers ANYWHERE over the canvas, and the
+  second one habitually lands on something that is not bare canvas: a finding
+  badge (which returned early so a tap could still select it) or one of the
+  floating pills, which are SIBLINGS of the pane and never reached its
+  listener at all. Either way one pointer was tracked, the pinch degraded
+  into a one-finger pan, and a drag that began on a badge did nothing —
+  read as "the pinch is unreliable on mobile". So `#panes` tracks every
+  pointer in the capture phase; a mark or a pill can join a pinch and a drag
+  from a badge pans, while what a mark keeps is the TAP: it captures the
+  pointer late (capturing at pointerdown moves the `click` off the mark) and
+  a gesture that strayed more than `PAN_TAP_PX` swallows its own click. The
+  gesture arithmetic (`pinchOf` / `pinchView`, zero-span guarded) is pure and
+  unit-tested in `view-math.ts`.
 
 ### The view model — what does not change with the chrome
 

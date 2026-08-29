@@ -546,7 +546,9 @@ label, `+N introduced` / `−M resolved`, and on a regression the red tint +
 **Review** (narrows the list to `delta.regressions`) and dismiss `close` —
 in BOTH states since 2026-08-28 (the comp hides the × while a regression is
 in it; decided otherwise: the strip stops the reader once, the rail keeps the
-tag; the app's × is `accepted` by content in the manifest). The 44px **tool strip** (`pan_tool` · `center_focus_strong`
+tag; the app's × is `accepted` by content in the manifest). Since 2026-08-29
+the × is REMEMBERED per pair in localStorage and expires on content — a
+regression the dismissal never saw re-opens the strip (architecture.md). The 44px **tool strip** (`pan_tool` · `center_focus_strong`
 · `add_comment` · `difference` = Highlight · `tonality` = Dim · `flare` =
 Strobe; 32px, radius 7, `--acc` fill; floating pill bottom-left on the
 phone) — gaps 16 and 17 turned out RESOLVED IN THE COMP (`toolDefs` carries
@@ -1117,7 +1119,9 @@ lock row in `renderAlignMenu()` when `minimalOn()`; `body.layout-minimal`
 like the theme (`savePref`), preset for one load by **`?layout=minimal|
 default`** on the page URL (how the pair is captured; a shareable link;
 not a rendered element, so item 16's rule holds); Escape and an outside
-tap close the popover / the panel. The manifest pair
+tap close the popover — the PANEL closes on `#view-toggle` or Escape only
+(2026-08-29: an outside tap dismissed it on the first canvas gesture).
+The manifest pair
 `refdiff-compare-mobile-minimal`: `design.scope: ".cc-theme-dark"` picks
 the phone node out of the showcase canvas (the fluid outer frame reloads at
 390×844 first, so the phone lands at x 0), `MINIMAL_IGNORE` =
