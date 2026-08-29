@@ -27,5 +27,13 @@ port_base = 7378
 # this node's Tailscale IP (derived at start), never 0.0.0.0 — the devbox has a
 # public interface and no firewall. Tailscale Serve would proxy 127.0.0.1:<port>
 # instead, but it is not enabled on the tailnet. URL: http://<node>.<magicdns>:<PORT>/
-cmd = "sh -c 'exec refdiff-annotator fixtures/demo-root --serve --read-only --host \"$(tailscale ip -4)\" --port ${PORT:-7390}'"
+#
+# Dev mode: run the dist entry under `node --watch` instead of the linked
+# `refdiff-annotator` bin, so an edit to packages/*/src goes tsc --watch (the
+# dev-watch service) -> dist -> process restart, and the next page load on the
+# phone is the new code. The served app already re-reads findings.json per
+# request; only the code needed the restart. The [annotator] instance above
+# deliberately does NOT watch: it is the impl under measurement and must not
+# restart under a capture.
+cmd = "sh -c 'exec node --watch --watch-path=packages/annotator/dist --watch-path=packages/core/dist packages/annotator/dist/cli.js fixtures/demo-root --serve --read-only --host \"$(tailscale ip -4)\" --port ${PORT:-7390}'"
 port_base = 7390
