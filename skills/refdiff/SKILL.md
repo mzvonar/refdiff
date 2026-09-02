@@ -1,6 +1,6 @@
 ---
 name: refdiff
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design — and when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots; every claim is a number from findings.json.
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design. It covers a surface that does NOT EXIST YET as much as a drifted one — "implement this comp", "build this design", "a new .dc.html / Figma frame landed", "implement the new layout / screen": stub the surface, register its pair, and let the delta drive it (§0). Also when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots and never hand-derive a layout by reading the comp's source; every claim is a number from findings.json.
 ---
 
 # refdiff — the bounded fix loop over its reports
@@ -140,6 +140,34 @@ while iteration < 5:
   diminishing returns?               → stop (report)
   iteration += 1
 ```
+
+### 0. A surface that does not exist yet
+
+The loop is the same for a NEW comp; only the first iteration looks different.
+There is nothing to measure yet, and that is a reason to STUB, never a reason
+to skip the harness and build the thing by reading the comp's markup. Reading
+`.dc.html` source to derive a layout is the failure this tool exists to remove:
+you become the comparator, and nothing you produce carries a number.
+
+1. **Stub the surface** so the route renders SOMETHING deterministic — the
+   nearest existing variant is ideal ("the new layout is the minimal one plus a
+   toolbar" → alias the minimal layout and add the new class). A stub that
+   renders the wrong thing is fine; a route that 404s is not, because
+   `compare` then reports a capture error and measures nothing (rule 6).
+2. **Register the pair** in the manifest, against the new comp. Until it is in
+   the manifest the comp does not exist as far as refdiff is concerned: no run
+   dir, and nothing in the annotator's Library, which lists run dirs only.
+   Reporting "the design is available" when only step 1 is done is how a comp
+   silently ships unmeasured.
+3. **Run it and expect a big report.** A first run of a stub against its comp
+   is supposed to be tens of findings; that list IS the specification, ordered
+   by severity, and it is worth more than any reading of the comp.
+4. **Converge on the delta** exactly as below — §2 to classify, §4 to read
+   `resolved` / `introduced`, §5 to stop. The iteration bound counts from here.
+
+The order matters: registering the pair before stubbing gives you a capture
+error instead of a report, and stubbing without registering gives you no
+measurement at all.
 
 ### 1. Run
 
