@@ -6,6 +6,31 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-02 — what NEITHER channel measures is verified by a crop, once (session 18, the ghost)
+
+- **Context:** implementing the comps' one-sided GHOST in the annotator
+  (`packages/annotator/src/render.ts`), measured on `refdiff-compare-desktop-ghost`.
+- **Lesson:** the ghost footprint is an SVG rect, and the extractor reads DOM only, so the
+  structural channel is blind to it; its design-side counterpart travels **suppressed** inside the
+  artboard `accepted … contents: true` region, so nothing is even reported about it; and the pixel
+  channel only sees it inside the whole-canvas region, which a 146%-vs-100% zoom divergence
+  dominates. Two real defects therefore shipped green through a converged loop and a 200-test
+  suite: (1) the rect carried `class="ghost …"`, which this file already spends on the diff lab's
+  superimposed design IMAGE — `.ghost { opacity:0 }` — so the footprint painted **nothing**, with
+  the DOM, the computed fill and the stroke all reporting correct; (2) `patternTransform="rotate(45)"`
+  leans the stripes the OPPOSITE way from the comps' `repeating-linear-gradient(45deg, …)`, because
+  SVG rotates clockwise. Both were found by cropping `impl.png` at the footprint's screen box and
+  looking at it beside the same crop of `design.png` — the one operation the loop's rules otherwise
+  discourage. So: **when a change adds an element that neither channel can pair, say so out loud and
+  spend one crop on it.** And: **a CSS class is a namespace** — before naming a new one, grep the
+  file; a collision with an `opacity:0` rule is invisible in review, in the tests and in every
+  finding. `getComputedStyle(el).opacity` in a Playwright probe named it in one call once the crop
+  had shown there was something to look for.
+- **Candidate home:** skill:refdiff (a line under "Pixels" / the pre-flight: an element invisible to
+  both channels is crop-verified once) · `refdiff.bindings.md` trap (done, beside the ghost bullet) ·
+  memory (the naming habit)
+
+
 ## 2026-08-28 — a non-identity alignment on a same-size viewport is a finding in itself
 - **Context:** phase 5 of the annotator redesign (`docs/plan-annotator-redesign.md`), chasing a 1px sheet offset on `refdiff-compare-mobile`.
 - **Lesson:** when `alignment.scale` / `offset` are not `1 / 0` on a pair whose viewport equals the comp's, the fit is absorbing a systematic size difference that no finding reports — read the transform, not only `confidence`. The cause here was the box model: Claude Design comps set no `box-sizing` reset (content-box), the app uses `* { box-sizing:border-box }`, so every fixed-size bordered chrome box was 1–2px smaller (`offsetY −1.98` = topbar + strip). Write such sizes as the comp's number plus its border and the transform snaps to the identity. Also: measure in the browser (`getBoundingClientRect`) before reasoning from CSS — the sub-pixel arithmetic misleads.

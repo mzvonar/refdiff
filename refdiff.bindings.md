@@ -47,49 +47,104 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - The comps hydrate the `dc-runtime` from `support.js` and React from unpkg —
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
-- **⚠ THE BASELINE BELOW PREDATES THE SURFACE CHANNEL (2026-09-02) — re-measure before
-  trusting it.** Four capabilities landed in core that make the harness see things it was
-  structurally blind to, so every pair's count moved UP and two pairs that PASSED now fail.
-  That is not a regression: they were passing on incomplete measurement. Measured on the
-  same six pairs, fixture clock pinned, immediately after the change:
-  `6 / 45 / 4 / 11 / 19 / 10` findings (library-desktop / compare-desktop / library-mobile /
-  compare-mobile / compare-mobile-minimal / compare-mobile-toolbar) against the old
-  `2 / 32 / 0 / 3 / 11 / 1` — **47 of the new findings are about `surface` elements**.
-  What changed:
-  1. **A `surface` channel.** A container that PAINTS (background, border, radius, shadow)
-     now emits as `role: "surface"` on BOTH sides (DOM `extract.ts` and `figma-tree.ts`),
-     where before only leaves were extracted — so a bar vs a floating pill was invisible to
-     the structural channel AND to the pixel channel, which only diffs boxes that matched.
-     It does NOT double-count the existing decoration hoisting: a container whose paint a
-     descendant leaf already carries is `claimed` and stays unemitted, which is the rule
-     `figma-tree.test.ts` pins as "Container with children and decoration is not itself a
-     leaf". Surfaces are excluded from the design-QUALITY numerator AND denominator, so the
-     `figma-low-quality` gate is untouched (verified: the recorded Button/Fill set still
-     scores 0.64). Turn it off for a pair with `roles: ["surface"]`.
-     **Falsified, not assumed:** reverting the toolbar layout to the full-width bar and
-     re-running reported `extra-element — implementation renders surface at (0, 111)
-     (390×35) that the design does not have`. Before the channel: zero findings about it.
-  2. **A whole-frame remainder backstop** (`diffRemainder`): the frame diffed once, every
-     matched box subtracted with a margin, the rest clustered and reported as one finding
-     above 0.4% of the frame. It stayed BELOW its floor on the falsification (0.28%) because
-     the surface channel caught the bar structurally first — the intended layering, cheap
-     channel first. `compare-mobile-minimal` currently reads 4.10% / 46 regions, which is
-     real unexplained area worth a look.
-  3. **Role-scoped `textPatterns`** (`{ pattern, role }`): a bare string still matches any
-     role. This exists because the artboard-vocabulary pattern listed `Review`, a word in
-     the artboard AND the delta strip's button label, and silenced both.
-  4. **A hidden-movement warning.** The run summary now names any suppressed
-     `position`/`size`/`spacing` finding that moved ≥8px, with the rule that hid it, and
-     points at `dataSlots: { patterns }` when that rule was a text pattern. `accepted`
-     rules are exempt — those were built from the measurement and already read by a person.
-  Also: **runs are numbered** (`report.run`, `delta.previousRunNumber`), so the strip reads
-  "Run 47 vs 46" instead of a timestamp. The counter is the previous report, so it has the
-  run dir's lifetime; a report written before this has no ordinal and falls back to the
-  timestamp.
-  The four `missing-element design surface` findings on the compare pairs are the comp's
-  ARTBOARD drawn as live DOM against the app's PNG — the known case, newly visible because
-  those containers are textless and `textPatterns` cannot reach them. They want a `regions`
-  entry or an extended `accepted` rule; that is a policy decision, not done here.
+- **THE MEASURED BASELINE (2026-09-02, session 18 — the ghost).** Eight pairs, one build, the
+  fixture clock pinned per batch (`make-demo-root.ts --now`, measure, restore), every pair
+  re-run to `+0/−0` before recording. `refdiff summary out/refdiff` reproduces the table:
+
+  | pair | findings (c/M/m) | inst | supp | conf | align |
+  | --- | --- | --- | --- | --- | --- |
+  | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
+  | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
+  | refdiff-compare-desktop | 79 (24/48/7) | 113 | 56 | 0.72 | 1 / 0,0 |
+  | refdiff-compare-mobile | 13 (4/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 31 (5/18/8) | 45 | 35 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 12 (4/2/6) | 14 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 95 (19/60/16) | 174 | 43 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 155 (49/84/22) | 218 | 71 | 0.54 | 1 / 0,0 |
+
+  Against the previous record (`6 / 45 / 4 / 11 / 19 / 10` right after the surface channel, then
+  `10 / 104 / 8 / 13 / 31 / 12 / 119 / 176` with the ghost pairs and fixture parity): the GHOST
+  implementation moved three pairs and touched nothing else — `compare-desktop` 104 → **79**,
+  `compare-desktop-ghost` 176 → **155**, `compare-mobile-toolbar-ghost` 119 → **95**; both Library
+  pairs, `compare-mobile`, `compare-mobile-minimal` and `compare-mobile-toolbar` came back
+  byte-identical (`+0/−0`), which is what says the change is where it was meant to be. 403 findings
+  across the set, from 476.
+  **What the ghost closed, measured:** the pill matches on both sides — its surface 199×30 ↔ 199×30,
+  the hollow chip's ink 12×13 ↔ 12×13, the label "Missing here — exists in design" 154×14 ↔ 154×14
+  with no colour, size or typography finding left on any of them, only a `position` offset that is
+  the canvas-zoom divergence below. The row chips (`add_location_alt` + Design only /
+  `wrong_location` + Impl only, 1px dashed in the severity colour, 99×19 and 86×19) match on all
+  four one-sided rows, and the caps come from `text-transform` because the EXTRACTOR READS THE
+  RENDERED TEXT — the comp's DOM says `Design only` and its capture says `DESIGN ONLY`.
+  **What remains on the two ghost pairs is NOT the ghost**, and both causes are recorded elsewhere
+  in this file: (a) the comp's rail ROW ORDER (gap 32 — design 1,2,3,7,8,4,5,6,12..15 against the
+  app's severity order, measured badge by badge in `elements.json`) and its two `cause` lines
+  (gap 26), which together shift the app's rail rows against the comp's and re-pair half the column;
+  (b) the **zoom-on-select divergence** below.
+- **⚠ SELECTING A FINDING ZOOMS THE COMP'S CANVAS AND NOT THE APP'S — undecided, and it is what
+  holds `refdiff-compare-desktop-ghost` at 155.** Measured: the comp's zoom pill reads **146%**
+  after the step selects `o1`, the app's **100%** (`text reads "100%", design says "146%"`), so
+  every element the canvas draws sits at a different scale and offset on the two sides — ~70 of the
+  pair's findings have a box inside the canvas. The two rules disagree by design, not by accident:
+  the comp's `focusOn` fits the box plus **70px each side, zooming IN to 2.2×**; `focusView`
+  (`view-math.ts`) fits it into **a third of the pane** and then clamps `z` to
+  `max(current.z, minZoom)`, so it never zooms in at all — while its own doc says "at most what
+  fits the box into a third of that area", which the clamp defeats. **Trialled, not guessed**
+  (`--out out/vc-trial`, the comps' formula, reverted): `compare-desktop-ghost` 155 → **111** and
+  `compare-mobile-toolbar-ghost` 95 → **99** (the phone's pane insets leave the comp's 1.23× short
+  at 1.15×). So it is worth ~44 findings on one pair and −4 on the other, and it changes what
+  selecting a row DOES in every pair. Product decision — ask Mato; do not fold it into a parity fix.
+- **What the harness SEES since the four core capabilities landed (2026-09-02) — this is why the
+  counts above are what they are.** They made the harness see things it was structurally blind to,
+  so counts moved UP and two pairs that PASSED began to fail; that was not a regression, they were
+  passing on incomplete measurement (`2 / 32 / 0 / 3 / 11 / 1` → `6 / 45 / 4 / 11 / 19 / 10` on the
+  then six pairs, **47 of the new findings about `surface` elements**).
+  1. **A `surface` channel.** A container that PAINTS (background, border, radius, shadow) emits as
+     `role: "surface"` on BOTH sides (DOM `extract.ts` and `figma-tree.ts`), where before only
+     leaves were extracted — so a bar vs a floating pill was invisible to the structural channel
+     AND to the pixel channel, which only diffs boxes that matched. It does NOT double-count the
+     existing decoration hoisting: a container whose paint a descendant leaf already carries is
+     `claimed` and stays unemitted, which is the rule `figma-tree.test.ts` pins as "Container with
+     children and decoration is not itself a leaf". Surfaces are excluded from the design-QUALITY
+     numerator AND denominator, so the `figma-low-quality` gate is untouched (verified: the
+     recorded Button/Fill set still scores 0.64). Turn it off for a pair with `roles: ["surface"]`.
+     **Falsified, not assumed:** reverting the toolbar layout to the full-width bar and re-running
+     reported `extra-element — implementation renders surface at (0, 111) (390×35) that the design
+     does not have`. Before the channel: zero findings about it.
+  2. **A whole-frame remainder backstop** (`diffRemainder`): the frame diffed once, every matched
+     box subtracted with a margin, the rest clustered and reported as one finding above 0.4% of the
+     frame. It stayed BELOW its floor on the falsification (0.28%) because the surface channel
+     caught the bar structurally first — the intended layering, cheap channel first.
+     `compare-mobile-minimal` reads 4.10% / 46 regions, which is real unexplained area worth a look.
+  3. **Role- and type-scoped `textPatterns`** (`{ pattern, role?, types? }`): a bare string still
+     matches any role. It exists because the artboard-vocabulary pattern listed `Review`, a word in
+     the artboard AND the delta strip's button label, and silenced both; TYPE is the axis that
+     mattered, since both elements are `role: "text"`.
+  4. **A hidden-movement warning.** The run summary names any suppressed `position`/`size`/`spacing`
+     finding that moved ≥8px, with the rule that hid it, and points at `dataSlots: { patterns }`
+     when that rule was a text pattern. `accepted` rules are exempt — those were built from the
+     measurement and already read by a person. Both ghost pairs and `compare-desktop` print two of
+     these, on the comp's `cause` lines (gap 26).
+  Also: **runs are numbered** (`report.run`, `delta.previousRunNumber`), so the strip reads "Run 47
+  vs 46" instead of a timestamp. The counter is the previous report, so it has the run dir's
+  lifetime; a report written before this has no ordinal and falls back to the timestamp.
+  The `missing-element design surface` findings on the compare pairs are the comp's ARTBOARD drawn
+  as live DOM against the app's PNG — the known case, visible because those containers are textless
+  so `textPatterns` cannot reach them. They want a `regions` entry or an extended `accepted` rule;
+  that is a policy decision, not done.
+- **An element NEITHER channel can pair is verified by a crop, once — and a CSS class is a
+  namespace.** The ghost footprint is an SVG rect: the extractor reads DOM only, so the structural
+  channel cannot see it, its design-side counterpart travels suppressed inside the artboard
+  `accepted … contents: true` region, and the pixel channel reaches it only inside the whole-canvas
+  region that the zoom divergence above dominates. Two defects therefore went green through a
+  converged loop and the whole test suite: the rect was classed `ghost`, which this app already
+  spends on the diff lab's superimposed design IMAGE (`.ghost { opacity:0 }`), so it painted
+  NOTHING while the DOM, the computed fill and the stroke all read correct; and
+  `patternTransform="rotate(45)"` leans the hatch the opposite way from the comps'
+  `repeating-linear-gradient(45deg, …)`, because SVG rotates clockwise (it is `rotate(-45)`).
+  Both were found by cropping `impl.png` at the footprint's screen box and putting it beside the
+  same crop of `design.png`. The classes are `.gfoot` and `.gpill` for that reason — keep them
+  apart from `.ghost`.
 
 - **A LIVE comp has states that only exist after an interaction — `steps` is how they
   become measurable, and the pair that uses them is `…-toolbar-ghost`.** The ghost language
@@ -132,10 +187,20 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   the card and the rail are separate declarations here and nothing type-checks the agreement.
   It paid immediately — `refdiff-compare-mobile-toolbar` went 0.92 → **1.00** confidence and
   `refdiff-compare-mobile` 0.91 → 0.97, because parity is what supplies anchors (§1a).
-  **The ghost pairs are now the SPEC for work that is not built:** 119 findings at confidence
-  0.49 (mobile — still under the 0.5 gate, so read nothing positional from it yet) and 176 at
-  0.55 (desktop). They are large because the comp draws the ghost and the app does not: the
-  ghost language is measured and specified, and unimplemented.
+  **The ghost pairs WERE the spec for work that was not built** — 119 findings at confidence 0.49
+  (mobile) and 176 at 0.55 (desktop), large because the comp drew the ghost and the app did not.
+  **BUILT 2026-09-02, session 18** (`.gfoot` + `.gpill` + the `one-sided` halo in `render.ts`):
+  95 and 155, and every finding the two channels can see about the pill, the chips and the halo
+  is gone — see the measured baseline at the top of this section for what is left and whose it is.
+  The mobile pair stays at **0.49, under the 0.5 gate**, so read nothing positional from it: its
+  vertical anchors disagree because the comp's rail rows are in the comp's own demo order.
+  **One part of the language is still unbuilt and UNMEASURED by any pair: the ghost of a one-sided
+  COMMENT.** The comps call the same `ghost()` for a selected comment (a 28×28 dashed circle with
+  an 8px hatch period for a 0×0 POINT anchor, the status colour, label `Comment anchored on
+  design`), and no pair's steps select a comment, so nothing reports it. The app instead MIRRORS
+  every note onto the other pane, lighter (`.marks.anns .mirror`) — a deliberate 2026-08-28
+  decision for a different problem. Mirror-vs-ghost for comments is a design question for Mato,
+  not a parity fix; the fixture already carries `c4` as a design-side point for whenever it lands.
 
 - **Low confidence is the layout, not the fixture.** The protected baseline
   (redesign phases 0–7 + harness items 12–16 + the Library thumb fix + the
