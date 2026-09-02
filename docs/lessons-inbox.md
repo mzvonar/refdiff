@@ -388,3 +388,69 @@ an action.** If there is genuinely nothing to do, the cursor is the thing to
 change.
 
 Route: `docs/architecture.md` (align pill, written up there).
+
+## Two misses on the Mobile Toolbar pair (2026-09-02) — both invisible to the harness
+
+Mato caught two real differences the run reported nothing about. Neither is a policy
+mistake; the first is a hole in the element model and the second is a suppression that is
+wider than it looks.
+
+**1. A container's surface is not compared, because containers are not leaves.** The comp's
+Show control is a floating pill: absolute at canvas (8,8), 223x29, `--bg1`, 1px `--line`,
+radius 10px, shadow `0 4px 16px`. The app rendered it as a full-width static row: 390px,
+`border-bottom` only, no radius, no shadow. **Zero findings.** The structural channel
+extracts LEAF elements, so a background / border / radius / width on an element that has
+children is never a candidate; the pixel channel only diffs boxes that MATCHED, and an
+unmatched non-leaf is never one. Even after the fix the pill was 229x35 against 223x29 —
+6px out in both dimensions, still silent, because the extra 6px came from a nested `.seg`
+box that is also not a leaf.
+Worth considering:
+- a SURFACE channel: capture elements with a visible background, border or shadow even
+  when they have children, and compare those four properties plus the box. It is the same
+  extraction pass, with the leaf filter relaxed for elements that paint something.
+- a whole-frame or unmatched-remainder pixel diff as a backstop. Today "no mask file means
+  no unexplained pixel evidence" holds only INSIDE matched boxes, which reads as a stronger
+  guarantee than it is.
+
+**2. `textPatterns` suppresses geometry, and one pattern collided with an unrelated
+element.** The delta strip's run label reads `Run 47 vs 46` (84px) in the comp and
+`vs run 2026-09-02 11:59` (161px) in the app — the app has no run ordinal at all
+(`delta.previousRun` is `prev.createdAt`, an ISO timestamp; nothing in core, the ledger or
+the run dirs numbers runs, so the comp is asking for data that does not exist). The 77px
+over-width wraps the strip and shoves `Review` 84px. **All of it suppressed**, because
+`COMPARE_IGNORE.textPatterns` excuses the strip's copy and `textPatterns` kills every
+finding type about a matching string, geometry included. The artboard-vocabulary regex also
+contains `Review`, which is the strip's button label as well as an artboard word — one
+pattern, two unrelated elements.
+Worth considering:
+- prefer `dataSlots: { patterns }` for volatile VALUES: it masks the value and keeps
+  position, size, colour and typography compared. `textPatterns` should be rarer than it is.
+- let `textPatterns` be scoped by `role` or region, so a word cannot excuse two different
+  elements.
+- flag a suppressed `position` / `size` whose delta exceeds a threshold — a 77px shift
+  hidden by a TEXT rule is the exact shape of this miss. The rule name is already recorded
+  per finding (`suppressedBy`); surfacing "suppressed, but it moved 77px" in the run
+  summary would have shown it without anyone reading findings.json.
+
+### Both items above are now BUILT (2026-09-02)
+
+All four proposals landed in core, plus run numbering. The surface channel was
+falsified rather than assumed: the toolbar layout was reverted to the offending
+full-width bar and the run reported `extra-element — implementation renders
+surface at (0, 111) (390×35) that the design does not have`, where before it
+reported nothing. The backstop stayed below its floor on that same run (0.28%),
+which is the layering working — the cheap structural channel first.
+
+Two things the implementation had to get right, both caught by existing tests:
+- **Do not double-count the decoration hoisting.** A painted container whose
+  paint a descendant leaf already carries must NOT also emit as a surface;
+  `figma-tree.test.ts` pins that as "Container with children and decoration is
+  not itself a leaf". The fix is a `claimed` set filled during the walk and a
+  surface pass deferred until after it. On the recorded Button/Fill set that
+  leaves exactly 7 surfaces — one per Focus variant, whose focus-ring child
+  breaks the hoisting chain so the label cannot claim the button's fill. Those
+  7 fills were unrepresented before.
+- **Keep surfaces out of the design-quality ratio, on BOTH sides.** Counting
+  them in `bound` but not `leaves` moved the score 0.64 → 0.74 and would have
+  loosened the `figma-low-quality` gate — a measurement change dressed as a
+  feature.
