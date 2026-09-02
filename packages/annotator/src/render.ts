@@ -445,6 +445,9 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .frow.sup { opacity:.66; background:var(--bg0); }
 .frow.sup.sel { background:var(--bg2); }
 .frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }
+/* One-sided findings (a missing-element has no implBox, an extra-element no designBox):
+   selecting one in Full mode switches the pane to the side that has it, so say so first. */
+.fside { flex:none; padding:1px 6px; border:1px solid var(--line); border-radius:999px; font-size:10px; font-weight:600; color:var(--txt2); white-space:nowrap; }
 .fhead { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .fbadge { width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-sizing:border-box; }
 .fbadge.critical { background:var(--critical); } .fbadge.major { background:var(--major); } .fbadge.minor { background:var(--minor); }
@@ -820,6 +823,61 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   .focus-chip > .msi { font-size:14px; }
   .focus-chip button { padding:4px 8px; font-size:11px; }
   .focus-chip button .lbl { display:none; }
+  /* ---- the TOOLBAR phone layout (the RefDiff Mobile Toolbar comp, 2026-09-02): the minimal
+     layout plus a header toolbar and a top floating toolbar. body carries layout-minimal AND
+     layout-toolbar, so everything above still applies and only the deltas are here. The comp
+     drops BOTH the tune and the settings glyphs and puts the theme toggle in the header, so
+     there is no phone-layout switch in this layout at all (it is reachable by ?layout=). */
+  /* Measured off the comp (elements.json, design side), NOT read off its markup:
+       header row  y=10  arrow_back x=14 ... light_mode x=356 (rightmost, so no tune button)
+       header      y=14  Off x=109  Wipe x=145  Onion x=191  Blink x=240  Diff x=285
+       strip row   y=60  Findings x=21  Comments x=83  All x=157  Clean x=190   hub x=355
+       bottom row  y=807 pan_tool x=18 ... fit_screen x=198   swap_horiz x=267  list_alt x=354
+     So the Compare segment is IN the header and the Show segment is its own row under it —
+     that row is the "top floating toolbar". The TOOL STRIP STAYS AT THE BOTTOM, exactly where
+     the minimal layout puts it; an earlier stub moved it to the top and measured y=127 against
+     the comp's y=807. Do not move it. */
+  body.layout-toolbar .settings-wrap, body.layout-toolbar .view-toggle { display:none; }
+  body.layout-toolbar .topbar .theme-toggle { display:inline-flex; }
+  body.layout-toolbar #seg-variant { display:inline-flex; }
+  /* The comp's header segment is 11px, not the 12px .seg default; at 12px each item ran ~5px
+     wide and the drift accumulated across the row (Off +8 ... Diff +26). */
+  body.layout-toolbar #seg-variant button { font-size:11px; }
+  /* The comp's Show control FLOATS over the canvas; it is not a full-width row. Rendered and
+     measured off the comp: position absolute at canvas-relative (8, 8), 223x29, background
+     --bg1, 1px --line all round, radius 10px, shadow 0 4px 16px rgba(0,0,0,.3). A first pass
+     used .layer-strip (static, 390px wide, border-bottom only, no radius or shadow) and
+     refdiff could NOT see the difference: its structural channel compares LEAF elements, and
+     a background/border/width on a container with children is not a leaf, so nothing was
+     reported. Reuse .view-panel instead — it already lives inside .work, is already absolute,
+     and is already in paneInsets, so the fit accounts for it. */
+  body.layout-toolbar .layer-strip { display:none; }
+  body.layout-toolbar .view-panel { display:flex; top:8px; left:8px; right:auto; width:max-content;
+    padding:3px; gap:0; border:1px solid var(--line); border-bottom:1px solid var(--line);
+    border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,.3); z-index:15; }
+  /* Compare is in the header in this layout, and the comp has no Compare/Show captions. */
+  body.layout-toolbar .view-panel .vp-row:first-child, body.layout-toolbar .view-panel .vp-label { display:none; }
+  /* The comp's pill holds the buttons DIRECTLY (223x29 = button 21 + 3px padding + 1px border
+     each side, gap 2). The app nests a .seg inside the panel, whose own 2px padding and 1px
+     border add exactly the 6px this measured over in BOTH dimensions (229x35). Flatten it.
+     Note refdiff cannot see any of this: the pill is a container, not a leaf. */
+  body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; gap:2px; }
+  body.layout-toolbar .view-panel .seg.seg-p button { padding:3px 9px; }
+  /* The comp's header is back / segment / theme only — no pair title (the minimal layout
+     shows one). It is also why the auto-centred segment sat 18px right: tb-left carried an
+     extra 161px the comp does not have. */
+  body.layout-toolbar .tb-left .pair-title { display:none; }
+  /* With no pair title tb-left must HUG its content: the minimal layout gives it flex:1 1 0
+     so a long title can ellipsis, which left it 99px wide against the comp's 55 and pushed
+     the auto-centred segment 18px right (it filled 114..343, so its auto margins were 0).
+     tb-left 55 + button padding 9 (segment 219 wide, not 229) centres the segment at 97 --
+     the comp's edge, putting Off at 109 and Diff at 285. Both numbers are measured. */
+  body.layout-toolbar .tb-left { flex:0 0 auto; }
+  body.layout-toolbar #seg-variant button { padding:5px 9px; }
+  /* The align pill keeps the minimal layout's top:8px: an earlier pass lifted it by -28px to
+     reach the comp's hub y=125, but that was compensating for the 35px full-width strip row
+     this layout should never have had. With the Show control floating, .work starts where the
+     comp's canvas does and the pill lands correctly on its own. */
   body.layout-minimal .rail { display:none; height:58%; transition:none; }
   body.layout-minimal.rail-open .rail { display:flex; }
 }
@@ -935,11 +993,16 @@ applyTheme(readControls().theme);
 // ?layout=minimal|default on the page URL presets it for this load without touching the saved
 // preference — a link that opens in one layout, and how the harness captures the minimal comp.
 function urlLayout() {
-  try { const v = new URLSearchParams(location.search).get('layout'); return v === 'minimal' || v === 'default' ? v : null; } catch (e) { return null; }
+  try { const v = new URLSearchParams(location.search).get('layout'); return v === 'minimal' || v === 'default' || v === 'toolbar' ? v : null; } catch (e) { return null; }
 }
-function minimalOn() { return narrow.matches && state.mlayout === 'minimal'; }
+// The TOOLBAR layout is the minimal one plus a header toolbar and a top floating toolbar
+// (the RefDiff Mobile Toolbar comp), so every minimal rule, inset and fit padding applies to
+// it too: minimalOn() covers both and body carries layout-minimal AND layout-toolbar. Only
+// the deltas live under .layout-toolbar.
+function minimalOn() { return narrow.matches && (state.mlayout === 'minimal' || state.mlayout === 'toolbar'); }
+function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }
 function setPhoneLayout(layout) {
-  state.mlayout = layout === 'minimal' ? 'minimal' : 'default';
+  state.mlayout = layout === 'minimal' || layout === 'toolbar' ? layout : 'default';
   savePref('layout', state.mlayout);
   setSettingsOpen(false);
   applyLayout(); applyAlignMode(); renderRailSummary(); renderFocusChip();
@@ -1269,6 +1332,10 @@ function paneInsetsNow() {
 function applyLayout() {
   document.body.classList.toggle('single', single());
   document.body.classList.toggle('layout-minimal', minimalOn());
+  document.body.classList.toggle('layout-toolbar', toolbarOn());
+  // In the toolbar layout the view panel is not a popover but the layout's own floating
+  // Show control, so it is always open (there is no tune button to reopen it).
+  if (toolbarOn() && !state.viewOpen) setViewOpen(true);
   // The popover and the panel are phone chrome; leaving the breakpoint closes them.
   if (!narrow.matches && state.settingsOpen) setSettingsOpen(false);
   if (!minimalOn() && state.viewOpen) setViewOpen(false);
@@ -1530,6 +1597,18 @@ function dismissDelta() {
   try { localStorage.setItem(DELTA_DISMISS_KEY + report.pair, JSON.stringify(rec)); } catch (e) { /* private mode: this session only */ }
   renderDeltaStrip();
 }
+// The comps show run ORDINALS ("Run 47 vs 46") — a timestamp identifies a run but does not
+// order it for a reader. Core numbers runs since 2026-09-02 (report.run, delta.previousRunNumber);
+// a report written before that has no ordinal, so the timestamp stays the fallback.
+function runLabel(d, run) {
+  if (typeof run === 'number' && typeof d.previousRunNumber === 'number') return 'Run ' + run + ' vs ' + d.previousRunNumber;
+  return 'vs run ' + d.previousRun.replace('T', ' ').slice(0, 16);
+}
+function runTitle(d) {
+  return typeof d.previousRunNumber === 'number'
+    ? 'this run vs the previous run of this pair (' + d.previousRun.replace('T', ' ').slice(0, 16) + ')'
+    : 'the previous run of this pair';
+}
 function renderDeltaStrip() {
   const d = report.delta, el = $('delta-strip');
   const regs = regressionIds().size;
@@ -1540,7 +1619,7 @@ function renderDeltaStrip() {
   el.classList.toggle('reg', regs > 0);
   el.innerHTML =
     '<span class="msi" aria-hidden="true">' + (regs ? 'warning' : 'compare_arrows') + '</span>' +
-    '<span class="run" title="the previous run of this pair">vs run ' + esc(d.previousRun.replace('T', ' ').slice(0, 16)) + '</span>' +
+    '<span class="run" title="' + esc(runTitle(d)) + '">' + esc(runLabel(d, report.run)) + '</span>' +
     '<span class="add">+' + d.introduced.length + ' introduced</span>' +
     '<span class="res">−' + d.resolved.length + ' resolved</span>' +
     (regs
@@ -1579,6 +1658,16 @@ function inFocus(f) {
   // Passed as a LAMBDA: boxes.some(boxInFocus) handed .some's index in as the region, which the
   // shared predicate reads as "no region" on box 0 and admitted every finding.
   return boxes.some((b) => inRegion(b));
+}
+// The box a finding has on one side, or undefined.
+function boxForSide(f, side) { return side === 'design' ? f.designBox : f.implBox; }
+// 'design' / 'impl' when the finding exists on THAT side only, else null (both, or neither
+// — the boxless alignment note). Drives the side switch on select and the row's tag.
+function sideOf(f) {
+  const d = !!f.designBox, i = !!f.implBox;
+  if (d && !i) return 'design';
+  if (i && !d) return 'impl';
+  return null;
 }
 function visible(f) { return visibleExceptFocus(f) && inFocus(f); }
 // Split out because adjusting the region draws the findings it EXCLUDES, muted: dragging a corner
@@ -1632,6 +1721,12 @@ function findingRowHtml(f, suppressed) {
   if (agg) h += '<span class="fgroup" title="one cause in ' + f.instances + ' places — every one is in members[]">×' + f.instances + '</span>';
   if (isReg) h += '<span class="freg" title="fixed in an earlier run, back in this one"><span class="msi" aria-hidden="true">undo</span><span>Regression</span></span>';
   if (suppressed) h += '<span class="fsuptag"><span>Suppressed</span></span>';
+  // Which side the element is on, when it is on only one. In FULL mode selecting the
+  // row switches to that side, and a switch you did not expect reads as the app
+  // jumping; the tag makes it predictable before the click. In SPLIT mode both panes
+  // are on screen, so it is just useful context.
+  const only = sideOf(f);
+  if (only) h += '<span class="fside" title="' + (only === 'design' ? 'in the design only — there is nothing to see on the implementation side' : 'in the implementation only — the design does not have it') + '"><span>' + (only === 'design' ? 'design only' : 'impl only') + '</span></span>';
   if (verdict) h += '<span class="ftag ' + verdict + '"><span>' + TRIAGE_TAGS[verdict] + '</span></span>';
   h += '</div>';
   if (suppressed) h += '<div class="frule" title="' + esc(f.suppressedBy + ': ' + f.rule) + '"><span class="msi" aria-hidden="true">filter_alt_off</span><span>' + esc(f.suppressedBy + ' · ' + f.rule) + '</span></div>';
@@ -1676,13 +1771,31 @@ function draftHtml(d) {
     '<div class="dactions"><button type="button" data-act="cancel-draft">Cancel</button><button type="button" class="primary" data-act="save-draft">Send to model</button></div></div>';
 }
 function renderSevChips() {
-  const triaged = triageCounts(triage.set, nowIso());
+  // A chip's count must PROMISE what enabling it shows. Both halves were wrong
+  // (2026-09-02): the severity chips counted report.findings raw, so "critical 4"
+  // stood next to a list showing none of them (all four were hidden by one
+  // snooze); and the triage chips counted triage ENTRIES, so a stale entry whose
+  // key no longer matches anything in this run advertised "Snoozed 1" with
+  // nothing to reveal. Count FINDINGS, with every other gate applied.
+  const passesExceptSeverity = (f) => {
+    if (state.q && !(f.message + ' ' + f.type + ' ' + (f.role || '')).toLowerCase().includes(state.q)) return false;
+    if (state.regOnly && !regressionIds().has(f.id)) return false;
+    const v = triageStateOf(f);
+    if (v === 'ignore' && !state.showTriaged.ignore) return false;
+    if (v === 'snooze' && !state.showTriaged.snooze) return false;
+    return inFocus(f);
+  };
+  const sevCount = (sev) => report.findings.filter((f) => f.severity === sev && passesExceptSeverity(f)).length;
+  // Triage chips toggle their own gate, so they count past it — but still only
+  // findings this run HAS, which is what makes a stale entry's chip disappear.
+  const triCount = (v) => report.findings.filter((f) => triageStateOf(f) === v && inFocus(f)).length;
+  const triaged = { ignore: triCount('ignore'), snooze: triCount('snooze') };
   // The label is its own span, as the comps' runtime renders an interpolated label: the extractor's
   // leaf is then the text (no border of its own) on both sides, instead of our bordered <button>.
   const chip = (cls, on, key, val, label) => '<button type="button" class="sevchip ' + cls + (on ? ' on' : '') + '" data-' + key + '="' + val + '"><span class="dot" aria-hidden="true"></span><span>' + label + '</span></button>';
   // Triage chips sit with the severity chips because they do the same job — decide what the list
   // shows. A verdict HIDES its finding, so without these there would be no way back to it.
-  $('sev-chips').innerHTML = SEV.map((s) => chip(s, state.sev[s], 'sev', s, SEV_CHIP_LABELS[s] + ' ' + report.findings.filter((f) => f.severity === s).length)).join('') +
+  $('sev-chips').innerHTML = SEV.map((s) => chip(s, state.sev[s], 'sev', s, SEV_CHIP_LABELS[s] + ' ' + sevCount(s))).join('') +
     (triaged.ignore ? chip('tri ignore', state.showTriaged.ignore, 'triaged', 'ignore', 'Ignored ' + triaged.ignore) : '') +
     (triaged.snooze ? chip('tri snooze', state.showTriaged.snooze, 'triaged', 'snooze', 'Snoozed ' + triaged.snooze) : '');
 }
@@ -1791,7 +1904,18 @@ function select(id, focus) {
   if (id) { ann.selected = null; ann.draft = null; ann.draftText = ''; setTab('findings'); if (narrow.matches) openRail(true); renderAnnMarks(); }
   renderRail(); renderMarks();
   const f = id ? byId.get(id) : null;
-  const box = f && (f.implBox || f.designBox);
+  // A finding may exist on ONE side only: a missing-element has a designBox and no
+  // implBox, an extra-element the reverse. Prefer the CURRENT side's box so a
+  // two-sided finding centres on what is actually on screen; fall back to the other
+  // side's box, which is where the element WOULD be.
+  //
+  // Deliberately does NOT switch sides. That was tried and rejected (Mato,
+  // 2026-09-02): a pane that swaps itself is a change the viewer may not notice,
+  // and they then read the other side's canvas as this one's. The chosen answer is
+  // to draw the other side's mark HERE, dashed and muted, so the mark says whose it
+  // is — pending its design. Until then the row's design-only / impl-only tag is
+  // what tells you why the canvas looks empty.
+  const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);
   if (focus && box) { setView(focusView(box, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }
   const row = $('side').querySelector('.frow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }

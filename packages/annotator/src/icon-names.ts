@@ -4,6 +4,7 @@
 export const ICON_NAMES: readonly string[] = [
   "add",
   "add_comment",
+  "add_location_alt",
   "anchor",
   "api",
   "arrow_back",
@@ -84,6 +85,7 @@ export const ICON_NAMES: readonly string[] = [
   "sync_alt",
   "tab",
   "tonality",
+  "toolbar",
   "trending_down",
   "trending_flat",
   "trending_up",
@@ -96,4 +98,5 @@ export const ICON_NAMES: readonly string[] = [
   "warning",
   "width",
   "work",
+  "wrong_location",
 ]

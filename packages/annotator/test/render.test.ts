@@ -295,7 +295,22 @@ describe("renderReport", () => {
     expect(html).toContain('data-tab="findings" role="tab">Findings · <span id="tab-f-count"></span>')
     expect(html).toContain('data-tab="items" role="tab">Comments · <span id="tab-i-count"></span>')
     // Severity chips with dots, counted; the instance chip; the suppressed disclosure.
-    expect(html).toContain("SEV_CHIP_LABELS[s] + ' ' + report.findings.filter((f) => f.severity === s).length")
+    expect(html).toContain("SEV_CHIP_LABELS[s] + ' ' + sevCount(s)")
+    // A chip's count promises what enabling it SHOWS: gated by search, regression-only,
+    // focus and triage. Counting report.findings raw put "critical 4" next to a list with
+    // none of them in it (all four hidden by one snooze, 2026-09-02), and the triage chips
+    // counted triage ENTRIES so a stale key advertised "Snoozed 1" with nothing to reveal.
+    expect(html).toContain("const sevCount = (sev) => report.findings.filter((f) => f.severity === sev && passesExceptSeverity(f)).length;")
+    expect(html).toContain("const triCount = (v) => report.findings.filter((f) => triageStateOf(f) === v && inFocus(f)).length;")
+    // A one-sided finding (missing-element has no implBox, extra-element no designBox)
+    // centres on the CURRENT side's box when it has one. It must NOT switch sides:
+    // a pane that swaps itself is a change the viewer may not notice, and they then
+    // read the other side's canvas as this one's (rejected 2026-09-02).
+    expect(html).not.toContain("setSide(onlySide)");
+    expect(html).toContain("const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);")
+    expect(html).toContain("function sideOf(f) {")
+    expect(html).toContain("'design only'")
+    expect(html).toContain("'impl only'")
     expect(html).toContain('id="inst-row"')
     expect(html).toContain("SUPPRESSED_LABEL(sup.length)")
     // A row: badge, title, ×N, the Regression tag, the mono prop line with the actual in red.
@@ -542,12 +557,55 @@ describe("renderReport", () => {
     expect(mobile).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
     expect(html).toContain("$('align-pill').classList.toggle('locked', state.lock);")
     expect(html).toContain("const lockRow = minimalOn()")
-    // Off the phone the class never applies, whatever the preference says.
-    expect(html).toContain("function minimalOn() { return narrow.matches && state.mlayout === 'minimal'; }")
+    // Off the phone the class never applies, whatever the preference says. The TOOLBAR layout is
+    // the minimal one plus its toolbars, so it shares this predicate (and every rule above);
+    // `narrow.matches &&` is the load-bearing half.
+    expect(html).toContain(
+      "function minimalOn() { return narrow.matches && (state.mlayout === 'minimal' || state.mlayout === 'toolbar'); }",
+    )
     // The Minimal comp fits with a 16px margin where the Tool comp uses 24.
     expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
     // The overlay segment in the panel drives the same state as the topbar's.
     expect(html).toContain("for (const b of document.querySelectorAll('[data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);")
+  })
+
+  it("carries the toolbar phone layout (the Mobile Toolbar comp): Compare in the header, the Show row under it, the tool strip STILL at the bottom, no tune/settings, theme toggle back", () => {
+    const mobile = html.match(/@media \(max-width: 759px\) \{([\s\S]*?)\n\}\n/)?.[1]
+    expect(mobile).toBeDefined()
+    // ?layout=toolbar is the only way in: this layout has no phone-layout switch.
+    expect(html).toContain("v === 'minimal' || v === 'default' || v === 'toolbar' ? v : null")
+    expect(html).toContain("function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }")
+    expect(html).toContain("document.body.classList.toggle('layout-toolbar', toolbarOn());")
+    // The comp drops BOTH glyphs and puts the dark/light toggle in the header.
+    expect(mobile).toContain("body.layout-toolbar .settings-wrap, body.layout-toolbar .view-toggle { display:none; }")
+    expect(mobile).toContain("body.layout-toolbar .topbar .theme-toggle { display:inline-flex; }")
+    // Compare in the header at 11px (12px accumulated ~5px per item across the row), the Show
+    // segment its own left-aligned row with no caption, and no pair title.
+    expect(mobile).toContain("body.layout-toolbar #seg-variant button { font-size:11px; }")
+    // The Show control FLOATS over the canvas (comp: absolute, 223x29 at canvas 8,8, radius 10,
+    // shadow) — it is NOT the full-width .layer-strip row. A first pass used that row and refdiff
+    // could not see the difference: a container's background/border/width is not a leaf element,
+    // so nothing was reported. .view-panel is reused because it is already inside .work and
+    // already in paneInsets.
+    expect(mobile).toContain("body.layout-toolbar .layer-strip { display:none; }")
+    // .view-panel is position:absolute in the BASE rule, so the layout only moves and reshapes it.
+    expect(html).toMatch(/^\.view-panel \{[^}]*position:absolute/m)
+    expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*top:8px; left:8px/)
+    expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*width:max-content/)
+    expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*border-radius:10px/)
+    expect(mobile).toContain("body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; gap:2px; }")
+    expect(html).toContain("if (toolbarOn() && !state.viewOpen) setViewOpen(true);")
+    // The -28px align lift is gone: it compensated for the 35px row this layout never had.
+    expect(mobile).not.toMatch(/body\.layout-toolbar \.align-wrap \{[^}]*top:-28px/)
+    expect(mobile).toContain("body.layout-toolbar .tb-left .pair-title { display:none; }")
+    // tb-left must HUG: minimal's flex:1 1 0 left it 99px against the comp's 55 and pushed the
+    // auto-centred segment 18px right. With 0 0 auto + 9px button padding it centres at 97.
+    expect(mobile).toContain("body.layout-toolbar .tb-left { flex:0 0 auto; }")
+    expect(mobile).toContain("body.layout-toolbar #seg-variant button { padding:5px 9px; }")
+    // THE TOOL STRIP STAYS AT THE BOTTOM. The comp draws it at y=807; an early stub read the
+    // "top floating toolbar" as this strip, moved it to top:8px and measured y=127 against the
+    // comp's y=807. The floating toolbar is the Show ROW, not the tools.
+    expect(mobile).not.toMatch(/body\.layout-toolbar \.tools \{[^}]*top:8px/)
   })
 
   it("has a theme toggle in the header, persisted with the other controls but written on its own", () => {
