@@ -6,7 +6,7 @@
 # What it makes true:
 #   1. a refdiff checkout exists (default ~/Development/refdiff; cloned if missing)
 #   2. deps installed, Playwright Chromium present, both packages built
-#   3. `refdiff` and `refdiff-annotator` on PATH via `pnpm link --global` (run from dist)
+#   3. `refdiff` and `refdiff-annotator` on PATH as wrapper scripts (they exec dist/cli.js)
 #   4. the skill is USER-level: ~/.claude/skills/refdiff (and ~/.claude-personal if present) →
 #      <checkout>/skills/refdiff, via ~/.claude-shared/skills when that dir already exists
 #   5. --watch: `pnpm dev` (tsc --watch, both packages) running in the background so dist follows edits
@@ -56,48 +56,62 @@ fi
 say "pnpm build"
 pnpm build >/dev/null
 
-# 3. global bins. Two pnpm behaviours make this fiddly, and both bite on a fresh machine:
+# 3. global bins. `pnpm link --global` did this until pnpm 10.33 REMOVED the no-argument
+#    self-link form: `pnpm link` now demands a <dir|pkg name> and fails with
+#    ERR_PNPM_LINK_BAD_PARAMS without one. `pnpm add -g <dir>` is NOT a substitute —
+#    @refdiff/annotator depends on `@refdiff/core: workspace:*`, which does not resolve
+#    outside the workspace. Two further pnpm behaviours used to bite here:
 #      - `pnpm setup` only appends the PATH line to the shell PROFILE; it does not change
-#        THIS shell, so the very next `pnpm link --global` in this script still fails.
-#      - `pnpm bin -g` does not report the dir when the dir is not already on PATH: it
-#        prints NOTHING and (in pnpm 10) still exits 0. So it cannot be used to discover
-#        the dir — querying it is the chicken-and-egg, not the answer.
-#    Hence: derive the dir ourselves, put it on PATH, and only then trust `pnpm bin -g`.
-pnpm_bin_candidate() {
-  if [ -n "${PNPM_HOME:-}" ]; then echo "$PNPM_HOME"; return; fi
-  cfg="$(pnpm config get global-bin-dir 2>/dev/null || true)"
-  if [ -n "$cfg" ] && [ "$cfg" != "undefined" ] && [ "$cfg" != "null" ]; then echo "$cfg"; return; fi
-  case "$(uname)" in
-    Darwin) echo "$HOME/Library/pnpm" ;;
-    *) echo "${XDG_DATA_HOME:-$HOME/.local/share}/pnpm" ;;
-  esac
+#        THIS shell, so anything later in this script still runs without it.
+#      - `pnpm bin -g` refuses to report the dir unless it is already on PATH, and the two
+#        pnpm generations disagree about which dir that is: 10.x reports $PNPM_HOME, while
+#        `pnpm setup` puts $PNPM_HOME/bin on PATH. Querying it IS the chicken-and-egg.
+#    So: stop asking pnpm, and install our own wrappers into a dir that is on PATH.
+#    WRAPPERS, not symlinks — tsc emits dist/cli.js with mode 0644, so a symlink to it is
+#    not executable after any clean rebuild (pnpm's own shims existed for this reason).
+on_path() { case ":$PATH:" in *":$1:"*) return 0 ;; *) return 1 ;; esac; }
+usable_dir() { { [ -d "$1" ] || mkdir -p "$1" 2>/dev/null; } && [ -w "$1" ]; }
+bin_candidates() {
+  # Newline-delimited, never word-split: $HOME may contain spaces (macOS).
+  [ -n "${PNPM_HOME:-}" ] && { printf '%s\n' "$PNPM_HOME/bin" "$PNPM_HOME"; }
+  printf '%s\n' "$HOME/.local/bin" "$HOME/bin"
 }
-add_to_path() {
-  case ":$PATH:" in
-    *":$1:"*) ;;
-    *) export PATH="$1:$PATH" ;;
-  esac
-}
-add_to_path "$(pnpm_bin_candidate)"
-GBIN="$(pnpm bin -g 2>/dev/null || true)"
-if [ -z "$GBIN" ]; then
-  say "pnpm setup (global bin dir)"
-  pnpm setup >/dev/null 2>&1 || true
-  export PNPM_HOME="${PNPM_HOME:-$(pnpm_bin_candidate)}"
-  add_to_path "$PNPM_HOME"
-  GBIN="$(pnpm bin -g 2>/dev/null || true)"
+
+BIN_DIR=""
+while IFS= read -r d; do                      # first choice: a dir already on PATH
+  [ -n "$d" ] || continue
+  if on_path "$d" && usable_dir "$d"; then BIN_DIR="$d"; break; fi
+done <<EOF
+$(bin_candidates)
+EOF
+if [ -z "$BIN_DIR" ]; then                    # else: the first we can create, and say so
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    if usable_dir "$d"; then BIN_DIR="$d"; break; fi
+  done <<EOF
+$(bin_candidates)
+EOF
 fi
-[ -n "$GBIN" ] && add_to_path "$GBIN"
-# A link failure must not cost the skill symlinks (step 4) — they are independent.
-say "pnpm link --global (core, annotator)"
-linked_bins=1
-( cd packages/core && pnpm link --global >/dev/null ) || linked_bins=0
-( cd packages/annotator && pnpm link --global >/dev/null ) || linked_bins=0
-if [ "$linked_bins" = 0 ]; then
-  echo "warn: pnpm link --global failed — the CLIs are not on PATH. Run them from the checkout" >&2
-  echo "      (node $CHECKOUT/packages/core/dist/cli.js) or fix pnpm's global bin dir and re-run." >&2
-elif ! command -v refdiff >/dev/null 2>&1; then
-  echo "note: $GBIN is not on PATH in your profile — add it:  export PATH=\"$GBIN:\$PATH\""
+
+# A bin failure must not cost the skill symlinks (step 4) — they are independent.
+if [ -z "$BIN_DIR" ]; then
+  echo "warn: no writable bin dir found — the CLIs are not on PATH. Run them from the" >&2
+  echo "      checkout instead: node $CHECKOUT/packages/core/dist/cli.js" >&2
+else
+  say "cli wrappers -> $BIN_DIR"
+  for pair in refdiff:core refdiff-annotator:annotator; do
+    cmd="${pair%%:*}"; pkg="${pair##*:}"
+    printf '%s\n' \
+      '#!/usr/bin/env bash' \
+      '# Generated by refdiff skills/refdiff/setup-dev.sh — re-run it to refresh.' \
+      '# A wrapper, not a symlink: tsc emits dist/cli.js mode 0644, so a symlink to it' \
+      '# stops being executable after a clean rebuild.' \
+      "exec node \"$CHECKOUT/packages/$pkg/dist/cli.js\" \"\$@\"" \
+      > "$BIN_DIR/$cmd"
+    chmod +x "$BIN_DIR/$cmd"
+  done
+  on_path "$BIN_DIR" || \
+    echo "note: $BIN_DIR is not on PATH in your profile — add it:  export PATH=\"$BIN_DIR:\$PATH\""
 fi
 
 # 4. user-level skill symlinks. With the two-profile setup (~/.claude-shared exists) follow its
@@ -141,7 +155,11 @@ fi
 
 # verify
 say "verify"
-"${GBIN:-.}/refdiff" --help 2>/dev/null | head -1 || node packages/core/dist/cli.js --help | head -1
+if [ -n "${BIN_DIR:-}" ] && [ -x "$BIN_DIR/refdiff" ]; then
+  "$BIN_DIR/refdiff" --help | head -1
+else
+  node packages/core/dist/cli.js --help | head -1
+fi
 echo "tests: $(pnpm -r test 2>&1 | grep -oE 'Tests +[0-9]+ passed' | awk '{s+=$2} END {print s+0}') passing"
 echo
 echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."

@@ -88,12 +88,13 @@ regression years later.
 pnpm build          # tsc, both packages
 pnpm test           # vitest, both packages
 pnpm typecheck      # tsc --noEmit
-pnpm dev            # tsc --watch — keep running; the linked CLIs run from dist
+pnpm dev            # tsc --watch — keep running; the CLIs run from dist
 ```
 
-The CLIs are on PATH via `pnpm link --global` and **run from `dist`**, so a
-source edit is invisible until `pnpm dev` (or `pnpm build`) has rebuilt. If a
-change appears to have no effect, check that first.
+The CLIs are on PATH as wrapper scripts (`exec node …/dist/cli.js`, written by
+`setup-dev.sh`) and **run from `dist`**, so a source edit is invisible until
+`pnpm dev` (or `pnpm build`) has rebuilt. If a change appears to have no
+effect, check that first.
 
 `skills/refdiff/setup-dev.sh` reproduces the whole dev setup on a fresh
 machine and is idempotent.

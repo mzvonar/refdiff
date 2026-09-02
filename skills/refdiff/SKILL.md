@@ -33,10 +33,13 @@ is served (Storybook dir or URL, live app + auth), the run dir convention, and
 the repo's environment traps. If none exists, stop and write one with the user
 before running anything.
 
-The CLIs are on PATH via `pnpm link --global` from the refdiff
-checkout: `refdiff` (core) and `refdiff-annotator`. They run
-from `dist` — keep `pnpm dev` (tsc --watch) running in that checkout while
-developing, or `pnpm build` after pulling.
+The CLIs are on PATH as wrapper scripts written by `setup-dev.sh`, each one
+`exec node <checkout>/packages/*/dist/cli.js`: `refdiff` (core) and
+`refdiff-annotator`. They run from `dist` — keep `pnpm dev` (tsc --watch)
+running in that checkout while developing, or `pnpm build` after pulling. The
+wrapper is indirect on purpose: it needs no relink after a rebuild, and tsc
+emits `dist/cli.js` mode 0644, so a symlink straight to it would stop being
+executable the moment `dist` is rebuilt from clean.
 
 ## Dev-mode setup (new machine / VM)
 
@@ -52,9 +55,9 @@ bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/setup-dev.sh
 
 It makes these true, then verifies (`refdiff --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages
-built; `pnpm link --global` so `refdiff` / `refdiff-annotator`
-resolve (it tells you the PATH line to add if pnpm's global bin is not on
-PATH yet); the skill is user-level — `~/.claude/skills/refdiff` (and
+built; wrapper scripts installed into the first writable dir already on PATH
+(`$PNPM_HOME/bin`, `$PNPM_HOME`, `~/.local/bin`, `~/bin` — it names the dir it
+chose, and the PATH line to add if none was on PATH); the skill is user-level — `~/.claude/skills/refdiff` (and
 `~/.claude-personal` if present) → the checkout, through
 `~/.claude-shared/skills` only when that dir already exists (a plain machine
 with just `~/.claude` links directly; nothing is created that was not in use);
