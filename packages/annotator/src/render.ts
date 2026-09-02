@@ -218,6 +218,19 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
             </div>
           </div>
         </div>
+        <!-- The ghost footprint's hatch: one pattern per severity, in WORLD units, so the stripes
+             scale with the canvas exactly as the comps' repeating-linear-gradient(45deg, sev/.18 0
+             2px, transparent 2px 9px) does. It lives in its own svg rather than in a mark layer
+             because renderMarks() replaceChildren()s those on every render and would wipe a defs
+             kept there; SVG ids are document-global, so both panes' rects reference these three.
+             rotate(-45), not 45: SVG rotates clockwise, so a vertical stripe turned +45 leans the
+             OTHER way from the comps' 45deg gradient (compared as crops — the direction is a paint,
+             which no channel measures). -->
+        <svg id="hatch-defs" width="0" height="0" aria-hidden="true"><defs>
+          <pattern id="hatch-critical" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch critical" width="2" height="9"></rect></pattern>
+          <pattern id="hatch-major" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch major" width="2" height="9"></rect></pattern>
+          <pattern id="hatch-minor" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch minor" width="2" height="9"></rect></pattern>
+        </defs></svg>
         <div class="pane" id="pane-design" data-side="design">
           <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg><div class="vmarks" id="vmarks-design"></div></div>
           <div class="pane-label" id="label-design">DESIGN</div>
@@ -445,9 +458,19 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .frow.sup { opacity:.66; background:var(--bg0); }
 .frow.sup.sel { background:var(--bg2); }
 .frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }
-/* One-sided findings (a missing-element has no implBox, an extra-element no designBox):
-   selecting one in Full mode switches the pane to the side that has it, so say so first. */
-.fside { flex:none; padding:1px 6px; border:1px solid var(--line); border-radius:999px; font-size:10px; font-weight:600; color:var(--txt2); white-space:nowrap; }
+/* One-sided findings (a missing-element has no implBox, an extra-element no designBox): the pane
+   that LACKS the element draws its ghost while the row is selected, and this chip is what says
+   which side has it — before the click, and whether or not anything is selected. Selecting has not
+   switched the pane since 2026-09-02; the ghost pill's own button does that, on the phone. */
+/* Design only / Impl only (the comps' sideStyle): the severity colour, dashed, small caps, with the
+   location glyph — add_location_alt for a design-only element, wrong_location for an impl-only one.
+   Measured off the comp: 99x19 with the glyph (86 for the shorter label), radius 999, 1px dashed,
+   10px/700 at 0.04em, and the label written in sentence case with text-transform doing the caps
+   (the extractor reads the RENDERED text, so the transform is what it compares). It wraps to its own
+   line under a long title, as the comp's does — .fhead is flex-wrap:wrap on both sides. */
+.fside { flex:none; display:flex; align-items:center; gap:4px; padding:2px 7px; border:1px dashed var(--line); border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--txt2); white-space:nowrap; }
+.fside .msi { font-size:12px; }
+.fside.critical { border-color:var(--critical); color:var(--critical); } .fside.major { border-color:var(--major); color:var(--major); } .fside.minor { border-color:var(--minor); color:var(--minor); }
 .fhead { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .fbadge { width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-sizing:border-box; }
 .fbadge.critical { background:var(--critical); } .fbadge.major { background:var(--major); } .fbadge.minor { background:var(--minor); }
@@ -671,6 +694,51 @@ body.single .align-wrap { bottom:58px; }
    of the one you just selected — you clicked 1 and read 95. While something is selected its badge
    is drawn LAST and everything else steps back. */
 .vmarks.has-sel .vmark:not(.sel):not(.ann) { opacity:.35; }
+/* ---- the ghost of a one-sided finding (the comps' ghost()). A missing-element has no implBox and
+   an extra-element no designBox, so one pane has nothing to mark. The comps draw the element THERE
+   anyway, for the selected finding only: a hatched dashed footprint where it would be, and a pill
+   above it naming the side that has it. The home-side badge keeps a dashed halo instead of a second
+   mark, so density never doubles.
+   The footprint SCALES with the canvas (SVG in the world layer): its radius and hatch are world px
+   as the comp's borderRadius:6 and 9px gradient period are, its stroke screen px as the comp's
+   (1.5 / s)px border is. The pill is CHROME: a div in the vmarks layer at a constant screen size
+   (--cs), lifted its own height + 7 world px above the footprint's top-left corner — the comp's
+   translateY(calc(-100% - 7px)) scale(cs) about 0 100%.
+   Selecting NEVER swaps the pane by itself (rejected 2026-09-02: a pane that swaps itself is a
+   change the viewer may not notice, and they then read the other side's canvas as this one's).
+   Where only ONE pane is on screen the pill carries the switch as a button you press — the comp's
+   canSwitch, which is its 'full' mode and this app's body.single, so CSS decides it rather than the
+   render: setLayout() does not re-render the marks and a rendered-in flag would go stale. */
+#hatch-defs { position:absolute; width:0; height:0; overflow:hidden; }
+#hatch-defs .hatch { fill-opacity:.18; }
+#hatch-defs .hatch.critical { fill:var(--critical); } #hatch-defs .hatch.major { fill:var(--major); } #hatch-defs .hatch.minor { fill:var(--minor); }
+/* .gfoot, not .ghost: this file already spends that word on the diff lab's superimposed design
+   IMAGE (.ghost / #img-ghost / ghostView()), whose rule is opacity:0 until an overlay mode turns
+   it on — and a rect classed 'ghost' inherited exactly that and painted nothing. Nothing measured
+   it either: the footprint is SVG, which the element extractor does not see, and the comp's own
+   footprint travels suppressed inside the accepted artboard region, so the only evidence was a
+   crop of the frame. Keep the two names apart. */
+.marks rect.gfoot { stroke-width:1.5; stroke-dasharray:3 3; }
+.marks rect.gfoot.critical { stroke:var(--critical); fill:url(#hatch-critical); }
+.marks rect.gfoot.major { stroke:var(--major); fill:url(#hatch-major); }
+.marks rect.gfoot.minor { stroke:var(--minor); fill:url(#hatch-minor); }
+.gpill { position:absolute; display:flex; align-items:center; gap:7px; padding:5px 9px; border:1px dashed var(--line); border-radius:9px; background:var(--bg1); box-shadow:0 2px 10px rgba(0,0,0,.35);
+  white-space:nowrap; pointer-events:all; cursor:default; transform-origin:0 100%; transform:translateY(calc(-100% - 7px)) scale(var(--cs)); }
+.gpill.critical { border-color:var(--critical); } .gpill.major { border-color:var(--major); } .gpill.minor { border-color:var(--minor); }
+/* The hollow number chip: the badge's number, in the severity colour, dashed — the same "this is
+   not here" reading as the footprint. */
+.gpill .gnum { box-sizing:border-box; width:18px; height:18px; border-radius:50%; background:var(--bg1); border:1.5px dashed currentColor; font-size:10px; font-weight:700; line-height:1;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.gpill.critical .gnum { color:var(--critical); } .gpill.major .gnum { color:var(--major); } .gpill.minor .gnum { color:var(--minor); }
+.gpill .glab { font-size:11px; font-weight:600; color:var(--txt); }
+.gpill .gsw { display:flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:var(--acc); color:#fff; font-size:10.5px; font-weight:700; cursor:pointer; }
+.gpill .gsw .msi { font-size:13px; }
+body:not(.single) .gpill .gsw { display:none; }
+.vmarks .gpill.outside { opacity:.3; }
+/* The halo is on EVERY one-sided finding's badge, not only the selected one: it says the element is
+   on one pane only, and the ghost says where. */
+.vmark.one-sided { outline-offset:2.5px; }
+.vmark.one-sided.critical { outline:1.5px dashed var(--critical); } .vmark.one-sided.major { outline:1.5px dashed var(--major); } .vmark.one-sided.minor { outline:1.5px dashed var(--minor); }
 /* ---- diff lab -----------------------------------------------------------
    Chromatic-style reading aids over OUR signal: Highlight boxes every listed
    difference (the reported finding boxes + the pixel channel's regions), Dim
@@ -702,6 +770,8 @@ body.single .align-wrap { bottom:58px; }
   .marks.diffs.strobing rect.region, .strobing-mask .mask { animation-duration:1.6s; }
 }
 .ghost-wrap { position:absolute; left:0; top:0; width:100%; height:100%; overflow:hidden; pointer-events:none; }
+/* The diff lab's superimposed design IMAGE — off until an overlay mode raises it. Not the
+   one-sided ghost (.gfoot / .gpill, below); the two share nothing but the word. */
 .ghost { opacity:0; transition:opacity .08s linear; }
 .ghost.difference { mix-blend-mode:difference; }
 /* The wipe handle: a 28px grab strip with the comps' 2px accent line and sync_alt knob. */
@@ -1721,12 +1791,12 @@ function findingRowHtml(f, suppressed) {
   if (agg) h += '<span class="fgroup" title="one cause in ' + f.instances + ' places — every one is in members[]">×' + f.instances + '</span>';
   if (isReg) h += '<span class="freg" title="fixed in an earlier run, back in this one"><span class="msi" aria-hidden="true">undo</span><span>Regression</span></span>';
   if (suppressed) h += '<span class="fsuptag"><span>Suppressed</span></span>';
-  // Which side the element is on, when it is on only one. In FULL mode selecting the
-  // row switches to that side, and a switch you did not expect reads as the app
-  // jumping; the tag makes it predictable before the click. In SPLIT mode both panes
-  // are on screen, so it is just useful context.
+  // Which side the element is on, when it is on only one — and, since the ghost, where to look on
+  // the other pane: the chip's glyph is the same add_location_alt / wrong_location the ghost's
+  // reading uses. In SPLIT mode both panes are on screen and the ghost is on the counterpart one;
+  // where one pane is on screen the pill carries a button to it.
   const only = sideOf(f);
-  if (only) h += '<span class="fside" title="' + (only === 'design' ? 'in the design only — there is nothing to see on the implementation side' : 'in the implementation only — the design does not have it') + '"><span>' + (only === 'design' ? 'design only' : 'impl only') + '</span></span>';
+  if (only) h += '<span class="fside ' + f.severity + '" title="' + (only === 'design' ? 'in the design only — the implementation pane draws its ghost, where it would be' : 'in the implementation only — the design pane draws its ghost, where the design has nothing') + '"><span class="msi" aria-hidden="true">' + (only === 'design' ? 'add_location_alt' : 'wrong_location') + '</span><span>' + (only === 'design' ? 'Design only' : 'Impl only') + '</span></span>';
   if (verdict) h += '<span class="ftag ' + verdict + '"><span>' + TRIAGE_TAGS[verdict] + '</span></span>';
   h += '</div>';
   if (suppressed) h += '<div class="frule" title="' + esc(f.suppressedBy + ': ' + f.rule) + '"><span class="msi" aria-hidden="true">filter_alt_off</span><span>' + esc(f.suppressedBy + ' · ' + f.rule) + '</span></div>';
@@ -1941,11 +2011,38 @@ function badge(box, f, cls, member) {
   d.textContent = f.mark;
   return d;
 }
+// The ghost's footprint: the element's own box, padded by 4 and dashed, drawn on the pane that does
+// NOT have it — the comp's ghost() rect, down to the radius. SVG in the world layer, so it scales
+// with the canvas; the stroke stays 1.5 screen px (non-scaling-stroke), which is what the comp's
+// (1.5 / s)px border computes to.
+function ghostRect(box, f, cls) { return rect(pad(box, 4), 'gfoot ' + f.severity + cls, f.id, 6); }
+// The pill above it: the hollow number chip, the direction, and — where only one pane is on screen
+// — the button that goes to the side that HAS the element. Anchored at the footprint's top-left
+// corner; the CSS transform lifts it its own height + 7 world px and holds it at a constant screen
+// size. The switch is always in the markup and CSS-hidden off the single layout (see .gpill).
+function ghostPill(box, f, only, cls) {
+  const d = document.createElement('div');
+  d.className = 'gpill ' + f.severity + cls; d.dataset.id = f.id; d.title = f.message;
+  d.style.left = (box.x - 4) + 'px'; d.style.top = (box.y - 4) + 'px';
+  const num = document.createElement('span');
+  num.className = 'gnum'; num.textContent = f.mark;
+  const lab = document.createElement('span');
+  lab.className = 'glab';
+  lab.textContent = only === 'design' ? 'Missing here — exists in design' : 'Only in impl — nothing here in design';
+  const sw = document.createElement('span');
+  sw.className = 'gsw'; sw.dataset.ghostSide = only; sw.title = 'show the ' + only + ' pane, where the element is';
+  sw.innerHTML = '<span class="msi" aria-hidden="true">swap_horiz</span>';
+  sw.append('View ' + only);
+  d.append(num, lab, sw);
+  return d;
+}
 function renderMarks() {
   for (const side of ['design', 'impl']) {
     const layer = layers[side], blayer = markLayers[side];
     layer.replaceChildren();
-    for (const b of blayer.querySelectorAll('.vmark:not(.ann)')) b.remove();
+    // The pills go with them: they are this render's, and a stale one would sit on the canvas for
+    // the rest of the session (the layer is shared with the comment badges, which renderAnnMarks owns).
+    for (const b of blayer.querySelectorAll('.vmark:not(.ann), .gpill')) b.remove();
     blayer.classList.toggle('has-sel', !!state.selected);
     if (!state.showMarks) continue;
     const key = side === 'design' ? 'designBox' : 'implBox';
@@ -1960,12 +2057,24 @@ function renderMarks() {
       const cls = f.severity + (sel ? ' sel' : '') + (suppressed ? ' suppressed' : '') + (verdict === 'ignore' || verdict === 'snooze' ? ' triaged' : '');
       const box = (b) => (inRegion(b) ? b : adjusting ? b : undefined);
       const out = (b) => (inRegion(b) ? '' : ' outside');
+      // A one-sided finding, on the pane that does NOT have the element: the comps draw the GHOST
+      // here and no badge at all — a mark on both panes would read as two elements. Only while
+      // selected; the home-side badge's dashed halo is what marks it the rest of the time.
+      const only = sideOf(f);
+      if (only && only !== side) {
+        if (!sel) return;
+        const gb = boxForSide(f, only);
+        if (!gb || !box(gb)) return;
+        layer.append(ghostRect(gb, f, out(gb)));
+        blayer.append(ghostPill(gb, f, only, out(gb)));
+        return;
+      }
       // Per-box, so an aggregate listed for its content instance does not redraw the header ones.
       const primary = box(f[key]);
       if (primary) {
         // The box itself only while selected (the comps' 4px-padded outline); Highlight draws the rest.
         if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel' + (suppressed ? ' suppressed' : '') + out(primary), f.id, 6));
-        blayer.append(badge(primary, f, cls + out(primary), false));
+        blayer.append(badge(primary, f, cls + (only ? ' one-sided' : '') + out(primary), false));
       }
       if (state.showMembers && f.members) {
         f.members.slice(1).forEach((m) => {
@@ -2278,7 +2387,7 @@ function wireCanvasGestures() {
     // exactly where you meant to grab, and 'the canvas will not move today' is not something a
     // person attributes to the badge under their thumb. What the mark keeps is the TAP — the click
     // below selects it only while the gesture stayed put (gest.swallowClick).
-    const onMark = !!(e.target.closest && (e.target.closest('.vmark[data-id]') || e.target.closest('[data-ann]')));
+    const onMark = !!(e.target.closest && (e.target.closest('.vmark[data-id]') || e.target.closest('.gpill') || e.target.closest('[data-ann]')));
     // Capturing the pointer would move the click off the mark and lose the tap, so a mark-started
     // drag captures LATE, once it is unambiguously a drag (touch has its own implicit capture and
     // needs none of this; a mouse leaving the canvas mid-drag does).
@@ -2348,6 +2457,9 @@ function wire() {
     pane.addEventListener('click', (e) => {
       if (gestTookTheClick()) return;                               // the click that ended a pan or a pinch
       if (ann.suppressClick) { ann.suppressClick = false; return; } // the click that ended a draft gesture
+      // The ghost pill's own button, and the ONLY thing in the app that swaps the pane for you:
+      // pressed, not implied by a selection (see .gpill).
+      const g = e.target.closest && e.target.closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }
       const a = e.target.closest && e.target.closest('[data-ann]'); if (a) { selectAnn(a.dataset.ann, false); return; }
       const r = e.target.closest && e.target.closest('.vmark[data-id]'); if (r) select(r.dataset.id, false);
     });

@@ -250,6 +250,55 @@ describe("renderReport", () => {
     expect(html).toContain("'Show primary only' : 'Show all instances'")
   })
 
+  it("draws the comps' GHOST for the selected one-sided finding: a hatched footprint and a pill on the pane that lacks the element", () => {
+    // Measured off the comps at 146% canvas zoom (refdiff-compare-desktop-ghost, o1 = a critical
+    // design-only finding on a 200x48 box): footprint 304.4x81.9 at the padded box, radius 6,
+    // 1px border in the severity colour; pill 199x30 at --bg1, radius 9, its chip's ink 12x13 in
+    // the severity colour and its label "Missing here — exists in design" 154x14 at 11px/600.
+    // The footprint SCALES (SVG, world layer) and the pill does NOT (a div, --cs) — which is why
+    // the hatch is a userSpaceOnUse <pattern> and not a CSS gradient.
+    // .gfoot, never .ghost: that class is the diff lab's superimposed design image at opacity:0,
+    // which painted the footprint invisible — and no channel measures an SVG rect, so only a crop
+    // of the frame showed it (2026-09-02).
+    expect(html).toContain("function ghostRect(box, f, cls) { return rect(pad(box, 4), 'gfoot ' + f.severity + cls, f.id, 6); }")
+    expect(html).not.toContain(".marks rect.ghost")
+    expect(html).toContain('<pattern id="hatch-critical" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch critical" width="2" height="9"></rect></pattern>')
+    expect(html).toContain("#hatch-defs .hatch { fill-opacity:.18; }")
+    expect(html).toContain(".marks rect.gfoot.critical { stroke:var(--critical); fill:url(#hatch-critical); }")
+    // The defs cannot live in a mark layer: renderMarks() replaceChildren()s those every render.
+    expect(html).toContain('<svg id="hatch-defs" width="0" height="0" aria-hidden="true">')
+    expect(html).toContain("layer.replaceChildren();")
+    // …and the pills are cleared with the badges, or a stale one stays for the session.
+    expect(html).toContain("blayer.querySelectorAll('.vmark:not(.ann), .gpill')")
+    // The pill: the comp's translateY(calc(-100% - 7px)) scale(cs) about 0 100%, anchored on the
+    // footprint's own top-left corner — 7 WORLD px of gap, which measured 10.2 at 146%.
+    expect(html).toContain("transform-origin:0 100%; transform:translateY(calc(-100% - 7px)) scale(var(--cs));")
+    expect(html).toContain("d.style.left = (box.x - 4) + 'px'; d.style.top = (box.y - 4) + 'px';")
+    expect(html).toContain("lab.textContent = only === 'design' ? 'Missing here — exists in design' : 'Only in impl — nothing here in design';")
+    expect(html).toContain(".gpill .gnum { box-sizing:border-box; width:18px; height:18px; border-radius:50%;")
+    expect(html).toContain(".gpill .glab { font-size:11px; font-weight:600; color:var(--txt); }")
+    // Only the selected finding gets a ghost, and it replaces the badge on that pane rather than
+    // adding to it: mark density must not double.
+    expect(html).toContain("if (only && only !== side) {")
+    expect(html).toContain("        if (!sel) return;")
+    // The home-side badge carries the dashed halo instead — on EVERY one-sided finding, as the
+    // comps do (outline, not border: the badge already has the 2px white one).
+    expect(html).toContain("badge(primary, f, cls + (only ? ' one-sided' : '') + out(primary), false)")
+    expect(html).toContain(".vmark.one-sided.critical { outline:1.5px dashed var(--critical); }")
+    // The switch is a BUTTON on the pill, shown only where one pane is on screen (the comp's
+    // canSwitch === full mode). CSS decides it, because setLayout() re-renders no marks and a
+    // flag baked in at render time would go stale on the Split / Full toggle.
+    expect(html).toContain("body:not(.single) .gpill .gsw { display:none; }")
+    expect(html).toContain("sw.className = 'gsw'; sw.dataset.ghostSide = only;")
+    expect(html).toContain("sw.append('View ' + only);")
+    expect(html).toContain("closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }")
+    // Selecting a row still never swaps the pane by itself (rejected 2026-09-02).
+    expect(html).not.toContain("setSide(onlySide)")
+    expect(html).not.toContain("if (only) setSide(only)")
+    // A drag that starts on the pill pans the canvas, like one that starts on a badge.
+    expect(html).toContain("e.target.closest('.gpill')")
+  })
+
   it("carries the phone layout (< 760px, the comps' breakpoint): scrolling page, sticky viewer, floating tools", () => {
     const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)
     expect(mobile).not.toBeNull()
@@ -305,12 +354,17 @@ describe("renderReport", () => {
     // A one-sided finding (missing-element has no implBox, extra-element no designBox)
     // centres on the CURRENT side's box when it has one. It must NOT switch sides:
     // a pane that swaps itself is a change the viewer may not notice, and they then
-    // read the other side's canvas as this one's (rejected 2026-09-02).
+    // read the other side's canvas as this one's (rejected 2026-09-02). The pane can
+    // still be swapped BY PRESSING the ghost pill's button, which is the difference.
     expect(html).not.toContain("setSide(onlySide)");
     expect(html).toContain("const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);")
     expect(html).toContain("function sideOf(f) {")
-    expect(html).toContain("'design only'")
-    expect(html).toContain("'impl only'")
+    // The row's chip, measured off the comp's sideStyle: the location glyph, the severity colour,
+    // dashed, and the caps left to text-transform (the extractor compares the RENDERED text).
+    expect(html).toContain("(only === 'design' ? 'add_location_alt' : 'wrong_location')")
+    expect(html).toContain("(only === 'design' ? 'Design only' : 'Impl only')")
+    expect(html).toContain(".fside.critical { border-color:var(--critical); color:var(--critical); }")
+    expect(html).toContain("text-transform:uppercase")
     expect(html).toContain('id="inst-row"')
     expect(html).toContain("SUPPRESSED_LABEL(sup.length)")
     // A row: badge, title, ×N, the Regression tag, the mono prop line with the actual in red.
