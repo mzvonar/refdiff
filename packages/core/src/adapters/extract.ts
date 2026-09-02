@@ -129,6 +129,11 @@ export async function extractElementTree(
       const r = radiusPx(s.borderTopLeftRadius, rect);
       return hasAlpha(s.backgroundColor) || hasBorder || (r !== undefined && r > 0);
     };
+    /** A drop shadow the eye reads as elevation — "none" is the CSS default. */
+    const shadowOf = (s: CSSStyleDeclaration): string | undefined => {
+      const v = (s.boxShadow || "").trim();
+      return v === "" || v === "none" ? undefined : v;
+    };
 
     /**
      * The element whose background/border/radius visually belong to `el`:
@@ -148,8 +153,8 @@ export async function extractElementTree(
       el: Element,
       rect: DOMRect,
       cs: CSSStyleDeclaration,
-    ): { cs: CSSStyleDeclaration; rect: DOMRect } => {
-      if (paintsDecoration(cs, rect)) return { cs, rect };
+    ): { cs: CSSStyleDeclaration; rect: DOMRect; el: Element } => {
+      if (paintsDecoration(cs, rect)) return { cs, rect, el };
       let node: Element = el;
       for (;;) {
         const parent = node.parentElement;
@@ -166,13 +171,20 @@ export async function extractElementTree(
         if (ownText) break;
         const pcs = getComputedStyle(parent);
         const pRect = parent.getBoundingClientRect();
-        if (paintsDecoration(pcs, pRect)) return { cs: pcs, rect: pRect };
+        if (paintsDecoration(pcs, pRect)) return { cs: pcs, rect: pRect, el: parent };
         node = parent;
       }
-      return { cs, rect };
+      return { cs, rect, el };
     };
 
-    const emit = (el: Element, elRect: DOMRect, cs: CSSStyleDeclaration, ownText: string, opacity: number) => {
+    const emit = (
+      el: Element,
+      elRect: DOMRect,
+      cs: CSSStyleDeclaration,
+      ownText: string,
+      opacity: number,
+      isSurface = false,
+    ) => {
       const tag = el.tagName.toLowerCase();
       const isImage = tag === "img" || tag === "picture" || tag === "video";
       const isIcon = tag === "svg";
@@ -180,7 +192,22 @@ export async function extractElementTree(
       // backdrop/scrim, whose extent is the viewport's, not the design's.
       const isBackdrop =
         !ownText && !isImage && !isIcon && rootArea > 0 && (elRect.width * elRect.height) / rootArea >= 0.9;
-      const role = ownText ? "text" : isImage ? "image" : isIcon ? "icon" : isBackdrop ? "backdrop" : "box";
+      // "surface": a CONTAINER that paints. Its own children carry the text, so
+      // it is not a leaf and was never emitted before — which made a bar vs a
+      // floating pill (background, border, radius, shadow, width) invisible to
+      // both channels at once. Kept a distinct role so a pair can switch it off
+      // with `roles: ["surface"]` and so the checks can be read separately.
+      const role = ownText
+        ? "text"
+        : isImage
+          ? "image"
+          : isIcon
+            ? "icon"
+            : isBackdrop
+              ? "backdrop"
+              : isSurface
+                ? "surface"
+                : "box";
       const rect = (ownText && inkBox(el)) || elRect;
 
       const style: Record<string, unknown> = {};
@@ -198,7 +225,12 @@ export async function extractElementTree(
       // is the ONLY child: a <button><span>⋯</span></button> and a bordered
       // <div>⋯</div> are the same bordered pill, and one side's markup must
       // not decide whether the border is "missing".
-      const { cs: dcs, rect: dRect } = decorationSource(el, elRect, cs);
+      const { cs: dcs, rect: dRect, el: donor } = decorationSource(el, elRect, cs);
+      // A container whose paint was HOISTED onto this leaf must not also emit as a
+      // surface: the difference is already comparable here, and emitting both would
+      // report every pill twice. figma-tree.test.ts pins the same rule on the Figma
+      // side ("Container with children and decoration is not itself a leaf").
+      if (donor !== el) claimed.add(donor);
       if (hasAlpha(dcs.backgroundColor)) style["backgroundColor"] = withOpacity(dcs.backgroundColor, opacity);
       const radius = radiusPx(dcs.borderTopLeftRadius, dRect);
       if (radius !== undefined && radius > 0) style["borderRadius"] = radius;
@@ -209,6 +241,10 @@ export async function extractElementTree(
         style["borderColor"] = withOpacity(dcs.borderTopColor, opacity);
       }
       if (opacity < 1) style["opacity"] = Math.round(opacity * 1000) / 1000;
+      // Elevation is design: a floating pill and a flush bar differ by it and by
+      // nothing else measurable. Captured for every element, not just surfaces.
+      const shadow = shadowOf(dcs);
+      if (shadow !== undefined) style["boxShadow"] = shadow;
 
       const node: Record<string, unknown> = {
         id: `${tag}-${seq++}`,
@@ -225,7 +261,32 @@ export async function extractElementTree(
       out.push(node);
     };
 
-    const walk = (el: Element, isRoot: boolean, inheritedOpacity: number) => {
+    /**
+     * A surface's paint signature: two nested wrappers that paint the SAME thing
+     * over the same box are one surface to a reader, and emitting both would
+     * double every finding about it.
+     */
+    const paintKey = (cs: CSSStyleDeclaration, rect: DOMRect): string =>
+      [
+        cs.backgroundColor,
+        cs.borderTopWidth,
+        cs.borderTopColor,
+        cs.borderTopStyle,
+        radiusPx(cs.borderTopLeftRadius, rect) ?? 0,
+        shadowOf(cs) ?? "",
+      ].join("|");
+
+    /** Containers whose paint a descendant leaf already carries (hoisted). */
+    const claimed = new Set<Element>();
+    /** Painting containers, emitted AFTER the walk so `claimed` is complete. */
+    const surfaceCandidates: { el: Element; rect: DOMRect; cs: CSSStyleDeclaration; opacity: number }[] = [];
+
+    const walk = (
+      el: Element,
+      isRoot: boolean,
+      inheritedOpacity: number,
+      enclosing?: { box: DOMRect; key: string },
+    ) => {
       const cs = getComputedStyle(el);
       const ownOpacity = parseFloat(cs.opacity);
       if (cs.display === "none" || cs.visibility === "hidden" || ownOpacity === 0) return;
@@ -264,12 +325,44 @@ export async function extractElementTree(
       // nor do sub-visible boxes (≤2px in BOTH dimensions — the sr-only
       // clip pattern; real hairlines are thin in only one axis).
       const subVisible = rect.width <= 2 && rect.height <= 2;
+
+      // …and a container that PAINTS emits as a surface. Without this, design
+      // that lives only on a container — a background, a border, a radius, a
+      // shadow, a width — is invisible to the whole harness: not a leaf, so
+      // never extracted; never extracted, so never matched; never matched, so
+      // the pixel channel never diffs it either.
+      const isContainer = elementChildren.length > 0 && !ownText;
+      const key = paintKey(cs, rect);
+      // Big enough to be a surface rather than a rule or a divider, and not a
+      // repeat of the enclosing surface's own paint over (almost) the same box.
+      const sameAsEnclosing =
+        enclosing !== undefined &&
+        enclosing.key === key &&
+        Math.abs(enclosing.box.width - rect.width) <= 2 &&
+        Math.abs(enclosing.box.height - rect.height) <= 2;
+      const isSurface =
+        isContainer &&
+        (paintsDecoration(cs, rect) || shadowOf(cs) !== undefined) &&
+        rect.width >= 8 &&
+        rect.height >= 8 &&
+        !sameAsEnclosing;
+
       if (!isRoot && !zeroSize && !subVisible && (elementChildren.length === 0 || ownText))
         emit(el, rect, cs, ownText, opacity);
-      for (const child of elementChildren) walk(child, false, opacity);
+      // Deferred: whether this container's paint is claimed by a leaf is only known
+      // once its whole subtree has been walked.
+      if (!isRoot && !zeroSize && !subVisible && isSurface)
+        surfaceCandidates.push({ el, rect, cs, opacity });
+
+      const nextEnclosing = isSurface ? { box: rect, key } : enclosing;
+      for (const child of elementChildren) walk(child, false, opacity, nextEnclosing);
     };
 
     walk(root, true, 1);
+    for (const c of surfaceCandidates) {
+      if (claimed.has(c.el)) continue;
+      emit(c.el, c.rect, c.cs, "", c.opacity, true);
+    }
     return {
       width: round(rootRect.width),
       height: round(rootRect.height),

@@ -136,7 +136,18 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
   it("uses the set's bounding box and emits one leaf per label, icon and focus ring", () => {
     expect([width, height]).toEqual([1283, 761]);
     // 42 variants → 42 labels; 27 icon instances (globe/loader) → 27 icons; 7 Focus rings → 7 boxes.
-    expect(roles).toEqual({ text: 42, icon: 27, box: 7 });
+    // …and 7 SURFACES, one per Focus variant (42 variants / 6 states). Those are the
+    // button fills that were invisible before: hoisting gives a painted frame's
+    // decoration to its lone label, but a Focus variant's frame has a focus-ring
+    // child too, and a ring is not icon-like, so it BREAKS the chain and the label
+    // cannot claim the fill. The other 35 frames are still not emitted — their
+    // labels did claim them (`claimed`), and emitting both would report every pill
+    // twice, which is what the "Container with children and decoration is not
+    // itself a leaf" test below pins.
+    expect(roles).toEqual({ text: 42, icon: 27, box: 7, surface: 7 });
+    const surfaces = elements.filter((e) => e.role === "surface");
+    // They carry real paint — otherwise this channel would be adding noise, not design.
+    expect(surfaces.every((e) => e.style?.backgroundColor !== undefined)).toBe(true);
     expect(elements.some((e) => e.id.startsWith("vector") || e.id.startsWith("boolean_operation"))).toBe(false);
   });
 

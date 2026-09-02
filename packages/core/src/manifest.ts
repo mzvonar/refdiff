@@ -18,9 +18,10 @@ import type {
   StorybookSource,
   Viewport,
 } from "./pipeline.js"
-import type { AcceptedDeviation, IgnorePolicy } from "./types.js"
+import type { AcceptedDeviation, FindingType, IgnorePolicy, TextPattern } from "./types.js"
 
 import { err, ok, type Result } from "./result.js"
+import { readSteps } from "./adapters/steps.js"
 
 /**
  * A figma design may carry `variants`: the node is a COMPONENT_SET and the
@@ -72,7 +73,23 @@ function readViewport(v: unknown): Viewport | undefined {
 function readPolicy(v: unknown): IgnorePolicy | undefined {
   if (!isRecord(v)) return undefined
   const out: IgnorePolicy = {}
-  if (Array.isArray(v["textPatterns"])) out.textPatterns = v["textPatterns"].map(String)
+  if (Array.isArray(v["textPatterns"])) {
+    // Both shapes: "^Foo$" and { pattern: "^Foo$", role: "text" }.
+    out.textPatterns = v["textPatterns"].flatMap((t: unknown): TextPattern[] => {
+      if (typeof t === "string") return [t]
+      if (isRecord(t) && typeof t["pattern"] === "string") {
+        const types = Array.isArray(t["types"]) ? (t["types"].map(String) as FindingType[]) : undefined
+        return [
+          {
+            pattern: t["pattern"],
+            ...(typeof t["role"] === "string" ? { role: t["role"] } : {}),
+            ...(types !== undefined ? { types } : {}),
+          },
+        ]
+      }
+      return []
+    })
+  }
   if (Array.isArray(v["roles"])) out.roles = v["roles"].map(String)
   if (Array.isArray(v["regions"])) {
     out.regions = v["regions"].flatMap((r: unknown) =>
@@ -181,10 +198,12 @@ function readDesign(
   if (typeof design["file"] !== "string" || typeof design["frame"] !== "string") {
     return err('design needs { file, frame } or { kind: "figma", fileKey, nodeId }')
   }
+  const dSteps = readSteps(design["steps"])
   return ok({
     kind: "dc-html",
     file: design["file"],
     frame: design["frame"],
+    ...(dSteps.steps.length > 0 ? { steps: dSteps.steps } : {}),
     ...(scope !== undefined ? { scope } : {}),
     ...(viewport ? { viewport } : {}),
   })
@@ -194,9 +213,11 @@ function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec
   if (!isRecord(app) || typeof app["source"] !== "string") return err("app needs { source }")
   if (app["source"] === "storybook") {
     if (typeof app["storyId"] !== "string") return err("storybook app needs storyId")
+    const aSteps = readSteps(app["steps"])
     return ok({
       kind: "storybook",
       storyId: app["storyId"],
+      ...(aSteps.steps.length > 0 ? { steps: aSteps.steps } : {}),
       ...(viewport ? { viewport } : {}),
       ...(app["overlay"] === true ? { overlay: true } : {}),
       ...(typeof app["selector"] === "string" ? { selector: app["selector"] } : {}),
@@ -205,9 +226,11 @@ function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec
   if (app["source"] === "live" || app["source"] === "live-url") {
     const route = app["route"] ?? app["url"]
     if (typeof route !== "string") return err("live app needs route (or url)")
+    const aSteps = readSteps(app["steps"])
     return ok({
       kind: "live-url",
       route,
+      ...(aSteps.steps.length > 0 ? { steps: aSteps.steps } : {}),
       ...(typeof app["role"] === "string" ? { role: app["role"] } : {}),
       ...(viewport ? { viewport } : {}),
       ...(typeof app["selector"] === "string" ? { selector: app["selector"] } : {}),

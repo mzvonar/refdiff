@@ -131,6 +131,9 @@ export async function packageForModel(
   const report: ComparisonReport = {
     pair: pair.id,
     createdAt: new Date().toISOString(),
+    // The previous report IS the counter — no side file to fall out of step with
+    // the run dir it describes.
+    run: (previous?.run ?? 0) + 1,
     design: {
       source: design.source,
       ref: design.ref,

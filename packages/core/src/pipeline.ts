@@ -6,6 +6,7 @@
  * docs/architecture.md "Pipeline".
  */
 
+import type { CaptureStep } from "./adapters/steps.js";
 import type { Alignment, Box, CaptureScope, ElementNode } from "./types.js";
 
 export interface Viewport {
@@ -15,6 +16,13 @@ export interface Viewport {
 
 /** Claude Design `.dc.html` canvas served from a local directory. */
 export interface DcHtmlSource {
+  /**
+   * Interaction steps run after load and the animation freeze, before the
+   * capture: how a state that only exists after a click becomes measurable.
+   * A step whose target is missing FAILS the capture — photographing the
+   * default state instead would go green while measuring the wrong state.
+   */
+  steps?: CaptureStep[];
   kind: "dc-html";
   /** Directory containing the comp; served over http (the dc-runtime's
    *  fetch of React from unpkg breaks under file://). */
@@ -36,6 +44,13 @@ export interface DcHtmlSource {
 
 /** A Storybook story rendered via the bare iframe. */
 export interface StorybookSource {
+  /**
+   * Interaction steps run after load and the animation freeze, before the
+   * capture: how a state that only exists after a click becomes measurable.
+   * A step whose target is missing FAILS the capture — photographing the
+   * default state instead would go green while measuring the wrong state.
+   */
+  steps?: CaptureStep[];
   kind: "storybook";
   /** Storybook origin, e.g. http://localhost:6006 */
   url: string;
@@ -84,6 +99,13 @@ export type LiveAuth =
 
 /** A page of the running application. */
 export interface LiveUrlSource {
+  /**
+   * Interaction steps run after load and the animation freeze, before the
+   * capture: how a state that only exists after a click becomes measurable.
+   * A step whose target is missing FAILS the capture — photographing the
+   * default state instead would go green while measuring the wrong state.
+   */
+  steps?: CaptureStep[];
   kind: "live-url";
   url: string;
   viewport?: Viewport;
@@ -158,6 +180,13 @@ export type CaptureError =
   /** The host was still preparing the render (Storybook/Vite compiling the story) when we gave up. */
   | { kind: "still-loading"; ref: string; detail: string }
   | { kind: "capture-failed"; ref: string; detail: string }
+  /**
+   * An interaction step could not run, so the requested STATE was never reached.
+   * A hard stop on purpose: capturing the default state instead would go green
+   * while measuring something other than what the pair claims — the same failure
+   * class as `blank-render` and `figma-low-quality`.
+   */
+  | { kind: "step-failed"; ref: string; frame: string; step: string; index: number; detail: string }
   // Figma
   /** No token, or the API rejected it (401/403). */
   | { kind: "figma-auth"; ref: string; detail: string }

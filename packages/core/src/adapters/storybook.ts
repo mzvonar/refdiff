@@ -27,6 +27,7 @@ import {
   openPage,
   waitForFonts,
 } from "./browser.js"
+import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 
 const MOUNT_TIMEOUT_MS = 40_000
@@ -148,6 +149,25 @@ export async function captureStorybook(
 
     await waitForFonts(page)
     await page.addStyleTag({ content: FREEZE_CSS })
+
+    // Interaction steps on the IMPLEMENTATION side. They must mirror the design
+    // side's: a state is a state, and driving the comp into its selected state
+    // while capturing the app in its default one reports the difference between
+    // "selected" and "not selected" as if it were drift.
+    const steps = source.steps ?? []
+    if (steps.length > 0) {
+      const failed = await runSteps(page, steps)
+      if (failed) {
+        return err({
+          kind: "step-failed",
+          ref: identity,
+          frame: String(source.storyId),
+          step: describeStep(failed.step),
+          index: failed.index,
+          detail: failed.kind === "step-failed" ? failed.detail : "target not found",
+        })
+      }
+    }
 
     // Overlay stories (dialog/sheet) portal their content to <body>, outside
     // #storybook-root — extract and shoot the whole viewport.

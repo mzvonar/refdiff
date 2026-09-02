@@ -243,6 +243,11 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
         const pd = decorationOf(parent, pb.width, pb.height, false, effectiveOpacity(ancestors.slice(0, i + 1)));
         if (paints(pd)) {
           deco = pd;
+          // This ancestor's paint now travels on the leaf, so it must not ALSO
+          // emit as a surface — the difference is already comparable here, and
+          // both would report every pill twice. Pinned by the "Container with
+          // children and decoration is not itself a leaf" test.
+          claimed.add(parent);
           break;
         }
       }
@@ -260,17 +265,45 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
       ...(Object.keys(token).length > 0 ? { token } : {}),
     };
     out.push(node);
-    leaves++;
-    const hasColorOrType = isText || deco.backgroundColor !== undefined || deco.borderColor !== undefined;
-    if (
-      hasColorOrType &&
-      ["color", "backgroundColor", "borderColor", "typography", "fontSize", "fontFamily"].some((k) => k in token)
-    ) {
-      bound++;
+    // The design-QUALITY score is the share of LEAVES bound to variables/styles,
+    // and it gates the run (`figma-low-quality` hard-stops below --min-design-quality).
+    // A surface is a container, not a leaf: counting it would move that gate's
+    // denominator and silently change which files are judged comparable — a
+    // measurement change disguised as a feature. Excluded.
+    // BOTH sides of the ratio, not just the denominator: a surface's fill is
+    // usually tokenised, so counting `bound` without `leaves` inflated the score
+    // (0.64 -> 0.74 on the recorded Button/Fill set) and would have loosened the
+    // gate rather than left it alone.
+    if (role !== "surface") {
+      leaves++;
+      const hasColorOrType = isText || deco.backgroundColor !== undefined || deco.borderColor !== undefined;
+      if (
+        hasColorOrType &&
+        ["color", "backgroundColor", "borderColor", "typography", "fontSize", "fontFamily"].some((k) => k in token)
+      ) {
+        bound++;
+      }
     }
   };
 
-  const walk = (n: FigmaNode, ancestors: readonly FigmaNode[]) => {
+  /**
+   * A surface's paint signature — the mirror of the DOM side's `paintKey`: two
+   * nested frames painting the same thing over the same box are one surface to
+   * a reader, and emitting both doubles every finding about it.
+   */
+  const paintKey = (d: Decoration, w: number, h: number): string =>
+    [d.backgroundColor ?? "", d.borderWidth ?? "", d.borderColor ?? "", d.borderRadius ?? "", Math.round(w), Math.round(h)].join("|")
+
+  /** Containers whose paint a descendant leaf already carries (hoisted). */
+  const claimed = new Set<FigmaNode>();
+  /** Painting containers, emitted AFTER the walk so `claimed` is complete. */
+  const surfaceCandidates: { n: FigmaNode; ancestors: readonly FigmaNode[] }[] = [];
+
+  const walk = (
+    n: FigmaNode,
+    ancestors: readonly FigmaNode[],
+    enclosing?: { key: string; w: number; h: number },
+  ) => {
     const isRoot = n === root;
     if (!isRoot && !isVisible(n)) return;
     const b = n.absoluteBoundingBox;
@@ -296,6 +329,29 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
           return;
         }
         if (b && Math.max(b.width, b.height) <= MAX_ICON_PX && allVectors(n)) return emit(n, "icon", ancestors);
+        // A container WITH children that paints is a SURFACE. This is the mirror
+        // of the DOM extractor's `surface` role and it has to exist for the same
+        // reason: design that lives only on a container (a fill, a stroke, a
+        // corner radius, a width) is otherwise invisible to the harness. Without
+        // BOTH sides emitting it, a Figma pair would report every implementation
+        // surface as an `extra-element` instead of comparing it.
+        if (b && b.width >= 8 && b.height >= 8) {
+          const dec = decorationOf(n, b.width, b.height, false, effectiveOpacity([...ancestors, n]))
+          if (paints(dec)) {
+            const key = paintKey(dec, b.width, b.height)
+            const dup =
+              enclosing !== undefined &&
+              enclosing.key === key &&
+              Math.abs(enclosing.w - b.width) <= 2 &&
+              Math.abs(enclosing.h - b.height) <= 2
+            if (!dup) {
+              surfaceCandidates.push({ n, ancestors })
+              const next = [...ancestors, n]
+              for (const k of kids) walk(k, next, { key, w: b.width, h: b.height })
+              return
+            }
+          }
+        }
       } else if (kids.length === 0) {
         // SLICE, unknown leaf types with a box: treat as image-ish content.
         if (b) emit(n, "image", ancestors);
@@ -303,10 +359,16 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
       }
     }
     const next = [...ancestors, n];
-    for (const k of kids) walk(k, next);
+    for (const k of kids) walk(k, next, enclosing);
   };
 
   walk(root, []);
+  // Deferred: a container is a SURFACE only when no descendant leaf claimed its
+  // paint. Emitted after the walk, when `claimed` is complete.
+  for (const c of surfaceCandidates) {
+    if (claimed.has(c.n)) continue;
+    emit(c.n, "surface", c.ancestors);
+  }
 
   const boundShare = leaves === 0 ? 0 : bound / leaves;
   const detachedShare = instances === 0 ? 0 : detached / instances;

@@ -18,6 +18,7 @@ import { dirname } from "node:path"
 
 import { err, ok, type Result } from "../result.js"
 import { captureUntilStable, closeQuietly, FREEZE_CSS, openPage, waitForFonts } from "./browser.js"
+import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 
 const DPR = 2
@@ -180,6 +181,25 @@ export async function captureLiveUrl(
 
     await waitForFonts(page)
     await page.addStyleTag({ content: FREEZE_CSS })
+
+    // Interaction steps on the IMPLEMENTATION side. They must mirror the design
+    // side's: a state is a state, and driving the comp into its selected state
+    // while capturing the app in its default one reports the difference between
+    // "selected" and "not selected" as if it were drift.
+    const steps = source.steps ?? []
+    if (steps.length > 0) {
+      const failed = await runSteps(page, steps)
+      if (failed) {
+        return err({
+          kind: "step-failed",
+          ref: identity,
+          frame: String(source.url),
+          step: describeStep(failed.step),
+          index: failed.index,
+          detail: failed.kind === "step-failed" ? failed.detail : "target not found",
+        })
+      }
+    }
 
     const rootSelector = source.selector ?? "body"
     if (source.selector && (await page.locator(source.selector).count()) === 0) {

@@ -18,6 +18,7 @@ import type { Alignment, Box, Finding, FindingType, Severity } from "../types.js
 
 import { classifyRegion, describeChange, type RawImage } from "./classify.js"
 import { clusterMask, unionBox, type Cluster, type DiffMask } from "./cluster.js"
+import type { RemainderDiff } from "./diff.js"
 
 /** What the diff edge measured for one matched pair, in impl native pixels. */
 export interface MatchDiff {
@@ -269,6 +270,45 @@ export interface PixelCheckResult {
  * Pure: pixel-region findings (unnumbered) for the eligible matches.
  * `structural` is the structural channel's output for the same pair.
  */
+/**
+ * The whole-frame backstop as a finding: difference that lies OUTSIDE every
+ * matched element, which neither channel can otherwise see (the per-match
+ * channel looks only inside matched boxes, and matching is driven by an
+ * element model that extracts leaves — so a container's surface is invisible
+ * to both).
+ *
+ * One finding per run, carrying the largest unexplained regions so a reader
+ * can say WHERE. It is deliberately quiet: below `remainderRatio` of the frame
+ * nothing is emitted, because two correct rasterisations always disagree
+ * somewhere and a warning that fires on every clean run is a warning nobody
+ * reads.
+ */
+export function remainderFinding(
+  rem: Pick<RemainderDiff, "diffRatio" | "diffPixels" | "clusters">,
+  minRatio = 0.004,
+): RawFinding | undefined {
+  if (rem.diffRatio < minRatio || rem.clusters.length === 0) return undefined
+  const top = rem.clusters.slice(0, 6)
+  const pct = (rem.diffRatio * 100).toFixed(2)
+  const where = top
+    .slice(0, 3)
+    .map((c) => `${Math.round(c.box.w)}×${Math.round(c.box.h)} at (${Math.round(c.box.x)}, ${Math.round(c.box.y)})`)
+    .join("; ")
+  return {
+    type: "pixel-region",
+    severity: rem.diffRatio >= 0.02 ? "major" : "minor",
+    role: "frame",
+    message:
+      `${pct}% of the frame differs OUTSIDE every matched element — nothing in the element model ` +
+      `covers it, so no per-element finding can. ${rem.clusters.length} region(s); largest: ${where}. ` +
+      `A container's background, border, radius or width is the usual cause: containers are not leaf ` +
+      `elements, so they are never matched and never diffed.`,
+    expected: { unexplainedDiffRatio: 0 },
+    actual: { unexplainedDiffRatio: Math.round(rem.diffRatio * 10000) / 10000, regions: rem.clusters.length },
+    regions: top.map((c) => c.box),
+  }
+}
+
 export function runPixelChecks(
   diffs: readonly MatchDiff[],
   structural: readonly Finding[],

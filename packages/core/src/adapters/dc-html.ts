@@ -27,6 +27,7 @@ import {
   serveDir,
   waitForFonts,
 } from "./browser.js"
+import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 import { CANVAS_SLACK, isFluidFrame, pickLargestChild, type ScopeCandidate } from "./scope.js"
 
@@ -243,6 +244,26 @@ export async function captureDcHtml(
     }
 
     await page.addStyleTag({ content: FREEZE_CSS })
+
+    // Interaction steps: a Claude Design comp is a LIVE page, and part of the
+    // design only exists after a click (the ghost language for one-sided
+    // findings, an open menu, a hover). Run them AFTER the freeze so the state
+    // they produce is already static, and BEFORE the scope resolves, because a
+    // step may be what brings the scoped node into existence.
+    const steps = source.steps ?? []
+    if (steps.length > 0) {
+      const failed = await runSteps(page, steps)
+      if (failed) {
+        return err({
+          kind: "step-failed",
+          ref: identity,
+          frame: source.frame,
+          step: describeStep(failed.step),
+          index: failed.index,
+          detail: failed.kind === "step-failed" ? failed.detail : "target not found",
+        })
+      }
+    }
 
     // Scope: the component inside the artboard, not the artboard.
     const scoped = await resolveScope(page, selector, source.scope)

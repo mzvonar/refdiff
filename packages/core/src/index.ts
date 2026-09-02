@@ -24,6 +24,7 @@ export type {
   SuppressionReason,
 } from "./types.js"
 
+export { hiddenMovement, movementPx, type HiddenMovement } from "./policy-audit.js"
 export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js"
 export {
   acceptedFor,
@@ -178,8 +179,16 @@ export {
   severityForRatio,
   type MatchDiff,
   type PixelCheckOptions,
+  remainderFinding,
 } from "./pixel/checks.js"
-export { DIFF_DEFAULTS, diffMatches, writeDiffMask, type DiffOptions } from "./pixel/diff.js"
+export {
+  DIFF_DEFAULTS,
+  diffMatches,
+  diffRemainder,
+  writeDiffMask,
+  type DiffOptions,
+  type RemainderDiff,
+} from "./pixel/diff.js"
 export {
   CLASSIFY_DEFAULTS,
   classifyChange,

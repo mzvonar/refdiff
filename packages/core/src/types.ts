@@ -126,9 +126,54 @@ export interface FindingMember {
  * What to ignore for one pair — serializable so it can live in a manifest.
  * Regions are in impl (aligned) CSS-px space, the same space findings use.
  */
+/**
+ * One `textPatterns` entry. A bare string matches whatever the pattern matches;
+ * the object form ALSO requires the finding's role, so one word cannot excuse
+ * two unrelated elements.
+ *
+ * The real-world case, 2026-09-02: an artboard-vocabulary pattern listed
+ * `Review` — a word in the captured artboard AND the label of the delta strip's
+ * Review button. The one pattern silenced both, and the strip's 84px shift went
+ * with it. `{ pattern: "^Review$", role: "text" }` is no help there (both are
+ * text), but a region or a narrower alternation is; the role scope is for the
+ * commoner case of a word shared between a `box`/`icon` and a real label.
+ */
+export type TextPattern =
+  | string
+  | {
+      pattern: string
+      /** Also require this element role. */
+      role?: string
+      /**
+       * Also require the finding to be one of these TYPES — the axis that
+       * actually matters, and the one the 2026-09-02 incident turned on.
+       *
+       * The artboard-vocabulary rule that hid the delta strip's 84px shift was
+       * doing two jobs at once: excusing 24 `missing-element` findings (the comp
+       * draws its artboard as live DOM, the app draws a PNG, so those strings
+       * genuinely have no counterpart) and, silently, 3 `position` + 1 `spacing`
+       * findings about a real control that happened to share a word. Role scoping
+       * does NOT separate those: both elements were `role: "text"`. Type scoping
+       * does — `types: ["missing-element", "extra-element", "text-content"]` says
+       * "this string is absent or is demo copy" without also saying "and I do not
+       * care where anything by that name sits".
+       */
+      types?: FindingType[]
+    }
+
 export interface IgnorePolicy {
-  /** Regex sources (`u` flag) matched against a finding's texts — demo IDs, amounts, names. */
-  textPatterns?: string[]
+  /**
+   * Regex sources (`u` flag) matched against a finding's texts — demo IDs,
+   * amounts, names.
+   *
+   * REACH FOR THIS LAST. A text pattern removes EVERY finding type about a
+   * matching string, geometry included: position, size and spacing go with the
+   * wording. When the string is a volatile VALUE, `dataSlots: { patterns }` is
+   * the narrower tool — it masks the value out of both sides and keeps
+   * position, size, colour and typography compared. The run summary now warns
+   * when a suppression hides a shift of ≥8px (`hiddenMovement`).
+   */
+  textPatterns?: TextPattern[]
   /** Element roles ("text" | "image" | "icon" | "box") whose findings are out of scope. */
   roles?: string[]
   /** Boxes whose contents are chrome, not UI. */
@@ -266,6 +311,19 @@ export interface Alignment {
 export interface ComparisonReport {
   pair: string
   createdAt: string
+  /**
+   * 1-based ordinal of this run of this pair. Derived, never stored separately:
+   * the previous run's report is the counter (`(previous?.run ?? 0) + 1`), so a
+   * fresh run dir starts at 1 and deleting it resets the count — the same
+   * lifetime as the delta and the ledger. A timestamp identifies a run but does
+   * not ORDER it for a reader; "Run 47 vs 46" is the thing a person can act on.
+   *
+   * OPTIONAL because it is absent from every report written before runs were
+   * numbered, and those are exactly the reports `readPreviousReport` finds on
+   * disk. A required field here would be a lie about existing run dirs; every
+   * reader falls back to `createdAt`.
+   */
+  run?: number
   design: {
     source: string
     ref: string
@@ -296,7 +354,15 @@ export interface ComparisonReport {
    * `regressions` ⊆ `introduced`: findings an EARLIER run of this pair had
    * resolved (per `resolved-ledger.json`) that are back — a fix undone.
    */
-  delta?: { previousRun: string; resolved: string[]; introduced: string[]; regressions?: string[] }
+  delta?: {
+    /** The previous run's `createdAt` — identity. */
+    previousRun: string
+    /** The previous run's `run` ordinal, when it had one (reports written before runs were numbered do not). */
+    previousRunNumber?: number
+    resolved: string[]
+    introduced: string[]
+    regressions?: string[]
+  }
   artifacts: {
     designPng: string
     implPng: string

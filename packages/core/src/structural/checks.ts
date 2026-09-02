@@ -119,6 +119,7 @@ function presenceFindings(match: MatchResult, min: number): RawFinding[] {
       ...roleOf(el),
       ...textField(el),
       designBox: el.box,
+      ...identityOf(el, "expected"),
       message: `design ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) has no counterpart in the implementation`,
     });
   }
@@ -130,6 +131,7 @@ function presenceFindings(match: MatchResult, min: number): RawFinding[] {
       ...roleOf(el),
       ...textField(el),
       implBox: el.box,
+      ...identityOf(el, "actual"),
       message: `implementation renders ${elementLabel(el)} (${Math.round(el.box.w)}×${Math.round(el.box.h)}) that the design does not have`,
     });
   }
@@ -473,6 +475,43 @@ export function finalize(raw: readonly RawFinding[]): Finding[] {
  * The structural channel: presence findings for unmatched elements + typed
  * checks per matched pair, severity-ranked and numbered for set-of-marks.
  */
+/**
+ * What identifies a presence finding about a TEXTLESS element.
+ *
+ * `identityKey` is built from type + role + expected/actual, deliberately without
+ * geometry so a human decision survives a recapture. For a textless element that
+ * left both of those empty, and the key collapsed to
+ * `missing-element|surface|[]|[]` — one key for EVERY missing surface in the pair.
+ * Measured consequence, 2026-09-02: snoozing one surface in the annotator hid all
+ * four, the severity chip still counted them, and the rail showed a list that did
+ * not match its own chips. `refdiff accept` refuses such findings for the same
+ * reason ("the rule would forgive its whole role").
+ *
+ * So describe the thing: its paint, which is what distinguishes one surface from
+ * another and is stable across a recapture in a way its position is not. Size is
+ * included because two surfaces of the same colour and different size are
+ * different surfaces; a resize therefore re-opens the decision, which is the
+ * lesser evil against one decision silently covering four elements.
+ */
+function identityOf(el: ElementNode, side: "expected" | "actual"): Record<string, Record<string, string | number>> {
+  const id = presenceIdentity(el)
+  return id === undefined ? {} : { [side]: id }
+}
+
+function presenceIdentity(el: ElementNode): Record<string, string | number> | undefined {
+  if (el.text !== undefined && el.text !== "") return undefined
+  const st = el.style ?? {}
+  const out: Record<string, string | number> = {
+    w: Math.round(el.box.w),
+    h: Math.round(el.box.h),
+  }
+  for (const k of ["backgroundColor", "borderColor", "borderWidth", "borderRadius", "boxShadow"] as const) {
+    const v = (st as Record<string, unknown>)[k]
+    if (typeof v === "string" || typeof v === "number") out[k] = v
+  }
+  return out
+}
+
 export function runTypedChecks(match: MatchResult, options: CheckOptions = {}): Finding[] {
   const o: Required<CheckOptions> = { ...DEFAULTS, ...options };
   const raw: RawFinding[] = [

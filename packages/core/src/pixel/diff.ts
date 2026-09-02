@@ -22,6 +22,7 @@ import type { DiffMask } from "./cluster.js"
 import pixelmatch from "pixelmatch"
 import sharp, { type Sharp } from "sharp"
 
+import { clusterMask, type Cluster } from "./cluster.js"
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 
 export interface DiffOptions {
@@ -194,6 +195,107 @@ export async function diffMatches(
  * something does. Unclassified diffs (hand-built, or a run without crops) keep
  * the original crimson.
  */
+/** What the whole-frame backstop measured: difference NOT inside any matched element. */
+export interface RemainderDiff {
+  /** Unexplained differing pixels / frame pixels. */
+  diffRatio: number
+  diffPixels: number
+  totalPixels: number
+  dpr: number
+  /** Largest connected regions of unexplained difference, in impl CSS px, largest first. */
+  clusters: Cluster[]
+}
+
+/**
+ * The backstop: diff the WHOLE frame, then subtract every matched element's box
+ * and report what is left.
+ *
+ * Why this exists. The per-match channel only ever looks INSIDE boxes that
+ * matched, and matching is driven by the element model, which extracts leaves.
+ * So anything the model cannot represent is invisible to both channels at once.
+ * Measured case, 2026-09-02: a control that should have been a floating pill
+ * (223x29, rounded, shadowed) was implemented as a full-width bar with a
+ * background and a bottom border. Every label inside it matched and compared
+ * clean; the bar itself is a container, never a leaf, never matched, never
+ * diffed — the run reported NOTHING and a person found it by eye. "No mask file
+ * means no unexplained pixel evidence" was true only inside matched boxes,
+ * which reads as a far stronger guarantee than it was.
+ *
+ * Matched boxes are subtracted with a margin, because a correct element still
+ * differs along its own antialiased edge; without it every glyph would leak a
+ * halo into the remainder and the ratio would measure rasterisation, not drift.
+ */
+export async function diffRemainder(
+  pair: AlignedPair,
+  matches: readonly ElementMatch[],
+  options: DiffOptions & { subtractMarginPx?: number } = {},
+): Promise<RemainderDiff | null> {
+  const o: Required<DiffOptions> = { ...DIFF_DEFAULTS, ...options }
+  const margin = options.subtractMarginPx ?? 2
+  const { design, impl, alignment } = pair
+  const frameCss: Box = { x: 0, y: 0, w: impl.width, h: impl.height }
+
+  const implRaw = await rawCrop(sharp(impl.pngPath), toImplNative(frameCss, impl.dpr), o.blur)
+  if (!implRaw) return null
+  const { width, height } = implRaw
+  const designRaw = await rawCrop(
+    sharp(design.pngPath),
+    toDesignNative(frameCss, alignment, design.dpr),
+    o.blur,
+    { width, height },
+  )
+  if (!designRaw || designRaw.width !== width || designRaw.height !== height) return null
+
+  const out = new Uint8Array(width * height * 4)
+  pixelmatch(designRaw.data, implRaw.data, out, width, height, {
+    threshold: o.threshold,
+    includeAA: false,
+    diffMask: true,
+  })
+
+  // The mask is 1 byte per pixel: was this pixel reported as different.
+  const flags = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) flags[i] = out[i * 4 + 3] === 0 ? 0 : 1
+
+  // Subtract every matched element. A matched box that compared clean and one
+  // that produced a finding are BOTH explained: the per-match channel owns them.
+  for (const m of matches) {
+    const b = toImplNative(m.impl.box, impl.dpr)
+    const x0 = Math.max(0, Math.floor(b.x) - margin)
+    const y0 = Math.max(0, Math.floor(b.y) - margin)
+    const x1 = Math.min(width, Math.ceil(b.x + b.w) + margin)
+    const y1 = Math.min(height, Math.ceil(b.y + b.h) + margin)
+    for (let y = y0; y < y1; y++) flags.fill(0, y * width + x0, y * width + x1)
+  }
+
+  let diffPixels = 0
+  for (let i = 0; i < flags.length; i++) if (flags[i] === 1) diffPixels++
+  const totalPixels = width * height
+  // minSize is in MASK px: a region smaller than ~4 CSS px on a side is
+  // resampling residue along a shared edge, not a surface anybody drew.
+  const minSize = Math.max(2, Math.round(4 * impl.dpr))
+  const raw = clusterMask({ width, height, data: flags }, { minSize, gap: 2 })
+  // clusterMask works in mask px; findings are in impl CSS px.
+  const clusters = raw
+    .map((c) => ({
+      pixels: c.pixels,
+      box: {
+        x: Math.round((c.box.x / impl.dpr) * 10) / 10,
+        y: Math.round((c.box.y / impl.dpr) * 10) / 10,
+        w: Math.round((c.box.w / impl.dpr) * 10) / 10,
+        h: Math.round((c.box.h / impl.dpr) * 10) / 10,
+      },
+    }))
+    .sort((a, b) => b.pixels - a.pixels)
+  return {
+    diffRatio: totalPixels === 0 ? 0 : diffPixels / totalPixels,
+    diffPixels,
+    totalPixels,
+    dpr: impl.dpr,
+    clusters,
+  }
+}
+
 export const MASK_COLORS: Record<string, [number, number, number]> = {
   shape: [232, 62, 214], // magenta — a different glyph or drawing
   added: [34, 197, 94], // green — content only the impl has

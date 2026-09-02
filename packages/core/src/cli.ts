@@ -43,8 +43,10 @@ import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from ".
 import { packageForModel } from "./package/package-for-model.js"
 import { renderSummary, summarizeReports } from "./package/summary.js"
 import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
-import { lowConfidenceFinding, PIXEL_DEFAULTS, runPixelChecks } from "./pixel/checks.js"
-import { diffMatches, writeDiffMask } from "./pixel/diff.js"
+import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks } from "./pixel/checks.js"
+import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
+import { hiddenMovement } from "./policy-audit.js"
+import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { applyPolicy, mergePolicies } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
@@ -447,6 +449,19 @@ async function runPair(
     `matched ${match.matches.length} elements (${slots} as data slots; ${match.designOnly.length} design-only, ${match.implOnly.length} impl-only)`,
   )
 
+  // A state is a state: steps on one side only reports the difference between
+  // "selected" and "not selected" as if it were drift.
+  const dSteps = "steps" in spec.design ? spec.design.steps : undefined
+  const aSteps = "steps" in spec.impl ? spec.impl.steps : undefined
+  if (stepsOnOneSide(dSteps, aSteps)) {
+    console.log(
+      `  ⚠ interaction steps are set on the ${(dSteps ?? []).length > 0 ? "DESIGN" : "IMPL"} side only — the other side captures its default state, so every finding may be "this state vs that state"`,
+    )
+  }
+  for (const st of [...(dSteps ?? []), ...(aSteps ?? [])]) {
+    if ("clickText" in st) { console.log(`  note: ${stepHint}`); break }
+  }
+
   const structural = runTypedChecks(match)
 
   // Pixel channel: AA-aware diff inside each matched box, gated on the
@@ -464,6 +479,17 @@ async function runPair(
       const diffs = await diffMatches(aligned, match.matches)
       const { findings: pixelFindings, reported } = runPixelChecks(diffs, structural)
       pixel = pixelFindings
+      // Backstop: whole-frame diff minus every matched box. The per-match channel
+      // cannot see what the element model does not represent — a container's
+      // surface is never a leaf, so it is never matched and never diffed.
+      const remainder = await diffRemainder(aligned, match.matches)
+      const remFinding = remainder ? remainderFinding(remainder) : undefined
+      if (remFinding) pixel = [...pixel, remFinding]
+      if (remainder) {
+        console.log(
+          `  unexplained remainder: ${(remainder.diffRatio * 100).toFixed(2)}% of the frame outside matched elements, ${remainder.clusters.length} region(s)${remFinding ? " → reported" : " (below the reporting floor)"}`,
+        )
+      }
       // Only the REPORTED diffs are painted: an all-diffs mask is dominated by
       // the residue of two correct rasterizations at different scales (95.6 %
       // of one measured page pair's mask lay inside text), which no finding
@@ -524,11 +550,27 @@ function printReport(report: ComparisonReport): void {
     console.log(
       `  suppressed: ${[...byRule].map(([rule, n]) => `${n} ${rule}`).join(", ")} (see findings.json)`,
     )
+    // A suppression that also swallowed a large shift is worth naming: a rule
+    // saying "this element's WORDING is demo data" should not silently also say
+    // "and I do not care where it is". Never un-suppresses — just stops being
+    // quiet about the size of what it hid.
+    const hidden = hiddenMovement(report.suppressed)
+    if (hidden.length > 0) {
+      console.log(`  ⚠ ${hidden.length} suppressed finding(s) moved ≥8px — a rule is hiding geometry:`)
+      for (const h of hidden.slice(0, 5))
+        console.log(`      ${h.px}px  [${h.suppressedBy} ${h.rule}] ${h.message.slice(0, 90)}`)
+      const advice = hidden.find((h) => h.advice)?.advice
+      if (advice !== undefined) console.log(`      ${advice}`)
+      if (hidden.length > 5) console.log(`      … ${hidden.length - 5} more (see findings.json)`)
+    }
   }
   if (report.delta) {
-    const { introduced, resolved, previousRun, regressions = [] } = report.delta
+    const { introduced, resolved, previousRun, previousRunNumber, regressions = [] } = report.delta
+    // Name the runs when they are numbered; the timestamp stays the fallback for a
+    // report written before runs carried an ordinal.
+    const vs = previousRunNumber === undefined ? previousRun : `run ${previousRunNumber} (run ${report.run} now)`
     console.log(
-      `delta vs ${previousRun}: +${introduced.length} introduced / −${resolved.length} resolved${
+      `delta vs ${vs}: +${introduced.length} introduced / −${resolved.length} resolved${
         introduced.length > 0 ? ` (introduced: ${introduced.join(", ")})` : ""
       }`,
     )
@@ -760,7 +802,10 @@ async function compare(argv: string[]): Promise<void> {
     if (!a) fail(`--accept needs { type, reason } and string/number expected/actual values: ${raw}`)
     policy.accepted = [...(policy.accepted ?? []), a]
   }
-  for (const p of policy.textPatterns ?? []) {
+  for (const entry of policy.textPatterns ?? []) {
+    // `--ignore-text` always yields the string form; a manifest may carry the
+    // role-scoped object form, and both must compile before the run starts.
+    const p = typeof entry === "string" ? entry : entry.pattern
     try {
       new RegExp(p, "u")
     } catch (e) {

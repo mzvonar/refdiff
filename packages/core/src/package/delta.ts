@@ -129,6 +129,9 @@ export function diffReports(
     : [];
   return {
     previousRun: prev.createdAt,
+    // Absent on a report written before runs were numbered: the reader falls back
+    // to the timestamp rather than inventing an ordinal.
+    ...(typeof prev.run === "number" ? { previousRunNumber: prev.run } : {}),
     ...delta,
     ...(regressions.length > 0 ? { regressions } : {}),
   };
