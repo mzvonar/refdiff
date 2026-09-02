@@ -1,6 +1,7 @@
 {
   "pair": "Button",
   "createdAt": "2026-08-28T13:42:05.000Z",
+  "run": 12,
   "design": {
     "source": "dc-html",
     "ref": "button.dc.html#Button",
@@ -61,6 +62,7 @@
   },
   "delta": {
     "previousRun": "2026-08-28T07:42:05.000Z",
+    "previousRunNumber": 11,
     "resolved": [
       "prev-1",
       "prev-2"

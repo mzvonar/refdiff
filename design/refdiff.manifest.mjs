@@ -85,10 +85,23 @@ const LIBRARY_IGNORE = {
 // never be matched and the two screenshots are always "extra". Content-shaped:
 // the pattern names the artboard's vocabulary and expires with the artboard
 // (regenerate: `grep -oh '>[^<{]*<' design/refdiff/parts/*.dc.html`).
+const PLACEHOLDER_TEXT =
+  "^(Veriflow|Need help\\?|Document|Selfie|Review|Verify your identity|Choose a document type and upload a clear photo of it\\.|Passport|Driver’s licence|ID card|Photo page with MRZ visible|Front and back sides|Drag your document here|PNG, JPG or PDF · up to 10 MB|Browse files|Continue|Save for later|Your documents are encrypted in transit and processed in line with GDPR\\. Verification usually takes under a minute\\.|directions_car|badge|public|upload_file)$"
+
 const COMPARE_IGNORE = {
+  // Scoped by finding TYPE, not just by string. These words are the comp's ARTBOARD
+  // vocabulary: the comp imports the artboards as live DOM where the app draws the run's
+  // PNGs, so those strings genuinely have no counterpart (24 `missing-element` findings on
+  // one pair). Unscoped, the same rule ALSO excused geometry — 3 `position` and 1 `spacing`
+  // finding about the delta strip's Review BUTTON, which merely shares the word "Review"
+  // with an artboard label. Role scoping cannot separate them: both are role "text".
   textPatterns: [
-    "^(Veriflow|Need help\\?|Document|Selfie|Review|Verify your identity|Choose a document type and upload a clear photo of it\\.|Passport|Driver’s licence|ID card|Photo page with MRZ visible|Front and back sides|Drag your document here|PNG, JPG or PDF · up to 10 MB|Browse files|Continue|Save for later|Your documents are encrypted in transit and processed in line with GDPR\\. Verification usually takes under a minute\\.|directions_car|badge|public|upload_file)$",
+    {
+      types: ["missing-element", "extra-element", "text-content", "typography", "color"],
+      pattern: PLACEHOLDER_TEXT,
+    },
   ],
+
   accepted: [
     {
       type: "extra-element",
@@ -141,11 +154,30 @@ COMPARE_IGNORE.accepted.push(
 // the delta strip. Its COPY is
 // still designer data — the Tool comp says "Run 47 vs 46 · −6 resolved", the
 // Library card "−1 resolved" (gap 23), the app the fixture's real delta — so
-// the strip's vocabulary is excused; the layout underneath is measured. The
-// minus is written both ways because the extractor folds U+2212 to "-".
-COMPARE_IGNORE.textPatterns.push(
-  "^(\\+\\d+ introduced|[−-]\\d+ resolved|\\d+ regressions?|vs run \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}|fixed earlier, back again — fix plan halted)$",
-)
+// the strip's vocabulary is excused. The minus is written both ways because the
+// extractor folds U+2212 to "-".
+//
+// SCOPED BY TYPE (2026-09-02). This rule used to be a bare string, and the
+// comment here claimed "the layout underneath is measured" — it was not. An
+// unscoped textPattern removes EVERY finding type about a matching string, so it
+// was also hiding the strip's LAYOUT: "2 regressions" offset by (-285, 28.2)px,
+// "+3 introduced" by (77, -1.4)px, and a 66x15 box the design draws 1x16. Those
+// were real (the app's run label was 77px wider than the comp's, which wrapped
+// the strip) and nobody could see them. `types` keeps the copy excused and the
+// geometry compared, which is what the comment always said.
+//
+// `vs run <date>` is GONE from the alternation: core numbers runs since
+// 2026-09-02, so the app renders "Run 47 vs 46" in the comp's own shape. The
+// numbers are data, so they belong in dataSlots (below), where the surrounding
+// copy stays compared — a wording change in that label must still be reported.
+COMPARE_IGNORE.textPatterns.push({
+  types: ["missing-element", "extra-element", "text-content", "typography", "color"],
+  pattern:
+    "^(\\+\\d+ introduced|[−-]\\d+ resolved|\\d+ regressions?|fixed earlier, back again — fix plan halted)$",
+})
+// The run label now has the same SHAPE on both sides ("Run 47 vs 46"), so mask the
+// ordinals and compare the rest rather than excusing the whole string.
+COMPARE_IGNORE.dataSlots = { patterns: ["Run \\d+ vs \\d+"] }
 
 // The minimal layout's comp abbreviates the pair title in its 44px header ("Onboarding — Document");
 // the app shows the pair's name — data, not copy.
@@ -175,6 +207,16 @@ const MINIMAL_IGNORE = {
       reason: "gap 36: the delta strip's × — the Minimal comp omits the strip; Mato 2026-08-29: render it as in the default layout",
     },
   ]),
+}
+
+// The TOOLBAR layout starts from the shared Comparison-tool policy (the comp's artboard
+// vocabulary, the two screenshots, the delta strip's copy) and deliberately NOT from
+// MINIMAL_IGNORE: that set's extra acceptances are claims about the MINIMAL comp — its
+// shortened demo title, and its omission of the delta strip — which say nothing about this
+// one. Whatever this comp needs gets its own rule with its own reason, once measured.
+const TOOLBAR_IGNORE = {
+  textPatterns: COMPARE_IGNORE.textPatterns,
+  accepted: COMPARE_IGNORE.accepted,
 }
 
 const desktop = { width: 1360, height: 820 }
@@ -221,5 +263,83 @@ export const manifest = [
     design: { file: "RefDiff Mobile Minimal.dc.html", frame: "RefDiff mobile minimal", scope: ".cc-theme-dark" },
     app: { source: "live", route: "/?layout=minimal" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
     ignore: MINIMAL_IGNORE,
+  },
+  {
+    // The phone's TOOLBAR layout (2026-09-02): the minimal layout plus a header toolbar and a
+    // top floating toolbar, in its own comp — again a 390x844 phone inside a dark showcase
+    // canvas, so `scope` picks the phone node. The comp drops BOTH the tune and the settings
+    // glyphs and carries the dark/light theme toggle in the header instead, so this layout has
+    // no phone-layout switch at all: `?layout=toolbar` is the only way into it.
+    id: "refdiff-compare-mobile-toolbar",
+    title: "RefDiff \u00b7 Comparison tool (mobile, toolbar layout)",
+    design: { file: "RefDiff Mobile Toolbar.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark" },
+    app: { source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
+    ignore: TOOLBAR_IGNORE,
+  },
+  {
+    // The GHOST language (2026-09-02), and the first pair that measures a state
+    // which only exists after an interaction. The comps are LIVE pages: tapping a
+    // one-sided finding row draws a hatched dashed footprint on the pane that does
+    // NOT have the element, a hollow number chip with a direction label, and (on
+    // the phone, where one pane is on screen) a View design/impl switch. None of
+    // that is in the default capture, so before `steps` existed the whole design
+    // was invisible to the harness — see adapters/steps.ts for why a missing step
+    // target is a hard stop rather than a quiet fallback to the default state.
+    //
+    // Steps are set on BOTH sides on purpose. With them on one side only the run
+    // reports the difference between "selected" and "not selected" as drift; the
+    // CLI warns when a pair does that.
+    //
+    // Both sides use STABLE hooks, not rendered copy.
+    // Design: the comp renders `data-vc-step="{{f.id}}"` on every rail row (added
+    // 2026-09-02 at our ask), so `o1` is row 12 — the one-sided ids are o1..o4 and
+    // they survive any rewording. The rail-open tap still matches the `list_alt`
+    // GLYPH name, which is not user-facing copy, so it is the stable half of a
+    // clickText; a `data-vc-step="open-rail"` on that button would remove the last
+    // text match on this pair.
+    // Impl: `.frow:has(.fside)` is the first ONE-SIDED row, whatever it is called
+    // and whatever number it got — the app renumbers findings f1..fn every run, so
+    // an id selector here would select "the first finding", not "a one-sided one",
+    // and the ghost would not appear at all on a run whose f1 happens to be
+    // two-sided.
+    id: "refdiff-compare-mobile-toolbar-ghost",
+    title: "RefDiff \u00b7 Comparison tool (mobile, toolbar) \u2014 ghost of a one-sided finding",
+    design: {
+      file: "RefDiff Mobile Toolbar.dc.html",
+      frame: "RefDiff mobile toolbar",
+      scope: ".cc-theme-dark",
+      steps: [{ clickText: "list_alt" }, { wait: 400 }, { click: "[data-vc-step=o1]" }, { wait: 500 }],
+    },
+    app: {
+      source: "live",
+      route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1),
+      viewport: mobile,
+      waitFor: "#panes",
+      // The app has real hooks, so the impl side uses selectors rather than copy.
+      steps: [{ click: "#rail-btn" }, { wait: 300 }, { click: ".frow:has(.fside)" }, { wait: 400 }],
+    },
+    ignore: TOOLBAR_IGNORE,
+  },
+  {
+    // The desktop ghost. Split mode shows both panes, so the ghost appears on the
+    // COUNTERPART pane without the View design/impl switch (the phone needs it
+    // because only one pane is on screen). No rail to open either, so this pair is
+    // driven entirely by stable hooks — no rendered copy anywhere in its steps,
+    // which makes it the one to trust after a comp refetch.
+    id: "refdiff-compare-desktop-ghost",
+    title: "RefDiff \u00b7 Comparison tool (desktop) \u2014 ghost of a one-sided finding",
+    design: {
+      file: "RefDiff Comparison Tool.dc.html",
+      frame: "RefDiff comparison tool",
+      steps: [{ click: "[data-vc-step=o1]" }, { wait: 500 }],
+    },
+    app: {
+      source: "live",
+      route: COMPARE_ROUTE,
+      viewport: desktop,
+      waitFor: "#panes",
+      steps: [{ click: ".frow:has(.fside)" }, { wait: 400 }],
+    },
+    ignore: COMPARE_IGNORE,
   },
 ]

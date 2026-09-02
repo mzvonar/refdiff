@@ -1,6 +1,7 @@
 {
   "pair": "Onboarding — Document step",
   "createdAt": "2026-08-28T14:10:05.000Z",
+  "run": 47,
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/onboarding-document-step",
@@ -524,6 +525,90 @@
         }
       ],
       "key": "position|box|[[\"x\",36],[\"y\",380]]|[[\"x\",36],[\"y\",403]]"
+    },
+    {
+      "id": "o1",
+      "type": "missing-element",
+      "severity": "critical",
+      "mark": 12,
+      "message": "Retake photo button missing",
+      "designBox": {
+        "x": 332,
+        "y": 586,
+        "w": 200,
+        "h": 48
+      },
+      "expected": {
+        "element": "present"
+      },
+      "actual": {
+        "element": "missing"
+      },
+      "role": "box",
+      "key": "missing-element|box|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
+    },
+    {
+      "id": "o2",
+      "type": "missing-element",
+      "severity": "major",
+      "mark": 13,
+      "message": "Field hint tooltip missing",
+      "designBox": {
+        "x": 476,
+        "y": 136,
+        "w": 26,
+        "h": 26
+      },
+      "expected": {
+        "element": "present"
+      },
+      "actual": {
+        "element": "missing"
+      },
+      "role": "icon",
+      "key": "missing-element|icon|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
+    },
+    {
+      "id": "o3",
+      "type": "extra-element",
+      "severity": "major",
+      "mark": 14,
+      "message": "Debug ribbon not in design",
+      "implBox": {
+        "x": 540,
+        "y": 16,
+        "w": 104,
+        "h": 30
+      },
+      "expected": {
+        "element": "—"
+      },
+      "actual": {
+        "element": "present"
+      },
+      "role": "box",
+      "key": "extra-element|box|[[\"element\",\"—\"]]|[[\"element\",\"present\"]]"
+    },
+    {
+      "id": "o4",
+      "type": "extra-element",
+      "severity": "minor",
+      "mark": 15,
+      "message": "Extra divider above footer",
+      "implBox": {
+        "x": 36,
+        "y": 648,
+        "w": 608,
+        "h": 3
+      },
+      "expected": {
+        "element": "—"
+      },
+      "actual": {
+        "element": "present"
+      },
+      "role": "box",
+      "key": "extra-element|box|[[\"element\",\"—\"]]|[[\"element\",\"present\"]]"
     }
   ],
   "suppressed": [
@@ -659,6 +744,7 @@
   },
   "delta": {
     "previousRun": "2026-08-28T08:10:05.000Z",
+    "previousRunNumber": 46,
     "resolved": [
       "prev-1"
     ],

@@ -1,6 +1,7 @@
 {
   "pair": "Selection card",
   "createdAt": "2026-08-28T13:42:05.000Z",
+  "run": 12,
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/selection-card",
@@ -61,6 +62,7 @@
   },
   "delta": {
     "previousRun": "2026-08-28T07:42:05.000Z",
+    "previousRunNumber": 11,
     "resolved": [],
     "introduced": [
       "d1",

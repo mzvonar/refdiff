@@ -5,7 +5,8 @@
  * (docs/plan-annotator-redesign.md, phase 0).
  *
  * The comps draw designer fixture data: twelve Library items, one of them
- * opened in the Comparison Tool with eleven findings and three comments. For
+ * opened in the Comparison Tool with fifteen findings (four of them ONE-SIDED,
+ * the comp's rows 12–15) and four comments (the fourth design-anchored). For
  * the alignment to find shared text anchors the app has to render the SAME
  * copy, so every run dir here mirrors `RefDiff Library.dc.html`'s `ITEMS` and
  * `RefDiff Comparison Tool.dc.html`'s `findings` / `items` — in refdiff's real
@@ -100,7 +101,7 @@ interface DemoItem {
 
 /** `ITEMS` from `RefDiff Library.dc.html`, verbatim, in the comp's order. */
 export const ITEMS: readonly DemoItem[] = [
-  { slug: OPENED_PAIR, name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 2, major: 2, minor: 2, comments: 3, confidence: 0.42, add: 3, res: 1, ago: 12 * MIN },
+  { slug: OPENED_PAIR, name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 3, major: 5, minor: 4, comments: 4, confidence: 0.42, add: 3, res: 1, ago: 12 * MIN },
   { slug: "onboarding-selfie-step", name: "Onboarding — Selfie step", route: "/onboarding/selfie", src: "figma", state: "analyzed", critical: 1, major: 3, minor: 0, comments: 1, confidence: 0.91, add: 1, res: 4, ago: 25 * MIN },
   { slug: "onboarding-review-step", name: "Onboarding — Review step", route: "/onboarding/review", src: "dc-html", state: "processing", critical: 0, major: 0, minor: 0, comments: 2, confidence: 0.88, add: 0, res: 0, ago: 30 * MIN },
   { slug: "button", name: "Button", route: "ds/Button", src: "dc-html", state: "analyzed", critical: 1, major: 0, minor: 1, comments: 0, confidence: 0.96, add: 1, res: 2, ago: 40 * MIN },
@@ -173,6 +174,30 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
   const grid = (n: number, at: (i: number) => Box): FindingMember[] =>
     Array.from({ length: n }, (_, i) => ({ designBox: at(i), implBox: at(i) }))
 
+  /**
+   * A ONE-SIDED finding: exactly one box, which is what makes it one-sided. A
+   * `missing-element` has a designBox and no implBox; an `extra-element` the
+   * reverse. The GHOST language exists for precisely these — the comp draws a
+   * hatched footprint on the pane that lacks the element — so the fixture has to
+   * carry them or the ghost pairs have nothing to show. `f()` above sets BOTH
+   * boxes, which would make every row two-sided.
+   */
+  const one = (
+    id: string,
+    mark: number,
+    side: "design" | "impl",
+    severity: Severity,
+    message: string,
+    b: Box,
+    extra: Partial<Finding> = {},
+  ): Finding => {
+    const base: Finding =
+      side === "design"
+        ? { id, type: "missing-element", severity, mark, message, designBox: b, expected: { element: "present" }, actual: { element: "missing" }, ...extra }
+        : { id, type: "extra-element", severity, mark, message, implBox: b, expected: { element: "—" }, actual: { element: "present" }, ...extra }
+    return { ...base, key: identityKey(base) }
+  }
+
   const findings: Finding[] = [
     f("f1", 1, "color", "critical", "Primary button color mismatch", box(36, 586, 280, 48), { backgroundColor: "#4F46E5" }, { backgroundColor: "#6366F1" }, { role: "box", text: "Continue" }),
     f("f2", 2, "spacing", "critical", "Dropzone inner padding reduced", box(36, 368, 608, 190), { padding: "32px" }, { padding: "20px" }, { role: "box" }),
@@ -190,6 +215,14 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
       instances: 5,
       members: grid(5, (i) => box(36, 414 + i * 34, 608, 22)),
     }),
+    // Rows 12–15, the comp's one-sided findings (ids o1..o4, which is what
+    // `data-vc-step` renders so a step can select one). Boxes, severities and
+    // titles are the comp's own: high/medium/low map to critical/major/minor as
+    // everywhere else here.
+    one("o1", 12, "design", "critical", "Retake photo button missing", box(332, 586, 200, 48), { role: "box" }),
+    one("o2", 13, "design", "major", "Field hint tooltip missing", box(476, 136, 26, 26), { role: "icon" }),
+    one("o3", 14, "impl", "major", "Debug ribbon not in design", box(540, 16, 104, 30), { role: "box" }),
+    one("o4", 15, "impl", "minor", "Extra divider above footer", box(36, 648, 608, 3), { role: "box" }),
   ]
   const suppressed: SuppressedFinding[] = [
     {
@@ -248,10 +281,16 @@ export function reportFor(item: DemoItem): ComparisonReport {
   // the Tool's `showDeltaStrip` prop (default false) disagrees, so phase 3
   // accepts the strip rather than the fixture pretending there was no run
   // before (plan, gap 23, decided in phase 2). The broken run has none.
+  // The comps show run ORDINALS ("Run 47 vs 46"), and core numbers runs since
+  // 2026-09-02, so the fixture must carry them too — otherwise the served app
+  // falls back to the timestamp and the pair reports a text-content difference
+  // against the comp's own label. 47/46 is the Tool comp's own demo pair.
+  const runNo = opened ? 47 : 12
   const delta = item.broken
     ? undefined
     : {
         previousRun: iso((item.ago ?? 0) + 6 * HOUR),
+        previousRunNumber: runNo - 1,
         resolved: Array.from({ length: item.res }, (_, i) => `prev-${i + 1}`),
         introduced: opened ? ["f1", "f2", "g2"] : findings.slice(0, item.add).map((f) => f.id),
         ...(opened ? { regressions: ["f1", "g2"] } : {}),
@@ -259,6 +298,7 @@ export function reportFor(item: DemoItem): ComparisonReport {
   return {
     pair: item.name,
     createdAt,
+    run: runNo,
     design: {
       source: item.src,
       ref: item.src === "figma" ? `figma://veriflow/${item.slug}` : `${item.slug}.dc.html#${item.name}`,
@@ -315,12 +355,13 @@ export function annotationsFor(
     status: Annotation["status"],
     minutesAgo: number,
     reply?: string,
+    side: Annotation["side"] = "impl",
   ): Annotation & { reply?: string } => {
     const anchor = snap(shape)
     const createdAt = at(minutesAgo * MIN)
     return {
       id,
-      side: "impl",
+      side,
       shape,
       ...(anchor ? { anchor } : {}),
       note: text,
@@ -341,6 +382,10 @@ export function annotationsFor(
         note("c1", rect(36, 14, 150, 36), "Logo should use the darker navy from the brand kit", "implemented", 50, "Fetched brand token — logo color maps to #1E2A5A. Queued for the next impl build."),
         note("c2", rect(36, 204, 608, 140), "Check spacing between document cards at tablet width", "open", 30),
         note("c3", rect(36, 586, 280, 48), "Continue button should be full width on mobile", "done", 90, "Confirmed — impl build 342 makes the button fluid below 480px."),
+        // Comment 4 is anchored on the DESIGN side and is a POINT (0×0) — the
+        // comment half of the ghost language: selecting it while the impl pane is
+        // on screen has nothing to show without a ghost.
+        note("c4", { kind: "point", x: 618, y: 618 }, "Is the corner check icon final art?", "open", 15, undefined, "design"),
       ],
     }
   return {

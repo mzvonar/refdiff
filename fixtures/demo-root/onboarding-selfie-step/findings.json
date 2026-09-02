@@ -1,6 +1,7 @@
 {
   "pair": "Onboarding — Selfie step",
   "createdAt": "2026-08-28T13:57:05.000Z",
+  "run": 12,
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/onboarding-selfie-step",
@@ -87,6 +88,7 @@
   },
   "delta": {
     "previousRun": "2026-08-28T07:57:05.000Z",
+    "previousRunNumber": 11,
     "resolved": [
       "prev-1",
       "prev-2",

@@ -1,6 +1,7 @@
 {
   "pair": "Onboarding — Liveness step",
   "createdAt": "2026-08-28T09:22:05.000Z",
+  "run": 12,
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/onboarding-liveness-step",
@@ -19,4 +20,4 @@
     "scale": 1,
     "scaleY": 1,
     "offsetX": 0,
-    "offsetY": 0
+    "offset

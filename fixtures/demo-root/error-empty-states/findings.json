@@ -1,6 +1,7 @@
 {
   "pair": "Error & empty states",
   "createdAt": "2026-08-27T14:22:05.000Z",
+  "run": 12,
   "design": {
     "source": "figma",
     "ref": "figma://veriflow/error-empty-states",
@@ -100,6 +101,7 @@
   },
   "delta": {
     "previousRun": "2026-08-27T08:22:05.000Z",
+    "previousRunNumber": 11,
     "resolved": [
       "prev-1"
     ],

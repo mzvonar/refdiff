@@ -8,7 +8,6 @@
 <body>
 <x-dc>
 <helmet>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
 <style>
 html,body{margin:0;padding:0;overscroll-behavior:none}
@@ -20,72 +19,36 @@ input{outline:none}
 .msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
 </style>
 </helmet>
-<div class="cc-theme-dark {{themeClass}}" style="position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;user-select:none;overflow:hidden" data-screen-label="RefDiff comparison tool">
-  <div style="position:relative;display:flex;align-items:center;gap:8px;padding:0 10px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
-    <div style="{{hdrLeftStyle}}">
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0f1012;padding:24px;box-sizing:border-box;font-family:'IBM Plex Sans',system-ui,sans-serif" data-screen-label="RefDiff mobile toolbar">
+  <div class="cc-theme-dark {{themeClass}}" style="position:relative;width:390px;height:844px;transform:translateZ(0);overflow:hidden;background:var(--bg0);color:var(--txt);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;user-select:none">
+    <div style="display:flex;align-items:center;gap:7px;padding:0 8px;height:44px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:30">
       <a href="./RefDiff Library.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);text-decoration:none;flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
-      <div style="width:18px;height:18px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
-      <span style="{{brandStyle}}">RefDiff</span>
-      <span style="{{projStyle}}">Onboarding — Document step</span>
+      <div style="width:16px;height:16px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+      <div style="flex:1;min-width:4px"></div>
+      <div style="{{grpStyle}}">
+        <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
+      </div>
+      <div style="flex:1;min-width:4px"></div>
+      <div style="{{setBtnStyle}}" onClick="{{themeToggle}}" title="{{themeTip}}"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
     </div>
-    <div style="{{grpMainStyle}}">
-      <sc-for list="{{mainBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
-    </div>
-    <div style="{{grpStyle}}">
-      <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
-    </div>
-    <div style="{{grpLayerStyle}}">
-      <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
-    </div>
-    <div style="{{hdrRightStyle}}">
-    <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
-      <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
-    </sc-if>
-    <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
-      <div style="position:relative;flex-shrink:0">
-        <div style="{{setBtnStyle}}" onClick="{{settingsToggle}}" title="Settings"><span class="msi" style="font-size:19px">settings</span></div>
-        <sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}">
-          <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:40;width:198px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:10px 10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:6px">
-            <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2)">Layout</span>
-            <div style="{{grpFullStyle}}"><sc-for list="{{layoutBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
-            <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);margin-top:6px">Theme</span>
-            <div style="{{grpFullStyle}}"><sc-for list="{{themeBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
-          </div>
+    <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
+      <div style="{{deltaStyle}}">
+        <span class="msi" style="{{deltaIconStyle}}">{{deltaIcon}}</span>
+        <span style="{{runLabelStyle}}">{{runLabel}}</span>
+        <span style="{{addStyle}}">{{addLabel}}</span>
+        <span style="{{resStyle}}">{{resLabel}}</span>
+        <sc-if value="{{regShow}}" hint-placeholder-val="{{true}}">
+          <span style="width:1px;height:16px;background:var(--line);flex-shrink:0"></span>
+          <span style="{{regMsgStyle}}">{{regMsg}}</span>
+          <span style="{{regSubStyle}}">{{regSub}}</span>
+          <div style="{{regBtnStyle}}" onClick="{{regBtn}}">{{regBtnLabel}}</div>
         </sc-if>
+        <div style="margin-left:auto;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{dismissDelta}}" title="Dismiss for this run"><span class="msi" style="font-size:16px">close</span></div>
       </div>
     </sc-if>
-    </div>
-  </div>
-  <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
-    <div style="{{deltaStyle}}">
-      <span class="msi" style="{{deltaIconStyle}}">{{deltaIcon}}</span>
-      <span style="{{runLabelStyle}}">{{runLabel}}</span>
-      <span style="{{addStyle}}">{{addLabel}}</span>
-      <span style="{{resStyle}}">{{resLabel}}</span>
-      <sc-if value="{{regShow}}" hint-placeholder-val="{{true}}">
-        <span style="width:1px;height:16px;background:var(--line);flex-shrink:0"></span>
-        <span style="{{regMsgStyle}}">{{regMsg}}</span>
-        <span style="{{regSubStyle}}">{{regSub}}</span>
-        <div style="{{regBtnStyle}}" onClick="{{regBtn}}">{{regBtnLabel}}</div>
-      </sc-if>
-      <sc-if value="{{deltaDismissShow}}" hint-placeholder-val="{{false}}">
-        <div style="margin-left:auto;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{dismissDelta}}" title="Dismiss for this run"><span class="msi" style="font-size:16px">close</span></div>
-      </sc-if>
-    </div>
-  </sc-if>
-  <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
-    <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
-      <span style="font-size:10.5px;color:var(--txt2);flex-shrink:0">Show</span>
-      <div style="{{grpMobStyle}}">
-        <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
-      </div>
-    </div>
-  </sc-if>
-  <div style="flex:1;display:flex;min-height:0;position:relative">
-    <div style="{{toolStripStyle}}">
-      <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:18px">{{b.icon}}</span></div></sc-for>
-    </div>
-    <div style="{{canvasStyle}}" ref="{{refC}}">
+
+    <div style="flex:1;position:relative;min-height:0;background:var(--canvas)">
+      <sc-if value="{{scrimShow}}" hint-placeholder-val="{{false}}"><div style="position:absolute;inset:0;z-index:12" onClick="{{scrimClose}}"></div></sc-if>
       <div style="{{paneAStyle}}" ref="{{refA}}" onPointerDown="{{downA}}" onPointerMove="{{moveA}}" onPointerUp="{{upA}}" onWheel="{{wheelA}}">
         <div style="{{tAStyle}}">
           <dc-import name="parts/Artboard Design" hint-size="680px,740px" style="position:absolute;left:0;top:0;width:680px;height:740px"></dc-import>
@@ -98,8 +61,8 @@ input{outline:none}
           </sc-if>
           <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
             <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
-              <defs><mask id="dimA"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
-              <rect x="0" y="0" width="680" height="740" fill="{{dimFill}}" mask="url(#dimA)"></rect>
+              <defs><mask id="dimMa"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="rgba(15,17,20,0.5)" mask="url(#dimMa)"></rect>
             </svg>
           </sc-if>
           <sc-for list="{{ovA.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
@@ -110,7 +73,6 @@ input{outline:none}
           <sc-for list="{{ovA.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
           <sc-for list="{{ovA.gh}}" as="g" hint-placeholder-count="0"><div style="{{g.wrapStyle}}" onPointerDown="{{g.stop}}"><div style="{{g.badgeStyle}}">{{g.num}}</div><span style="{{g.labelStyle}}">{{g.label}}</span><sc-if value="{{g.canSwitch}}" hint-placeholder-val="{{false}}"><div style="{{g.btnStyle}}" onClick="{{g.onSwitch}}"><span class="msi" style="font-size:13px">swap_horiz</span>{{g.btnLabel}}</div></sc-if></div></sc-for>
         </div>
-        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">{{labelA}}</div></sc-if>
       </div>
       <div style="{{paneBStyle}}" ref="{{refB}}" onPointerDown="{{downB}}" onPointerMove="{{moveB}}" onPointerUp="{{upB}}" onWheel="{{wheelB}}">
         <div style="{{tBStyle}}">
@@ -124,8 +86,8 @@ input{outline:none}
           </sc-if>
           <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}">
             <svg width="680" height="740" viewBox="0 0 680 740" style="position:absolute;left:0;top:0;pointer-events:none;z-index:2">
-              <defs><mask id="dimB"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
-              <rect x="0" y="0" width="680" height="740" fill="{{dimFill}}" mask="url(#dimB)"></rect>
+              <defs><mask id="dimMb"><rect x="0" y="0" width="680" height="740" fill="#fff"></rect><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><rect x="{{r.x}}" y="{{r.y}}" width="{{r.w}}" height="{{r.h}}" rx="8" fill="#000"></rect></sc-for></mask></defs>
+              <rect x="0" y="0" width="680" height="740" fill="rgba(15,17,20,0.5)" mask="url(#dimMb)"></rect>
             </svg>
           </sc-if>
           <sc-for list="{{ovB.hl}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
@@ -136,224 +98,228 @@ input{outline:none}
           <sc-for list="{{ovB.im}}" as="m" hint-placeholder-count="0"><div style="{{m.style}}" onClick="{{m.select}}" onPointerDown="{{m.stop}}" title="{{m.title}}">{{m.label}}</div></sc-for>
           <sc-for list="{{ovB.gh}}" as="g" hint-placeholder-count="0"><div style="{{g.wrapStyle}}" onPointerDown="{{g.stop}}"><div style="{{g.badgeStyle}}">{{g.num}}</div><span style="{{g.labelStyle}}">{{g.label}}</span><sc-if value="{{g.canSwitch}}" hint-placeholder-val="{{false}}"><div style="{{g.btnStyle}}" onClick="{{g.onSwitch}}"><span class="msi" style="font-size:13px">swap_horiz</span>{{g.btnLabel}}</div></sc-if></div></sc-for>
         </div>
-        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;right:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">{{labelB}}</div></sc-if>
       </div>
-      <div style="{{zoomWrapStyle}}">
-        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomOut}}" title="Zoom out"><span class="msi" style="font-size:17px">remove</span></div>
-        <div style="min-width:44px;text-align:center;font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{zoomPct}}</div>
-        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomIn}}" title="Zoom in"><span class="msi" style="font-size:17px">add</span></div>
-        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:17px">fit_screen</span></div>
+      <div style="position:absolute;left:8px;top:8px;z-index:15;display:flex;align-items:center;gap:2px;background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+        <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
       </div>
-      <sc-if value="{{isFull}}" hint-placeholder-val="{{false}}">
-        <div style="{{fabStyle}}">
+      <div style="{{alignWrapStyle}}">
+        <div style="{{alignIconBtnStyle}}" onClick="{{alignMenuToggle}}" title="{{alignTip}}">
+          <span class="msi" style="font-size:18px">{{alignIcon}}</span>
+          <sc-if value="{{confWarn}}" hint-placeholder-val="{{false}}">
+            <div style="position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:999px;background:#f5a623;color:#1c1c1e;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid var(--bg1)">!</div>
+          </sc-if>
+        </div>
+        <sc-if value="{{alignOpen}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute;top:calc(100% + 8px);right:0;width:250px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,0.35);z-index:17">
+            <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Align lock mode</div>
+            <div style="{{lockRowStyle}}" onClick="{{lockRowToggle}}">
+              <span class="msi" style="font-size:17px;color:var(--txt2);flex-shrink:0;margin-top:1px">{{lockRowIcon}}</span>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:12px;font-weight:600">{{lockRowLabel}}</span>
+                <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{lockRowDesc}}</span>
+              </div>
+              <div style="{{lockRowKnob}}"><div style="{{lockRowDot}}"></div></div>
+            </div>
+            <sc-for list="{{alignOpts}}" as="o" hint-placeholder-count="4">
+              <div style="{{o.style}}" onClick="{{o.onClick}}" title="{{o.tip}}">
+                <span class="msi" style="{{o.iconStyle}}">{{o.icon}}</span>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:12px;font-weight:600">{{o.name}}</span>
+                  <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{o.desc}}</span>
+                  <sc-if value="{{o.warnShow}}" hint-placeholder-val="{{false}}">
+                    <span style="display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:11px;line-height:1.35;color:#f5a623"><span class="msi" style="font-size:13px;margin-top:1px">warning</span>{{o.warnText}}</span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{o.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{isDef}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute;left:12px;top:12px;z-index:14;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);background:var(--bg1);border:1px solid var(--line)" style-hover="color:var(--txt)" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:18px">fit_screen</span></div>
+        <div style="{{toolStripStyle}}">
+          <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:18px">{{b.icon}}</span></div></sc-for>
+        </div>
+        <div style="position:absolute;right:8px;bottom:56px;display:flex;gap:2px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:3px;z-index:15;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
           <div style="{{fabD.style}}" onClick="{{fabD.onClick}}">Design</div>
           <div style="{{fabI.style}}" onClick="{{fabI.onClick}}">Impl</div>
         </div>
       </sc-if>
-      <sc-if value="{{opShow}}" hint-placeholder-val="{{false}}">
-        <div style="{{opWrapStyle}}" title="{{opTip}}">
-          <span class="msi" style="font-size:16px;color:var(--txt2)">opacity</span>
-          <span style="font-size:11.5px;font-weight:600;white-space:nowrap">{{opLabel}}</span>
-          <input type="range" min="0" max="100" step="1" value="{{opVal}}" onChange="{{onOp}}" style="{{opSliderStyle}}">
-          <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);min-width:34px;text-align:right">{{opPct}}</span>
+      <sc-if value="{{isMin}}" hint-placeholder-val="{{true}}">
+        <div style="position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:6px;z-index:15">
+          <div style="display:flex;align-items:center;gap:1px;background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+            <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:16px">{{b.icon}}</span></div></sc-for>
+            <div style="width:1px;height:18px;background:var(--line);margin:0 2px;flex-shrink:0"></div>
+            <div style="{{fitBtnStyle}}" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:16px">fit_screen</span></div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:0 10px;height:36px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);flex-shrink:0" onClick="{{swapPane}}" title="Switch design / implementation">
+            <span class="msi" style="font-size:16px;color:var(--txt2)">swap_horiz</span>
+            <span style="font-size:12px;font-weight:600">{{paneLabel}}</span>
+          </div>
+          <div style="position:relative;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);box-shadow:0 4px 16px rgba(0,0,0,0.3);flex-shrink:0" style-hover="color:var(--txt)" onClick="{{railToggle}}" title="Review panel">
+            <span class="msi" style="font-size:18px">list_alt</span>
+            <div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--acc);color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-sizing:border-box">{{railCount}}</div>
+          </div>
         </div>
       </sc-if>
-      <sc-if value="{{alignShow}}" hint-placeholder-val="{{false}}">
-        <div style="{{alignWrapStyle}}">
-          <div style="{{alignPillStyle}}">
-            <div style="{{lockBtnStyle}}" onClick="{{lockToggle}}" title="{{lockTip}}"><span class="msi" style="font-size:15px">{{lockIcon}}</span></div>
-            <div style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:0 2px" onClick="{{alignMenuToggle}}" title="{{alignTip}}">
-              <span class="msi" style="font-size:16px;color:var(--txt2)">{{alignIcon}}</span>
-              <span style="font-size:11.5px;font-weight:600">{{alignLabel}}</span>
-              <span class="msi" style="font-size:15px;color:var(--txt2)">{{alignChev}}</span>
-            </div>
-            <sc-if value="{{confWarn}}" hint-placeholder-val="{{false}}">
-              <div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:rgba(245,166,35,0.16);color:#f5a623;cursor:help;flex-shrink:0" title="{{confWarnTip}}"><span class="msi" style="font-size:14px">warning</span></div>
-            </sc-if>
-          </div>
-          <sc-if value="{{alignOpen}}" hint-placeholder-val="{{false}}">
-            <div style="{{alignMenuStyle}}">
-              <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Align lock mode</div>
-              <sc-for list="{{alignOpts}}" as="o" hint-placeholder-count="4">
-                <div style="{{o.style}}" onClick="{{o.onClick}}" title="{{o.tip}}">
-                  <span class="msi" style="{{o.iconStyle}}">{{o.icon}}</span>
-                  <div style="flex:1;display:flex;flex-direction:column;gap:2px">
-                    <span style="font-size:12px;font-weight:600">{{o.name}}</span>
-                    <span style="font-size:11px;line-height:1.4;color:var(--txt2)">{{o.desc}}</span>
-                    <sc-if value="{{o.warnShow}}" hint-placeholder-val="{{false}}">
-                      <span style="display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:11px;line-height:1.35;color:#f5a623"><span class="msi" style="font-size:13px;margin-top:1px">warning</span>{{o.warnText}}</span>
-                    </sc-if>
-                  </div>
-                  <sc-if value="{{o.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
-                </div>
-              </sc-for>
-            </div>
-          </sc-if>
+      <sc-if value="{{opShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{opWrapStyle}}" title="{{opTip}}">
+          <span class="msi" style="font-size:16px;color:var(--txt2)">{{opIcon}}</span>
+          <input type="range" min="0" max="100" step="1" value="{{opVal}}" onChange="{{onOp}}" style="width:110px;height:4px;accent-color:var(--acc);cursor:pointer;margin:0">
+          <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);min-width:32px;text-align:right">{{opPct}}</span>
         </div>
       </sc-if>
       <sc-if value="{{hasFocus}}" hint-placeholder-val="{{false}}">
-        <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:5px 7px 5px 14px;z-index:14;font-size:12px;color:var(--txt);white-space:nowrap">
-          <span class="msi" style="font-size:15px;color:var(--acc)">center_focus_strong</span>
+        <div style="position:absolute;top:12px;left:8px;display:flex;align-items:center;gap:8px;background:var(--bg1);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;z-index:14;font-size:11.5px;color:var(--txt);white-space:nowrap">
+          <span class="msi" style="font-size:14px;color:var(--acc)">center_focus_strong</span>
           <span>{{focusMsg}}</span>
-          <div style="padding:3px 10px;border-radius:999px;background:var(--bg3);cursor:pointer;font-weight:600;font-size:11.5px" onClick="{{clearFocus}}">Clear</div>
+          <div style="padding:3px 9px;border-radius:999px;background:var(--bg3);cursor:pointer;font-weight:600;font-size:11px" onClick="{{clearFocus}}">Clear</div>
         </div>
       </sc-if>
-    </div>
-    <div style="{{railStyle}}">
-      <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+      <div style="{{railStyle}}">
         <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 12px 8px;cursor:pointer;flex-shrink:0" onClick="{{railToggle}}">
           <div style="width:36px;height:4px;border-radius:2px;background:var(--bg3);position:absolute;top:5px;left:50%;transform:translateX(-50%)"></div>
           <span style="font-size:12px;font-weight:600;color:var(--txt)">{{railSummary}}</span>
           <span class="msi" style="font-size:18px;color:var(--txt2)">{{railChev}}</span>
         </div>
-      </sc-if>
-      <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
-          <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--txt2)">Review</span>
-          <div style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{collapseRail}}" title="Collapse panel"><span class="msi" style="font-size:17px">right_panel_close</span></div>
+        <sc-if value="{{railContentShow}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0">
+          <div style="{{tabFStyle}}" onClick="{{onTabF}}">Findings · {{fCount}}</div>
+          <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
         </div>
-      </sc-if>
-      <sc-if value="{{railContentShow}}" hint-placeholder-val="{{true}}">
-      <div style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0">
-        <div style="{{tabFStyle}}" onClick="{{onTabF}}">Findings · {{fCount}}</div>
-        <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
-      </div>
-      <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
-        <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+        <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-for list="{{sevChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}"><div style="{{c.dotStyle}}"></div>{{c.label}}</div></sc-for>
+            </div>
+            <sc-if value="{{instChipShow}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex">
+                <div style="{{instChipStyle}}" onClick="{{onInstChip}}" title="{{instChipTip}}"><span class="msi" style="font-size:14px">{{instChipIcon}}</span>{{instChipLabel}}</div>
+              </div>
+            </sc-if>
           </div>
-          <sc-if value="{{instChipShow}}" hint-placeholder-val="{{false}}">
-            <div style="display:flex">
-              <div style="{{instChipStyle}}" onClick="{{onInstChip}}" title="{{instChipTip}}"><span class="msi" style="font-size:14px">{{instChipIcon}}</span>{{instChipLabel}}</div>
-            </div>
-          </sc-if>
-        </div>
-        <div style="flex:1;overflow-y:auto;min-height:0">
-          <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center">No findings match the current filters.</div></sc-if>
-          <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="4">
-            <div style="{{f.rowStyle}}" onClick="{{f.select}}" data-vc-step="{{f.id}}">
-              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-                <div style="{{f.badgeStyle}}">{{f.num}}</div>
-                <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
-                <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}"><span style="{{f.groupStyle}}">{{f.groupLabel}}</span></sc-if>
-                <sc-if value="{{f.isReg}}" hint-placeholder-val="{{false}}"><span style="{{f.regStyle}}"><span class="msi" style="font-size:12px">undo</span>{{f.regLabel}}</span></sc-if>
-                <sc-if value="{{f.isOne}}" hint-placeholder-val="{{false}}"><span style="{{f.sideStyle}}"><span class="msi" style="font-size:12px">{{f.sideIcon}}</span>{{f.sideLabel}}</span></sc-if>
-                <sc-if value="{{f.hasTag}}" hint-placeholder-val="{{false}}"><span style="{{f.tagStyle}}">{{f.tagLabel}}</span></sc-if>
-              </div>
-              <sc-if value="{{f.hasCause}}" hint-placeholder-val="{{false}}">
-                <div style="margin:5px 0 0 28px;font-size:11.5px;line-height:1.4;color:var(--txt2)">{{f.cause}}</div>
-              </sc-if>
-              <sc-if value="{{f.isSup}}" hint-placeholder-val="{{false}}">
-                <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
-              </sc-if>
-              <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
-                <span style="color:var(--txt2)">{{f.prop}}</span>
-                <span style="color:var(--txt)">{{f.expected}}</span>
-                <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
-                <span style="color:#e5484d">{{f.actual}}</span>
-              </div>
-              <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
-                <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}">
-                  <div style="display:flex;align-items:center;gap:8px;margin:8px 0 0 28px;padding:7px 9px;border-radius:8px;background:var(--bg0);border:1px solid var(--line)">
-                    <span class="msi" style="font-size:15px;color:var(--txt2)">select_all</span>
-                    <span style="flex:1;font-size:11.5px;line-height:1.35;color:var(--txt2)">{{f.instMsg}}</span>
-                    <div style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt)" onClick="{{f.instToggle}}">{{f.instToggleLabel}}</div>
-                  </div>
-                </sc-if>
-
-                <div style="margin:10px 0 2px 28px;display:flex;gap:6px">
-                  <sc-for list="{{f.actions}}" as="a" hint-placeholder-count="3"><div style="{{a.style}}" onClick="{{a.onClick}}">{{a.label}}</div></sc-for>
-                </div>
-                <input style="margin:8px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Note for the model&#8230;" value="{{f.commentVal}}" onChange="{{f.onComment}}" onClick="{{f.stop}}" onPointerDown="{{f.stop}}">
-              </sc-if>
-            </div>
-          </sc-for>
-          <sc-if value="{{supShow}}" hint-placeholder-val="{{true}}">
-            <div style="{{supRowStyle}}" onClick="{{supToggle}}" title="Findings hidden by preset rules — known-safe differences like font smoothing or dynamic copy.">
-              <span class="msi" style="font-size:16px;color:var(--txt2)">{{supIcon}}</span>
-              <span style="flex:1;font-size:11.5px;color:var(--txt2)">{{supLabel}}</span>
-              <span style="font-size:11.5px;font-weight:600;color:var(--acc)">{{supActionLabel}}</span>
-            </div>
-            <sc-for list="{{supRows}}" as="f" hint-placeholder-count="0">
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center">No findings match the current filters.</div></sc-if>
+            <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="4">
               <div style="{{f.rowStyle}}" onClick="{{f.select}}" data-vc-step="{{f.id}}">
                 <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
                   <div style="{{f.badgeStyle}}">{{f.num}}</div>
                   <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
-                  <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px dashed var(--line);color:var(--txt2);flex-shrink:0">Suppressed</span>
+                  <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}"><span style="{{f.groupStyle}}">{{f.groupLabel}}</span></sc-if>
+                  <sc-if value="{{f.isReg}}" hint-placeholder-val="{{false}}"><span style="{{f.regStyle}}"><span class="msi" style="font-size:12px">undo</span>{{f.regLabel}}</span></sc-if>
+                  <sc-if value="{{f.isOne}}" hint-placeholder-val="{{false}}"><span style="{{f.sideStyle}}"><span class="msi" style="font-size:12px">{{f.sideIcon}}</span>{{f.sideLabel}}</span></sc-if>
+                  <sc-if value="{{f.hasTag}}" hint-placeholder-val="{{false}}"><span style="{{f.tagStyle}}">{{f.tagLabel}}</span></sc-if>
                 </div>
-                <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                <sc-if value="{{f.hasCause}}" hint-placeholder-val="{{false}}">
+                  <div style="margin:5px 0 0 28px;font-size:11.5px;line-height:1.4;color:var(--txt2)">{{f.cause}}</div>
+                </sc-if>
+                <sc-if value="{{f.isSup}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                </sc-if>
                 <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
                   <span style="color:var(--txt2)">{{f.prop}}</span>
                   <span style="color:var(--txt)">{{f.expected}}</span>
                   <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
-                  <span style="color:var(--txt2)">{{f.actual}}</span>
+                  <span style="color:#e5484d">{{f.actual}}</span>
                 </div>
                 <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
-                  <div style="margin:9px 0 2px 28px;font-size:11px;line-height:1.45;color:var(--txt2)">Suppression rules live in the project manifest — edit it to change what gets hidden.</div>
+                  <sc-if value="{{f.hasGroup}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex;align-items:center;gap:8px;margin:8px 0 0 28px;padding:7px 9px;border-radius:8px;background:var(--bg0);border:1px solid var(--line)">
+                      <span class="msi" style="font-size:15px;color:var(--txt2)">select_all</span>
+                      <span style="flex:1;font-size:11.5px;line-height:1.35;color:var(--txt2)">{{f.instMsg}}</span>
+                      <div style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt)" onClick="{{f.instToggle}}">{{f.instToggleLabel}}</div>
+                    </div>
+                  </sc-if>
+                  <div style="margin:10px 0 2px 28px;display:flex;gap:6px">
+                    <sc-for list="{{f.actions}}" as="a" hint-placeholder-count="3"><div style="{{a.style}}" onClick="{{a.onClick}}">{{a.label}}</div></sc-for>
+                  </div>
+                  <input style="margin:8px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Note for the model&#8230;" value="{{f.commentVal}}" onChange="{{f.onComment}}" onClick="{{f.stop}}" onPointerDown="{{f.stop}}">
                 </sc-if>
               </div>
             </sc-for>
-          </sc-if>
-        </div>
-      </sc-if>
-      <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
-        <div style="flex:1;overflow-y:auto;min-height:0">
-          <sc-if value="{{hasDraft}}" hint-placeholder-val="{{false}}">
-            <div style="padding:12px;border-bottom:1px solid var(--line);background:var(--bg2)">
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8f7ee7;margin-bottom:8px">{{draftKind}}</div>
-              <input style="width:100%;box-sizing:border-box;background:var(--bg0);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:12.5px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Instruction for the model&#8230;" value="{{draftText}}" onChange="{{onDraftText}}">
-              <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
-                <div style="padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--txt2)" onClick="{{cancelDraft}}">Cancel</div>
-                <div style="padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{saveDraftFn}}">Send to model</div>
+            <sc-if value="{{supShow}}" hint-placeholder-val="{{true}}">
+              <div style="{{supRowStyle}}" onClick="{{supToggle}}" title="Findings hidden by preset rules — known-safe differences like font smoothing or dynamic copy.">
+                <span class="msi" style="font-size:16px;color:var(--txt2)">{{supIcon}}</span>
+                <span style="flex:1;font-size:11.5px;color:var(--txt2)">{{supLabel}}</span>
+                <span style="font-size:11.5px;font-weight:600;color:var(--acc)">{{supActionLabel}}</span>
               </div>
-            </div>
-          </sc-if>
-          <sc-if value="{{emptyI}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">No comments yet. Pick the comment tool, then tap a point or drag a region on either pane.</div></sc-if>
-          <sc-for list="{{itemRows}}" as="it" hint-placeholder-count="3">
-            <div style="{{it.rowStyle}}" onClick="{{it.select}}">
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="{{it.badgeStyle}}">{{it.num}}</div>
-                <sc-if value="{{it.isOne}}" hint-placeholder-val="{{false}}"><span style="{{it.sideStyle}}">{{it.sideLabel}}</span></sc-if>
-                <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
-              </div>
-              <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px">{{it.text}}</div>
-              <sc-if value="{{it.saveErr}}" hint-placeholder-val="{{false}}">
-                <div style="display:flex;align-items:center;gap:7px;margin:8px 0 0 28px">
-                  <span class="msi" style="font-size:15px;color:#e5484d;flex-shrink:0">cloud_off</span>
-                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
-                    <span style="font-size:11.5px;font-weight:700;color:#e5484d">Not saved</span>
-                    <span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{it.saveErrDetail}}</span>
+              <sc-for list="{{supRows}}" as="f" hint-placeholder-count="0">
+                <div style="{{f.rowStyle}}" onClick="{{f.select}}" data-vc-step="{{f.id}}">
+                  <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                    <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                    <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                    <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px dashed var(--line);color:var(--txt2);flex-shrink:0">Suppressed</span>
                   </div>
-                  <div style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:#e5484d;color:#fff;flex-shrink:0" onClick="{{it.retrySave}}">Retry</div>
+                  <div style="display:flex;align-items:center;gap:5px;margin:5px 0 0 28px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">filter_alt_off</span>{{f.ruleLabel}}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px">
+                    <span style="color:var(--txt2)">{{f.prop}}</span>
+                    <span style="color:var(--txt)">{{f.expected}}</span>
+                    <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                    <span style="color:var(--txt2)">{{f.actual}}</span>
+                  </div>
+                  <sc-if value="{{f.isSel}}" hint-placeholder-val="{{false}}">
+                    <div style="margin:9px 0 2px 28px;font-size:11px;line-height:1.45;color:var(--txt2)">Suppression rules live in the project manifest — edit it to change what gets hidden.</div>
+                  </sc-if>
                 </div>
-              </sc-if>
-              <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}">
-                <div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45">{{it.reply}}</div>
-              </sc-if>
-              <sc-if value="{{it.isSel}}" hint-placeholder-val="{{false}}">
-                <input style="margin:10px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Add another instruction&#8230;" value="{{it.noteVal}}" onChange="{{it.onNote}}" onClick="{{it.stop}}" onPointerDown="{{it.stop}}">
-                <div style="display:flex;gap:6px;margin:8px 0 2px 28px">
-                  <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{it.send}}">Send</div>
-                  <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt2)" onClick="{{it.done}}">{{it.doneLabel}}</div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{hasDraft}}" hint-placeholder-val="{{false}}">
+              <div style="padding:12px;border-bottom:1px solid var(--line);background:var(--bg2)">
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8f7ee7;margin-bottom:8px">{{draftKind}}</div>
+                <input style="width:100%;box-sizing:border-box;background:var(--bg0);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:12.5px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Instruction for the model&#8230;" value="{{draftText}}" onChange="{{onDraftText}}">
+                <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+                  <div style="padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--txt2)" onClick="{{cancelDraft}}">Cancel</div>
+                  <div style="padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{saveDraftFn}}">Send to model</div>
                 </div>
-              </sc-if>
-            </div>
-          </sc-for>
-        </div>
-      </sc-if>
-      </sc-if>
-    </div>
-    <sc-if value="{{railHidden}}" hint-placeholder-val="{{false}}">
-      <div style="position:absolute;top:12px;right:12px;z-index:16;display:flex;align-items:center;gap:7px;background:var(--bg1);border:1px solid var(--line);border-radius:9px;padding:6px 10px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.25)" onClick="{{expandRail}}" title="Open review panel">
-        <span class="msi" style="font-size:17px;color:var(--txt2)">right_panel_open</span>
-        <span style="font-size:12px;font-weight:600">{{railSummary}}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{emptyI}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">No comments yet. Pick the comment tool, then tap a point or drag a region.</div></sc-if>
+            <sc-for list="{{itemRows}}" as="it" hint-placeholder-count="3">
+              <div style="{{it.rowStyle}}" onClick="{{it.select}}">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="{{it.badgeStyle}}">{{it.num}}</div>
+                  <sc-if value="{{it.isOne}}" hint-placeholder-val="{{false}}"><span style="{{it.sideStyle}}">{{it.sideLabel}}</span></sc-if>
+                  <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
+                </div>
+                <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px">{{it.text}}</div>
+                <sc-if value="{{it.saveErr}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:7px;margin:8px 0 0 28px">
+                    <span class="msi" style="font-size:15px;color:#e5484d;flex-shrink:0">cloud_off</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                      <span style="font-size:11.5px;font-weight:700;color:#e5484d">Not saved</span>
+                      <span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{it.saveErrDetail}}</span>
+                    </div>
+                    <div style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:#e5484d;color:#fff;flex-shrink:0" onClick="{{it.retrySave}}">Retry</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}">
+                  <div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45">{{it.reply}}</div>
+                </sc-if>
+                <sc-if value="{{it.isSel}}" hint-placeholder-val="{{false}}">
+                  <input style="margin:10px 0 2px 28px;width:calc(100% - 40px);box-sizing:border-box;background:var(--bg2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Add another instruction&#8230;" value="{{it.noteVal}}" onChange="{{it.onNote}}" onClick="{{it.stop}}" onPointerDown="{{it.stop}}">
+                  <div style="display:flex;gap:6px;margin:8px 0 2px 28px">
+                    <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{it.send}}">Send</div>
+                    <div style="padding:4px 12px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--txt2)" onClick="{{it.done}}">{{it.doneLabel}}</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        </sc-if>
       </div>
-    </sc-if>
+    </div>
   </div>
+  <div style="font-size:11.5px;color:#6d737c">Toolbar layout — compare modes in the header, theme toggle top right · <a href="./RefDiff Mobile Minimal.dc.html" style="color:#5b8def;text-decoration:none">minimal</a> · <a href="./RefDiff Mobile.dc.html" style="color:#5b8def;text-decoration:none">standard</a></div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:820},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:280,&quot;max&quot;:400,&quot;step&quot;:10,&quot;default&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;paneLabels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Canvas&quot;},&quot;anchorConfidence&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.42,&quot;section&quot;:&quot;Canvas&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;showDeltaStrip&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Debug&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:950},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;anchorConfidence&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.42,&quot;section&quot;:&quot;Canvas&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;showDeltaStrip&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Canvas&quot;,&quot;tsType&quot;:&quot;boolean&quot;}}">
 const W = 680, H = 740;
 const SEV = { high: '#e5484d', medium: '#f5a623', low: '#4c9aff' };
 const SEVL = { high: 'Critical', medium: 'Major', low: 'Minor' };
@@ -371,27 +337,26 @@ const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.refA = React.createRef(); this.refB = React.createRef(); this.refC = React.createRef();
+    this.refA = React.createRef(); this.refB = React.createRef();
     this._drag = null; this._wh = null; this._bt = null;
     this.state = {
-      theme: null, mode: 'split', pane: 'design', variant: 'none', blinkOn: true,
-      layer: 'all', railTab: 'findings', railOpen: false, railCollapsed: false,
+      theme: null, layout: null, pane: 'design', variant: 'none', blinkOn: true,
+      layer: 'all', railTab: 'findings', railOpen: false, panelOpen: false, settingsOpen: false,
       strobe: false, ovlOp: { onion: 0.55, diff: 1 },
-      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, alignConf: 0.42, highlight: false, dim: false, wipeX: 340,
-      tA: { x: 24, y: 24, s: 0.55 }, tB: { x: 24, y: 24, s: 0.55 }, anim: false,
-      sevOn: { high: true, medium: true, low: true },
-      showSup: false, allInst: false, regOnly: false, deltaDismissed: false,
-      run: { n: 47, prev: 46, add: 3, res: 6 },
-      focusRect: null, selected: null, draft: null, draftText: '', isMobile: false, isNarrow: false,
+      tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
+      tA: { x: 10, y: 10, s: 0.5 }, tB: { x: 10, y: 10, s: 0.5 }, anim: false,
+      sevOn: { high: true, medium: true, low: true }, showSup: false, allInst: false,
+      regOnly: false, deltaDismissed: false, run: { n: 47, prev: 46, add: 3, res: 6 },
+      focusRect: null, selected: null, draft: null, draftText: '',
       findings: [
         { id: 'f1', num: 1, sev: 'high', reg: true, regRun: 44, title: 'Primary button color mismatch', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
         { id: 'f2', num: 2, sev: 'high', title: 'Dropzone inner padding reduced', prop: 'padding', expected: '32px', actual: '20px', rect: { x: 36, y: 368, w: 608, h: 190 }, status: 'open', comment: '' },
         { id: 'f3', num: 3, sev: 'medium', title: 'Heading font-size drift', prop: 'font-size', expected: '28px', actual: '24px', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
         { id: 'g1', num: 7, sev: 'medium', title: 'Label color drift', cause: 'Muted label token resolves to the wrong grey', prop: 'color', expected: '#6B7280', actual: '#94A3B8', rect: { x: 56, y: 214, w: 120, h: 16 }, inst: REP(14, i => ({ x: 56 + (i % 3) * 196, y: 214 + ((i / 3) | 0) * 36, w: 120, h: 16 })), status: 'open', comment: '' },
         { id: 'g2', num: 8, sev: 'low', reg: true, regRun: 45, title: 'Row baseline shifted 23px', cause: 'Section padding change pushes the whole row down', prop: 'translateY', expected: '0px', actual: '23px', rect: { x: 36, y: 380, w: 608, h: 22 }, inst: REP(5, i => ({ x: 36, y: 414 + i * 34, w: 608, h: 22 })), status: 'open', comment: '' },
-        { id: 's1', num: 9, sev: 'low', sup: true, rule: 'Preset · font smoothing', title: 'Text renders 0.4px wider', prop: 'font-smooth', expected: 'antialiased', actual: 'auto', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
-        { id: 's2', num: 10, sev: 'low', sup: true, rule: 'Preset · scrollbar gutter', title: 'Content 15px narrower', prop: 'width', expected: '680px', actual: '665px', rect: { x: 0, y: 0, w: 680, h: 740 }, status: 'open', comment: '' },
-        { id: 's3', num: 11, sev: 'medium', sup: true, rule: 'Preset · dynamic copy', title: 'Placeholder copy differs', prop: 'content', expected: 'Front side of ID', actual: 'Front of document', rect: { x: 56, y: 470, w: 300, h: 22 }, status: 'open', comment: '' },
+        { id: 's1', num: 9, sev: 'low', sup: true, rule: 'Preset \u00b7 font smoothing', title: 'Text renders 0.4px wider', prop: 'font-smooth', expected: 'antialiased', actual: 'auto', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
+        { id: 's2', num: 10, sev: 'low', sup: true, rule: 'Preset \u00b7 scrollbar gutter', title: 'Content 15px narrower', prop: 'width', expected: '680px', actual: '665px', rect: { x: 0, y: 0, w: 680, h: 740 }, status: 'open', comment: '' },
+        { id: 's3', num: 11, sev: 'medium', sup: true, rule: 'Preset \u00b7 dynamic copy', title: 'Placeholder copy differs', prop: 'content', expected: 'Front side of ID', actual: 'Front of document', rect: { x: 56, y: 470, w: 300, h: 22 }, status: 'open', comment: '' },
         { id: 'f4', num: 4, sev: 'medium', title: 'Card corner radius mismatch', prop: 'border-radius', expected: '12px', actual: '6px', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' },
         { id: 'f5', num: 5, sev: 'low', title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
         { id: 'f6', num: 6, sev: 'low', title: 'Footer text color drift', prop: 'color', expected: '#6B7280', actual: '#9CA3AF', rect: { x: 36, y: 664, w: 608, h: 24 }, status: 'open', comment: '' },
@@ -406,18 +371,10 @@ class Component extends DCLogic {
         { id: 'c4', num: 4, status: 'open', oneSide: 'design', text: 'Is the corner check icon final art?', reply: '', note: '', rect: { x: 618, y: 618, w: 0, h: 0 } }]
     };
   }
-  componentDidMount() {
-    this._rs = () => {
-      const w = window.innerWidth, m = this.props.mobile ?? (w < 760);
-      const n = !m && w < 1120;
-      if (m !== this.state.isMobile || n !== this.state.isNarrow) this.setState({ isMobile: m, isNarrow: n, railOpen: false });
-    };
-    this._rs(); window.addEventListener('resize', this._rs);
-    setTimeout(() => this.fit(false), 80);
-  }
-  componentWillUnmount() { window.removeEventListener('resize', this._rs); if (this._bt) clearInterval(this._bt); }
+  componentDidMount() { setTimeout(() => this.fit(false), 80); }
+  componentWillUnmount() { if (this._bt) clearInterval(this._bt); }
   theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
-  effMode() { return this.state.isMobile ? 'full' : this.state.mode; }
+  layoutMode() { return this.state.layout ?? this.props.layout ?? 'minimal'; }
   setVariant(v) {
     if (this._bt) { clearInterval(this._bt); this._bt = null; }
     if (v === 'blink') this._bt = setInterval(() => this.setState(s => ({ blinkOn: !s.blinkOn })), 650);
@@ -476,23 +433,15 @@ class Component extends DCLogic {
     const k = s2 / t.s, mx = e.clientX - r.left, my = e.clientY - r.top;
     this.setT(p, { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 });
   }
-  zoom(f) {
-    const r = this.paneRect('A'); if (!r) return;
-    const t = this.state.tA;
-    const s2 = Math.min(4, Math.max(0.15, t.s * f));
-    const k = s2 / t.s, mx = r.width / 2, my = r.height / 2;
-    const nt = { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 };
-    this.setState({ tA: nt, tB: nt });
-  }
   fit(anim = true) {
     const r = this.paneRect('A'); if (!r || r.width < 10) return;
-    const s = Math.min((r.width - 48) / W, (r.height - 48) / H, 1.6);
+    const s = Math.min((r.width - 32) / W, (r.height - 32) / H, 1.6);
     const t = { x: (r.width - W * s) / 2, y: (r.height - H * s) / 2, s };
     this.setState({ tA: t, tB: t, anim });
   }
   focusOn(rect) {
     const r = this.paneRect('A'); if (!r) return;
-    const w = Math.max(rect.w, 60) + 140, h = Math.max(rect.h, 60) + 140;
+    const w = Math.max(rect.w, 60) + 120, h = Math.max(rect.h, 60) + 120;
     const s = Math.min(r.width / w, r.height / h, 2.2);
     const t = { x: r.width / 2 - (rect.x + rect.w / 2) * s, y: r.height / 2 - (rect.y + rect.h / 2) * s, s };
     this.setState({ tA: t, tB: t, anim: true });
@@ -515,7 +464,7 @@ class Component extends DCLogic {
       : { position: 'absolute', left: r.x - 4, top: r.y - 4, width: r.w + 8, height: r.h + 8, border: (1.5 / s) + 'px dashed ' + col, borderRadius: 6, background: 'repeating-linear-gradient(45deg,' + col + '2e 0 2px,transparent 2px 9px)', pointerEvents: 'none', zIndex: 5, boxSizing: 'border-box' } });
     out.gh.push({
       num, label, stop: e => e.stopPropagation(),
-      canSwitch: this.effMode() === 'full', btnLabel: homeSide === 'design' ? 'View design' : 'View impl',
+      canSwitch: true, btnLabel: homeSide === 'design' ? 'View design' : 'View impl',
       onSwitch: e => { e.stopPropagation(); this.setState({ pane: homeSide }); },
       wrapStyle: { position: 'absolute', left: pt ? r.x - 14 : r.x - 4, top: pt ? r.y - 14 : r.y - 4, transform: 'translateY(calc(-100% - 7px)) scale(' + cs + ')', transformOrigin: '0 100%', display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg1)', border: '1px dashed ' + col, borderRadius: 9, padding: '5px 9px', whiteSpace: 'nowrap', zIndex: 8, boxShadow: '0 2px 10px rgba(0,0,0,0.35)' },
       badgeStyle: { width: 18, height: 18, borderRadius: '50%', border: '1.5px dashed ' + col, color: col, background: 'var(--bg1)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' },
@@ -525,27 +474,24 @@ class Component extends DCLogic {
   }
   inter(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
   renderVals() {
-    const S = this.state, th = this.theme(), light = th === 'light', mode = this.effMode(), isM = S.isMobile;
-    const isFull = mode === 'full', V = S.variant;
-    const railW = this.props.railWidth ?? 320;
-    const showLabels = (this.props.paneLabels ?? true) && !isM && V === 'none';
+    const S = this.state, th = this.theme(), light = th === 'light';
+    const isMin = true, isDef = false;
+    const V = S.variant;
     const inFocus = f => !S.focusRect || this.inter(f.rect, S.focusRect) || (f.inst || []).some(r => this.inter(r, S.focusRect));
     const base = S.findings.filter(f => S.sevOn[f.sev] && inFocus(f));
     const supList = base.filter(f => f.sup);
     const active = base.filter(f => !f.sup && (!S.regOnly || f.reg));
     const vis = S.showSup ? active.concat(supList) : active;
-    const regCount = S.findings.filter(f => f.reg && !f.sup).length;
     const instTotal = active.reduce((n, f) => n + 1 + (f.inst || []).length, 0);
     const groupCount = active.filter(f => f.inst && f.inst.length).length;
     const visItems = S.items.filter(i => !S.focusRect || this.inter(i.rect, S.focusRect));
     const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
-    const segBtn = act => ({ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '16px' });
-    const segBtnSm = act => ({ ...segBtn(act), padding: '3px 8px', fontSize: 11, lineHeight: '14px' });
+    const segBtnSm = act => ({ padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '15px' });
     const grp = { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 };
-    const mainBtns = [['split', 'Split'], ['full', 'Full']].map(([id, label]) => ({ id, label, style: segBtn(mode === id), onClick: () => this.setState({ mode: id }) }));
-    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: segBtn(V === id), onClick: () => this.setVariant(id) }));
-    const layerBtns = (S.isNarrow ? [['findings', 'Find.'], ['items', 'Comm.'], ['all', 'All'], ['none', 'Clean']] : [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']]).map(([id, label]) => ({ id, label, style: isM ? segBtnSm(S.layer === id) : segBtn(S.layer === id), onClick: () => this.setState({ layer: id }) }));
-    const toolBtn = act => ({ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
+    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: segBtnSm(V === id), onClick: () => this.setVariant(id) }));
+    const layerBtns = [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']].map(([id, label]) => ({ id, label, style: segBtnSm(S.layer === id), onClick: () => this.setState({ layer: id }) }));
+    const themeBtns = [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => ({ id, label, style: { ...segBtnSm(th === id), flex: 1, textAlign: 'center' }, onClick: () => this.setState({ theme: id }) }));
+    const toolBtn = act => ({ width: isMin ? 28 : 32, height: isMin ? 28 : 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
     const toolDefs = [
       ['pan', 'pan_tool', 'Pan / move', () => this.setState({ tool: 'pan' }), S.tool === 'pan'],
       ['comment', 'add_comment', 'Comment \u2014 tap a point or drag a region', () => this.setState({ tool: 'comment' }), S.tool === 'comment'],
@@ -554,16 +500,10 @@ class Component extends DCLogic {
       ['dim', 'tonality', 'Dim unchanged parts', () => this.setState(s => ({ dim: !s.dim })), S.dim],
       ['strobe', 'flare', 'Strobe \u2014 pulse the differences in colour', () => this.setState(s => ({ strobe: !s.strobe })), S.strobe]];
     const toolBtns = toolDefs.map(([id, icon, title, onClick, act]) => ({ id, icon, title, onClick, style: toolBtn(act) }));
-    const toolStripStyle = isM
-      ? { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }
-      : { width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 0', background: 'var(--bg1)', borderRight: '1px solid var(--line)' };
     const cursor = S.tool === 'pan' ? 'grab' : 'crosshair';
-    const paneBase = { position: 'relative', overflow: 'hidden', background: 'var(--canvas)', touchAction: 'none', cursor, minWidth: 0 };
-    let paneAStyle, paneBStyle;
-    if (!isFull) { paneAStyle = { ...paneBase, flex: 1, borderRight: '1px solid var(--line)' }; paneBStyle = { ...paneBase, flex: 1 }; }
-    else if (S.pane === 'design') { paneAStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneBStyle = { display: 'none' }; }
-    else { paneBStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneAStyle = { display: 'none' }; }
-    const canvasStyle = { flex: 1, position: 'relative', minWidth: 0, minHeight: 0, display: isFull ? 'block' : 'flex', background: 'var(--canvas)' };
+    const paneBase = { position: 'absolute', inset: 0, overflow: 'hidden', background: 'var(--canvas)', touchAction: 'none', cursor };
+    const paneAStyle = S.pane === 'design' ? paneBase : { display: 'none' };
+    const paneBStyle = S.pane === 'impl' ? paneBase : { display: 'none' };
     const tStyle = t => ({ position: 'absolute', left: 0, top: 0, width: W, height: H, transform: 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', transformOrigin: '0 0', transition: S.anim ? 'transform 0.35s cubic-bezier(0.2,0.8,0.2,1)' : 'none' });
     let ovlStyle = { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' };
     if (V === 'none') ovlStyle.display = 'none';
@@ -608,13 +548,13 @@ class Component extends DCLogic {
       return out;
     };
     const ovA = ov(S.tA, 'design'), ovB = ov(S.tB, 'impl');
-    const R = S.run;
-    const conf = this.props.anchorConfidence ?? S.alignConf;
+    const R = S.run, regCount = active.filter(f => f.reg).length;
+    const conf = this.props.anchorConfidence ?? 0.42;
     const anchorLow = conf < CONF_MIN, confWarn = anchorLow && S.lockstep && S.alignMode === 'anchors';
     const dimRects = vis.map(f => ({ x: f.rect.x - 6, y: f.rect.y - 6, w: f.rect.w + 12, h: f.rect.h + 12 }));
-    const railStyle = isM
-      ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }
-      : (S.railCollapsed ? { display: 'none' } : { width: railW, flexShrink: 0, background: 'var(--bg1)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 });
+    const railStyle = isMin
+      ? (S.railOpen ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: '58%', background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' } : { display: 'none' })
+      : { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' };
     const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
     const sevChips = ['high', 'medium', 'low'].map(sv => {
       const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv && !f.sup).length;
@@ -643,7 +583,6 @@ class Component extends DCLogic {
         instMsg: S.allInst ? 'All ' + (1 + (f.inst || []).length) + ' instances marked on canvas' : 'Only the primary instance is marked',
         instToggleLabel: S.allInst ? 'Show primary only' : 'Show all instances',
         instToggle: e => { e.stopPropagation(); this.setState(s => ({ allInst: !s.allInst })); },
-        unsuppress: e => { e.stopPropagation(); this.setState(s => ({ findings: s.findings.map(x => x.id === f.id ? { ...x, sup: false } : x) })); },
         hasTag: f.status !== 'open', tagLabel: { fix: 'To fix', ignore: 'Ignored', snooze: 'Snoozed' }[f.status] || '',
         tagStyle: { fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 999, color: f.status === 'fix' ? '#fff' : 'var(--txt2)', background: f.status === 'fix' ? 'var(--acc)' : 'var(--bg3)', marginLeft: 'auto', flexShrink: 0, whiteSpace: 'nowrap' },
         actions: [['fix', 'To fix', 'var(--acc)'], ['ignore', 'Ignore', '#6b7280'], ['snooze', 'Snooze', '#8f7ee7']].map(([st, label, color]) => ({ label, onClick: e => { e.stopPropagation(); this.setFStatus(f.id, st); }, style: actBtn(f.status === st, color) })),
@@ -671,59 +610,42 @@ class Component extends DCLogic {
         stop: e => e.stopPropagation()
       };
     });
-    const fabBtn = act => ({ padding: isM ? '10px 16px' : '7px 14px', borderRadius: 999, fontSize: isM ? 13 : 12, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' });
+    const fabBtn = act => ({ padding: '10px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' });
+    const hdrBtn = act => ({ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
     return {
       themeClass: light ? 'cc-theme-light' : '',
+      isMin, isDef, grpStyle: grp, grpFullStyle: { ...grp, width: '100%', boxSizing: 'border-box' },
+      panelBtnStyle: hdrBtn(S.panelOpen), panelToggle: () => this.setState(s => ({ panelOpen: !s.panelOpen, settingsOpen: false })),
+      setBtnStyle: hdrBtn(false),
+      themeToggle: () => this.setState({ theme: light ? 'dark' : 'light' }),
       themeIcon: light ? 'dark_mode' : 'light_mode',
-      toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
-      isDesk: !isM, isMob: isM,
-      settingsOpen: !!S.settingsOpen,
-      settingsToggle: () => this.setState(s => ({ settingsOpen: !s.settingsOpen })),
-      setBtnStyle: { width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.settingsOpen ? '#fff' : 'var(--txt2)', background: S.settingsOpen ? 'var(--acc)' : 'transparent', flexShrink: 0 },
-      grpFullStyle: { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, width: '100%', boxSizing: 'border-box' },
-      layoutBtns: [['minimal', 'Minimal'], ['default', 'Default']].map(([id, label]) => {
-        const act = id === 'default';
-        return { label, style: { flex: 1, textAlign: 'center', padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', lineHeight: '15px' }, onClick: () => { if (id === 'minimal') window.location.href = './RefDiff Mobile Minimal.dc.html'; else this.setState({ settingsOpen: false }); } };
-      }),
-      themeBtns: [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => {
-        const act = th === id;
-        return { label, style: { flex: 1, textAlign: 'center', padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', lineHeight: '15px' }, onClick: () => this.setState({ theme: id }) };
-      }),
-      brandStyle: { fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', display: isM ? 'none' : 'block' },
-      projStyle: { fontSize: 12, color: 'var(--txt2)', whiteSpace: 'nowrap', display: (isM || S.isNarrow) ? 'none' : 'block' },
-      grpMainStyle: { ...grp, display: isM ? 'none' : 'flex' },
-      grpStyle: isM ? { ...grp, margin: '0 auto' } : grp,
-      hdrLeftStyle: { display: 'flex', alignItems: 'center', gap: 8, flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
-      hdrRightStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
-      grpMobStyle: { ...grp, padding: 2, borderRadius: 7 },
-      grpLayerStyle: { ...grp, display: isM ? 'none' : 'flex' },
-      mainBtns, variantBtns, layerBtns, toolBtns, toolStripStyle, canvasStyle,
-      refA: this.refA, refB: this.refB, refC: this.refC,
+      themeTip: light ? 'Switch to dark theme' : 'Switch to light theme',
+      panelOpen: S.panelOpen, settingsOpen: S.settingsOpen,
+      scrimShow: S.settingsOpen || S.alignOpen,
+      scrimClose: () => this.setState({ panelOpen: false, settingsOpen: false, alignOpen: false }),
+      themeBtns, variantBtns, layerBtns, toolBtns,
+      toolStripStyle: { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      fitBtnStyle: { width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt2)', flexShrink: 0 },
+      refA: this.refA, refB: this.refB,
       paneAStyle, paneBStyle, tAStyle: tStyle(S.tA), tBStyle: tStyle(S.tB),
       downA: e => this.pDown('A', e), moveA: e => this.pMove('A', e), upA: e => this.pUp('A', e), wheelA: e => this.wheel('A', e),
       downB: e => this.pDown('B', e), moveB: e => this.pMove('B', e), upB: e => this.pUp('B', e), wheelB: e => this.wheel('B', e),
-      showLabels, labelA: 'DESIGN', labelB: 'IMPLEMENTATION',
-      ovA, ovB, ovlStyle, dimOn: S.dim, dimRects, dimFill: 'rgba(15,17,20,0.5)',
-      wipeOn: V === 'wipe',
+      ovA, ovB, ovlStyle, dimOn: S.dim, dimRects, wipeOn: V === 'wipe',
       whDownA: e => this.whDown('A', e), whMoveA: e => this.whMove('A', e),
       whDownB: e => this.whDown('B', e), whMoveB: e => this.whMove('B', e),
       whUp: () => { this._wh = null; },
-      zoomWrapStyle: isM
-        ? { position: 'absolute', left: 12, top: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 }
-        : { position: 'absolute', left: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 },
-      zoomOut: () => this.zoom(1 / 1.25), zoomIn: () => this.zoom(1.25), fitFn: () => this.fit(), zoomPct: Math.round(S.tA.s * 100) + '%',
-      isFull,
-      fabStyle: { position: 'absolute', right: 8, bottom: isM ? 56 : 12, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: 3, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      fitFn: () => this.fit(),
       fabD: { style: fabBtn(S.pane === 'design'), onClick: () => this.setState({ pane: 'design' }) },
       fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
-      alignShow: isM || !isFull || V !== 'none',
-      alignWarnIcon: confWarn ? 'warning' : '',
+      paneLabel: S.pane === 'design' ? 'Design' : 'Impl',
+      swapPane: () => this.setState(s => ({ pane: s.pane === 'design' ? 'impl' : 'design' })),
+      railCount: vis.length + visItems.length,
       deltaShow: (this.props.showDeltaStrip ?? true) && (R.add > 0 || R.res > 0 || regCount > 0) && !S.deltaDismissed,
-      deltaStyle: { display: 'flex', alignItems: 'center', gap: isM ? 8 : 12, flexWrap: isM ? 'wrap' : 'nowrap', padding: isM ? '7px 10px' : '0 12px', minHeight: isM ? 0 : 38, flexShrink: 0, background: regCount ? 'rgba(229,72,77,0.13)' : 'var(--bg2)', borderBottom: '1px solid var(--line)', borderLeft: regCount ? '3px solid #e5484d' : '3px solid transparent' },
+      deltaStyle: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '7px 10px', flexShrink: 0, background: regCount ? 'rgba(229,72,77,0.13)' : 'var(--bg2)', borderBottom: '1px solid var(--line)', borderLeft: regCount ? '3px solid #e5484d' : '3px solid transparent', position: 'relative', zIndex: 25 },
       deltaIcon: regCount ? 'warning' : 'compare_arrows',
       deltaIconStyle: { fontSize: 17, color: regCount ? '#e5484d' : 'var(--txt2)', flexShrink: 0 },
       runLabel: 'Run ' + R.n + ' vs ' + R.prev,
-      runLabelStyle: { fontSize: 11.5, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--txt2)', whiteSpace: 'nowrap', display: S.isNarrow && isM ? 'none' : 'block' },
+      runLabelStyle: { fontSize: 11.5, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--txt2)', whiteSpace: 'nowrap' },
       addLabel: '+' + R.add + ' introduced', resLabel: '\u2212' + R.res + ' resolved',
       addStyle: { fontSize: 12, fontWeight: 600, color: '#e5484d', whiteSpace: 'nowrap' },
       resStyle: { fontSize: 12, fontWeight: 600, color: '#46a758', whiteSpace: 'nowrap' },
@@ -731,12 +653,65 @@ class Component extends DCLogic {
       regMsg: regCount + (regCount === 1 ? ' regression' : ' regressions'),
       regSub: 'fixed earlier, back again \u2014 fix plan halted',
       regMsgStyle: { fontSize: 12, fontWeight: 700, color: '#e5484d', whiteSpace: 'nowrap' },
-      regSubStyle: { fontSize: 11.5, color: 'var(--txt2)', whiteSpace: 'nowrap', display: isM ? 'none' : 'block' },
+      regSubStyle: { display: 'none' },
       regBtnLabel: S.regOnly ? 'Show all findings' : 'Review',
-      regBtnStyle: { marginLeft: isM ? 0 : 'auto', padding: '4px 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: S.regOnly ? 'transparent' : '#e5484d', border: '1px solid ' + (S.regOnly ? 'var(--line)' : '#e5484d'), color: S.regOnly ? 'var(--txt2)' : '#fff', whiteSpace: 'nowrap', flexShrink: 0 },
-      regBtn: () => this.setState(s => ({ regOnly: !s.regOnly, railTab: 'findings', railOpen: true, railCollapsed: false, selected: null })),
-      deltaDismissShow: true,
+      regBtnStyle: { padding: '4px 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: S.regOnly ? 'transparent' : '#e5484d', border: '1px solid ' + (S.regOnly ? 'var(--line)' : '#e5484d'), color: S.regOnly ? 'var(--txt2)' : '#fff', whiteSpace: 'nowrap', flexShrink: 0 },
+      regBtn: () => this.setState(s => ({ regOnly: !s.regOnly, railTab: 'findings', railOpen: true, selected: null })),
       dismissDelta: () => this.setState({ deltaDismissed: true }),
+      alignWrapStyle: { position: 'absolute', top: 8, right: 8, zIndex: 16 },
+      alignIconBtnStyle: { position: 'relative', width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: confWarn ? '0 4px 16px rgba(0,0,0,0.25),0 0 0 3px rgba(245,166,35,0.16)' : '0 4px 16px rgba(0,0,0,0.25)' },
+      confWarn,
+      confWarnTip: 'Anchor confidence ' + Math.round(conf * 100) + '% \u2014 below the ' + Math.round(CONF_MIN * 100) + '% threshold. Overlay positions may be unreliable; try Width or Top left.',
+      lockIcon: S.lockstep ? 'link' : 'link_off',
+      lockTip: S.lockstep ? 'Lockstep on \u2014 panes move together. Click to unlink.' : 'Lockstep off \u2014 panes move independently. Click to link.',
+      lockBtnStyle: { width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', flexShrink: 0 },
+      lockToggle: () => this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }),
+      alignIcon: ALIGN[S.alignMode].icon,
+      alignLabel: ALIGN[S.alignMode].label,
+      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc + (confWarn ? ' \u2014 anchor confidence ' + Math.round(conf * 100) + '%, positions unreliable.' : ''),
+      alignChev: S.alignOpen ? 'expand_less' : 'expand_more',
+      alignOpen: S.alignOpen,
+      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen, panelOpen: false, settingsOpen: false })),
+      lockRowStyle: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', margin: '0 0 2px', borderBottom: '1px solid var(--line)' },
+      lockRowIcon: S.lockstep ? 'link' : 'link_off',
+      lockRowLabel: S.lockstep ? 'Lockstep on' : 'Lockstep off',
+      lockRowDesc: S.lockstep ? 'Panes move together \u2014 tap to unlink.' : 'Panes move independently \u2014 tap to link.',
+      lockRowToggle: e => { e.stopPropagation(); this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }); },
+      lockRowKnob: { width: 30, height: 18, borderRadius: 999, background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', position: 'relative', flexShrink: 0, transition: 'background 0.15s' },
+      lockRowDot: { position: 'absolute', top: 2, left: S.lockstep ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' },
+      alignOpts: Object.keys(ALIGN).map(id => {
+        const a = ALIGN[id], act = S.alignMode === id, warn = id === 'anchors' && anchorLow;
+        return {
+          name: a.label, desc: a.desc, tip: warn ? a.desc + ' Anchor confidence is only ' + Math.round(conf * 100) + '%.' : a.desc,
+          warnShow: warn, warnText: 'Only ' + Math.round(conf * 100) + '% anchor match \u2014 positions unreliable',
+          iconStyle: { fontSize: 17, color: warn ? '#f5a623' : (act ? 'var(--acc)' : 'var(--txt2)'), flexShrink: 0, marginTop: 1 },
+          icon: a.icon, checkShow: act,
+          style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
+          onClick: () => this.setState(s => ({ alignMode: id, alignOpen: false, lockstep: true, tB: id === 'width' ? s.tB : s.tA }))
+        };
+      }),
+      opShow: V === 'onion' || V === 'diff',
+      opIcon: 'opacity',
+      opWrapStyle: { position: 'absolute', left: '50%', bottom: isMin ? 54 : 107, transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '5px 10px 5px 8px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
+      opTip: V === 'wipe' ? 'Wipe position' : (V === 'diff' ? 'Opacity of the difference blend' : 'Opacity of the overlaid ref'),
+      opVal: V === 'wipe' ? Math.round(S.wipeX / W * 100) : Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100),
+      opPct: (V === 'wipe' ? Math.round(S.wipeX / W * 100) : Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100)) + '%',
+      onOp: e => {
+        const v = Number(e.target.value) / 100;
+        if (V === 'wipe') this.setState({ wipeX: Math.min(W - 20, Math.max(20, v * W)) });
+        else { const k = V === 'diff' ? 'diff' : 'onion'; this.setState(s => ({ ovlOp: { ...s.ovlOp, [k]: v } })); }
+      },
+      hasFocus: !!S.focusRect, focusMsg: 'Focus \u00b7 ' + vis.length + ' of ' + S.findings.length, clearFocus: () => this.setState({ focusRect: null }),
+      railStyle, railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })),
+      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments' + (S.items.some(i => i.saveErr) ? ' \u00b7 ' + S.items.filter(i => i.saveErr).length + ' unsaved' : ''),
+      railChev: S.railOpen ? 'expand_more' : 'expand_less',
+      railContentShow: S.railOpen,
+      tabFStyle: tabStyle(S.railTab === 'findings'), tabIStyle: tabStyle(S.railTab === 'items'),
+      onTabF: () => this.setState({ railTab: 'findings' }), onTabI: () => this.setState({ railTab: 'items' }),
+      fCount: vis.length, iCount: visItems.length,
+      showFindTab: S.railTab === 'findings', showItemTab: S.railTab === 'items',
+      sevChips, emptyF: vis.length === 0, findingRows,
       instChipShow: groupCount > 0,
       instChipLabel: S.allInst ? 'All instances \u00b7 ' + instTotal : 'Primary only \u00b7 ' + active.length,
       instChipStyle: { display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (S.allInst ? 'var(--acc)' : 'var(--line)'), color: S.allInst ? '#fff' : 'var(--txt2)', background: S.allInst ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' },
@@ -749,60 +724,6 @@ class Component extends DCLogic {
       supIcon: S.showSup ? 'visibility_off' : 'visibility',
       supRowStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: '1px solid var(--line)', background: 'var(--bg0)', cursor: 'pointer', flexShrink: 0 },
       supToggle: () => this.setState(s => ({ showSup: !s.showSup })),
-      opShow: V === 'onion' || V === 'diff',
-      opWrapStyle: isM
-        ? { position: 'absolute', left: '50%', bottom: 107, transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '5px 10px 5px 8px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }
-        : { position: 'absolute', bottom: isFull ? 107 : 61, left: '50%', transform: 'translateX(-50%)', zIndex: 16, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: '6px 14px 6px 11px', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' },
-      opLabel: V === 'diff' ? 'Diff' : 'Onion',
-      opTip: V === 'diff' ? 'Opacity of the difference blend' : 'Opacity of the overlaid ref',
-      opVal: Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100),
-      opPct: Math.round((V === 'diff' ? S.ovlOp.diff : S.ovlOp.onion) * 100) + '%',
-      opSliderStyle: { width: isM ? 92 : 132, height: 4, accentColor: 'var(--acc)', cursor: 'pointer', margin: 0 },
-      onOp: e => { const v = Number(e.target.value) / 100, k = V === 'diff' ? 'diff' : 'onion'; this.setState(s => ({ ovlOp: { ...s.ovlOp, [k]: v } })); },
-      alignOpen: S.alignOpen,
-      alignWrapStyle: isM
-        ? { position: 'absolute', top: 10, right: 8, zIndex: 16 }
-        : { position: 'absolute', bottom: isFull ? 58 : 12, right: 12, zIndex: 16 },
-      alignPillStyle: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg1)', border: '1px solid ' + (confWarn ? '#f5a623' : 'var(--line)'), borderRadius: 999, padding: '4px 8px 4px 4px', boxShadow: confWarn ? '0 4px 16px rgba(0,0,0,0.25),0 0 0 3px rgba(245,166,35,0.16)' : '0 4px 16px rgba(0,0,0,0.25)' },
-      confWarn, confPct: Math.round(conf * 100) + '%',
-      confWarnTip: 'Anchor confidence ' + Math.round(conf * 100) + '% \u2014 below the ' + Math.round(CONF_MIN * 100) + '% threshold. Overlay positions may be unreliable; try Width or Top left.',
-      lockIcon: S.lockstep ? 'link' : 'link_off',
-      lockTip: S.lockstep ? 'Lockstep on \u2014 panes move together. Click to unlink.' : 'Lockstep off \u2014 panes move independently. Click to link.',
-      lockBtnStyle: { width: 26, height: 26, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.lockstep ? '#fff' : 'var(--txt2)', background: S.lockstep ? 'var(--acc)' : 'var(--bg3)', flexShrink: 0 },
-      lockToggle: () => this.setState(s => s.lockstep ? { lockstep: false } : { lockstep: true, tB: s.tA }),
-      alignIcon: ALIGN[S.alignMode].icon,
-      alignLabel: ALIGN[S.alignMode].label,
-      alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc + (confWarn ? ' \u2014 anchor confidence ' + Math.round(conf * 100) + '%, positions unreliable.' : ''),
-      alignChev: S.alignOpen ? (isM ? 'expand_less' : 'expand_more') : (isM ? 'expand_more' : 'expand_less'),
-      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen })),
-      alignMenuStyle: isM
-        ? { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 248, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 }
-        : { position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, width: 264, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 11, padding: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 17 },
-      alignOpts: Object.keys(ALIGN).map(id => {
-        const a = ALIGN[id], act = S.alignMode === id, warn = id === 'anchors' && anchorLow;
-        return {
-          name: a.label, desc: a.desc, tip: warn ? a.desc + ' Anchor confidence is only ' + Math.round(conf * 100) + '%.' : a.desc,
-          warnShow: warn, warnText: 'Only ' + Math.round(conf * 100) + '% anchor match \u2014 positions unreliable',
-          iconStyle: { fontSize: 17, color: warn ? '#f5a623' : (act ? 'var(--acc)' : 'var(--txt2)'), flexShrink: 0, marginTop: 1 },
-          icon: a.icon, checkShow: act,
-          style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
-          onClick: () => this.setState(s => ({ alignMode: id, alignOpen: false, lockstep: true, tB: id === 'width' ? s.tB : s.tA }))
-        };
-      }),
-      hasFocus: !!S.focusRect, focusMsg: 'Region focus \u00b7 ' + vis.length + ' of ' + S.findings.length + ' findings', clearFocus: () => this.setState({ focusRect: null }),
-      railStyle, isMobile: isM, railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })),
-      railSummary: vis.length + ' findings \u00b7 ' + visItems.length + ' comments' + (S.items.some(i => i.saveErr) ? ' \u00b7 ' + S.items.filter(i => i.saveErr).length + ' unsaved' : ''),
-      railChev: S.railOpen ? 'expand_more' : 'expand_less',
-      isDesk: !isM,
-      railContentShow: !isM || S.railOpen,
-      collapseRail: () => this.setState({ railCollapsed: true }),
-      expandRail: () => this.setState({ railCollapsed: false }),
-      railHidden: !isM && S.railCollapsed,
-      tabFStyle: tabStyle(S.railTab === 'findings'), tabIStyle: tabStyle(S.railTab === 'items'),
-      onTabF: () => this.setState({ railTab: 'findings' }), onTabI: () => this.setState({ railTab: 'items' }),
-      fCount: vis.length, iCount: visItems.length,
-      showFindTab: S.railTab === 'findings', showItemTab: S.railTab === 'items',
-      sevChips, emptyF: vis.length === 0, findingRows,
       hasDraft: !!S.draft, draftKind: S.draft && S.draft.point ? 'Point comment' : 'Region comment',
       draftText: S.draftText, onDraftText: e => this.setState({ draftText: e.target.value }),
       cancelDraft: () => this.setState({ draft: null, draftText: '' }),

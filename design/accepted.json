@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "pairs": {
+    "refdiff-compare-mobile-toolbar": [
+      {
+        "type": "extra-element",
+        "role": "text",
+        "text": "warning",
+        "reason": "The Toolbar comp draws no delta strip, so its 'warning' glyph has no counterpart; the app renders the strip as in the default layout. Measured: #delta-strip is 66px (y=45..111), which is the whole of the +60.6px offset on the Show row and the canvas offsets below it — those positions stay VISIBLE as the comp's gap, because a position rule would lapse on the next capture. Same ruling as the Minimal comp (Mato, 2026-08-29) and the 'everything stays as minimal' brief for this layout, 2026-09-02.",
+        "key": "extra-element|text|text:warning",
+        "decidedAt": "2026-09-02T17:39:28.221Z"
+      },
+      {
+        "type": "extra-element",
+        "role": "text",
+        "text": "close",
+        "reason": "The Toolbar comp draws no delta strip, so its 'close' glyph has no counterpart; the app renders the strip as in the default layout. Measured: #delta-strip is 66px (y=45..111), which is the whole of the +60.6px offset on the Show row and the canvas offsets below it — those positions stay VISIBLE as the comp's gap, because a position rule would lapse on the next capture. Same ruling as the Minimal comp (Mato, 2026-08-29) and the 'everything stays as minimal' brief for this layout, 2026-09-02.",
+        "key": "extra-element|text|text:close",
+        "decidedAt": "2026-09-02T17:39:28.947Z"
+      }
+    ]
+  }
+}

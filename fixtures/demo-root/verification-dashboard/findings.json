@@ -1,6 +1,7 @@
 {
   "pair": "Verification dashboard",
   "createdAt": "2026-08-28T12:22:05.000Z",
+  "run": 12,
   "design": {
     "source": "dc-html",
     "ref": "verification-dashboard.dc.html#Verification dashboard",
@@ -126,6 +127,7 @@
   },
   "delta": {
     "previousRun": "2026-08-28T06:22:05.000Z",
+    "previousRunNumber": 11,
     "resolved": [
       "prev-1"
     ],
