@@ -78,6 +78,19 @@ the sandbox off). Then the repo you are in needs only its manifest and a
    `crops.impl`, native resolution) only when the values do not explain the
    finding — `missing-element`, `extra-element`, `pixel-region`. Never open
    `design.png` and `impl.png` side by side to "compare".
+   **The one carve-out: an element NEITHER channel can pair has no finding to
+   read, and one crop is then its whole evidence.** The extractor reads DOM, so
+   anything you add as SVG, canvas or a pseudo-element is invisible to the
+   structural channel; a design-side counterpart suppressed inside an
+   `accepted … contents: true` region reports nothing either; and the pixel
+   channel may only reach it inside a much larger matched box whose diff other
+   causes dominate. When your change adds such an element, say so out loud and
+   spend ONE crop of the frame at its box (both sides, native resolution) on the
+   question "did it paint, and does it lean the same way" — that is evidence
+   about a paint, not a judgement about parity. Then go back to the numbers.
+   Cheap probes beat staring: `getComputedStyle(el)` in the captured page names
+   an inherited `opacity:0` or a colliding class in one call, once the crop has
+   shown there is something to look for.
 2. **The model is never the comparator.** You do not decide whether the two
    sides match; the verdict and the delta do. You decide what each measured
    difference IS (see the classification) and what to change.
