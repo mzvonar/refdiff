@@ -352,13 +352,22 @@ with `make-demo-root.ts --now` before a measure.
   projection), stacked over the impl at its own view: move or zoom either
   side and the modes lay the two over each other as they now sit. Re-locking
   re-registers both.
-- **Fit and focus centre in the VISIBLE canvas** (`paneInsets`, `view-math.ts`,
-  2026-08-28): a panel drawn over the pane along a full edge — the phone's
-  bottom sheet, 44px closed / 52% open — is an inset; floating pills (a
-  corner) and the desktop's sibling rail / tool strip (no overlap) are not.
-  The sheet's height transition re-fits an untouched view when it ends. The
-  comp centres under its sheet (gap 35); the phone's badges read 22px higher
-  than the comp's on purpose. The phone also hides the "N highlighted
+- **Fit and focus SOLVE for the visible canvas** (`paneInsets`, `view-math.ts`, 2026-08-28,
+  widened 2026-09-03): every panel drawn over the pane costs its CHEAPEST edge — the inset's depth
+  times the pane's extent along it — so the phone's bottom sheet (44px closed / 52% open) reads as
+  a bottom inset, a full-height strip as a left or right one, and a FLOATING PILL as an inset on
+  the edge it hugs. Until 2026-09-03 a pill was ignored on the reasoning that pills sit over the
+  canvas: they do, and the fit was therefore solving for the space behind them, so every Fit drew
+  the artboard's top rows under the toolbar layout's floating Show control and its bottom under the
+  tool strip. Measured insets, phone at 390×844: default `bottom 45 → 98`, minimal `0 → 45`,
+  toolbar `0 → top 37 + bottom 45`; desktop unchanged at zero, because there the rail and the tool
+  strip are flex siblings that never overlap the pane. The ZOOM only moves where a fit is
+  height-limited — every current pair is width-limited at 390px, so what moved is the centring —
+  and the insets bound both, which is the divergence from the comps noted under focus. Cost,
+  measured: `compare-mobile` 16 → 20 (its canvas sits 48.5px above the comp's now, was 22.4) and
+  `compare-mobile-toolbar-ghost` 82 → 78; the two desktop pairs, the toolbar pair and both Library
+  pairs came back byte-identical, and the set stayed 349. The sheet's height transition re-fits an
+  untouched view when it ends. The phone also hides the "N highlighted
   differences" pill (under the zoom / align pills); the stretch warning stays.
 - **Tool strip** (44px, left; a floating pill bottom-left on the phone):
   `pan_tool` move · `add_comment` comment · `center_focus_strong` focus ·
@@ -437,8 +446,9 @@ with `make-demo-root.ts --now` before a measure.
   outside it, unlike the settings popover (2026-08-29): its switches are
   worked THROUGH the canvas, so dismissing it on the first pan or pinch meant
   re-opening it for every change. It is edge-anchored across the top of the
-  pane and therefore counts as a `paneInsets` inset while open, so Fit does
-  not centre the frame under it.
+  pane in the minimal layout, and a floating 223×29 pill in the toolbar one; either way it counts
+  as a `paneInsets` inset while open (the cheapest edge is the top, 37px, against 231px of width),
+  so Fit never draws the frame under it. Hidden it measures 0×0 and insets nothing.
 - **The icon font is a DERIVED subset.** `assets/fonts/material-symbols-
   outlined.woff2` holds exactly the glyphs the comps and the app use
   (the generated `src/icon-names.ts`, 93); a glyph outside it renders as its

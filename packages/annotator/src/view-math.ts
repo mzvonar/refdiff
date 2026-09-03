@@ -308,13 +308,25 @@ export function worldFromShown(
 }
 
 /**
- * The pane's edges hidden under panels drawn OVER it. The phone's rail is a
- * bottom sheet on top of the canvas (44px closed, 52% open), so a fit into the
- * whole pane centres the frame under the sheet. A panel counts only when it is
- * anchored along a pane edge across that edge's full length; a floating pill
- * (the phone's tool strip, the zoom pill) overlaps a corner and is ignored —
- * pills are meant to sit over the canvas. A panel outside the pane (the
- * desktop rail, a flex sibling) or hidden (0×0) contributes nothing. Screen px.
+ * The pane's edges hidden under panels drawn OVER it, so a fit can solve for the part of the canvas
+ * that is actually VISIBLE rather than for the pane.
+ *
+ * Each overlapping panel is cleared by insetting exactly ONE edge — the one that costs the least
+ * AREA (its extent from that edge × the pane's extent along it). That one rule covers every shape
+ * of chrome this app draws: a full-width bottom sheet reads as a bottom inset, a full-height strip
+ * as a left or right one, and a floating pill as an inset on the edge it hugs, because a 223×29
+ * pill at the top-left costs 45px of height against 231px of width — so the top gives way and the
+ * canvas keeps its width. Panels are assumed to be edge-anchored chrome; one floating dead-centre
+ * would still take its cheapest edge, which is the best a fit can do and a strange thing to draw.
+ *
+ * A panel outside the pane (the desktop rail, a flex sibling) or hidden (0×0) contributes nothing.
+ * Screen px.
+ *
+ * Until 2026-09-03 a panel counted only when it SPANNED its edge, on the reasoning that a pill is
+ * meant to sit over the canvas. It is — but the base fit then solved for space BEHIND the pills, so
+ * every fit put the artboard's top rows under the floating Show control and its bottom under the
+ * tool strip. Fitting the visible canvas is the whole job of a fit, and the zoom follows from the
+ * same insets (see fitView), not just the centring.
  */
 export function paneInsets(pane: VBox, panels: VBox[], eps = 1): Insets {
   const out = { ...NO_INSETS }
@@ -323,14 +335,21 @@ export function paneInsets(pane: VBox, panels: VBox[], eps = 1): Insets {
   for (const p of panels) {
     const r = p.x + p.w
     const b = p.y + p.h
-    const overlaps = p.w > 0 && p.h > 0 && p.x < pr && r > pane.x && p.y < pb && b > pane.y
+    const overlaps =
+      p.w > 0 && p.h > 0 && p.x < pr - eps && r > pane.x + eps && p.y < pb - eps && b > pane.y + eps
     if (!overlaps) continue
-    const spansW = p.x <= pane.x + eps && r >= pr - eps
-    const spansH = p.y <= pane.y + eps && b >= pb - eps
-    if (spansW && b >= pb - eps) out.bottom = Math.max(out.bottom, pb - Math.max(p.y, pane.y))
-    if (spansW && p.y <= pane.y + eps) out.top = Math.max(out.top, Math.min(b, pb) - pane.y)
-    if (spansH && r >= pr - eps) out.right = Math.max(out.right, pr - Math.max(p.x, pane.x))
-    if (spansH && p.x <= pane.x + eps) out.left = Math.max(out.left, Math.min(r, pr) - pane.x)
+    // What clearing this panel costs on each edge: how deep the inset has to be, and how much of
+    // the pane that depth sweeps. Cheapest area wins; ties go to the first, which is top/bottom —
+    // a landscape pane loses height more happily than width.
+    const options: { edge: keyof Insets; px: number; along: number }[] = [
+      { edge: "top", px: Math.min(b, pb) - pane.y, along: pane.w },
+      { edge: "bottom", px: pb - Math.max(p.y, pane.y), along: pane.w },
+      { edge: "left", px: Math.min(r, pr) - pane.x, along: pane.h },
+      { edge: "right", px: pr - Math.max(p.x, pane.x), along: pane.h },
+    ]
+    let best = options[0]!
+    for (const o of options) if (o.px * o.along < best.px * best.along) best = o
+    out[best.edge] = Math.max(out[best.edge], best.px)
   }
   return out
 }

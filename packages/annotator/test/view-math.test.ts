@@ -306,14 +306,34 @@ describe("view operations", () => {
     expect(small.tx).toBeCloseTo(24 + (952 - 160) / 2, 5)
   })
 
-  it("paneInsets: the phone's bottom sheet hides the pane's bottom edge; a floating pill does not", () => {
+  it("paneInsets: every panel over the pane costs its CHEAPEST edge — the sheet the bottom, a floating pill the edge it hugs", () => {
     const pane = { x: 0, y: 100, w: 390, h: 700 }
     // The closed sheet: 45px anchored to the bottom across the width.
     expect(paneInsets(pane, [{ x: 0, y: 755, w: 390, h: 45 }])).toEqual({ top: 0, right: 0, bottom: 45, left: 0 })
     // The open sheet: 52% of the work area.
     expect(paneInsets(pane, [{ x: 0, y: 436, w: 390, h: 364 }]).bottom).toBe(364)
-    // The phone's tool pill floats at left:8 / bottom:56 — a corner, not an edge: pills sit over the canvas.
-    expect(paneInsets(pane, [{ x: 8, y: 700, w: 200, h: 44 }])).toEqual(NO_INSETS)
+    // A FLOATING PILL NOW COUNTS (2026-09-03). It used to be ignored because it covers a corner
+    // rather than an edge — true, and it meant the fit solved for the space behind it and drew the
+    // artboard under it. The phone's tool pill at left:8 / bottom:56, 200×44: clearing it from the
+    // bottom costs 100px × 390 wide = 39 000, from the left 208px × 700 tall = 145 600, from the
+    // top 644 × 390. So the bottom gives way, and it is the pill's FAR edge from the pane's, not
+    // the pill's height: fitting above a pill means clearing the gap under it too.
+    expect(paneInsets(pane, [{ x: 8, y: 700, w: 200, h: 44 }])).toEqual({ top: 0, right: 0, bottom: 100, left: 0 })
+    // The toolbar layout's Show control, 223×29 at 8,8 inside the pane: 45px of height beats 231px
+    // of width, so the canvas keeps its width — which is what a wide artboard needs.
+    expect(paneInsets(pane, [{ x: 8, y: 108, w: 223, h: 29 }])).toEqual({ top: 37, right: 0, bottom: 0, left: 0 })
+    // Both at once, plus the sheet: one inset per panel, max per edge (the sheet's 45 loses to the
+    // pill's 100, which already contains it).
+    expect(
+      paneInsets(pane, [
+        { x: 8, y: 108, w: 223, h: 29 },
+        { x: 8, y: 700, w: 200, h: 44 },
+        { x: 0, y: 755, w: 390, h: 45 },
+      ]),
+    ).toEqual({ top: 37, right: 0, bottom: 100, left: 0 })
+    // A tall narrow pill hugging the right: 90px × 700 tall = 63 000 against 700 × 390 from the
+    // top — the right gives way.
+    expect(paneInsets(pane, [{ x: 300, y: 300, w: 60, h: 200 }])).toEqual({ top: 0, right: 90, bottom: 0, left: 0 })
     // The desktop rail is a flex sibling beside the pane: no overlap, nothing.
     expect(paneInsets(pane, [{ x: 390, y: 100, w: 321, h: 700 }])).toEqual(NO_INSETS)
     // A hidden panel (display:none reads 0×0) is nothing.

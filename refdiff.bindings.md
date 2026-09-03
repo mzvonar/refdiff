@@ -56,10 +56,10 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
   | refdiff-compare-desktop | 79 (28/45/6) | 113 | 56 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 16 (7/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 30 (7/18/5) | 40 | 35 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 15 (7/2/6) | 17 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 82 (23/47/12) | 161 | 48 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-mobile | 20 (7/9/4) | 30 | 24 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 30 (7/15/8) | 40 | 35 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 15 (7/2/6) | 18 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 78 (19/46/13) | 160 | 54 | 0.49 | 1×0.994 / 0,4.2 |
   | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 |
 
   **Set total 349 (2026-09-03, after the resting-mark and comment-ownership decisions — the second
@@ -312,7 +312,8 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   26); neither is the app's to fix. The compare MOBILE's 3 = gap 34's two
   (`expand_less`, the summary) + gap 35: the comp centres its phone canvas in
   the whole pane, the app above the bottom sheet (`paneInsets`, decided
-  2026-08-28), so the badges read `position ×11 (0, −22.4)` — left visible,
+  2026-08-28, widened to the floating panels 2026-09-03), so the badges read
+  `position ×11 (0, −48.5)` (−22.4 before the widening) — left visible,
   a rule on every badge would hide a real one. Do not tune the fixture to raise it — a
   fixture in the comp's order would carry marks out of list order, a shape
   refdiff never produces. The full converged list, item by item, is the

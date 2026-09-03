@@ -1394,10 +1394,11 @@ function worldBox() {
 function single() { return narrow.matches || state.single; }
 function visiblePane() { return single() ? panes[state.side] : panes.impl; }
 function paneSize() { const r = visiblePane().getBoundingClientRect(); return { w: r.width, h: r.height }; }
-// The pane's edges under the panels drawn over it: on the phone the rail is a
-// bottom sheet on the canvas, so Fit centres the frame in what the sheet leaves.
-// The desktop rail and tool strip are siblings (no overlap) and the floating
-// pills cover a corner only — paneInsets counts neither.
+// The pane's edges under the panels drawn over it, so Fit solves for the canvas
+// you can SEE: on the phone the rail is a bottom sheet on the canvas, the tool
+// strip and the toolbar layout's Show control float over it, and since
+// 2026-09-03 all three cost their cheapest edge (paneInsets). The desktop rail
+// is a flex sibling beside the pane, so it never overlaps and never insets.
 function paneInsetsNow() {
   const box = (r) => ({ x: r.left, y: r.top, w: r.width, h: r.height });
   const pane = box(visiblePane().getBoundingClientRect());
