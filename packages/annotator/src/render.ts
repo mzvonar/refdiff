@@ -1986,7 +1986,7 @@ function select(id, focus) {
   // is — pending its design. Until then the row's design-only / impl-only tag is
   // what tells you why the canvas looks empty.
   const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);
-  if (focus && box) { setView(focusView(box, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }
+  if (focus && box) { setView(focusView(box, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }
   const row = $('side').querySelector('.frow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
@@ -2254,7 +2254,7 @@ function stepDiff(delta) {
   if (!state.diff) setDiff(true);
   select(r.id, false);
   const box = { x: r.box.x - 24, y: r.box.y - 24, w: r.box.w + 48, h: r.box.h + 48 };
-  setView(focusView(box, paneSize(), state.view, 1));
+  setView(focusView(box, paneSize()));
   state.userMoved = true;
   renderDiffs(); applyView();
 }
@@ -2721,7 +2721,7 @@ function selectAnn(id, focus) {
   const picked = id ? ann.set.annotations[annIndex(id)] : null;
   if (picked && narrow.matches && picked.side !== state.side) setSide(picked.side);
   renderRail(); renderMarks(); renderAnnMarks();
-  if (focus && picked) { setView(focusView(shapeBox(picked.shape).w ? shapeBox(picked.shape) : { x: picked.shape.x - 20, y: picked.shape.y - 20, w: 40, h: 40 }, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }
+  if (focus && picked) { setView(focusView(shapeBox(picked.shape).w ? shapeBox(picked.shape) : { x: picked.shape.x - 20, y: picked.shape.y - 20, w: 40, h: 40 }, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }
   const row = $('side').querySelector('.irow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
 }
 

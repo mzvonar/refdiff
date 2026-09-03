@@ -59,10 +59,11 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | refdiff-compare-mobile | 19 (4/8/7) | 33 | 24 | 0.97 | 1 / 0,0 |
   | refdiff-compare-mobile-minimal | 36 (4/22/10) | 50 | 34 | 0.87 | 1 / 0,0 |
   | refdiff-compare-mobile-toolbar | 17 (4/4/9) | 19 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 93 (22/57/14) | 172 | 53 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 150 (52/80/18) | 212 | 81 | 0.54 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar-ghost | 89 (22/53/14) | 168 | 52 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 115 (34/61/20) | 185 | 60 | 0.56 | 1 / 0,0 |
 
-  **Set total 422 (2026-09-03, after SVG extraction), from 396 and 403.** The last core
+  **Set total 383 (2026-09-03, after the zoom decision), from 422 · 396 · 403 · 476.** The zoom-on-select
+  decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
   change made an `<svg>` walkable when it is large and sparse, so the app's OWN canvas overlay —
   selection outlines, comment shapes, the ghost footprint — is extracted for the first time
   (`role: "shape"`). Four pairs moved: `compare-desktop` 79 → 89, `compare-mobile` 13 → 19,
@@ -116,19 +117,28 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   app's severity order, measured badge by badge in `elements.json`) and its two `cause` lines
   (gap 26), which together shift the app's rail rows against the comp's and re-pair half the column;
   (b) the **zoom-on-select divergence** below.
-- **⚠ SELECTING A FINDING ZOOMS THE COMP'S CANVAS AND NOT THE APP'S — undecided, and it is what
-  holds `refdiff-compare-desktop-ghost` at 155.** Measured: the comp's zoom pill reads **146%**
-  after the step selects `o1`, the app's **100%** (`text reads "100%", design says "146%"`), so
-  every element the canvas draws sits at a different scale and offset on the two sides — ~70 of the
-  pair's findings have a box inside the canvas. The two rules disagree by design, not by accident:
-  the comp's `focusOn` fits the box plus **70px each side, zooming IN to 2.2×**; `focusView`
-  (`view-math.ts`) fits it into **a third of the pane** and then clamps `z` to
-  `max(current.z, minZoom)`, so it never zooms in at all — while its own doc says "at most what
-  fits the box into a third of that area", which the clamp defeats. **Trialled, not guessed**
-  (`--out out/vc-trial`, the comps' formula, reverted): `compare-desktop-ghost` 155 → **111** and
-  `compare-mobile-toolbar-ghost` 95 → **99** (the phone's pane insets leave the comp's 1.23× short
-  at 1.15×). So it is worth ~44 findings on one pair and −4 on the other, and it changes what
-  selecting a row DOES in every pair. Product decision — ask Mato; do not fold it into a parity fix.
+- **SELECTING A FINDING ZOOMS TO IT — decided 2026-09-03 (Mato), and it closed the biggest
+  residual on both ghost pairs.** It used to only re-centre: `focusView` padded by a third of the
+  pane on every side and then clamped the zoom to `max(current.z, 1)`, so selecting ANY element
+  from 100% left you at 100%, and from a whole-page 50% it stepped to a flat 100% whether the
+  element was a 14px badge or a 608px dropzone. The comp read **146%** where the app read 100%
+  (`text reads "100%", design says "146%"`), so every element the canvas drew sat at a different
+  scale on the two sides.
+  The rule now is the comps' own, with the limit named: the element plus **70px of context each
+  side**, anything under **60×60 treated as 60×60** (that is what stops a 0×0 comment anchor
+  dividing into an absurd magnification, not the ceiling), capped at **2.2×**, and it zooms OUT
+  when the element is bigger than the pane — you asked for that element, you should see all of it.
+  Measured on a 496×734 pane: a point 220%, a 26px icon 220%, the o1 button 146%, a 430×40 heading
+  87%, a 608×190 dropzone 66%, a full-page backdrop 60%.
+  **One deliberate divergence from the comps:** the pane INSETS bound the zoom as well as the
+  centring. The comps size from the pane's full height and ignore their own bottom sheet, which can
+  scale an element to fit space that is behind it; the app sizes from what the sheet leaves. It also
+  measured better — `compare-mobile-toolbar-ghost` 93 → **89** where a faithful copy of the comps'
+  formula had made it 95 → 99 in the earlier trial.
+  Result: `compare-desktop-ghost` 150 → **115** (confidence 0.54 → 0.56) and both sides' zoom pills
+  now read 146%; the six pairs with no selection did not move at all. The two ghost pairs churned
+  once (the canvas re-paired under the new zoom — four regressions, all off-frame artboard content,
+  two of them carrying the `repaired` diagnosis) and settled to `+0/−0` on the next run.
 - **What the harness SEES since the four core capabilities landed (2026-09-02) — this is why the
   counts above are what they are.** They made the harness see things it was structurally blind to,
   so counts moved UP and two pairs that PASSED began to fail; that was not a regression, they were

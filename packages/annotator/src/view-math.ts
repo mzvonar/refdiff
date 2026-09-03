@@ -410,16 +410,46 @@ export function pinchView(view: View, prev: Pinch, next: Pinch): View {
   return panBy(zoomAt(view, factor, next.x, next.y), next.x - prev.x, next.y - prev.y)
 }
 
+/** Air around a focused element: enough to see what it sits next to. */
+export const FOCUS_CONTEXT_PX = 70
+/**
+ * An element smaller than this is focused as if it were this big. THIS is the
+ * limit that matters: without it a 0×0 comment anchor or a 14px badge divides
+ * into an absurd magnification, and the cap alone would put every small thing
+ * at the ceiling.
+ */
+export const FOCUS_MIN_BOX_PX = 60
+/** …and the ceiling, so a point lands at 220% rather than 500%. */
+export const FOCUS_MAX_ZOOM = 2.2
+
 /**
  * Centre `box` in the visible part of the pane (see paneInsets) at a zoom that
- * shows it with context: at least `minZoom`, at most what fits the box into a
- * third of that area.
+ * SHOWS it: the element plus `FOCUS_CONTEXT_PX` of air on each side, treating
+ * anything under `FOCUS_MIN_BOX_PX` as that size, capped at `FOCUS_MAX_ZOOM`.
+ * Bigger than the pane → it zooms OUT, because you asked for that element and
+ * should see all of it.
+ *
+ * It deliberately does NOT depend on the current zoom. It used to: the zoom was
+ * clamped to `max(current.z, 1)` over a fit that padded by a third of the pane
+ * on every side, and the two together meant it never magnified anything —
+ * measured on a 496×734 pane, selecting ANY element from 100% left you at 100%,
+ * and from a whole-page 50% it stepped to a flat 100% whether the element was a
+ * 14px badge or a 608px dropzone. Re-centring did all the work and a badge
+ * stayed a speck. The comps' own focusOn is this rule, and it is what the numbers
+ * now agree with: a point 220%, a 200×48 button 146%, a heading 87%, a
+ * full-page box 60%.
+ *
+ * The insets bound the ZOOM as well as the centring, which is where this parts
+ * company with the comps: they size from the pane's full height and ignore their
+ * own bottom sheet, so an element can be scaled to fit space that is behind it.
+ * Cost of being right: the phone lands at ~115% where the comp draws 123%.
  */
-export function focusView(box: VBox, pane: Size, current: View, minZoom = 1, inset: Insets = NO_INSETS): View {
+export function focusView(box: VBox, pane: Size, inset: Insets = NO_INSETS): View {
   const vw = Math.max(1, pane.w - inset.left - inset.right)
   const vh = Math.max(1, pane.h - inset.top - inset.bottom)
-  const fit = fitView(box, pane, Math.min(vw, vh) / 3, 1.6, inset)
-  const z = Math.max(minZoom, Math.min(fit.z, Math.max(current.z, minZoom)))
+  const w = Math.max(box.w, FOCUS_MIN_BOX_PX) + 2 * FOCUS_CONTEXT_PX
+  const h = Math.max(box.h, FOCUS_MIN_BOX_PX) + 2 * FOCUS_CONTEXT_PX
+  const z = Math.min(vw / w, vh / h, FOCUS_MAX_ZOOM)
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
   return { z, tx: inset.left + vw / 2 - cx * z, ty: inset.top + vh / 2 - cy * z }

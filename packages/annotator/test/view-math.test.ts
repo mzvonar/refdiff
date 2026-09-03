@@ -18,6 +18,7 @@ import {
   designWorldBox,
   fitView,
   focusView,
+  FOCUS_MAX_ZOOM,
   paneInsets,
   NO_INSETS,
   implImageTransform,
@@ -410,25 +411,43 @@ describe("view operations", () => {
     expect(grown.z).toBe(1)
   })
 
-  it("focusView centres the box and never zooms below minZoom", () => {
-    const v = focusView(
-      { x: 100, y: 50, w: 20, h: 10 },
-      { w: 800, h: 600 },
-      { z: 0.3, tx: 0, ty: 0 },
-      1,
-    )
-    expect(v.z).toBeGreaterThanOrEqual(1)
+  it("focusView centres the box and ZOOMS TO it, whatever zoom you were at", () => {
+    const box = { x: 100, y: 50, w: 20, h: 10 }
+    const pane = { w: 800, h: 600 }
+    const v = focusView(box, pane)
+    // 20×10 is under the 60px floor, so it is focused as 60×60 + 70 each side:
+    // min(800/200, 600/200, 2.2) → the 2.2 ceiling.
+    expect(v.z).toBeCloseTo(FOCUS_MAX_ZOOM)
     const centre = screenToWorld(v, 400, 300)
     expect(centre.x).toBeCloseTo(110)
     expect(centre.y).toBeCloseTo(55)
+    // It used to depend on where you were — clamped to max(current, 1) over a
+    // fit padded by a third of the pane, which never magnified anything: every
+    // element read 100% from 100%, and a flat 100% from a whole-page 50%.
+    expect(focusView(box, pane).z).toBe(v.z)
   })
 
-  it("focusView centres the box in the part of the pane above the phone's open sheet", () => {
+  it("focusView zooms OUT for an element bigger than the pane — you asked for that element", () => {
+    const wide = focusView({ x: 0, y: 0, w: 680, h: 740 }, { w: 496, h: 734 })
+    expect(wide.z).toBeCloseTo(Math.min(496 / (680 + 140), 734 / (740 + 140)))
+    expect(wide.z).toBeLessThan(1)
+    // …and a mid-sized one lands between: a 200×48 button in that pane is the
+    // 146% the comps draw.
+    expect(focusView({ x: 0, y: 0, w: 200, h: 48 }, { w: 496, h: 734 }).z).toBeCloseTo(496 / 340, 2)
+  })
+
+  it("focusView centres the box in the part of the pane above the phone's open sheet, and sizes to it too", () => {
     // Tapping a finding in the open sheet (52% of the work area) centred it UNDER the sheet (2026-08-28).
-    const v = focusView({ x: 100, y: 50, w: 20, h: 10 }, { w: 800, h: 600 }, { z: 1, tx: 0, ty: 0 }, 1, { top: 0, right: 0, bottom: 312, left: 0 })
+    const inset = { top: 0, right: 0, bottom: 312, left: 0 }
+    const v = focusView({ x: 100, y: 50, w: 20, h: 10 }, { w: 800, h: 600 }, inset)
     const centre = screenToWorld(v, 400, (600 - 312) / 2)
     expect(centre.x).toBeCloseTo(110)
     expect(centre.y).toBeCloseTo(55)
+    // The insets bound the ZOOM as well: the comps size from the full height and
+    // ignore their own sheet, which can scale an element to fit space behind it.
+    const tall = focusView({ x: 0, y: 0, w: 100, h: 400 }, { w: 800, h: 600 }, inset)
+    expect(tall.z).toBeCloseTo((600 - 312) / (400 + 140))
+    expect(tall.z).toBeLessThan(focusView({ x: 0, y: 0, w: 100, h: 400 }, { w: 800, h: 600 }).z)
   })
 
   it("unionBoxes covers every box; empty input is the zero box", () => {

@@ -834,6 +834,22 @@ fall through to the area rule, as do unlabelled artboards.
   under the REGRESSION line, and the loud stop stays because a genuine vanish
   has that same shape. The version stamp remains open for the upgrade case; do
   it if a real upgrade churns a ledger again.
+- **Selecting a finding ZOOMS TO it — decided 2026-09-03 (Mato).** `focusView` used to pad by a
+  third of the pane on every side and then clamp the zoom to `max(current.z, 1)`; together those
+  meant it never magnified anything (measured on a 496×734 pane: every element read 100% from 100%,
+  and a whole-page 50% stepped to a flat 100% whether the element was a 14px badge or a 608px
+  dropzone). Re-centring did all the work, and the comp read 146% where the app read 100% — the
+  dominant residual on both ghost pairs. The rule is now the comps' own with the limit named: the
+  element + `FOCUS_CONTEXT_PX` (70) each side, anything under `FOCUS_MIN_BOX_PX` (60) treated as
+  that size — that, not the ceiling, is what stops a 0×0 comment anchor dividing into an absurd
+  magnification — capped at `FOCUS_MAX_ZOOM` (2.2), zooming OUT for an element bigger than the pane.
+  `current` and `minZoom` left the signature on purpose: the result must not depend on where the
+  reader happened to be. **Divergence from the comps, deliberate:** the pane insets bound the zoom
+  as well as the centring, because the comps size from the pane's full height and ignore their own
+  bottom sheet, which can scale an element to fit space behind it. It also measured better (mobile
+  ghost 93 → 89, where a faithful copy of the comps' formula had given 95 → 99). Result:
+  `compare-desktop-ghost` 150 → 115, both zoom pills reading 146%, and no movement on the six pairs
+  that select nothing.
 - **An `<svg>` is walkable when it is large and sparse — decided 2026-09-03.** It used to be
   atomic at any size, so anything inside a big one was invisible to the structural channel: a mark
   layer, a diagram, a chart. That is how a dashed, hatched footprint shipped painting NOTHING (an

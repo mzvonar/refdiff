@@ -149,8 +149,10 @@ describe("renderReport", () => {
     // The minimal layout's view panel joined them: it stays open across canvas gestures now, so a
     // fit that ignored it would centre the frame half under it (2026-08-29).
     expect(html).toContain("paneInsets(pane, [$('side'), $('tools'), $('view-panel')].map(")
-    // Focusing a finding centres it in the same visible area (both call sites).
-    expect(html.split(", paneSize(), state.view, 1, paneInsetsNow()))").length).toBe(3)
+    // Focusing a finding or a comment centres it in the same visible area — and
+    // since 2026-09-03 sizes to it there too, so the insets bound the zoom as
+    // well as the centre (both call sites).
+    expect(html.split(", paneSize(), paneInsetsNow()))").length).toBe(3)
     // The sheet animates its height: re-fit when it has settled, only if the reader has not moved the view.
     expect(html).toContain("if (e.propertyName === 'height' && !state.userMoved) fit();")
     // The "N highlighted differences" pill sits under the phone's zoom / align pills — gone there; the warning stays.
@@ -379,7 +381,10 @@ describe("renderReport", () => {
     // Selecting focuses the canvas (gap 13): no detail panel, no crop images in the page.
     expect(html).not.toContain('id="detail"')
     expect(html).not.toContain("f.crops")
-    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), state.view, 1, paneInsetsNow())); state.userMoved = true; applyView(); }")
+    // Selecting ZOOMS TO the element now (the comps' rule: 70px of context, a
+    // 60px floor so a point does not blow up, a 2.2× ceiling) instead of
+    // re-centring at whatever zoom you were at — which never magnified anything.
+    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }")
     // The comments tab: composer, rows with the status label and the model's reply (gap 19).
     expect(html).toContain('placeholder="Instruction for the model…"')
     expect(html).toContain(">Send to model</button>")
