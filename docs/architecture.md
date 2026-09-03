@@ -920,9 +920,13 @@ fall through to the area rule, as do unlabelled artboards.
   the app kept booting into the layout the toolbar one replaced, settings popover and all. It had to
   become the DEFAULT rather than a third choice, because the only place the phone layouts are named
   is the settings popover that `body.layout-toolbar` hides: a layout with no switch is either the
-  default or unreachable. `mlayout: 'toolbar'`, one `PHONE_LAYOUTS` list shared by the URL preset
-  and the restore, and `refdiff-compare-mobile` pins `?layout=default` so the pair that used to get
-  the old layout by default still measures it. Verified in a browser at 390×844 (bare URL →
+  default or unreachable. `mlayout: 'toolbar'`, `state.mlayout = urlLayout() || 'toolbar'` — the
+  layout is NOT persisted, because with one layout a stored value can only override it, and that is
+  what went wrong twice: first a restore that mapped only `'minimal'` (so `?layout=toolbar` saved a
+  value nothing read back), then a restore that read every value and therefore honoured the
+  `'default'` every earlier visit had written, so a fresh browser got the new layout and a returning
+  one did not. `refdiff-compare-mobile` pins `?layout=default` so the pair that used to get the old
+  layout by default still measures it. Verified in a browser at 390×844 (bare URL →
   `layout-minimal layout-toolbar`, settings and tune `display:none`, theme in the header; the two
   `?layout=` presets unchanged; desktop at 1360 unchanged) and all four mobile pairs re-ran `+0/−0`.
   **The lesson is in `SKILL.md`'s pre-flight now:** every pair pins the URL that reaches the state it

@@ -659,6 +659,14 @@ failure shapes that recur everywhere and impersonate product bugs.
   `document.body.className` and the controls' computed `display` — and then pin
   the old state on the pair that used to get it by default, or that pair silently
   changes subject.
+  **And probe the RETURNING user, not only a fresh one: seed the storage the
+  product writes.** A fresh browser is the one case that cannot see a stale
+  preference, so a clean-context probe passes while every existing user keeps the
+  old behaviour. Same instance, second round: the new default was correct in a
+  fresh context and the reporter still saw the old layout, because every earlier
+  visit had persisted the old value and the new boot line honoured it. A default
+  that a stored value can override is not a default — either stop storing it, or
+  seed the old value in the probe and assert what the user gets.
 - **The served annotator WRITES into what it serves.** `refdiff-annotator
   <root> --serve` persists every note, verdict and focus region into the run
   dir (`annotations.json` / `triage.json` / `focus.json` + digests). Read

@@ -371,11 +371,19 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `mlayout` defaults to `'toolbar'`, so a bare URL at phone width boots into it and
   `?layout=` is the way OUT rather than in. That is why it had to become the default
   and not a third choice — the switch that could offer it lives in the settings
-  popover this layout hides. Two things were wrong before the flip, both fixed with
-  it: the boot line mapped only `'minimal'` and sent everything else to `'default'`,
-  so a visit to `?layout=toolbar` persisted `'toolbar'` (its setter does) and the
-  next plain load dropped back — the layout looked unshipped for a session while its
-  own pair passed; and `refdiff-compare-mobile` captured the phone's default with no
+  popover this layout hides. **And the phone layout is no longer PERSISTED at all**
+  (`state.mlayout = urlLayout() || 'toolbar'`): with one layout, a stored value can
+  only override it. That took two rounds and both were the same mistake — a stored
+  value deciding which layout a phone gets. Round one: the boot line mapped only
+  `'minimal'` and sent everything else to `'default'`, so a visit to
+  `?layout=toolbar` persisted `'toolbar'` (its setter did) and the next plain load
+  dropped back; the layout looked unshipped for a session while its own pair passed.
+  Round two: reading every stored value back honoured the `'default'` that EVERY
+  earlier visit had already written (`saveControls` wrote the layout on any control
+  change), so a fresh browser got the new layout and a returning one never did —
+  invisible to a fresh-context probe, which is why the probe now seeds localStorage.
+  Anyone's stale key is inert and is dropped on the next save; nothing to clear. And
+  `refdiff-compare-mobile` captured the phone's default with no
   `?layout=` at all, so it now pins `?layout=default` or it would have started
   comparing the toolbar layout against the comp for a different one. Verified in a
   browser at 390×844: bare URL gives `body.layout-minimal layout-toolbar` with the

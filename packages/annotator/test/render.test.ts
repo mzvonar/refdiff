@@ -595,13 +595,17 @@ describe("renderReport", () => {
     expect(html).toContain(".tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }")
     expect(mobile).toContain(".tb-left, .tb-right { flex:0 0 auto; }")
     expect(html).not.toContain("tb-spacer")
-    // The layout is a chrome preference like the theme: persisted, preset by ?layout= on the URL for one load.
-    expect(html).toContain("theme: currentTheme(), layout: state.mlayout,")
-    // The phone's default is the TOOLBAR layout (2026-09-03), and the restore reads back EVERY value
-    // setPhoneLayout can write. It used to map only 'minimal' and send the rest to 'default', so a
-    // visit to ?layout=toolbar persisted 'toolbar' and the next plain load dropped it — the reason
-    // the toolbar layout looked unshipped for a session.
-    expect(html).toContain("state.mlayout = urlLayout() || (PHONE_LAYOUTS.includes(saved.layout) ? saved.layout : 'toolbar');")
+    // The theme persists; the PHONE LAYOUT DOES NOT (2026-09-03). There is one phone layout, so a
+    // stored value can only ever override it — which it did, twice: first a restore that mapped only
+    // 'minimal' (so ?layout=toolbar saved a value nothing could read back and every plain load
+    // returned to the old layout), then a restore that read every value (so a returning browser kept
+    // the 'default' each earlier visit had written, while a fresh browser got the new layout).
+    // Neither shape is visible to a pair — each pins its own ?layout= — so it is asserted here and
+    // probed in a seeded browser.
+    expect(html).toContain("theme: currentTheme(),")
+    expect(html).not.toContain("layout: state.mlayout,")
+    expect(html).not.toContain("savePref('layout'")
+    expect(html).toContain("state.mlayout = urlLayout() || 'toolbar';")
     expect(html).toContain("mlayout: 'toolbar', settingsOpen: false, viewOpen: false,")
     expect(html).toContain("function saveTheme() { savePref('theme', currentTheme()); }")
   })

@@ -988,7 +988,7 @@ function saveControls() {
       single: state.single, side: state.side, move: state.move, showTriaged: state.showTriaged,
       rail: document.body.classList.contains('rail-open'),
       diff: state.diff, dim: state.dim, strobe: state.strobe, lab: state.lab, labAmount: state.labAmount,
-      theme: currentTheme(), layout: state.mlayout,
+      theme: currentTheme(),
     }));
   } catch (e) { /* private mode: the controls just do not persist */ }
 }
@@ -1048,7 +1048,7 @@ function applyTheme(theme) {
   for (const el of document.querySelectorAll('.theme-toggle .msi')) el.textContent = light ? 'dark_mode' : 'light_mode';
   for (const b of document.querySelectorAll('[data-theme]')) b.classList.toggle('on', b.dataset.theme === (light ? 'light' : 'dark'));
 }
-// One key of the controls record, written alone (the theme, the phone layout).
+// One key of the controls record, written alone (the theme; the phone layout is no longer stored).
 function savePref(key, value) {
   try {
     const saved = readControls();
@@ -1078,7 +1078,9 @@ function minimalOn() { return narrow.matches && (state.mlayout === 'minimal' || 
 function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }
 function setPhoneLayout(layout) {
   state.mlayout = layout === 'minimal' || layout === 'toolbar' ? layout : 'default';
-  savePref('layout', state.mlayout);
+  // Session-only, deliberately not persisted: see the boot line. The segment that calls this lives
+  // in the settings popover, which body.layout-toolbar hides — so it is reachable only from the two
+  // URL-only layouts, and switching there must not decide what the NEXT visit gets.
   setSettingsOpen(false);
   applyLayout(); applyAlignMode(); renderRailSummary(); renderFocusChip();
   if (state.userMoved) applyView(); else fit();
@@ -1484,11 +1486,16 @@ function applyControls(saved) {
     difference: amount && typeof amount.difference === 'number' ? amount.difference : 100,
   };
   state.showSup = saved.showSup === true;
-  // Read back whatever setPhoneLayout persisted, INCLUDING 'toolbar'. This line used to map only
-  // 'minimal' and send everything else to 'default', so a visit to ?layout=toolbar saved 'toolbar'
-  // (setPhoneLayout does) and the next plain load silently dropped back to the old layout with its
-  // settings popover — which is why the toolbar layout looked unshipped for a session.
-  state.mlayout = urlLayout() || (PHONE_LAYOUTS.includes(saved.layout) ? saved.layout : 'toolbar');
+  // THE PHONE LAYOUT IS NOT A PREFERENCE ANY MORE, so nothing is read back: there is one layout and
+  // ?layout= presets the two URL-only ones for a single load. Both earlier shapes were wrong in
+  // the same place — a stored value deciding which layout a phone gets. The first mapped only
+  // 'minimal' and sent the rest to 'default', so a visit to ?layout=toolbar saved a value nothing
+  // could read and every plain load returned to the old layout. Reading the stored value back then
+  // honoured what EVERY previous visit had already written (saveControls wrote the layout on any
+  // control change), so a returning browser kept the old layout for good while a fresh one got the
+  // new default — measured in a seeded browser, which is the only way to see it.
+  // The stale layout key in anyone's localStorage is now inert; no migration, nothing to clear.
+  state.mlayout = urlLayout() || 'toolbar';
   applyAlignMode(); applyLock(); applyLayer();
   for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
     $(id).classList.toggle('on', on);
