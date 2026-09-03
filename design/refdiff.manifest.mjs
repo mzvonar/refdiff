@@ -341,7 +341,24 @@ export const manifest = [
       file: "RefDiff Mobile Toolbar.dc.html",
       frame: "RefDiff mobile toolbar",
       scope: ".cc-theme-dark",
-      steps: [{ clickText: "list_alt" }, { wait: 400 }, { click: "[data-vc-step=o1]" }, { wait: 500 }],
+      // The SWAP COMES FIRST, and the order is the whole trick (2026-09-03). o1 is design-only, so
+      // the ghost is drawn on the pane that does NOT have it — the impl pane — while both phones
+      // start on 'design' (the app's `state.side`, the comp's `S.pane`). Without the swap the ghost
+      // and its pill sit on the off-screen pane and never enter the capture, which is why the whole
+      // ghost language was verified by crops rather than measured.
+      // It cannot go last: `clickText` marks the INNERMOST match in DOCUMENT order, the comp renders
+      // `swap_horiz` inside its ghost pill (the ovA/ovB templates) BEFORE its pane-swap control, and
+      // the pill's button switches to the side that HAS the element — the wrong way. With nothing
+      // selected yet the pill does not exist, so the only `swap_horiz` in the document is the
+      // control we mean. A `data-vc-step` on that control would make the order free again.
+      steps: [
+        { clickText: "swap_horiz" },
+        { wait: 300 },
+        { clickText: "list_alt" },
+        { wait: 400 },
+        { click: "[data-vc-step=o1]" },
+        { wait: 500 },
+      ],
     },
     app: {
       source: "live",
@@ -349,7 +366,17 @@ export const manifest = [
       viewport: mobile,
       waitFor: "#panes",
       // The app has real hooks, so the impl side uses selectors rather than copy.
-      steps: [{ click: "#rail-btn" }, { wait: 300 }, { click: ".frow:has(.fside)" }, { wait: 400 }],
+      // Same sequence, by selector: the app has hooks, and `#pane-swap` is unambiguous where
+      // `clickText: "swap_horiz"` would also match the ghost pill's own switch (render.ts draws that
+      // glyph in both places).
+      steps: [
+        { click: "#pane-swap" },
+        { wait: 300 },
+        { click: "#rail-btn" },
+        { wait: 300 },
+        { click: ".frow:has(.fside)" },
+        { wait: 400 },
+      ],
     },
     ignore: TOOLBAR_IGNORE,
   },

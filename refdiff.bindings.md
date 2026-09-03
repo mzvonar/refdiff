@@ -59,10 +59,10 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | refdiff-compare-mobile | 15 (3/8/4) | 25 | 29 | 0.97 | 1 / 0,0 |
   | refdiff-compare-mobile-minimal | 25 (3/14/8) | 35 | 40 | 0.87 | 1 / 0,0 |
   | refdiff-compare-mobile-toolbar | 10 (3/1/6) | 13 | 29 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 89 (23/50/16) | 172 | 42 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-mobile-toolbar-ghost | 94 (21/56/17) | 179 | 40 | 0.49 | 1×0.994 / 0,4.2 |
   | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 |
 
-  **Set total 335 (2026-09-03, after `contentsOf` — see the architecture entry; 349 after the
+  **Set total 340 (2026-09-03, after the ghost pair's swap step; 335 after `contentsOf` — see the architecture entry; 349 after the
   resting-mark and comment-ownership decisions — the second
   one moved 14 findings between pairs and left the total unchanged), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
   decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
