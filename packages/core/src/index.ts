@@ -203,6 +203,13 @@ export {
 
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js"
 export {
+  containersOf,
+  describeRegions,
+  groupByRegion,
+  DEFAULT_MAX_CONTAINER_SHARE,
+  DEFAULT_MIN_CONTAINER_PX,
+} from "./package/regions.js"
+export {
   boxDistance,
   diffFindings,
   diffReports,

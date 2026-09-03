@@ -42,6 +42,13 @@ export interface ElementNode {
     borderStyle: string
     /** As extracted (`0 2px 10px rgba(…)`); captured for every element, not just surfaces. */
     boxShadow: string
+    /**
+     * A PAINT SERVER where a colour would be — an SVG shape filled with
+     * `url("#some-pattern")` or a gradient. Captured so a reader can see the
+     * shape is patterned; NOT compared, because comparing paint servers across
+     * a CSS comp and a Figma gradient is a decision of its own (still open).
+     */
+    backgroundImage: string
     /** Effective CSS opacity (< 1 only), already folded into the colors above. */
     opacity: number
     gap: number
@@ -272,6 +279,26 @@ export interface RepairedNote {
   types: string[]
 }
 
+/** One place, and how much of the report is about it. */
+export interface RegionGroup {
+  /** The container's box, in the same world space as the findings' (impl px). */
+  box: Box
+  /** `surface`, `box`, `image` … — whatever the container was extracted as. */
+  role: string
+  findings: number
+  critical: number
+  major: number
+  minor: number
+  /** Ids, so a reader can jump straight to them. */
+  ids: string[]
+}
+
+export interface RegionBreakdown {
+  groups: RegionGroup[]
+  /** Findings inside no qualifying container (frame chrome, boxless notes). */
+  elsewhere: number
+}
+
 export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot" | "accepted"
 
 /** A finding a policy rule removed from the kept list — still reported. */
@@ -396,6 +423,13 @@ export interface ComparisonReport {
      */
     repaired?: RepairedNote[]
   }
+  /**
+   * WHERE the findings are: each group is the smallest captured container that
+   * holds them (see `groupByRegion`). Read it before the list on any page pair
+   * — "106 in the rail, 70 in the canvas" is two different causes, and a
+   * severity-sorted list shows neither. Absent when nothing groups.
+   */
+  byRegion?: RegionBreakdown
   artifacts: {
     designPng: string
     implPng: string

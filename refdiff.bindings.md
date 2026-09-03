@@ -55,12 +55,37 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | --- | --- | --- | --- | --- | --- |
   | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
-  | refdiff-compare-desktop | 79 (24/48/7) | 113 | 56 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 13 (4/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 31 (5/18/8) | 45 | 35 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 12 (4/2/6) | 14 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 93 (22/57/14) | 172 | 48 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 150 (52/80/18) | 212 | 71 | 0.54 | 1 / 0,0 |
+  | refdiff-compare-desktop | 89 (24/54/11) | 123 | 56 | 0.72 | 1 / 0,0 |
+  | refdiff-compare-mobile | 19 (4/8/7) | 33 | 24 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 36 (4/22/10) | 50 | 34 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 17 (4/4/9) | 19 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 93 (22/57/14) | 172 | 53 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 150 (52/80/18) | 212 | 81 | 0.54 | 1 / 0,0 |
+
+  **Set total 422 (2026-09-03, after SVG extraction), from 396 and 403.** The last core
+  change made an `<svg>` walkable when it is large and sparse, so the app's OWN canvas overlay —
+  selection outlines, comment shapes, the ghost footprint — is extracted for the first time
+  (`role: "shape"`). Four pairs moved: `compare-desktop` 79 → 89, `compare-mobile` 13 → 19,
+  `compare-mobile-minimal` 31 → 36, `compare-mobile-toolbar` 12 → 17. The two ghost pairs did
+  NOT move (150, 93) — their new shapes land inside the accepted artboard region and travel
+  suppressed (71 → 81 and 48 → 53).
+  **Of the 26 new findings, 14 are `extra-element` on `shape`s and they are DATA:** the app's
+  comment layer, `--open` purple `rgb(143, 126, 231)` and `--done` green `rgb(70, 167, 88)`,
+  drawn where the comps draw their own demo comments. Their home is a policy rule on these
+  pairs — a `roles: ["shape"]` switch (the whole channel), a `regions` entry over the canvas, or
+  a fixture whose comments sit where the comps' do. **Not decided here, on purpose**, and it is
+  the same open decision the artboard-surface bullet above carries.
+  The other 12 are knock-on: the shapes joined the matcher's candidate pool and re-paired some
+  TEXTLESS elements, one of them nonsensically (a 99×24 orange shape against a 16×16 design box
+  → size + colour + spacing findings on `compare-desktop`). The 2026-09-03 unrelated-text veto
+  cannot reach that class — it needs both sides to carry text — so a textless equivalent
+  (same-paint/same-size counterparts available elsewhere) is the next candidate.
+  **The artboard acceptance is FRAGILE and now it matters:** its `contents: true` hangs off the
+  app's artboard IMAGE being reported as an `extra-element`, which only happens when that image
+  fails to pair. On the ghost pairs the canvas is panned, the images do not pair, the rule fires
+  and everything textless inside them is excused; on `compare-desktop` the images DO pair, so
+  nothing fires and the same shapes are reported. That is why two pairs are quiet and four are
+  not, and it is worth knowing before reading either number as a verdict.
 
   **The two ghost rows moved once more on 2026-09-03 (95 → 93, 155 → 150, set 403 → 396),
   from a CORE change, not an app one:** the matcher now refuses a candidate pairing it can prove

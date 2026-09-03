@@ -199,8 +199,12 @@ one is a usage error naming the field to set. Policy flags (`--ignore-text`,
 merge under each pair's own `ignore`.
 
 Read the console summary (`N findings (c critical, m major, k minor) covering
-I instances, S suppressed`, `delta vs …: +introduced / −resolved`,
-`verdict`). Then read `findings.json` — it is small; read the whole
+I instances, S suppressed`, `delta vs …: +introduced / −resolved`, the
+`by region:` block, `verdict`). **On a page pair read `by region` before the
+list** (`report.byRegion`, one group per smallest containing container): "36 in
+the rail, 24 in the artboard image, 12 in the design pane" is three different
+causes, and a severity-sorted list shows none of them. A converged loop once
+hand-rolled that script twice in one session. Then read `findings.json` — it is small; read the whole
 `findings` array, in order (severity-sorted). For each finding note:
 `id`, `type`, `severity`, `instances` (×N = one root cause, `members[]`
 lists every place), `message`, `expected`, `actual`, `role`, the boxes
@@ -474,7 +478,7 @@ Pick the narrowest tool that covers the case:
 | a volatile VALUE (amount, date, id, name) while still checking the copy around it | `dataSlots: { patterns }` | nothing else — geometry, colour, typography still compared on that pair |
 | every text difference on matched pairs (a deliberately data-only comparison) | `dataSlots: true` | blind to ALL copy drift; it cannot expire, so it hides tomorrow's regression too |
 | an element entirely — geometry, colour and text alike | `textPatterns` | every finding type about a matching string, geometry included; reach for it last |
-| a kind of element (backdrops, focus rings) | `roles` | that role everywhere in the pair |
+| a kind of element (backdrops, focus rings, an SVG overlay's `shape`s) | `roles` | that role everywhere in the pair |
 | artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
 | a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `refdiff accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
 | the INSIDES of an accepted element (a comp's placeholder plate drawn with bars, a logo square inside an accepted image) | `contents: true` on that `accepted` rule, by hand in the manifest only (`refdiff accept` never writes it): every TEXTLESS finding whose boxes lie inside the boxes of the finding the rule hit is suppressed too, as `"<reason> (inside)"` | text inside the region is never excused (a missing label or a badge drawn over the region still shows); nothing when the rule itself hits nothing |
@@ -553,10 +557,24 @@ items is now a typed finding — read it there:
   14 such findings on one pair, 12 on another). The run log names the refusals
   it acted on. A value slot in the same place is never touched — 146% against
   100% at γ 0.5, a card count at γ 0, a status chip whose word the other side
-  does not use at all. The extractor sees DOM text only: a number or
-  label drawn as SVG `<text>` (a badge, a chart tick) measures as MISSING
-  however right it looks — whatever the comp draws as DOM text must be DOM
-  text in the impl to be matched at all.
+  does not use at all. **SVG content is extracted now, with limits.** An `<svg>` is
+  still ONE atomic `icon` when its shapes are all icon-sized, or when it holds
+  more than 24 of them (a drawing is a picture, not a set of elements). A large
+  SPARSE one — a mark layer, a diagram, an overlay — is walked, and its
+  `rect` / `circle` / `path` / `text` children emit as `role: "shape"` with
+  their own paint mapped onto the HTML names (`fill` → background, `stroke` →
+  border + width, `stroke-dasharray` → dashed, `rx` → radius), which is the
+  same mapping the Figma adapter does from `fills` / `strokes` / `strokeDashes`.
+  A fill that is a PAINT SERVER (`url(#some-pattern)`, a gradient) goes to
+  `backgroundImage` — captured, not compared. The decision is made on the
+  SHAPES, never on the svg's own box: an overlay is often a 1×1 px svg with
+  `overflow:visible` holding shapes hundreds of px wide.
+  Consequences to expect on a first run after this: an app's own overlay
+  (selection outlines, comment shapes, chart marks) becomes visible and reports
+  as `extra-element` wherever the comp draws no counterpart — usually a DATA
+  difference, so classify it per §2 and declare it once. `roles: ["shape"]`
+  switches the whole channel off for a pair. A **Figma** design's vectors keep
+  their older `box` / `icon` roles, so that switch silences the DOM side only.
 - **Borders / radii** → `border` (width, color ΔE, and `borderStyle` — dashed
   against solid, which is a design decision no other channel can see: a whole
   language of dashed footprints, pills and chips once produced zero findings

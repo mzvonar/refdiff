@@ -41,6 +41,7 @@ import { captureStorybook } from "./adapters/storybook.js"
 import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
 import { packageForModel } from "./package/package-for-model.js"
+import { describeRegions } from "./package/regions.js"
 import { renderSummary, summarizeReports } from "./package/summary.js"
 import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
 import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks } from "./pixel/checks.js"
@@ -602,6 +603,13 @@ function printReport(report: ComparisonReport): void {
         }
       }
     }
+  }
+  // WHERE they are, before the verdict: on a page pair this is the orientation
+  // the severity-sorted list cannot give (106 in the rail is "the list is
+  // offset"; 70 in the canvas is "the zoom differs" — two causes, one report).
+  if (report.byRegion) {
+    console.log("by region:")
+    for (const line of describeRegions(report.byRegion)) console.log(line)
   }
   console.log(
     `verdict: ${report.verdict.pass ? "PASS" : "FAIL"} (threshold: ${report.verdict.failThreshold})`,

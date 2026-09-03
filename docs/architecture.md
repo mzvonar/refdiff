@@ -834,6 +834,49 @@ fall through to the area rule, as do unlabelled artboards.
   under the REGRESSION line, and the loud stop stays because a genuine vanish
   has that same shape. The version stamp remains open for the upgrade case; do
   it if a real upgrade churns a ledger again.
+- **An `<svg>` is walkable when it is large and sparse — decided 2026-09-03.** It used to be
+  atomic at any size, so anything inside a big one was invisible to the structural channel: a mark
+  layer, a diagram, a chart. That is how a dashed, hatched footprint shipped painting NOTHING (an
+  inherited `opacity:0` from a colliding class name) through a converged loop and 497 green tests —
+  no channel could pair it, and the only evidence was a crop. The rule: atomic while every shape is
+  icon-sized (≤ 64px, the Figma side's own `MAX_ICON_PX`) or while there are more than 24 of them (a
+  drawing is a picture, and it keeps the matcher's design × impl pass from exploding); otherwise
+  walked, its `rect` / `circle` / `path` / `text` children emitted as `role: "shape"`. Decided by the
+  SHAPES, never the svg's own box — a mark layer is a 1×1 px svg with `overflow:visible` holding
+  shapes hundreds of px wide, and a container-size gate changed nothing (measured, first attempt).
+  The paint mapping is the FIGMA adapter's, so all three sides speak one vocabulary (`fill` →
+  backgroundColor, `stroke` → borderColor + width, `stroke-dasharray` → dashed, `rx` → radius), and
+  a paint SERVER (`url(#…)`, a gradient) goes to `backgroundImage`: captured, never compared,
+  because `colorDelta` cannot parse it and it would sit in `presenceIdentity` as a suppression key
+  made of an element id. Own role, like `surface` before it, so a pair can switch the channel off
+  (`roles: ["shape"]`) without switching off every box; a Figma design's vectors keep `box` / `icon`,
+  so that switch silences the DOM side only. Verification is the corpus in two parts, because a
+  `page.evaluate` body has no unit-test home here: the footprint is now captured with its dashedness
+  and hatch, and re-introducing the class collision makes it VANISH from the impl tree (2 → 1 rects,
+  216 → 215 leaves). Cost, measured: set 396 → 422, four pairs up, the ghost pairs unchanged; 14 of
+  the 26 are the app's comment layer over the canvas (data — policy rule open) and 12 are knock-on
+  re-pairings of textless elements, which is the veto's blind spot below.
+- **Findings carry WHERE they are — decided 2026-09-03.** `report.byRegion` groups every finding
+  under the smallest captured container that holds its box (`package/regions.ts`), printed as a
+  `by region:` block. Smallest, not first: containers nest and the outermost holds everything.
+  A container over 70% of the frame is refused (the whole page is not a place) and one under 64px is
+  not a region; a group of one folds into `elsewhere`, whose label says what is true — off-frame
+  content and boxes larger than every region, not "chrome". Built because a converged loop
+  hand-rolled the same bucketing script twice in one session to learn that a pair's 150 findings
+  were "36 in the rail, 24 in the artboard image, 12 in the design pane" — three causes a
+  severity-sorted list cannot show.
+- **The textless mispairing is still open (2026-09-03).** The unrelated-text veto needs text on both
+  sides. SVG extraction produced the first clear textless case — a 99×24 orange shape paired with a
+  16×16 design box, reporting size, colour and spacing about two unrelated things. The evidence for
+  a textless veto would be paint/size counterparts available elsewhere, mirroring the text rule.
+  Not built.
+- **The artboard acceptance is fragile — noted 2026-09-03, not fixed.** Its `contents: true` hangs
+  off the app's artboard IMAGE being reported as an `extra-element`, which only happens when that
+  image fails to pair. On a panned canvas (the ghost pairs) the images do not pair, the rule fires,
+  and everything textless inside them is excused; where they DO pair (`compare-desktop`) nothing
+  fires and the same elements are reported. Two pairs quiet, four not, for a reason that is an
+  accident of pairing rather than a decision. Whoever scopes that acceptance should scope it as a
+  `regions` entry over the canvas instead.
 - **A candidate pairing can be PROVED wrong — decided 2026-09-03.** Geometry
   alone pairs elements with unrelated text when a list is in a different order
   on the two sides, and then reports the full property battery about them

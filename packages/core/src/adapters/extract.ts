@@ -188,6 +188,8 @@ export async function extractElementTree(
       const tag = el.tagName.toLowerCase();
       const isImage = tag === "img" || tag === "picture" || tag === "video";
       const isIcon = tag === "svg";
+      // A shape INSIDE an svg (never the svg itself, which is the icon case).
+      const isSvgShape = el.namespaceURI === SVG_NS && tag !== "svg";
       // A childless, textless box covering (almost) the whole capture is a
       // backdrop/scrim, whose extent is the viewport's, not the design's.
       const isBackdrop =
@@ -203,14 +205,77 @@ export async function extractElementTree(
           ? "image"
           : isIcon
             ? "icon"
-            : isBackdrop
-              ? "backdrop"
-              : isSurface
-                ? "surface"
-                : "box";
+            : isSvgShape
+              ? // Its own role, like `surface` before it: a channel that makes new
+                // things visible makes new noise, and a pair needs to be able to
+                // switch it off (`roles: ["shape"]`) without switching off every
+                // box. Nothing in the matcher or the checks reads a role except
+                // `backdrop`, so this costs no pairing quality. The FIGMA side
+                // keeps emitting its vectors as `box` / `icon` — that channel is
+                // years older and its noise is not new; a Figma pair switching
+                // `shape` off therefore silences the DOM side only.
+                "shape"
+              : isBackdrop
+                ? "backdrop"
+                : isSurface
+                  ? "surface"
+                  : "box";
       const rect = (ownText && inkBox(el)) || elRect;
 
       const style: Record<string, unknown> = {};
+      // An SVG shape's design IS its paint, and it is a different vocabulary:
+      // `fill` where HTML says background, `stroke` where HTML says border,
+      // `stroke-dasharray` where HTML says border-style, `rx` where HTML says
+      // border-radius. Mapped onto the HTML names — the same mapping the FIGMA
+      // adapter already does from `fills` / `strokes` / `strokeDashes`, because
+      // Figma's model is vector paint too, so all three sides end up comparable.
+      // It also SKIPS the decoration hoisting below: a shape that paints nothing
+      // is not asking its ancestors for a background, and walking up from inside
+      // an overlay would hand it the pane's.
+      if (isSvgShape) {
+        if (ownText) {
+          style["color"] = withOpacity(cs.fill !== "none" && hasAlpha(cs.fill) ? cs.fill : cs.color, opacity);
+          style["fontFamily"] = firstFontFamily(cs.fontFamily);
+          style["fontSize"] = pxOrUndef(cs.fontSize);
+          const fw = parseInt(cs.fontWeight, 10);
+          if (Number.isFinite(fw)) style["fontWeight"] = fw;
+        } else if (cs.fill.startsWith("rgb") && hasAlpha(cs.fill)) {
+          style["backgroundColor"] = withOpacity(cs.fill, opacity);
+        } else if (cs.fill !== "none" && cs.fill !== "") {
+          // A PAINT SERVER, not a colour: `url("#hatch-critical")`, a gradient.
+          // It belongs nowhere near backgroundColor — colorDelta cannot parse it
+          // (it would silently return undefined and compare nothing), and it
+          // would sit in presenceIdentity as a suppression key made of an
+          // element id. Captured, so a reader sees the shape is patterned, and
+          // NOT compared: comparing paint servers is its own decision, still open.
+          style["backgroundImage"] = cs.fill;
+        }
+        const sw = pxOrUndef(cs.strokeWidth);
+        if (cs.stroke !== "none" && hasAlpha(cs.stroke) && sw !== undefined && sw > 0) {
+          style["borderWidth"] = sw;
+          style["borderColor"] = withOpacity(cs.stroke, opacity);
+          // A dash array IS a dashed border; anything else is solid.
+          style["borderStyle"] = cs.strokeDasharray !== "" && cs.strokeDasharray !== "none" ? "dashed" : "solid";
+        }
+        const rx = pxOrUndef(el.getAttribute("rx") ?? "");
+        if (rx !== undefined && rx > 0) style["borderRadius"] = rx;
+        const shadow = shadowOf(cs);
+        if (shadow !== undefined) style["boxShadow"] = shadow;
+        const shapeNode: Record<string, unknown> = {
+          id: `${tag}-${seq++}`,
+          box: {
+            x: round(rect.x - rootRect.x),
+            y: round(rect.y - rootRect.y),
+            w: round(rect.width),
+            h: round(rect.height),
+          },
+          role,
+        };
+        if (ownText) shapeNode["text"] = ownText;
+        if (Object.keys(style).length > 0) shapeNode["style"] = style;
+        out.push(shapeNode);
+        return;
+      }
       if (ownText) {
         style["color"] = withOpacity(cs.color, opacity);
         style["fontFamily"] = firstFontFamily(cs.fontFamily);
@@ -280,6 +345,63 @@ export async function extractElementTree(
         shadowOf(cs) ?? "",
       ].join("|");
 
+    // ---- SVG content -----------------------------------------------------
+    // An <svg> used to be atomic at any size, so anything drawn inside a large
+    // one was invisible to the structural channel: a mark layer, a chart, an
+    // overlay. Measured cost: a dashed, hatched footprint shipped painting
+    // NOTHING (an inherited opacity:0) through a converged loop and 497 green
+    // tests, because no channel could pair it and the only evidence was a crop.
+    // The FIGMA side already descends — a RECTANGLE emits as `box`, other
+    // vectors as `icon`, and only a small all-vector container collapses — so
+    // descending here makes the two adapters agree rather than diverge.
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    /** Icon-sized: atomic, exactly as the Figma side's MAX_ICON_PX. */
+    const SVG_ATOMIC_PX = 64;
+    /**
+     * A large svg holding more shapes than this is a DRAWING, not a set of
+     * elements: collapse it to one icon. Same judgement as the icon rule at a
+     * different scale, and it keeps the matcher's candidate pass (design ×
+     * impl) from exploding on an illustration.
+     */
+    const SVG_SHAPE_CAP = 24;
+    const SVG_GEOMETRY = new Set(["rect", "circle", "ellipse", "line", "polyline", "polygon", "path"]);
+    /** Never rendered, so never extracted — this is where a <pattern> or a clip lives. */
+    const SVG_NON_RENDERING = new Set([
+      "defs", "clippath", "mask", "pattern", "marker", "symbol",
+      "lineargradient", "radialgradient", "filter", "title", "desc", "metadata",
+    ]);
+    const svgPaints = (cs: CSSStyleDeclaration): boolean =>
+      (cs.fill !== "none" && hasAlpha(cs.fill)) ||
+      (cs.stroke !== "none" && hasAlpha(cs.stroke) && (pxOrUndef(cs.strokeWidth) ?? 0) > 0);
+    /** The painting geometry inside an svg, big enough to be an element of its own. */
+    const svgShapesIn = (svg: Element): Element[] =>
+      Array.from(svg.querySelectorAll("*")).filter((e) => {
+        if (e.namespaceURI !== SVG_NS) return false;
+        const t = e.tagName.toLowerCase();
+        if (!SVG_GEOMETRY.has(t) && t !== "text") return false;
+        if (e.closest("defs, clipPath, mask, pattern, marker, symbol") !== null) return false;
+        const r = e.getBoundingClientRect();
+        if (Math.max(r.width, r.height) < 8) return false;
+        return t === "text" ? (e.textContent ?? "").trim() !== "" : svgPaints(getComputedStyle(e));
+      });
+    /**
+     * Descend into this svg, or keep it atomic? Decided by the SHAPES, never by
+     * the svg's own box: a mark layer is a 1×1 px svg with `overflow:visible`
+     * whose rects are hundreds of px wide, so a container-size test called the
+     * whole overlay an icon and changed nothing (measured, first attempt).
+     * Descend when the content is sparse enough to enumerate AND something in
+     * it is bigger than an icon; a set of small shapes is an icon, and a dense
+     * set is a drawing.
+     */
+    const descendSvg = (svg: Element): boolean => {
+      const shapes = svgShapesIn(svg);
+      if (shapes.length === 0 || shapes.length > SVG_SHAPE_CAP) return false;
+      return shapes.some((e) => {
+        const r = e.getBoundingClientRect();
+        return Math.max(r.width, r.height) > SVG_ATOMIC_PX;
+      });
+    };
+
     /** Containers whose paint a descendant leaf already carries (hoisted). */
     const claimed = new Set<Element>();
     /** Painting containers, emitted AFTER the walk so `claimed` is complete. */
@@ -303,8 +425,12 @@ export async function extractElementTree(
 
       const tag = el.tagName.toLowerCase();
       if (tag === "script" || tag === "style" || tag === "link" || tag === "noscript") return;
-      // SVGs are atomic icons — never descend into their internals.
-      const treatAsLeaf = tag === "svg" || tag === "img" || tag === "video" || tag === "canvas";
+      if (el.namespaceURI === SVG_NS && SVG_NON_RENDERING.has(tag)) return;
+      // An svg is an atomic icon while it is icon-sized or too dense to be a set
+      // of elements; a large sparse one (a mark layer, a diagram, a chart) is
+      // walked, and its shapes emit with their own paint — see svgShapesIn.
+      const treatAsLeaf =
+        (tag === "svg" && !descendSvg(el)) || tag === "img" || tag === "video" || tag === "canvas";
       const elementChildren = treatAsLeaf ? [] : Array.from(el.children);
 
       const rawText = Array.from(el.childNodes)

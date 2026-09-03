@@ -28,6 +28,7 @@ import sharp from "sharp"
 
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
+import { containersOf, groupByRegion } from "./regions.js"
 
 export interface PackageOptions {
   /** Run directory: findings.json, crops and element trees land here. */
@@ -128,6 +129,14 @@ export async function packageForModel(
   const withKeys = withCrops.map((f) => ({ ...f, key: identityKey(f) }))
   const suppressedWithKeys = [...suppressed].map((f) => ({ ...f, key: identityKey(f) }))
 
+  // WHERE the findings are, from the impl tree (world space, so no alignment is
+  // folded in) — computed here rather than by the caller, because every consumer
+  // of the report wants it and the loop otherwise writes the script by hand.
+  const byRegion = groupByRegion(
+    withCrops,
+    containersOf(impl.elements, { x: 0, y: 0, w: impl.width, h: impl.height }),
+  )
+
   const report: ComparisonReport = {
     pair: pair.id,
     createdAt: new Date().toISOString(),
@@ -163,6 +172,7 @@ export async function packageForModel(
     ...(previous !== undefined
       ? { delta: diffReports(previous, { findings: withCrops }, {}, ledger) }
       : {}),
+    ...(byRegion.groups.length > 0 ? { byRegion } : {}),
     artifacts: {
       designPng: rel(design.pngPath),
       implPng: rel(impl.pngPath),
