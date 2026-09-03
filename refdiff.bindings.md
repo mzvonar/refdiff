@@ -55,14 +55,15 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | --- | --- | --- | --- | --- | --- |
   | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
-  | refdiff-compare-desktop | 79 (24/48/7) | 113 | 56 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 13 (4/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 31 (5/18/8) | 45 | 35 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 12 (4/2/6) | 14 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 89 (22/53/14) | 168 | 48 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 107 (34/55/18) | 177 | 60 | 0.56 | 1 / 0,0 |
+  | refdiff-compare-desktop | 79 (28/45/6) | 113 | 56 | 0.72 | 1 / 0,0 |
+  | refdiff-compare-mobile | 16 (7/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 30 (7/18/5) | 40 | 35 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 15 (7/2/6) | 17 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 82 (23/47/12) | 161 | 48 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 |
 
-  **Set total 349 (2026-09-03, after the resting-mark decision), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
+  **Set total 349 (2026-09-03, after the resting-mark and comment-ownership decisions — the second
+  one moved 14 findings between pairs and left the total unchanged), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
   decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
   change made an `<svg>` walkable when it is large and sparse, so the app's OWN canvas overlay —
   selection outlines, comment shapes, the ghost footprint — is extracted for the first time
@@ -83,10 +84,26 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   finding layer's own `pad(box, 4)` + radius 6. Measured: 22 reported `shape` findings → **0**, set
   383 → 349, one run of churn (five `missing-element` design boxes the force-pairing had hidden),
   +0/−0 on the next. Read the architecture entry "A mark is a BADGE at rest" for the full record.
-  **What is left of it:** the app mirrors a comment onto the counterpart pane and the comps draw a
-  one-sided one on its own pane only, so badge "4" costs 5 findings on `compare-desktop`
-  (`extra-element`, `position` −85.7,−54.5, colour, border, radius) — the mirror-vs-ghost question,
-  which needs a model that can say "exists on this side only", not a parity fix.
+  **Its residue is DECIDED too (2026-09-03, Mato): a comment belongs to the pane it was clicked or
+  dragged on, and is not mirrored.** The rule is the difference between the two marks — a finding is
+  a PAIR ("here, missing there") and speaks about both panes; a comment is "I clicked here and am
+  commenting on this", so a copy at the same coordinates on the other pane asserts a correspondence
+  this tool exists to TEST. Measured, and it is why the mirror hurt: the mirrored copy of the
+  design-side c4 was the nearest same-text element to the comp's rail row chip "4" (γ 140.18, while
+  the app's own chip sat at 204.28 — past the 200 same-text cutoff because of the comp's rail row
+  order), so a comment badge on the canvas paired with a RAIL ROW and reported position, colour,
+  border and radius about two unrelated things. `renderAnnMarks` now returns early when
+  `a.side !== side`. Measured: set 349 → **349** — a wash that moved 14 findings and made every one
+  of them name a real cause; +0/−0 on the confirmation run, no regressions (the one flagged carries
+  2026-09-02 ledger stamps: the mirror had been SUPPLYING the partner that made the comp's off-pane
+  badge look present).
+  **The residue is a comp-side ask, and it is the whole increase:** the comp's demo comments 1–3
+  carry no `oneSide`, so it draws them on BOTH panes (`oneSide` appears 5× in the comp: design×3,
+  impl×2 = o1..o4 plus c4 only), and the app no longer answers those copies — 3 `missing-element`
+  badges per compare pair, 4 on `compare-desktop`. Under this ruling the comp's comments each need
+  the side they were made on, exactly as its findings do. **And on a phone the canvas now shows no
+  comment marks at all while the off-pane side is up** — the comps' answer is the ghost of a
+  selected off-pane comment, below, which is now the only cross-pane signal and is still unbuilt.
   The other 12 are knock-on: the shapes joined the matcher's candidate pool and re-paired some
   TEXTLESS elements, one of them nonsensically (a 99×24 orange shape against a 16×16 design box
   → size + colour + spacing findings on `compare-desktop`). The 2026-09-03 unrelated-text veto
@@ -253,10 +270,15 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   **One part of the language is still unbuilt and UNMEASURED by any pair: the ghost of a one-sided
   COMMENT.** The comps call the same `ghost()` for a selected comment (a 28×28 dashed circle with
   an 8px hatch period for a 0×0 POINT anchor, the status colour, label `Comment anchored on
-  design`), and no pair's steps select a comment, so nothing reports it. The app instead MIRRORS
-  every note onto the other pane, lighter (`.marks.anns .mirror`) — a deliberate 2026-08-28
-  decision for a different problem. Mirror-vs-ghost for comments is a design question for Mato,
-  not a parity fix; the fixture already carries `c4` as a design-side point for whenever it lands.
+  design`), and no pair's steps select a comment, so nothing reports it. **It matters more since
+  2026-09-03:** the app used to MIRROR every note onto the other pane (lighter, `.marks.anns
+  .mirror`, a deliberate 2026-08-28 decision), and that mirror is GONE — a comment belongs to the
+  pane it was drawn on — so the ghost is now the only thing that can say "the note you selected is
+  anchored over there", and on a phone it is the only comment mark the off-pane canvas can show.
+  Building it needs three status-coloured hatch patterns beside the severity ones and the comps'
+  point geometry (a 28×28 circle at constant screen size, 8px period against the rect ghost's 9px);
+  measuring it needs a pair whose steps SELECT a comment, which needs a `data-vc-step` on the comp's
+  comment rows. The fixture already carries `c4` as the design-side point it would use.
 
 - **Low confidence is the layout, not the fixture.** The protected baseline
   (redesign phases 0–7 + harness items 12–16 + the Library thumb fix + the

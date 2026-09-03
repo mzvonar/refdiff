@@ -372,10 +372,14 @@ describe("renderReport", () => {
     // A row: badge, title, ×N, the Regression tag, the mono prop line with the actual in red.
     expect(html).toContain("'<span class=\"fgroup\" title=\"one cause in ' + f.instances + ' places")
     expect(html).toContain(">undo</span><span>Regression</span></span>")
-    // Comment shapes and badges are drawn on BOTH panes (the comps' ovA.im / ovB.im): on a phone
-    // only one side is on screen, and a note placed on the impl was invisible while the design showed.
-    expect(html).not.toContain("if (a.side !== side) return;")
-    expect(html).toContain("(a.side === side ? '' : ' mirror')")
+    // A comment is drawn ONLY on the pane it was made on (Mato, 2026-09-03), which REVERSES the
+    // 2026-08-28 mirror this assertion used to pin. A finding is a pair and speaks about both panes;
+    // a comment says "I clicked here and am commenting on this", so a copy at the same coordinates
+    // on the other pane asserts a correspondence the tool is there to test. Measured cost of the
+    // mirror when it went: the c4 copy was pairing with a rail row chip 140.18 γ away.
+    expect(html).toContain("if (a.side !== side) return;")
+    expect(html).not.toContain("(a.side === side ? '' : ' mirror')")
+    expect(html).not.toContain(".marks.anns .mirror {")
     expect(html).toContain("for (const r of propRows(f.expected, f.actual, f.type))")
     expect(html).toContain(".fprop .a { color:var(--critical); }")
     // Selecting focuses the canvas (gap 13): no detail panel, no crop images in the page.

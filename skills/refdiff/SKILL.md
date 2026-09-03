@@ -587,8 +587,8 @@ items is now a typed finding — read it there:
   written today covers whichever half was under the cap and the other half
   arrives on a run with fewer marks. And `fill-opacity` / `stroke-opacity` are
   not folded into the reported paint (CSS `opacity` is), so a 12% tint reports
-  as its opaque colour and a lighter mirrored copy reports identically to the
-  mark it mirrors. `roles: ["shape"]` switches the whole channel off for a pair,
+  as its opaque colour, and a deliberately lighter copy of a shape reports
+  identically to the shape it copies. `roles: ["shape"]` switches the whole channel off for a pair,
   and it cannot reach the knock-on re-pairings a new shape causes: a matched
   pair's finding carries the DESIGN side's role. A **Figma** design's vectors
   keep their older `box` / `icon` roles, so that switch silences the DOM side

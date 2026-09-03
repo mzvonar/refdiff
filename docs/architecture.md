@@ -892,7 +892,27 @@ fall through to the area rule, as do unlabelled artboards.
   because the app's model cannot express it: a comment carries one `side` and the app MIRRORS it, so
   a one-sided comment gets a full badge on the counterpart pane where the comp draws none — 5
   findings on `compare-desktop` (`extra-element` + `position` −85.7,−54.5 + colour + border +
-  radius on badge "4"). That is the mirror-vs-ghost question, still open, now with a price.
+  radius on badge "4"). Decided the same day, see the next entry.
+- **A comment belongs to the pane it was drawn on — decided 2026-09-03 (Mato), REVERSING the
+  2026-08-28 mirror.** The reasoning is the distinction between the two marks: a finding is a PAIR,
+  "this element is here and missing there", so it has something to say about both panes; a comment
+  is "I clicked here and am commenting on THIS". A copy of it at the same coordinates on the other
+  pane asserts a correspondence the tool exists to test — and that is precisely how it failed: the
+  mirrored c4 badge was the nearest same-text element to the comp's rail row chip "4" (γ 140.18,
+  where the app's own chip was 204.28 — just past the 200 same-text cutoff, because of the comp's
+  rail row order), so a canvas comment badge paired with a rail row and reported position, colour,
+  border and radius about two unrelated elements. `renderAnnMarks` returns early when `a.side !==
+  side`; the `.mirror` class and its CSS are gone, and the test that pinned the mirror is inverted
+  with its reasoning rather than deleted. Measured: set 349 → 349 — 14 findings moved and every one
+  now names a real cause; +0/−0 and no regressions on the confirmation run (the one flagged carries
+  2026-09-02 ledger stamps — the mirror had been supplying the partner that made the comp's own
+  off-pane badge look present). TWO consequences, both recorded rather than fixed: the comp's demo
+  comments 1–3 carry no `oneSide` and are drawn on both panes, so the app no longer answers those
+  copies (3 `missing-element` badges per compare pair, 4 on `compare-desktop`) — under this ruling
+  the comp's comments each need their side, which is a comp-side ask like the rail row order; and on
+  a phone the canvas shows no comment marks at all while the off-pane side is up, which is exactly
+  the hole the comps fill with the ghost of a SELECTED off-pane comment, still unbuilt and still
+  unmeasurable until a pair's steps select a comment.
 - **Findings carry WHERE they are — decided 2026-09-03.** `report.byRegion` groups every finding
   under the smallest captured container that holds its box (`package/regions.ts`), printed as a
   `by region:` block. Smallest, not first: containers nest and the outermost holds everything.

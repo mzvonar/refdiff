@@ -789,7 +789,6 @@ body:not(.single) .gpill .gsw { display:none; }
 .marks.anns .open { stroke:var(--open); fill:var(--open); } .marks.anns .implemented { stroke:var(--implemented); fill:var(--implemented); } .marks.anns .done { stroke:var(--done); fill:var(--done); }
 .marks.anns .stale { stroke-dasharray:4 3; }
 /* The other pane's copy of a note: same place through the alignment, drawn lighter. */
-.marks.anns .mirror { fill-opacity:.06; stroke-opacity:.7; }
 .marks.anns .sel { stroke-width:4; }
 .marks.anns rect.band { fill:rgba(143,126,231,.15); stroke:var(--open); stroke-width:1.5; vector-effect:non-scaling-stroke; stroke-dasharray:4 3; }
 /* Inverted: nothing is drawn INSIDE the region (that is what you asked to look at) — the surround
@@ -2744,13 +2743,28 @@ function renderAnnMarks() {
     layer.replaceChildren();
     for (const b of blayer.querySelectorAll('.vmark.ann')) b.remove();
     ann.set.annotations.forEach((a, i) => {
+      // A COMMENT BELONGS TO THE PANE IT WAS DRAWN ON (Mato, 2026-09-03) — which reverses the
+      // 2026-08-28 mirror, and the reasoning is the difference between the two kinds of mark. A
+      // finding is a PAIR: this element is here and missing there, so it has something to say about
+      // both panes. A comment is not — you clicked one pane and commented on what is THERE.
+      // Mirroring it copied one box onto a pane whose layout differs, which is the one thing this
+      // tool exists to disprove, and it measured as exactly that: the mirrored copy of the
+      // design-side c4 was the nearest same-text element to the comp's rail row chip "4" (γ 140.18,
+      // against the app's own chip at 204.28 — past the 200 same-text cutoff because of the comp's
+      // rail row ORDER), so a comment badge on the canvas paired with a rail row and reported
+      // position, colour, border and radius about two unrelated things.
+      // What the other pane says instead: the rail row's own side meta. The comps' canvas answer for
+      // a SELECTED off-pane comment is a hatched ghost labelled "Comment anchored on design"
+      // (Comparison Tool line 591) — specified, deliberately not built here, because no pair's
+      // steps select a comment and this repo has already shipped ghost geometry blind twice.
+      if (a.side !== side) return;
       // The region scopes comments exactly as it scopes findings — the rail counted them that way
       // (visibleItems) while the canvas drew every pin, so a focused view said "Comments · 0" over
       // a canvas full of them. The selected one is drawn wherever it is, as a selected finding is,
       // and while the region is being adjusted the excluded pins come back muted with the marks.
       const inside = inRegion(shapeBox(a.shape));
       if (!inside && ann.selected !== a.id && !adjusting) return;
-      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (a.side === side ? '' : ' mirror') + (inside ? '' : ' outside');
+      const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (inside ? '' : ' outside');
       // AT REST A COMMENT IS ITS BADGE. The outline is drawn only while the comment is selected —
       // the rule the finding layer above already follows, and the comps' own: Comparison Tool line
       // 595 pads the anchor by 4 and rounds it by 6, and draws nothing for an unselected item. A
