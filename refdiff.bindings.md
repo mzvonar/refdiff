@@ -367,7 +367,23 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   the "top floating toolbar" — and **the tool strip STAYS AT THE BOTTOM** (y=807),
   where the minimal layout already puts it. There is no phone-layout switch and no
   `tune` button in this layout at all (the comp drops both glyphs and puts the
-  dark/light toggle in the header), so `?layout=toolbar` is the only way in.
+  dark/light toggle in the header). **Since 2026-09-03 it IS the phone's layout:**
+  `mlayout` defaults to `'toolbar'`, so a bare URL at phone width boots into it and
+  `?layout=` is the way OUT rather than in. That is why it had to become the default
+  and not a third choice — the switch that could offer it lives in the settings
+  popover this layout hides. Two things were wrong before the flip, both fixed with
+  it: the boot line mapped only `'minimal'` and sent everything else to `'default'`,
+  so a visit to `?layout=toolbar` persisted `'toolbar'` (its setter does) and the
+  next plain load dropped back — the layout looked unshipped for a session while its
+  own pair passed; and `refdiff-compare-mobile` captured the phone's default with no
+  `?layout=` at all, so it now pins `?layout=default` or it would have started
+  comparing the toolbar layout against the comp for a different one. Verified in a
+  browser at 390×844: bare URL gives `body.layout-minimal layout-toolbar` with the
+  settings and tune buttons `display:none` and the theme toggle in the header;
+  `?layout=default` and `?layout=minimal` still give theirs; desktop at 1360
+  unchanged. All four mobile pairs re-ran `+0/−0` afterwards, which is the point —
+  each pins its own layout, so the flip is invisible to the harness BY CONSTRUCTION,
+  and that invisibility is the trap `SKILL.md`'s pre-flight now names.
   It **PASSES**: 1 finding (0 critical / 0 major / 1 minor), suppressed 31, confidence 0.92.
   **The comp gained the delta strip on 2026-09-02** (refetch: 65621 -> 68959 bytes,
   `showDeltaStrip` now a prop and it defaults TRUE, so the strip IS captured; the

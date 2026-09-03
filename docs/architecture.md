@@ -913,6 +913,21 @@ fall through to the area rule, as do unlabelled artboards.
   a phone the canvas shows no comment marks at all while the off-pane side is up, which is exactly
   the hole the comps fill with the ghost of a SELECTED off-pane comment, still unbuilt and still
   unmeasurable until a pair's steps select a comment.
+- **The phone has ONE layout, and it is the toolbar one — decided 2026-09-03 (Mato).** Built at
+  story 9b3b7d5 and measured at confidence 1.00, it was never made the default: `mlayout` started at
+  `'default'` and the boot line mapped only `'minimal'`, so it could not read back the `'toolbar'`
+  its own setter persists — a visit to `?layout=toolbar` was forgotten on the next plain load and
+  the app kept booting into the layout the toolbar one replaced, settings popover and all. It had to
+  become the DEFAULT rather than a third choice, because the only place the phone layouts are named
+  is the settings popover that `body.layout-toolbar` hides: a layout with no switch is either the
+  default or unreachable. `mlayout: 'toolbar'`, one `PHONE_LAYOUTS` list shared by the URL preset
+  and the restore, and `refdiff-compare-mobile` pins `?layout=default` so the pair that used to get
+  the old layout by default still measures it. Verified in a browser at 390×844 (bare URL →
+  `layout-minimal layout-toolbar`, settings and tune `display:none`, theme in the header; the two
+  `?layout=` presets unchanged; desktop at 1360 unchanged) and all four mobile pairs re-ran `+0/−0`.
+  **The lesson is in `SKILL.md`'s pre-flight now:** every pair pins the URL that reaches the state it
+  measures, so a green pair says the STATE matches the comp and nothing about whether a user can get
+  there — three mobile pairs were green while the default nobody pinned was the old layout.
 - **Findings carry WHERE they are — decided 2026-09-03.** `report.byRegion` groups every finding
   under the smallest captured container that holds its box (`package/regions.ts`), printed as a
   `by region:` block. Smallest, not first: containers nest and the outermost holds everything.

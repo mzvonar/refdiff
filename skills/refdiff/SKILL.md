@@ -645,6 +645,20 @@ items is now a typed finding — read it there:
 The repo's `refdiff.bindings.md` holds the specifics; these are the
 failure shapes that recur everywhere and impersonate product bugs.
 
+- **A green pair proves the STATE matches the comp; it says nothing about
+  whether a user can REACH that state.** Every pair pins the URL, viewport and
+  steps that put the app into the state it measures — that is what makes it
+  reproducible, and it is also a blind spot with no finding to report: the
+  default the user actually gets is measured by no pair unless one pins THAT.
+  Measured instance: a phone layout sat at confidence 1.00 with 15 findings while
+  the app still booted into the layout it replaced, because the boot line could
+  not read back the value its own setter persisted — three mobile pairs, all
+  green, none of them capturing a bare URL. When a change adds or replaces a
+  DEFAULT (a preset, a saved preference, a feature flag), verify it in the
+  product the way a user meets it — a browser at that viewport reading
+  `document.body.className` and the controls' computed `display` — and then pin
+  the old state on the pair that used to get it by default, or that pair silently
+  changes subject.
 - **The served annotator WRITES into what it serves.** `refdiff-annotator
   <root> --serve` persists every note, verdict and focus region into the run
   dir (`annotations.json` / `triage.json` / `focus.json` + digests). Read

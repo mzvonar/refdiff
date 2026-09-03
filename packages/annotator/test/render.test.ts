@@ -597,7 +597,12 @@ describe("renderReport", () => {
     expect(html).not.toContain("tb-spacer")
     // The layout is a chrome preference like the theme: persisted, preset by ?layout= on the URL for one load.
     expect(html).toContain("theme: currentTheme(), layout: state.mlayout,")
-    expect(html).toContain("state.mlayout = urlLayout() || (saved.layout === 'minimal' ? 'minimal' : 'default');")
+    // The phone's default is the TOOLBAR layout (2026-09-03), and the restore reads back EVERY value
+    // setPhoneLayout can write. It used to map only 'minimal' and send the rest to 'default', so a
+    // visit to ?layout=toolbar persisted 'toolbar' and the next plain load dropped it — the reason
+    // the toolbar layout looked unshipped for a session.
+    expect(html).toContain("state.mlayout = urlLayout() || (PHONE_LAYOUTS.includes(saved.layout) ? saved.layout : 'toolbar');")
+    expect(html).toContain("mlayout: 'toolbar', settingsOpen: false, viewOpen: false,")
     expect(html).toContain("function saveTheme() { savePref('theme', currentTheme()); }")
   })
 
@@ -635,8 +640,12 @@ describe("renderReport", () => {
   it("carries the toolbar phone layout (the Mobile Toolbar comp): Compare in the header, the Show row under it, the tool strip STILL at the bottom, no tune/settings, theme toggle back", () => {
     const mobile = html.match(/@media \(max-width: 759px\) \{([\s\S]*?)\n\}\n/)?.[1]
     expect(mobile).toBeDefined()
-    // ?layout=toolbar is the only way in: this layout has no phone-layout switch.
-    expect(html).toContain("v === 'minimal' || v === 'default' || v === 'toolbar' ? v : null")
+    // This layout has no phone-layout switch — which is why it is the DEFAULT since 2026-09-03
+    // rather than a URL-only third choice: nothing in the UI could offer it, and the settings
+    // popover it hides is the only place the other two are named. ?layout= is now the way OUT of it
+    // (the manifest's minimal and default pairs each pin their own).
+    expect(html).toContain("const PHONE_LAYOUTS = ['toolbar', 'minimal', 'default'];")
+    expect(html).toContain("PHONE_LAYOUTS.includes(v) ? v : null")
     expect(html).toContain("function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }")
     expect(html).toContain("document.body.classList.toggle('layout-toolbar', toolbarOn());")
     // The comp drops BOTH glyphs and puts the dark/light toggle in the header.

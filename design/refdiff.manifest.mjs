@@ -246,10 +246,15 @@ export const manifest = [
     ignore: LIBRARY_IGNORE,
   },
   {
+    // The phone's DEFAULT layout — the toolbars over and under the canvas, which is what this
+    // responsive comp draws at 390px. The route pins `?layout=default` since 2026-09-03, when the
+    // TOOLBAR layout became the phone's default: without the pin this pair would silently start
+    // capturing the toolbar layout and compare it against the comp for a different one. The layout
+    // is still reachable, it is simply no longer what a bare URL gives.
     id: "refdiff-compare-mobile",
     title: "RefDiff · Comparison tool (mobile)",
     design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool" },
-    app: { source: "live", route: COMPARE_ROUTE, viewport: mobile, waitFor: "#panes" },
+    app: { source: "live", route: "/?layout=default" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
     ignore: COMPARE_IGNORE,
   },
   {

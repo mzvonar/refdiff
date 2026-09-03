@@ -1023,7 +1023,12 @@ const state = {
   // The phone's layout — 'default' (the toolbars over and under the canvas) or 'minimal' (folded
   // behind the header's tune button, the canvas gets the room) — chosen in the settings popover,
   // persisted like the theme, preset by ?layout= on the URL. Desktop ignores it.
-  mlayout: 'default', settingsOpen: false, viewOpen: false,
+  // 'toolbar' is THE phone layout since 2026-09-03: one layout, no switch, no settings popover
+  // (body.layout-toolbar hides .settings-wrap and .view-toggle and puts the theme toggle back in
+  // the header). 'minimal' and 'default' are still reachable by ?layout= — the two comps that
+  // describe them are still pairs — but nothing in the UI offers them, which is what makes this a
+  // single layout rather than a third choice.
+  mlayout: 'toolbar', settingsOpen: false, viewOpen: false,
 };
 // The comps' breakpoints: under 760px the phone layout (one side at a time,
 // the tools float over the canvas), under 1120px the topbar shortens.
@@ -1061,8 +1066,9 @@ applyTheme(readControls().theme);
 // ---- the phone's layout ----------------------------------------------------
 // ?layout=minimal|default on the page URL presets it for this load without touching the saved
 // preference — a link that opens in one layout, and how the harness captures the minimal comp.
+const PHONE_LAYOUTS = ['toolbar', 'minimal', 'default'];
 function urlLayout() {
-  try { const v = new URLSearchParams(location.search).get('layout'); return v === 'minimal' || v === 'default' || v === 'toolbar' ? v : null; } catch (e) { return null; }
+  try { const v = new URLSearchParams(location.search).get('layout'); return PHONE_LAYOUTS.includes(v) ? v : null; } catch (e) { return null; }
 }
 // The TOOLBAR layout is the minimal one plus a header toolbar and a top floating toolbar
 // (the RefDiff Mobile Toolbar comp), so every minimal rule, inset and fit padding applies to
@@ -1478,7 +1484,11 @@ function applyControls(saved) {
     difference: amount && typeof amount.difference === 'number' ? amount.difference : 100,
   };
   state.showSup = saved.showSup === true;
-  state.mlayout = urlLayout() || (saved.layout === 'minimal' ? 'minimal' : 'default');
+  // Read back whatever setPhoneLayout persisted, INCLUDING 'toolbar'. This line used to map only
+  // 'minimal' and send everything else to 'default', so a visit to ?layout=toolbar saved 'toolbar'
+  // (setPhoneLayout does) and the next plain load silently dropped back to the old layout with its
+  // settings popover — which is why the toolbar layout looked unshipped for a session.
+  state.mlayout = urlLayout() || (PHONE_LAYOUTS.includes(saved.layout) ? saved.layout : 'toolbar');
   applyAlignMode(); applyLock(); applyLayer();
   for (const [id, on] of [['diff-toggle', state.diff], ['dim-toggle', state.dim], ['strobe-toggle', state.strobe]]) {
     $(id).classList.toggle('on', on);
