@@ -18,7 +18,13 @@ import type {
   StorybookSource,
   Viewport,
 } from "./pipeline.js"
-import type { AcceptedDeviation, FindingType, IgnorePolicy, TextPattern } from "./types.js"
+import type {
+  AcceptedDeviation,
+  ContentsOfRule,
+  FindingType,
+  IgnorePolicy,
+  TextPattern,
+} from "./types.js"
 
 import { err, ok, type Result } from "./result.js"
 import { readSteps } from "./adapters/steps.js"
@@ -111,7 +117,29 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
   }
   if (Array.isArray(v["accepted"]))
     out.accepted = v["accepted"].flatMap((a: unknown) => readAccepted(a) ?? [])
+  if (Array.isArray(v["contentsOf"]))
+    out.contentsOf = v["contentsOf"].flatMap((c: unknown) => readContentsOf(c) ?? [])
   return out
+}
+
+/**
+ * `{ role, types, reason }` — every field required, and `types` non-empty. An unscoped rule would
+ * forgive its container's whole interior, which is the one thing this rule must not do: the type
+ * scope is the argument for why the contents belong to the container (see `ContentsOfRule`).
+ * A malformed entry is DROPPED like a malformed `accepted` one, and the run then reports what the
+ * rule would have excused — loud rather than silent.
+ */
+export function readContentsOf(c: unknown): ContentsOfRule | undefined {
+  if (!isRecord(c) || typeof c["role"] !== "string" || typeof c["reason"] !== "string")
+    return undefined
+  const types = c["types"]
+  if (!Array.isArray(types) || types.length === 0 || types.some((t) => typeof t !== "string"))
+    return undefined
+  return {
+    role: c["role"],
+    types: types as ContentsOfRule["types"],
+    reason: c["reason"],
+  }
 }
 
 const isValues = (v: unknown): v is Record<string, string | number> =>

@@ -55,14 +55,15 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | --- | --- | --- | --- | --- | --- |
   | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
-  | refdiff-compare-desktop | 79 (28/45/6) | 113 | 56 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 20 (7/9/4) | 30 | 24 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 30 (7/15/8) | 40 | 35 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 15 (7/2/6) | 18 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 78 (19/46/13) | 160 | 54 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop | 69 (20/43/6) | 103 | 66 | 0.72 | 1 / 0,0 |
+  | refdiff-compare-mobile | 15 (3/8/4) | 25 | 29 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 25 (3/14/8) | 35 | 40 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 10 (3/1/6) | 13 | 29 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 89 (23/50/16) | 172 | 42 | 0.49 | 1×0.994 / 0,4.2 |
   | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 |
 
-  **Set total 349 (2026-09-03, after the resting-mark and comment-ownership decisions — the second
+  **Set total 335 (2026-09-03, after `contentsOf` — see the architecture entry; 349 after the
+  resting-mark and comment-ownership decisions — the second
   one moved 14 findings between pairs and left the total unchanged), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
   decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
   change made an `<svg>` walkable when it is large and sparse, so the app's OWN canvas overlay —

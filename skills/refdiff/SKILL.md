@@ -123,7 +123,8 @@ the sandbox off). Then the repo you are in needs only its manifest and a
    siblings agree with it, fix the token.
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
-   `regions`, `accepted: [{ type, expected?, actual?, reason }]`) or the CLI
+   `regions`, `accepted: [{ type, expected?, actual?, reason }]`,
+   `contentsOf: [{ role, types, reason }]`) or the CLI
    flags (`--ignore-text`, `--accept '<json>'`), and shows up under
    `suppressed` with its rule. Never "skip" a finding by ignoring it in your
    head.
@@ -302,7 +303,7 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
 | **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
 | **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image), `alignment` (the fit is not the identity on a same-size page — a chrome size / box model difference, §1a) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members; fix `alignment` before anything positional |
-| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference". Textless boxes INSIDE an accepted element (a placeholder's bars) are the same decision: add `contents: true` to that rule by hand, never a `regions` entry |
+| **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference". Textless boxes INSIDE an accepted element (a placeholder's bars) are the same decision: add `contents: true` to that rule by hand, never a `regions` entry — and when the container is an ELEMENT that exists whether or not it is reported (the run's own screenshot against a comp that draws live DOM), `contentsOf` is the rule that fires every time instead of when the container happens to go unpaired |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
 
@@ -467,6 +468,7 @@ data strings).
     dataSlots: { patterns: ["\\d{1,2}\\. \\d{1,2}\\. \\d{4}"] },
     roles: ["backdrop"],
     accepted: [{ type: "color", expected: { color: "rgb(26,26,26)" }, actual: { color: "rgb(44,36,25)" }, reason: "…" }],
+    contentsOf: [{ role: "image", types: ["missing-element"], reason: "the app draws the run's screenshot where the comp imports live DOM" }],
   },
 }
 ```
@@ -482,6 +484,17 @@ Pick the narrowest tool that covers the case:
 | artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
 | a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `refdiff accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
 | the INSIDES of an accepted element (a comp's placeholder plate drawn with bars, a logo square inside an accepted image) | `contents: true` on that `accepted` rule, by hand in the manifest only (`refdiff accept` never writes it): every TEXTLESS finding whose boxes lie inside the boxes of the finding the rule hit is suppressed too, as `"<reason> (inside)"` | text inside the region is never excused (a missing label or a badge drawn over the region still shows); nothing when the rule itself hits nothing |
+| the insides of an element that is THERE whether or not it is reported — the run's own screenshot where the comp draws live DOM, a canvas, a video | `contentsOf: [{ role, types, reason }]`: every TEXTLESS finding of those `types` whose boxes lie inside an impl element of that `role` is suppressed as `"<reason> (contents of <role>)"` | `types` is required — an unscoped rule would forgive its container's whole interior, including the app's own marks drawn over it. Text is never excused (the comp draws its BADGES over that region and a badge is a numeral). A container the FRAME does not contain is skipped: a panned, zoomed canvas "contains" everything beside it |
+
+**`contentsOf` differs from `accepted … contents` in WHERE THE CONTAINER COMES FROM, and that is
+the whole point.** `contents: true` takes its region from the finding its own rule HIT, so it fires
+only when the container element is itself reported — for a screenshot that means only when the
+screenshot fails to PAIR, which is geometry, not a decision. Measured on one corpus: the design side
+had no image element at all, the app had one or two, and they still paired on five pairs of six
+because a comp container sat inside the γ cutoff; the sixth had a panned canvas, so the rule fired
+there and nowhere else, and among the findings it excused was the very thing that pair existed to
+measure. A `contentsOf` rule names the element, so it fires every run, and its region is the
+element's live box, so it follows a canvas the reader pans — which a literal `regions` box cannot do.
 
 **`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
 from BOTH strings and the remainder compared: equal remainder = data churn

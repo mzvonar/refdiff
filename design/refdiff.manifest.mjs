@@ -102,12 +102,35 @@ const COMPARE_IGNORE = {
     },
   ],
 
+  // The artboard is the app's SCREENSHOT against the comp's live DOM, so nothing drawn inside it can
+  // ever pair: inside that image, a `missing-element` IS the comp's artboard, and that is provable
+  // rather than probable — which is what lets this rule excuse TEXT (the artboard's step numerals)
+  // where `contents: true` never could.
+  //
+  // It replaces `accepted: [{ …, contents: true }]` for the INSIDES (2026-09-03). That rule took its
+  // region from a finding ABOUT the image, so it only fired when the image itself was reported as an
+  // extra-element — which needs the image to fail to PAIR. Measured across the six compare pairs:
+  // the design side has no image element at all, the app has one or two, and they still paired on
+  // five pairs because a comp artboard container sat within the γ cutoff. It fired on
+  // `refdiff-compare-mobile-toolbar-ghost` alone, whose panned canvas puts the image at 780×849
+  // (−301, −416) — and among the 12 findings it excused there was the GHOST FOOTPRINT, so the one
+  // pair that draws the ghost was the one pair that hid it. `contentsOf` names the ELEMENT: it fires
+  // every run and its region follows the canvas when the reader pans it, which a literal `regions`
+  // box cannot do.
+  contentsOf: [
+    {
+      role: "image",
+      types: ["missing-element"],
+      reason: "the app draws the run's design.png / impl.png where the comp imports the artboards as live DOM",
+    },
+  ],
+
   accepted: [
     {
       type: "extra-element",
       role: "image",
-      // contents: the artboard's 16×16 logo squares lie inside the screenshots' region.
-      contents: true,
+      // The image ITSELF, not its insides: the comp has no <img> anywhere, so the app's two
+      // screenshots are structurally extra whenever they fail to pair with an artboard container.
       reason: "the app draws the run's design.png / impl.png where the comp imports the artboards as live DOM",
     },
   ],
@@ -183,6 +206,10 @@ COMPARE_IGNORE.dataSlots = { patterns: ["Run \\d+ vs \\d+"] }
 // the app shows the pair's name — data, not copy.
 const MINIMAL_IGNORE = {
   textPatterns: COMPARE_IGNORE.textPatterns,
+  // The artboard rule is the shared Comparison-tool policy's; carry it explicitly, because this
+  // object is built by hand and a missing key here reads as "the minimal pair reports more", not as
+  // a policy gap.
+  contentsOf: COMPARE_IGNORE.contentsOf,
   accepted: COMPARE_IGNORE.accepted.concat([
     {
       type: "text-content",
@@ -216,6 +243,7 @@ const MINIMAL_IGNORE = {
 // one. Whatever this comp needs gets its own rule with its own reason, once measured.
 const TOOLBAR_IGNORE = {
   textPatterns: COMPARE_IGNORE.textPatterns,
+  contentsOf: COMPARE_IGNORE.contentsOf,
   accepted: COMPARE_IGNORE.accepted,
 }
 

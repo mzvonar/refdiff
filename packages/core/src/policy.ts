@@ -15,13 +15,14 @@
 import type {
   AcceptedDeviation,
   Box,
+  ElementNode,
   Finding,
+  FindingType,
   IgnorePolicy,
   SuppressedFinding,
   SuppressionReason,
   TextPattern,
-
-  FindingType,} from "./types.js"
+} from "./types.js"
 
 export interface PolicyResult {
   /** Findings that survive, renumbered f1..fn / marks 1..n. */
@@ -245,6 +246,12 @@ const regionOf = (f: Finding): Box | undefined =>
 interface Container {
   region: Box
   rule: string
+  reason: SuppressionReason
+  /**
+   * Finding types this container explains. `undefined` is the `accepted[].contents` case: the
+   * region is the whole argument, so text is never excused (see `insideRule`).
+   */
+  types?: readonly FindingType[]
 }
 
 /**
@@ -265,24 +272,60 @@ function contentContainers(
       const hit = hits[i]
       if (hit?.reason !== "accepted" || hit.rule !== a.reason || !acceptsFinding(a, f)) return
       const region = regionOf(f)
-      if (region) out.push({ region, rule: `${a.reason} (inside)` })
+      if (region) out.push({ region, rule: `${a.reason} (inside)`, reason: "accepted" })
     })
   }
   return out
 }
 
 /**
- * A TEXTLESS finding whose every box lies inside an excused region is the
- * accepted element's contents (the placeholder's bars, the logo square in the
- * artboard). Text is never excused this way: a label or a badge drawn over the
- * region is a finding the rule must not hide.
+ * The containers a `contentsOf` rule names: one per implementation element of that role, whether or
+ * not the element is itself reported. That is the whole point — see `ContentsOfRule`.
+ */
+function contentsOfContainers(
+  policy: IgnorePolicy,
+  implElements: readonly ElementNode[],
+  frame: { w: number; h: number } | undefined,
+): Container[] {
+  const out: Container[] = []
+  const inFrame = (b: Box): boolean =>
+    frame === undefined ||
+    (b.x >= -1 && b.y >= -1 && b.x + b.w <= frame.w + 1 && b.y + b.h <= frame.h + 1)
+  for (const rule of policy.contentsOf ?? []) {
+    for (const el of implElements) {
+      if (el.role !== rule.role) continue
+      if (el.box.w <= 0 || el.box.h <= 0) continue
+      // A container the frame does not contain says nothing about what is inside it: a panned,
+      // zoomed canvas covers the whole viewport and everything drawn beside it.
+      if (!inFrame(el.box)) continue
+      out.push({
+        region: el.box,
+        rule: `${rule.reason} (contents of ${rule.role})`,
+        reason: "contents",
+        types: rule.types,
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * A TEXTLESS finding whose every box lies inside an excused region is that container's contents (the
+ * placeholder's bars, the logo square in the artboard, the live DOM inside the screenshot).
+ *
+ * Text is never excused this way, whichever kind of container names the region: a label or a badge
+ * drawn over it is a finding the rule must not hide, and the comp draws its badges over the very
+ * artboard a `contentsOf` rule excuses. A container that names TYPES excuses only those types, so
+ * the app's own marks over the same region stay compared.
  */
 function insideRule(f: Finding, containers: readonly Container[]): { reason: SuppressionReason; rule: string } | undefined {
   if (f.text !== undefined) return undefined
   const boxes = [f.designBox, f.implBox].filter((b): b is Box => b !== undefined)
   if (boxes.length === 0) return undefined
-  const c = containers.find((c) => boxes.every((b) => within(c.region, b)))
-  return c ? { reason: "accepted", rule: c.rule } : undefined
+  const c = containers.find(
+    (c) => (c.types === undefined || c.types.includes(f.type)) && boxes.every((b) => within(c.region, b)),
+  )
+  return c ? { reason: c.reason, rule: c.rule } : undefined
 }
 
 const renumber = <T extends Finding>(prefix: string, list: readonly T[]): T[] =>
@@ -292,14 +335,25 @@ const renumber = <T extends Finding>(prefix: string, list: readonly T[]): T[] =>
  * Pure stage: partition findings by the policy. Order is preserved within
  * each partition (findings arrive severity-sorted from the checks stage).
  */
-export function applyPolicy(findings: readonly Finding[], policy: IgnorePolicy = {}): PolicyResult {
+export function applyPolicy(
+  findings: readonly Finding[],
+  policy: IgnorePolicy = {},
+  /**
+   * What a `contentsOf` rule needs: the implementation's elements (its containers are elements, not
+   * findings) and the frame that bounds a usable container. Absent = no such rule can fire.
+   */
+  context: { implElements?: readonly ElementNode[]; frame?: { w: number; h: number } } = {},
+): PolicyResult {
   const patterns = compilePatterns(policy.textPatterns)
   const dataSlotPatterns = compileDataSlotPatterns(policy.dataSlots)
   const hits = findings.map((f) => suppressionFor(f, policy, patterns, dataSlotPatterns))
   // Second pass: what an `accepted[].contents` rule excused also excuses the
   // textless findings inside it — decided from the FIRST pass's hits, so the
   // contents can never excuse each other.
-  const containers = contentContainers(policy, findings, hits)
+  const containers = [
+    ...contentContainers(policy, findings, hits),
+    ...contentsOfContainers(policy, context.implElements ?? [], context.frame),
+  ]
   const kept: Finding[] = []
   const suppressed: SuppressedFinding[] = []
   findings.forEach((f, i) => {
@@ -319,6 +373,7 @@ export function mergePolicies(...policies: readonly (IgnorePolicy | undefined)[]
     if (p.roles) out.roles = [...(out.roles ?? []), ...p.roles]
     if (p.regions) out.regions = [...(out.regions ?? []), ...p.regions]
     if (p.accepted) out.accepted = [...(out.accepted ?? []), ...p.accepted]
+    if (p.contentsOf) out.contentsOf = [...(out.contentsOf ?? []), ...p.contentsOf]
     if (p.scope !== undefined) out.scope = p.scope
     if (p.dataSlots !== undefined) out.dataSlots = p.dataSlots
   }

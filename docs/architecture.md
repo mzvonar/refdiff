@@ -956,8 +956,9 @@ fall through to the area rule, as do unlabelled artboards.
   16×16 design box, reporting size, colour and spacing about two unrelated things. The evidence for
   a textless veto would be paint/size counterparts available elsewhere, mirroring the text rule.
   Not built.
-- **The artboard acceptance is fragile — noted 2026-09-03, not fixed.** Its `contents: true` hangs
-  off the app's artboard IMAGE being reported as an `extra-element`, which only happens when that
+- **`contentsOf` — an excuse whose container is an ELEMENT (decided and built 2026-09-03).** The
+  artboard acceptance was fragile, and this is what replaced its `contents: true`. Its `contents`
+  hung off the app's artboard IMAGE being reported as an `extra-element`, which only happens when that
   image fails to pair. On a panned canvas (the ghost pairs) the images do not pair, the rule fires,
   and everything textless inside them is excused; where they DO pair (`compare-desktop`) nothing
   fires and the same elements are reported. **Measured 2026-09-03: ONE pair quiet, five not** — the
@@ -966,8 +967,31 @@ fall through to the area rule, as do unlabelled artboards.
   artboard containers within γ 100, so no `extra-element` exists to hang `contents` off. Only
   `compare-mobile-toolbar-ghost`, whose canvas is panned and zoomed (its image reads 780×849 at
   (−301, −416)), leaves the image unmatched — and the 12 findings it then excuses include the ghost
-  FOOTPRINT, so the one pair that draws the ghost is the one that hides it. An accident of pairing
-  rather than a decision, and it cuts both ways. It now also governs the ghost FOOTPRINT: since svg
+  FOOTPRINT, so the one pair that draws the ghost was the one that hid it. An accident of pairing
+  rather than a decision, and it cut both ways.
+  **The rule now names the ELEMENT** (`ignore.contentsOf: [{ role, types, reason }]`,
+  `policy.ts::contentsOfContainers`): every textless finding of those types whose boxes lie inside an
+  impl element of that role is suppressed as `"<reason> (contents of <role>)"`, with `suppressedBy:
+  "contents"`. It fires every run rather than when the geometry allows, and its region is the
+  element's live box, so it follows a canvas the reader pans — which a literal `regions` box cannot,
+  since the artboard's world box is view-dependent (measured: 450×489 at (69,208) on the flat
+  desktop pair against 995×1083 at (−338,−440) on the ghost one).
+  **Two limits, both learned from what a first cut excused rather than reasoned in advance.** TEXT is
+  never excused, as under `contents: true`: scoping by type is not enough, because the comp draws its
+  own BADGES over the artboard and a badge is a numeral, so the first cut quietly excused three
+  comment badges that §4's recorded comp-side ask is about. And a container the FRAME does not
+  contain is skipped: on a panned canvas the artboard box "contains" the rail too, and the first cut
+  excused rail rows, a REGRESSION tag and a prop line through it. The price of never hiding a label is
+  the artboard's own step numerals staying reported (6 on `compare-desktop`), and nothing but their
+  SIZE separates them from a badge — not an argument a policy should rest on.
+  Measured, all eight pairs, twice: `compare-desktop` 79 → **69**, `compare-mobile` 20 → 15,
+  `compare-mobile-minimal` 30 → 25, `compare-mobile-toolbar` 15 → 10, both Library pairs
+  byte-identical; the two ghost pairs go the other way — `compare-mobile-toolbar-ghost` 78 → **89**,
+  because the accident that had been excusing 12 findings there is gone and five of those were
+  app-side — and `compare-desktop-ghost` stays 109, having never fired the old rule. Set 349 → **335**,
+  +0/−0 on the confirmation run. **`readIgnore` whitelists keys, so the manifest parser had to learn
+  the field**: core, policy and manifest were all correct while five pairs of six did not move, which
+  is the shape every new ignore field must be tested against (`manifest.test.ts`). It now also governs the ghost FOOTPRINT: since svg
   extraction the footprint is a real `shape` on the mobile toolbar-ghost pair and travels suppressed
   inside that region (238.59×64.24 = o1's 200×48 padded by 4 at the pair's 1.147 canvas zoom), so
   scoping this rule decides whether the ghost is measured or excused.

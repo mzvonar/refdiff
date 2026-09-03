@@ -1,4 +1,4 @@
-import type { Finding } from "./types.js"
+import type { Box, ElementNode, Finding } from "./types.js"
 
 import { describe, expect, it } from "vitest"
 
@@ -391,6 +391,78 @@ describe("accepted deviations", () => {
       const { kept, suppressed } = applyPolicy([plate, topBar, shifted, straddling], { accepted: [rule] })
       expect(suppressed.map((s) => s.rule)).toEqual(["D6 mobile", "D6 mobile (inside)", "D6 mobile (inside)"])
       expect(kept.map((f) => f.message)).toEqual(["taller"])
+    })
+  })
+
+  // The comp imports the artboard as live DOM where the app draws the run's screenshot, so nothing
+  // inside that screenshot can ever have a counterpart element: inside it, a `missing-element` IS
+  // the comp's artboard. `accepted[].contents` could not express that — its region comes from the
+  // finding its rule hit, so it fired only on the pair whose panned canvas left the image unpaired.
+  describe("contentsOf — the container is an ELEMENT, so it does not depend on the element being reported", () => {
+    const el = (id: string, role: string, box: Box): ElementNode => ({ id, role, box, style: {} })
+    const artboard = el("img-1", "image", { x: 69, y: 208, w: 449, h: 489 })
+    const frame = { w: 1360, h: 820 }
+    const find = (
+      id: string,
+      type: Finding["type"],
+      role: string,
+      box: Box,
+      text?: string,
+    ): Finding => ({
+      id,
+      mark: 0,
+      type,
+      severity: "critical",
+      role,
+      message: id,
+      designBox: box,
+      ...(text === undefined ? {} : { text }),
+    })
+    const rule = {
+      role: "image",
+      types: ["missing-element"] as Finding["type"][],
+      reason: "the app draws the run's impl.png where the comp imports the artboard as live DOM",
+    }
+    const card = find("card", "missing-element", "surface", { x: 93, y: 343, w: 127, h: 93 })
+    const numeral = find("numeral", "missing-element", "text", { x: 98, y: 266, w: 5, h: 10 }, "1")
+    const badge = find("badge", "missing-element", "text", { x: 90, y: 212, w: 7, h: 14 }, "1")
+    const mark = find("mark", "extra-element", "shape", { x: 100, y: 350, w: 200, h: 48 })
+    const outside = find("outside", "missing-element", "surface", { x: 1052, y: 176, w: 85, h: 23 })
+
+    it("excuses the named types inside the element, and NEVER text — the comp draws its badges there", () => {
+      const { kept, suppressed } = applyPolicy([card, numeral, badge, mark, outside], { contentsOf: [rule] }, { implElements: [artboard], frame })
+      expect(suppressed.map((s) => [s.message, s.rule, s.suppressedBy])).toEqual([
+        ["card", `${rule.reason} (contents of image)`, "contents"],
+      ])
+      // The artboard's own numeral stays reported — the price of never hiding a badge. `numeral` and
+      // `badge` are both `missing-element` text inside the region and nothing but their SIZE tells
+      // them apart, which is not an argument a policy should rest on.
+      // `mark` is the app's own outline over the artboard: a type the rule does not name.
+      expect(kept.map((f) => f.message)).toEqual(["numeral", "badge", "mark", "outside"])
+    })
+
+    it("fires with NO finding about the container at all — the case `accepted[].contents` cannot reach", () => {
+      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [artboard], frame }).suppressed).toHaveLength(1)
+      // With the element absent from the capture it excuses nothing, so a rule naming a role the
+      // page stopped drawing lapses by itself; a hidden element (0×0) is not a container either.
+      expect(applyPolicy([card], { contentsOf: [rule] }, { frame }).kept).toHaveLength(1)
+      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [el("h", "image", { x: 69, y: 208, w: 0, h: 0 })], frame }).kept).toHaveLength(1)
+    })
+
+    it("SKIPS a container the frame does not contain — a panned, zoomed canvas contains everything", () => {
+      // Measured on the ghost pairs: 780×849 at (−301, −416) in a 390×844 frame, and 995×1083 at
+      // (−338, −440) in 1360×820. Such a box "contains" the comp's rail too, and the first cut
+      // excused rail rows and a REGRESSION tag through it.
+      const panned = el("img-1", "image", { x: -338, y: -440, w: 995, h: 1083 })
+      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned], frame }).kept).toHaveLength(1)
+      // No frame given → no guard, and the rule still works for a caller that has no frame.
+      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned] }).suppressed).toHaveLength(1)
+    })
+
+    it("needs EVERY box inside, and matches the role exactly", () => {
+      const straddling: Finding = { ...card, id: "straddle", message: "straddle", implBox: { x: 1052, y: 176, w: 85, h: 23 } }
+      expect(applyPolicy([straddling], { contentsOf: [rule] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
+      expect(applyPolicy([card], { contentsOf: [{ ...rule, role: "icon" }] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
     })
   })
 

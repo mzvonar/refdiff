@@ -83,6 +83,39 @@ describe("parseManifest", () => {
 });
 
 describe("readAccepted", () => {
+  // A policy field the PARSER does not read is dropped in silence: the run then reports everything
+  // the rule was meant to excuse and nothing says why. That is how `contentsOf` first shipped —
+  // core, policy and manifest all correct, and five of six pairs unchanged because readIgnore
+  // whitelists keys. Every new ignore field needs a row here.
+  it("reads contentsOf rules, and drops one without a type scope or a reason", async () => {
+    const { parseManifest, readContentsOf } = await import("./manifest.js");
+    const parsed = parseManifest([
+      {
+        ...entry,
+        ignore: {
+          contentsOf: [
+            { role: "image", types: ["missing-element"], reason: "the app draws a screenshot" },
+            { role: "image", reason: "no types: would forgive the whole interior" },
+            { role: "image", types: [], reason: "empty types is the same thing" },
+            { types: ["missing-element"], reason: "no role" },
+            { role: "image", types: ["missing-element"] },
+          ],
+        },
+      },
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs[0]?.ignore?.contentsOf).toEqual([
+      { role: "image", types: ["missing-element"], reason: "the app draws a screenshot" },
+    ]);
+    expect(readContentsOf({ role: "icon", types: ["size", "color"], reason: "r" })).toEqual({
+      role: "icon",
+      types: ["size", "color"],
+      reason: "r",
+    });
+    expect(readContentsOf({ role: "image", types: "missing-element", reason: "r" })).toBeUndefined();
+  });
+
   it("reads accepted deviations from a manifest ignore block and drops malformed ones", async () => {
     const { parseManifest, readAccepted } = await import("./manifest.js");
     const parsed = parseManifest([

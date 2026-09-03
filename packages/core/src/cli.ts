@@ -520,9 +520,12 @@ async function runPair(
   // otherwise outlive the findings that justified it.
   if (diffMaskPath === undefined) await rm(join(o.outDir, "diff-mask.png"), { force: true })
 
+  // The impl elements come along because a `contentsOf` rule's container is an ELEMENT, not a
+  // finding: it must fire whether or not that element is itself reported.
   const { kept, suppressed } = applyPolicy(
     finalize([...structural, ...pixel, ...(identity ? [identity] : [])]),
     policy,
+    { implElements: aligned.impl.elements, frame: { w: i.width, h: i.height } },
   )
   const findings = o.aggregate ? aggregate(kept) : kept
   const report = await packageForModel(aligned, findings, {

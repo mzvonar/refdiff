@@ -232,6 +232,51 @@ export interface IgnorePolicy {
    * token when one comp is the outlier). The `reason` is the audit trail.
    */
   accepted?: AcceptedDeviation[]
+  /**
+   * "Inside THIS element, findings of THESE types are excused." The container is an
+   * implementation ELEMENT, not a finding — see `ContentsOfRule` for why that matters.
+   */
+  contentsOf?: ContentsOfRule[]
+}
+
+/**
+ * Everything of the named TYPES inside an implementation element of the named ROLE is excused.
+ *
+ * The distinction from `accepted[].contents` is where the container comes from. `contents` takes
+ * its region from the finding its own rule HIT, so it fires only when the container element is
+ * itself reported — for an image that means only when the image fails to pair, which is an accident
+ * of geometry rather than a decision (measured: on one dogfood corpus the design side had no image
+ * element at all, the app had two, and they still paired on five pairs of six because a comp
+ * container sat within the γ cutoff; the sixth pair had a panned canvas, so the rule fired there and
+ * nowhere else). A `contentsOf` rule names the element, so it fires on every run, and the region is
+ * the element's own box, so it follows the element wherever the view puts it — a literal `regions`
+ * box cannot, because a canvas the reader can pan and zoom moves what it contains.
+ *
+ * `types` is REQUIRED and it is what makes the rule honest: it carries the PROOF that everything it
+ * excuses belongs to the container. "Inside the screenshot the app draws where the comp draws live
+ * DOM, a `missing-element` can only be that DOM" is provable; "inside the screenshot, anything is
+ * fine" forgives the app's own marks drawn over it and any real drift with them.
+ *
+ * TWO limits, both learned by measuring what a first cut excused:
+ *  - TEXT is never excused, exactly as under `accepted[].contents`. Scoping by type is not enough
+ *    to make it safe: the comp draws its own BADGES over the artboard, and a badge is text with a
+ *    numeral in it, so the first cut quietly excused three comment badges that a recorded comp-side
+ *    ask is about. A rule that can hide a label is not worth the six artboard numerals it would
+ *    also hide.
+ *  - A container that is not itself INSIDE THE FRAME is skipped. A canvas the reader can pan and
+ *    zoom puts its image anywhere: measured, the two ghost pairs' artboards read 780×849 at
+ *    (−301, −416) and 995×1083 at (−338, −440) against 390×844 and 1360×820 frames, and a box that
+ *    big "contains" the comp's rail as well as its artboard — the first cut excused rail rows,
+ *    a REGRESSION tag and a prop line through it. A container bigger than the frame is not
+ *    evidence about what is inside it.
+ */
+export interface ContentsOfRule {
+  /** The implementation element's role — "image" for the run's own design.png / impl.png. */
+  role: string
+  /** Which finding types the container explains. Required; see above. */
+  types: FindingType[]
+  /** The audit trail, as for `accepted`: say why the container explains those types. */
+  reason: string
 }
 
 export interface AcceptedDeviation {
@@ -299,7 +344,13 @@ export interface RegionBreakdown {
   elsewhere: number
 }
 
-export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot" | "accepted"
+export type SuppressionReason =
+  | "text-pattern"
+  | "role"
+  | "region"
+  | "data-slot"
+  | "accepted"
+  | "contents"
 
 /** A finding a policy rule removed from the kept list — still reported. */
 export interface SuppressedFinding extends Finding {
