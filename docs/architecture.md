@@ -870,8 +870,29 @@ fall through to the area rule, as do unlabelled artboards.
   `page.evaluate` body has no unit-test home here: the footprint is now captured with its dashedness
   and hatch, and re-introducing the class collision makes it VANISH from the impl tree (2 → 1 rects,
   216 → 215 leaves). Cost, measured: set 396 → 422, four pairs up, the ghost pairs unchanged; 14 of
-  the 26 are the app's comment layer over the canvas (data — policy rule open) and 12 are knock-on
-  re-pairings of textless elements, which is the veto's blind spot below.
+  the 26 are the app's comment layer over the canvas and 12 are knock-on
+  re-pairings of textless elements, which is the veto's blind spot below. Those 14 were recorded
+  here as data awaiting a policy rule; they were DRIFT, and the entry below is what they were.
+- **A mark is a BADGE at rest — decided 2026-09-03 (Mato: "the comp is right").** The comps draw a
+  finding or a comment as a badge and nothing else; the region outline belongs to the SELECTED mark
+  (`RefDiff Comparison Tool.dc.html:587` findings, `:595` comments — the anchor padded by 4, radius
+  6), and outlining every mark at once is the `highlight` mode, pink and off by default (`:553`,
+  `:597`, `:380`). The app's finding layer already followed that rule; its COMMENT layer did not, and
+  once svg content became extractable the harness reported the difference as 22 `extra-element`
+  `shape` findings across the eight pairs — the app painting a status-coloured rect (and its lighter
+  mirror on the counterpart pane) over every comment of every capture. Not data: the comment ANCHORS
+  already matched the comps' to half a pixel, and the comps draw no such rect in any state.
+  `renderAnnMarks` now draws the outline only while the comment is selected, with the finding
+  layer's own geometry. Measured: set 383 → 349, six compare pairs down (89 → 79, 19 → 13, 36 → 31,
+  17 → 12, 115 → 107, toolbar-ghost unchanged at 89 where the rects travelled suppressed), the two
+  Library pairs byte-identical, and 22 reported `shape` findings → 0. The churn was one run: five
+  `missing-element` "regressions" are design-side textless boxes the old force-pairing with those
+  rects had HIDDEN (a 16×16 navy artboard box against a 99×24 comment rect), all with pre-change
+  `resolvedAt` stamps, and the next run settled to +0/−0 on all six. What the ruling does NOT reach,
+  because the app's model cannot express it: a comment carries one `side` and the app MIRRORS it, so
+  a one-sided comment gets a full badge on the counterpart pane where the comp draws none — 5
+  findings on `compare-desktop` (`extra-element` + `position` −85.7,−54.5 + colour + border +
+  radius on badge "4"). That is the mirror-vs-ghost question, still open, now with a price.
 - **Findings carry WHERE they are — decided 2026-09-03.** `report.byRegion` groups every finding
   under the smallest captured container that holds its box (`package/regions.ts`), printed as a
   `by region:` block. Smallest, not first: containers nest and the outermost holds everything.
@@ -891,8 +912,18 @@ fall through to the area rule, as do unlabelled artboards.
   image fails to pair. On a panned canvas (the ghost pairs) the images do not pair, the rule fires,
   and everything textless inside them is excused; where they DO pair (`compare-desktop`) nothing
   fires and the same elements are reported. Two pairs quiet, four not, for a reason that is an
-  accident of pairing rather than a decision. Whoever scopes that acceptance should scope it as a
-  `regions` entry over the canvas instead.
+  accident of pairing rather than a decision. It now also governs the ghost FOOTPRINT: since svg
+  extraction the footprint is a real `shape` on the mobile toolbar-ghost pair and travels suppressed
+  inside that region (238.59×64.24 = o1's 200×48 padded by 4 at the pair's 1.147 canvas zoom), so
+  scoping this rule decides whether the ghost is measured or excused.
+  **Do NOT scope it as a `regions` entry over the canvas** — an earlier revision of this entry
+  recommended exactly that, and the measurement refutes it: `regions` suppresses every finding whose
+  box sits inside, type- and text-blind (`policy.ts:123`), which on `compare-desktop` is 30 of 79
+  reported findings, 24 of them not shapes (14 artboard-as-live-DOM criticals, plus badge geometry,
+  colour and spacing), and 14/13 · 12/12 · 23/31 on mobile · toolbar · minimal. It would silence the
+  badge findings that measured the 35px row and the paneInsets decisions. The narrow shapes are an
+  `accepted` rule naming the artboard layer, or a role/type scope on `regions` of the kind
+  `textPatterns` already carries (`{ pattern, role?, types? }`).
 - **A candidate pairing can be PROVED wrong — decided 2026-09-03.** Geometry
   alone pairs elements with unrelated text when a list is in a different order
   on the two sides, and then reports the full property battery about them

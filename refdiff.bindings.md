@@ -47,7 +47,7 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - The comps hydrate the `dc-runtime` from `support.js` and React from unpkg —
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
-- **THE MEASURED BASELINE (2026-09-02, session 18 — the ghost).** Eight pairs, one build, the
+- **THE MEASURED BASELINE (2026-09-03, session 20 — a mark is a badge at rest).** Eight pairs, one build, the
   fixture clock pinned per batch (`make-demo-root.ts --now`, measure, restore), every pair
   re-run to `+0/−0` before recording. `refdiff summary out/refdiff` reproduces the table:
 
@@ -55,14 +55,14 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | --- | --- | --- | --- | --- | --- |
   | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
-  | refdiff-compare-desktop | 89 (24/54/11) | 123 | 56 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 19 (4/8/7) | 33 | 24 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 36 (4/22/10) | 50 | 34 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 17 (4/4/9) | 19 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 89 (22/53/14) | 168 | 52 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 115 (34/61/20) | 185 | 60 | 0.56 | 1 / 0,0 |
+  | refdiff-compare-desktop | 79 (24/48/7) | 113 | 56 | 0.72 | 1 / 0,0 |
+  | refdiff-compare-mobile | 13 (4/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
+  | refdiff-compare-mobile-minimal | 31 (5/18/8) | 45 | 35 | 0.87 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar | 12 (4/2/6) | 14 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
+  | refdiff-compare-mobile-toolbar-ghost | 89 (22/53/14) | 168 | 48 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 107 (34/55/18) | 177 | 60 | 0.56 | 1 / 0,0 |
 
-  **Set total 383 (2026-09-03, after the zoom decision), from 422 · 396 · 403 · 476.** The zoom-on-select
+  **Set total 349 (2026-09-03, after the resting-mark decision), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
   decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
   change made an `<svg>` walkable when it is large and sparse, so the app's OWN canvas overlay —
   selection outlines, comment shapes, the ghost footprint — is extracted for the first time
@@ -70,12 +70,23 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `compare-mobile-minimal` 31 → 36, `compare-mobile-toolbar` 12 → 17. The two ghost pairs did
   NOT move (150, 93) — their new shapes land inside the accepted artboard region and travel
   suppressed (71 → 81 and 48 → 53).
-  **Of the 26 new findings, 14 are `extra-element` on `shape`s and they are DATA:** the app's
-  comment layer, `--open` purple `rgb(143, 126, 231)` and `--done` green `rgb(70, 167, 88)`,
-  drawn where the comps draw their own demo comments. Their home is a policy rule on these
-  pairs — a `roles: ["shape"]` switch (the whole channel), a `regions` entry over the canvas, or
-  a fixture whose comments sit where the comps' do. **Not decided here, on purpose**, and it is
-  the same open decision the artboard-surface bullet above carries.
+  **Of the 26 new findings, 14 were `extra-element` on `shape`s — recorded here as DATA, and they
+  were DRIFT (decided and fixed 2026-09-03; Mato: "the comp is right").** They are the app's comment
+  layer, `--open` purple `rgb(143, 126, 231)`, `--implemented` amber `rgb(245, 166, 35)` and `--done`
+  green `rgb(70, 167, 88)`, and the claim that they sat "where the comps draw their own demo
+  comments" was the error: the comps draw a mark as a BADGE and no outline at all unless it is
+  SELECTED (`RefDiff Comparison Tool.dc.html:587` / `:595`) or `highlight` is on (`:553`, `:597`,
+  default false at `:380`). The comment ANCHORS were already at parity — design badge "2" x=90.62
+  against impl x=90.62, Δy 0.5 — so "move the fixture's comments" was a no-op, and a `regions` entry
+  over the canvas would have suppressed 30 of 79 reported findings on `compare-desktop` alone (24 of
+  them not shapes). The fix was one branch in `renderAnnMarks`: the outline only while selected, the
+  finding layer's own `pad(box, 4)` + radius 6. Measured: 22 reported `shape` findings → **0**, set
+  383 → 349, one run of churn (five `missing-element` design boxes the force-pairing had hidden),
+  +0/−0 on the next. Read the architecture entry "A mark is a BADGE at rest" for the full record.
+  **What is left of it:** the app mirrors a comment onto the counterpart pane and the comps draw a
+  one-sided one on its own pane only, so badge "4" costs 5 findings on `compare-desktop`
+  (`extra-element`, `position` −85.7,−54.5, colour, border, radius) — the mirror-vs-ghost question,
+  which needs a model that can say "exists on this side only", not a parity fix.
   The other 12 are knock-on: the shapes joined the matcher's candidate pool and re-paired some
   TEXTLESS elements, one of them nonsensically (a 99×24 orange shape against a 16×16 design box
   → size + colour + spacing findings on `compare-desktop`). The 2026-09-03 unrelated-text veto

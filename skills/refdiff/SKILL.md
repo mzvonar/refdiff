@@ -571,10 +571,28 @@ items is now a typed finding — read it there:
   `overflow:visible` holding shapes hundreds of px wide.
   Consequences to expect on a first run after this: an app's own overlay
   (selection outlines, comment shapes, chart marks) becomes visible and reports
-  as `extra-element` wherever the comp draws no counterpart — usually a DATA
-  difference, so classify it per §2 and declare it once. `roles: ["shape"]`
-  switches the whole channel off for a pair. A **Figma** design's vectors keep
-  their older `box` / `icon` roles, so that switch silences the DOM side only.
+  as `extra-element` wherever the comp draws no counterpart. **Do not read that
+  as data.** The first case measured this way (2026-09-03) was DRIFT: the app
+  outlined every comment's region at rest, while the comp draws a mark as a
+  BADGE and reserves the outline for the SELECTED one — 22 findings from one
+  always-on branch, on anchors that already matched the comp's to half a pixel.
+  So the question a shape finding asks is not "whose data is this" but **"does
+  the comp draw this AT ALL, in this state?"**: find the element in the comp's
+  source and read WHEN it draws it — its selection branch, and any mode toggle
+  whose default is off. It is data only where the comp draws the same overlay in
+  the same state.
+  Two limits to know before writing policy for a shape. The 24-shape cap makes
+  ONE visual layer report in HALVES: a 4-shape comment layer is walked while the
+  same app's finding layer (8 rects + 14 instance rects) stays atomic, so a rule
+  written today covers whichever half was under the cap and the other half
+  arrives on a run with fewer marks. And `fill-opacity` / `stroke-opacity` are
+  not folded into the reported paint (CSS `opacity` is), so a 12% tint reports
+  as its opaque colour and a lighter mirrored copy reports identically to the
+  mark it mirrors. `roles: ["shape"]` switches the whole channel off for a pair,
+  and it cannot reach the knock-on re-pairings a new shape causes: a matched
+  pair's finding carries the DESIGN side's role. A **Figma** design's vectors
+  keep their older `box` / `icon` roles, so that switch silences the DOM side
+  only.
 - **Borders / radii** → `border` (width, color ΔE, and `borderStyle` — dashed
   against solid, which is a design decision no other channel can see: a whole
   language of dashed footprints, pills and chips once produced zero findings

@@ -2751,14 +2751,22 @@ function renderAnnMarks() {
       const inside = inRegion(shapeBox(a.shape));
       if (!inside && ann.selected !== a.id && !adjusting) return;
       const cls = 'ann ' + a.status + (a.stale ? ' stale' : '') + (ann.selected === a.id ? ' sel' : '') + (a.side === side ? '' : ' mirror') + (inside ? '' : ' outside');
-      if (a.shape.kind === 'rect') {
+      // AT REST A COMMENT IS ITS BADGE. The outline is drawn only while the comment is selected —
+      // the rule the finding layer above already follows, and the comps' own: Comparison Tool line
+      // 595 pads the anchor by 4 and rounds it by 6, and draws nothing for an unselected item. A
+      // point's anchor is 0x0, so the same pad makes it the comps' 8x8 box.
+      // Measured (2026-09-03): drawing it at rest painted a status-coloured rect over every comment
+      // of every capture, on its own pane and mirrored onto the other, and the harness reported 22
+      // extra-element shape findings across the eight pairs once svg content became extractable.
+      // The comps draw no such rect anywhere, and the ruling (Mato) was that the comp is right.
+      // Selection stays possible because the badge carries data-ann too: the canvas click handler
+      // matches any [data-ann], and the comps likewise put the click on the badge alone.
+      if (ann.selected === a.id) {
+        const o = pad(shapeBox(a.shape), 4);
         const r = document.createElementNS(SVG, 'rect');
-        r.setAttribute('x', a.shape.x); r.setAttribute('y', a.shape.y); r.setAttribute('width', Math.max(a.shape.w, 0.5)); r.setAttribute('height', Math.max(a.shape.h, 0.5));
+        r.setAttribute('x', o.x); r.setAttribute('y', o.y); r.setAttribute('width', o.w); r.setAttribute('height', o.h);
+        r.setAttribute('rx', 6);
         r.setAttribute('class', cls); r.dataset.ann = a.id; layer.append(r);
-      } else {
-        const c = document.createElementNS(SVG, 'circle');
-        c.setAttribute('cx', a.shape.x); c.setAttribute('cy', a.shape.y); c.setAttribute('r', 7 / state.view.z);
-        c.setAttribute('class', cls); c.dataset.ann = a.id; layer.append(c);
       }
       blayer.append(annLabel(a.shape.x, a.shape.y, i + 1, a, !inside));
     });
