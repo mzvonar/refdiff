@@ -960,8 +960,14 @@ fall through to the area rule, as do unlabelled artboards.
   off the app's artboard IMAGE being reported as an `extra-element`, which only happens when that
   image fails to pair. On a panned canvas (the ghost pairs) the images do not pair, the rule fires,
   and everything textless inside them is excused; where they DO pair (`compare-desktop`) nothing
-  fires and the same elements are reported. Two pairs quiet, four not, for a reason that is an
-  accident of pairing rather than a decision. It now also governs the ghost FOOTPRINT: since svg
+  fires and the same elements are reported. **Measured 2026-09-03: ONE pair quiet, five not** — the
+  design side has ZERO image elements on every pair (the comp draws the artboard as DOM), the app has
+  one or two, and on five of six pairs those images find a geometric partner among the comp's
+  artboard containers within γ 100, so no `extra-element` exists to hang `contents` off. Only
+  `compare-mobile-toolbar-ghost`, whose canvas is panned and zoomed (its image reads 780×849 at
+  (−301, −416)), leaves the image unmatched — and the 12 findings it then excuses include the ghost
+  FOOTPRINT, so the one pair that draws the ghost is the one that hides it. An accident of pairing
+  rather than a decision, and it cuts both ways. It now also governs the ghost FOOTPRINT: since svg
   extraction the footprint is a real `shape` on the mobile toolbar-ghost pair and travels suppressed
   inside that region (238.59×64.24 = o1's 200×48 padded by 4 at the pair's 1.147 canvas zoom), so
   scoping this rule decides whether the ghost is measured or excused.

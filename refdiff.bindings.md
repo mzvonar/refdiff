@@ -113,7 +113,9 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   app's artboard IMAGE being reported as an `extra-element`, which only happens when that image
   fails to pair. On the ghost pairs the canvas is panned, the images do not pair, the rule fires
   and everything textless inside them is excused; on `compare-desktop` the images DO pair, so
-  nothing fires and the same shapes are reported. That is why two pairs are quiet and four are
+  nothing fires and the same shapes are reported. **Measured 2026-09-03: it fires on ONE pair, not
+  two** — `compare-mobile-toolbar-ghost` (12 excused, the ghost FOOTPRINT among them);
+  `compare-desktop-ghost`'s images pair like the rest. That is why one pair is quiet and five are
   not, and it is worth knowing before reading either number as a verdict.
 
   **The two ghost rows moved once more on 2026-09-03 (95 → 93, 155 → 150, set 403 → 396),
