@@ -311,3 +311,86 @@ describe("the identity note across runs", () => {
     expect(diffReports(run3, run4, {}, ledger).regressions).toEqual(["f1"])
   })
 })
+
+describe("a pixel-region is identified by its KIND, not by its measured ratio", () => {
+  // Measured 2026-09-02: one canvas box went 15.9% → 16.2% between two runs and
+  // the delta read `+1 introduced / −1 resolved` naming the SAME id in both
+  // lists, twice in one session. A diff ratio moves on every capture; keying on
+  // it makes a region churn against itself and hides whether a fix landed.
+  const region = (id: string, ratio: number, changeKind = "shape"): Finding =>
+    finding(id, {
+      type: "pixel-region",
+      role: "surface",
+      designBox: { x: 543, y: 86, w: 496, h: 722 },
+      implBox: { x: 543, y: 86, w: 496, h: 722 },
+      expected: { diffRatio: 0 },
+      actual: { diffRatio: ratio, diffPixels: Math.round(ratio * 1e6), clusters: 271, changeKind },
+      message: `${(ratio * 100).toFixed(1)}% of pixels differ`,
+    })
+
+  it("does not churn when only the number moves", () => {
+    const d = diffReports(report([region("f1", 0.159)]), { findings: [region("f1", 0.162)] })
+    expect(d.introduced).toEqual([])
+    expect(d.resolved).toEqual([])
+  })
+
+  it("still reports a region that changed KIND, or moved out of tolerance", () => {
+    const kind = diffReports(report([region("f1", 0.159)]), { findings: [region("f1", 0.159, "added")] })
+    expect(kind.introduced).toEqual(["f1"])
+    expect(kind.resolved).toEqual(["f1"])
+    const moved = region("f1", 0.159)
+    const elsewhere = { ...moved, implBox: { x: 20, y: 900, w: 496, h: 722 } }
+    const away = diffReports(report([moved]), { findings: [elsewhere] })
+    expect(away.introduced).toEqual(["f1"])
+  })
+})
+
+describe("a regression that is really a RE-PAIRING says so", () => {
+  // Measured 2026-09-02: an app-side layout change made the rail rows taller,
+  // so the design badge "6" lost the prop-line "element" it had been wrongly
+  // paired with. Five findings about "6" resolved, one `missing-element text:6`
+  // came back, and the run cried REGRESSION at a re-pairing.
+  const prop = (id: string, type: Finding["type"]): Finding =>
+    finding(id, { type, text: "6", designBox: { x: 1058, y: 787, w: 7, h: 14 }, implBox: { x: 1080, y: 813, w: 49, h: 14 } })
+  // A missing-element has no implBox at all: exactOptionalPropertyTypes means
+  // absent, not `undefined`.
+  const gone: Finding = {
+    ...finding("f17", {
+      type: "missing-element",
+      text: "6",
+      designBox: { x: 1058, y: 787, w: 7, h: 14 },
+      message: 'design "6" (7×14) has no counterpart in the implementation',
+    }),
+  }
+
+  const prev = report([prop("f9", "position"), prop("f10", "color"), prop("f11", "typography")])
+  const ledger = {
+    pair: "p",
+    entries: [
+      {
+        key: "missing-element||text:6",
+        text: "6",
+        box: { x: 1058, y: 787, w: 7, h: 14 },
+        message: "design \"6\" has no counterpart",
+        resolvedAt: "2026-09-01T00:00:00.000Z",
+      },
+    ],
+  }
+
+  it("keeps the regression AND names the findings that resolved about the same element", () => {
+    const d = diffReports(prev, { findings: [gone] }, {}, ledger)
+    expect(d.regressions).toEqual(["f17"])
+    expect(d.repaired).toEqual([
+      { id: "f17", text: "6", resolved: ["f9", "f10", "f11"], types: ["position", "color", "typography"] },
+    ])
+  })
+
+  it("says nothing when the element genuinely just came back", () => {
+    // Nothing about "6" resolved in this delta, so there is no re-pairing to
+    // report — and the regression is exactly as loud as before.
+    const other = report([finding("f9", { type: "position", text: "elsewhere" })])
+    const d = diffReports(other, { findings: [gone, finding("f9", { type: "position", text: "elsewhere" })] }, {}, ledger)
+    expect(d.regressions).toEqual(["f17"])
+    expect(d.repaired).toBeUndefined()
+  })
+})

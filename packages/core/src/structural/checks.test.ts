@@ -135,6 +135,43 @@ describe("runTypedChecks", () => {
       expect(findings[0]!.actual).toEqual({ borderWidth: 1, borderColor: "rgb(0, 0, 0)" });
     });
 
+    it("reports dashed where the design is solid, and only when BOTH sides know", () => {
+      // A dashed border is a design decision no other channel can see: the
+      // whole ghost language of dashed footprints, pills and chips produced
+      // zero findings about dashedness before this (measured, 2026-09-02).
+      const both = runTypedChecks(
+        matched(
+          el("d", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)", borderStyle: "dashed" } }),
+          el("i", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)", borderStyle: "solid" } }),
+        ),
+      );
+      expect(both.map((f) => f.type)).toEqual(["border"]);
+      expect(both[0]!.expected).toEqual({ borderWidth: 1, borderColor: "rgb(0, 0, 0)", borderStyle: "dashed" });
+      expect(both[0]!.actual).toEqual({ borderWidth: 1, borderColor: "rgb(0, 0, 0)", borderStyle: "solid" });
+      expect(both[0]!.message).toContain("solid where the design is dashed");
+
+      // An adapter that cannot read a stroke's dashes leaves it undefined, and
+      // treating that as "solid" would report every dashed comp element as
+      // impl-only dashedness — the one-sided default this guard exists against.
+      const oneSided = runTypedChecks(
+        matched(
+          el("d", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)" } }),
+          el("i", { style: { borderWidth: 1, borderColor: "rgb(0, 0, 0)", borderStyle: "dashed" } }),
+        ),
+      );
+      expect(oneSided).toEqual([]);
+
+      // And a borderless element says nothing with a style: "none" is not a
+      // finding, the missing border already is.
+      const borderless = runTypedChecks(
+        matched(
+          el("d", { style: { borderStyle: "none" } }),
+          el("i", { style: { borderStyle: "dashed" } }),
+        ),
+      );
+      expect(borderless).toEqual([]);
+    });
+
     it("treats a transparent border as no border", () => {
       const findings = runTypedChecks(
         matched(el("d", {}), el("i", { style: { borderWidth: 1, borderColor: "rgba(0, 0, 0, 0)" } })),

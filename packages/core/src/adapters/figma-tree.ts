@@ -67,6 +67,7 @@ interface Decoration {
   borderRadius?: number;
   borderWidth?: number;
   borderColor?: string;
+  borderStyle?: string;
 }
 
 function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean, opacity = 1): Decoration {
@@ -85,6 +86,9 @@ function decorationOf(n: FigmaNode, w: number, h: number, isText: boolean, opaci
     out.borderWidth = round(sw);
     const css = paintToCss(stroke, opacity);
     if (css) out.borderColor = css;
+    // The dashes are the whole difference between a dashed and a solid stroke,
+    // and CSS spells it as a keyword: map, so the two sides are comparable.
+    out.borderStyle = (n.strokeDashes?.length ?? 0) > 0 ? "dashed" : "solid";
   }
   return out;
 }

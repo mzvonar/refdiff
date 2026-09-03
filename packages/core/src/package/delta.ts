@@ -26,7 +26,7 @@
  * halt on it.
  */
 
-import type { Box, ComparisonReport, Finding } from "../types.js";
+import type { Box, ComparisonReport, Finding, RepairedNote } from "../types.js";
 
 export interface DeltaOptions {
   /** Max distance (px, per edge) between boxes that still count as the same place (textless findings). Default 5. */
@@ -47,6 +47,13 @@ export const identityKey = (f: Finding): string => {
   // One per run and its numbers move with every hairline change: the note is
   // the same finding until the fit IS the identity (then it is `resolved`).
   if (f.type === "alignment") return head;
+  // A pixel-region's `actual` is a MEASUREMENT of the same box — diffRatio,
+  // diffPixels, clusters — and it moves on every capture, so keying on it makes
+  // the region resolve and re-introduce itself under its own id whenever the
+  // number twitches (measured: one box went 15.9% → 16.2% and the delta read
+  // `+1 / −1`, twice in one session). The KIND of difference is the identity;
+  // the box (this finding is textless) is what tells two regions apart.
+  if (f.type === "pixel-region") return `${head}|${String(f.actual?.["changeKind"] ?? "")}`;
   if (f.text !== undefined) {
     const axis = f.type === "spacing" ? `|${String(f.expected?.["axis"] ?? "")}` : "";
     return COORDINATE_TYPES.has(f.type)
@@ -127,6 +134,7 @@ export function diffReports(
   const regressions = ledger
     ? findRegressions(ledger, next.findings, delta.introduced, prev.findings, options)
     : [];
+  const repaired = repairedNotes(prev.findings, next.findings, delta, regressions);
   return {
     previousRun: prev.createdAt,
     // Absent on a report written before runs were numbered: the reader falls back
@@ -134,7 +142,51 @@ export function diffReports(
     ...(typeof prev.run === "number" ? { previousRunNumber: prev.run } : {}),
     ...delta,
     ...(regressions.length > 0 ? { regressions } : {}),
+    ...(repaired.length > 0 ? { repaired } : {}),
   };
+}
+
+/**
+ * Pure: for each REGRESSION that is a presence finding, the property findings
+ * this same delta resolved about the SAME element text.
+ *
+ * That combination is the signature of a re-pairing rather than a fix undone:
+ * the element still exists, it lost its PARTNER, so every property finding
+ * about the old pair resolved and a missing/extra took their place. Measured:
+ * an app-side layout change made taller rows, a rail badge "6" lost the
+ * prop-line "element" it had been wrongly paired with, five findings about "6"
+ * resolved and one `missing-element text:6` came back as a REGRESSION.
+ *
+ * It is a DIAGNOSIS, deliberately not a reclassification. A genuine vanish has
+ * the same shape (the element goes, its property findings resolve with it), and
+ * quietly dropping such a regression would trade this run's cry-wolf for a
+ * missed one — the loud stop stays, with the evidence beside it.
+ */
+export function repairedNotes(
+  prev: readonly Finding[],
+  next: readonly Finding[],
+  delta: { resolved: readonly string[] },
+  regressions: readonly string[],
+): RepairedNote[] {
+  const resolved = new Set(delta.resolved);
+  const byId = new Map(next.map((f) => [f.id, f]));
+  const out: RepairedNote[] = [];
+  for (const id of regressions) {
+    const f = byId.get(id);
+    if (f === undefined || f.text === undefined) continue;
+    if (f.type !== "missing-element" && f.type !== "extra-element") continue;
+    const kin = prev.filter(
+      (p) => resolved.has(p.id) && p.text === f.text && p.type !== "missing-element" && p.type !== "extra-element",
+    );
+    if (kin.length === 0) continue;
+    out.push({
+      id,
+      text: f.text,
+      resolved: kin.map((p) => p.id),
+      types: [...new Set(kin.map((p) => p.type))],
+    });
+  }
+  return out;
 }
 
 /* ---------------------------------------------------------- ledger -- */

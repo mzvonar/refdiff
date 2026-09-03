@@ -59,8 +59,18 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | refdiff-compare-mobile | 13 (4/5/4) | 27 | 24 | 0.97 | 1 / 0,0 |
   | refdiff-compare-mobile-minimal | 31 (5/18/8) | 45 | 35 | 0.87 | 1 / 0,0 |
   | refdiff-compare-mobile-toolbar | 12 (4/2/6) | 14 | 24 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 95 (19/60/16) | 174 | 43 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 155 (49/84/22) | 218 | 71 | 0.54 | 1 / 0,0 |
+  | refdiff-compare-mobile-toolbar-ghost | 93 (22/57/14) | 172 | 48 | 0.49 | 1×0.994 / 0,4.2 |
+  | refdiff-compare-desktop-ghost | 150 (52/80/18) | 212 | 71 | 0.54 | 1 / 0,0 |
+
+  **The two ghost rows moved once more on 2026-09-03 (95 → 93, 155 → 150, set 403 → 396),
+  from a CORE change, not an app one:** the matcher now refuses a candidate pairing it can prove
+  wrong (`unrelatedPairing` — no shared tokens, ≥ 20 apart, and each text present on the other
+  side), so a rail badge paired with an unrelated prop line reports missing/extra instead of five
+  property findings about two different elements. Both pairs churned once on the run that
+  introduced it (`+12/−14` and `+6/−11`) and settled to `+0/−0` on the next, exactly as SKILL.md §4
+  says a pairing change does; the other six pairs did not move at all. Its log line names only the
+  refusals where both elements ended unmatched — the Library pairs refuse two candidates and their
+  outcome is byte-identical, so a raw count would have read "2 vetoed" beside `+0/−0`.
 
   Against the previous record (`6 / 45 / 4 / 11 / 19 / 10` right after the surface channel, then
   `10 / 104 / 8 / 13 / 31 / 12 / 119 / 176` with the ghost pairs and fixture parity): the GHOST

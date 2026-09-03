@@ -335,6 +335,13 @@ export interface FigmaNode {
   strokes?: FigmaPaint[];
   strokeWeight?: number;
   strokeAlign?: string;
+  /**
+   * Dash/gap lengths of a dashed stroke; absent or empty for a solid one. The
+   * REST name (the Plugin API calls the same thing `dashPattern`) — verified
+   * against the recorded `nodes-alert-set` / `nodes-button-fill-set` fixtures,
+   * which carry `"strokeDashes":[10.0,5.0]`.
+   */
+  strokeDashes?: number[];
   cornerRadius?: number;
   rectangleCornerRadii?: [number, number, number, number];
   characters?: string;

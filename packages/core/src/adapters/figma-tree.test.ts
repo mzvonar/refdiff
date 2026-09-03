@@ -109,6 +109,55 @@ describe("figmaTreeToElements", () => {
   });
 });
 
+describe("a stroke's dashes become the CSS keyword the DOM side reports", () => {
+  // `strokeDashes` is the REST name (the Plugin API calls it `dashPattern`), and
+  // it is not a guess: the recorded Alert and Button/Fill sets both carry
+  // `"strokeDashes":[10.0,5.0]` on the COMPONENT_SET frame Figma draws dashed.
+  const alertSet = JSON.parse(
+    readFileSync(join(fixtures, "nodes-alert-set.json"), "utf8"),
+  ) as FigmaNodesResponse;
+  const dashedInFixture = JSON.stringify(alertSet).includes('"strokeDashes":[10');
+
+  const framed = (extra: Partial<FigmaNode>): FigmaNode => ({
+    id: "1:1",
+    name: "plate",
+    type: "FRAME",
+    absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 40 },
+    strokes: [{ type: "SOLID", color: { r: 0, g: 0, b: 0, a: 1 } }],
+    strokeWeight: 1,
+    children: [
+      {
+        id: "1:2",
+        name: "label",
+        type: "TEXT",
+        characters: "x",
+        absoluteBoundingBox: { x: 10, y: 10, width: 20, height: 20 },
+        absoluteRenderBounds: { x: 10, y: 10, width: 20, height: 20 },
+      },
+    ],
+    ...extra,
+  });
+  const styleOf = (n: FigmaNode) =>
+    figmaTreeToElements(n, indexVariables(variables)).elements.find((e) => e.text === "x")?.style;
+
+  it("reads the field the API actually returns", () => {
+    expect(dashedInFixture).toBe(true);
+  });
+
+  it("maps dashes to dashed and their absence to solid", () => {
+    expect(styleOf(framed({ strokeDashes: [10, 5] }))?.borderStyle).toBe("dashed");
+    expect(styleOf(framed({ strokeDashes: [] }))?.borderStyle).toBe("solid");
+    expect(styleOf(framed({}))?.borderStyle).toBe("solid");
+  });
+
+  it("says nothing where there is no stroke to be dashed", () => {
+    const bare = framed({});
+    delete bare.strokes;
+    delete bare.strokeWeight;
+    expect(styleOf(bare)?.borderStyle).toBeUndefined();
+  });
+});
+
 describe("applyTextCase", () => {
   it("renders Figma textCase like CSS text-transform", () => {
     expect(applyTextCase("label", "UPPER")).toBe("LABEL");

@@ -239,6 +239,10 @@ export async function extractElementTree(
       if (bw !== undefined && bw > 0 && dcs.borderTopStyle !== "none" && hasAlpha(dcs.borderTopColor)) {
         style["borderWidth"] = bw;
         style["borderColor"] = withOpacity(dcs.borderTopColor, opacity);
+        // Dashed vs solid is a design decision, and only this side can be wrong
+        // about it: on an element with no visible border the value is "none" and
+        // says nothing, so it is set only where a border paints.
+        style["borderStyle"] = dcs.borderTopStyle;
       }
       if (opacity < 1) style["opacity"] = Math.round(opacity * 1000) / 1000;
       // Elevation is design: a floating pill and a flush bar differ by it and by

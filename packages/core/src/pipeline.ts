@@ -252,6 +252,13 @@ export interface ElementMatch {
   via: "text" | "geometry" | "slot";
 }
 
+/** A pass-2 candidate the unrelated-text veto refused, for the run log. */
+export interface VetoedPairing {
+  designText: string;
+  implText: string;
+  gamma: number;
+}
+
 /** Output of matchElements — unmatched boxes become missing/extra findings. */
 export interface MatchResult {
   matches: ElementMatch[];
@@ -259,6 +266,13 @@ export interface MatchResult {
   designOnly: ElementNode[];
   /** Impl elements with no design counterpart (→ extra-element). */
   implOnly: ElementNode[];
+  /**
+   * Candidate pairs the unrelated-text veto refused (see `unrelatedPairing`):
+   * both elements had a same-text counterpart elsewhere, so this pairing was
+   * provably wrong and both sides are reported missing/extra instead. Absent
+   * when none were — the run log names the count.
+   */
+  vetoed?: VetoedPairing[];
 }
 
 export function pairRefs(id: string, design: Capture, impl: Capture): Pair {

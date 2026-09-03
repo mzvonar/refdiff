@@ -293,10 +293,21 @@ function pairFindings(
       ? colorDelta(ds.borderColor, is.borderColor)
       : undefined;
   const colorDiffers = borderDe !== undefined && borderDe >= o.colorDeltaEMinor;
-  if (decorationComparable && (widthDiffers || colorDiffers)) {
+  // Dashed vs solid, but ONLY where both sides know: an adapter that cannot
+  // read a stroke's dashes leaves it undefined, and defaulting that to "solid"
+  // would report every dashed comp element as impl-only dashedness. Both
+  // borders must paint, too — "none" on a borderless element says nothing.
+  const styleDiffers =
+    dbw > 0 &&
+    ibw > 0 &&
+    ds.borderStyle !== undefined &&
+    is.borderStyle !== undefined &&
+    ds.borderStyle !== is.borderStyle;
+  if (decorationComparable && (widthDiffers || colorDiffers || styleDiffers)) {
     const presenceFlip = (dbw === 0) !== (ibw === 0);
     const notes: string[] = [];
     if (widthDiffers) notes.push(presenceFlip ? (ibw === 0 ? "no border, design has one" : "border the design does not have") : `width ${ibw}px vs ${dbw}px`);
+    if (styleDiffers) notes.push(`${is.borderStyle} where the design is ${ds.borderStyle}`);
     if (colorDiffers) notes.push(`color ${is.borderColor} vs ${ds.borderColor} (ΔE2000 ${round1(borderDe)})`);
     out.push({
       type: "border",
@@ -305,10 +316,12 @@ function pairFindings(
       expected: {
         borderWidth: dbw,
         ...(dbw > 0 && ds.borderColor !== undefined ? { borderColor: ds.borderColor } : {}),
+        ...(styleDiffers ? { borderStyle: ds.borderStyle as string } : {}),
       },
       actual: {
         borderWidth: ibw,
         ...(ibw > 0 && is.borderColor !== undefined ? { borderColor: is.borderColor } : {}),
+        ...(styleDiffers ? { borderStyle: is.borderStyle as string } : {}),
       },
       message: `${label} border differs: ${notes.join(", ")}`,
     });

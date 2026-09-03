@@ -824,7 +824,33 @@ fall through to the area rule, as do unlabelled artboards.
   (`ResolvedLedger.identity`) and, when the running version differs, print
   "ledger written under an older pairing — its N entries are not comparable"
   and drop them visibly. Not built; `SKILL.md` §4 names the shape (check
-  `resolvedAt` against the upgrade). Build it if the churn recurs.
+  `resolvedAt` against the upgrade). **It recurred (2026-09-03) with a wider
+  cause than "upgrade": an APP-side layout change made rail rows taller, the
+  column re-paired, and a badge "6" that had been wrongly paired with a prop
+  line cried regression.** So the identity-version stamp would not have caught
+  it — nothing about refdiff changed. What landed instead is a DIAGNOSIS:
+  `delta.repaired` names any regression whose element also had property
+  findings resolved in the same run (the signature of a lost partner), printed
+  under the REGRESSION line, and the loud stop stays because a genuine vanish
+  has that same shape. The version stamp remains open for the upgrade case; do
+  it if a real upgrade churns a ledger again.
+- **A candidate pairing can be PROVED wrong — decided 2026-09-03.** Geometry
+  alone pairs elements with unrelated text when a list is in a different order
+  on the two sides, and then reports the full property battery about them
+  (measured: 14 findings on one pair, 12 on another, one of them the regression
+  above). `unrelatedPairing` in `structural/match.ts` refuses a candidate when
+  the two texts share no tokens, the distance is at least
+  `DEFAULT_UNRELATED_MIN_GAMMA` (20), and EACH text occurs somewhere on the
+  other side — positive evidence that both elements had a same-text partner
+  available. Refused as a CANDIDATE, not dissolved as a winner, so the greedy
+  assignment can still give both their right partners; the run log reports only
+  the refusals where both ended unmatched, because the rest changed nothing.
+  Each pass passes its own distance (γ in pass 2, the position-only `slotGamma`
+  in pass 3, whose full γ is dominated by the width difference the slot pass
+  exists to forgive). Deliberately conservative: `"missing"` against `"×14"` at
+  γ 88 survives because `×14` is nowhere on the design side, and every value
+  slot in the corpus (146% vs 100%, a card count, the Library's status chips) is
+  kept. Falsified per row in `match.test.ts` against the measured corpus.
 - **The comps are content-box — Mato's information, not a request.** A
   `* { box-sizing:border-box }` in `support.js` would make the comps' numbers
   mean what they say, but it is a runtime change; the app matches box by box

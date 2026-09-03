@@ -383,17 +383,28 @@ repo bindings). Read `delta`:
   two identical `#6B7280` prop lines re-pairing after a hairline change)
   is `introduced`, never a regression — the key never left the previous
   run. Read it as a side-effect like any other introduced finding.
-  One shape that is NOT an app regression: a refdiff upgrade that changes
-  how elements PAIR (the matcher) changes what a finding IS, so the run
-  dir's ledger — written under the old pairing — can name findings the old
-  pairing had hidden (a numeral it mis-paired with a neighbour now reads as
-  its own `position`). Check the regressed entries' `resolvedAt` in
-  `resolved-ledger.json` against the upgrade: all older → the delta churns
-  once, say so in the report, and carry on; the next run is clean.
+  One shape that is NOT an app regression: anything that changes how elements
+  PAIR changes what a finding IS, so the run dir's ledger — written under the
+  old pairing — can name findings the old pairing had hidden (a numeral it
+  mis-paired with a neighbour now reads as its own `position`). A refdiff
+  upgrade does that; so does your own layout change, when a row grows and the
+  column re-pairs. **The report says so itself: `delta.repaired` names any
+  regression whose element ALSO had property findings resolved in the same
+  run**, printed under the REGRESSION line as `↳ this run also resolved N
+  finding(s) about "<text>" … the element's PARTNER changed, not the element`.
+  That is a diagnosis, not a dismissal — a genuine vanish has the same shape
+  (the element goes, its property findings resolve with it), so the loud stop
+  stays and you read the evidence beside it. Check the regressed entries'
+  `resolvedAt` in `resolved-ledger.json` too: all older than the change → the
+  delta churns once, say so in the report, and carry on; the next run is clean.
 - Findings that know their element's `text` are identified by content
   (type, role, text), not by coordinates — so a data-parity iteration that
   moves the alignment does NOT churn them; textless findings (icons, boxes)
   still pair by place within 5px and may churn when everything shifts. A
+  `pixel-region` is identified by its `changeKind` and its box, never by the
+  measured ratio — that number moves on every capture, and keying on it made a
+  region resolve and re-introduce itself under its own id whenever the diff
+  twitched (a box went 15.9% → 16.2% and the delta read `+1 / −1`). A
   finding whose values changed but is still there is neither resolved nor
   introduced — read the counts and the message for progress on it. (Runs
   made before this identity existed churn exactly once on the next run.)
@@ -530,11 +541,29 @@ items is now a typed finding — read it there:
   ("Figma" on ten cards) still pairs with the same text within 2× the γ
   cutoff (200 px) before any nearer box of another text — so a chip row
   shifted by one missing chip reads as `position ×N` plus ONE
-  `missing-element`, not as a chain of missing + extra + `text-content`. The extractor sees DOM text only: a number or
+  `missing-element`, not as a chain of missing + extra + `text-content`.
+  **Past that cutoff the pair is REFUSED rather than force-paired**: when two
+  candidates share no text, sit at least 20 γ apart, and EACH one's text occurs
+  somewhere on the other side, the pairing is provably wrong — both elements had
+  a same-text counterpart available — so both are reported missing/extra
+  instead, which is what a list in another order actually is. Without it a rail
+  badge "6" pairs with a prop line "element" 90 γ away and reports position,
+  colour, typography, radius and text-content about two unrelated elements: five
+  findings, all noise, one of them crying REGRESSION on the next run (measured:
+  14 such findings on one pair, 12 on another). The run log names the refusals
+  it acted on. A value slot in the same place is never touched — 146% against
+  100% at γ 0.5, a card count at γ 0, a status chip whose word the other side
+  does not use at all. The extractor sees DOM text only: a number or
   label drawn as SVG `<text>` (a badge, a chart tick) measures as MISSING
   however right it looks — whatever the comp draws as DOM text must be DOM
   text in the impl to be matched at all.
-- **Borders / radii** → `border` (width, color ΔE), `border-radius`. One
+- **Borders / radii** → `border` (width, color ΔE, and `borderStyle` — dashed
+  against solid, which is a design decision no other channel can see: a whole
+  language of dashed footprints, pills and chips once produced zero findings
+  about dashedness), `border-radius`. The style is compared only where BOTH
+  sides declare it and both borders paint: an adapter that cannot read a
+  stroke's dashes leaves it undefined rather than defaulting to `solid`, which
+  would report every dashed comp element as impl-only dashedness. One
   shape to recognise: a `border` / `border-radius` finding on a CHIP or TAG
   LABEL ("border the design does not have", "radius 12px, design says 0px")
   where both sides clearly draw the same pill is usually a LEAF-shape

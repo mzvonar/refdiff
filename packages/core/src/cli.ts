@@ -448,6 +448,17 @@ async function runPair(
   console.log(
     `matched ${match.matches.length} elements (${slots} as data slots; ${match.designOnly.length} design-only, ${match.implOnly.length} impl-only)`,
   )
+  // Provably-wrong pairings the veto refused. They are not a suppression: both
+  // elements are reported, as missing/extra, which is what a list in another
+  // order IS. Named here because the alternative — five property findings about
+  // two unrelated elements — is what a reader would otherwise have had to
+  // untangle by hand.
+  if (match.vetoed && match.vetoed.length > 0) {
+    const ex = match.vetoed[0]!
+    console.log(
+      `  ${match.vetoed.length} candidate pairing(s) vetoed as unrelated (both texts occur on the other side, e.g. "${ex.designText}" vs "${ex.implText}" at γ ${ex.gamma.toFixed(0)}) → reported missing/extra instead`,
+    )
+  }
 
   // A state is a state: steps on one side only reports the difference between
   // "selected" and "not selected" as if it were drift.
@@ -576,8 +587,20 @@ function printReport(report: ComparisonReport): void {
     )
     if (regressions.length > 0) {
       const byId = new Map(report.findings.map((f) => [f.id, f]))
+      const repaired = new Map((report.delta.repaired ?? []).map((r) => [r.id, r]))
       console.log(`REGRESSION: ${regressions.length} previously resolved finding(s) are back:`)
-      for (const id of regressions) console.log(`  [${id}] ${byId.get(id)?.message ?? ""}`)
+      for (const id of regressions) {
+        console.log(`  [${id}] ${byId.get(id)?.message ?? ""}`)
+        // The element kept its place and lost its PARTNER: read this before
+        // undoing anything. Never suppresses the regression — a genuine vanish
+        // looks the same from here.
+        const r = repaired.get(id)
+        if (r) {
+          console.log(
+            `      ↳ this run also resolved ${r.resolved.length} finding(s) about "${r.text}" (${r.types.join(", ")}) — the element's PARTNER changed, not the element: a re-pairing, not necessarily a fix undone`,
+          )
+        }
+      }
     }
   }
   console.log(

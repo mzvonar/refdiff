@@ -7,7 +7,7 @@
  * elements become extra-element findings (done in checks.ts).
  */
 
-import type { ElementMatch, MatchResult } from "../pipeline.js";
+import type { ElementMatch, MatchResult, VetoedPairing } from "../pipeline.js";
 import type { ElementNode } from "../types.js";
 import { normalizeForMatching } from "./text.js"
 
@@ -32,10 +32,22 @@ export interface MatchOptions {
    * shrink-wrapped one). 0 disables the pass.
    */
   slotMaxGamma?: number;
+  /**
+   * Min γ at which the unrelated-text veto applies (see
+   * `unrelatedPairing`). 0 disables the veto.
+   */
+  unrelatedMinGamma?: number;
 }
+
 
 export const DEFAULT_MAX_GAMMA = 100;
 export const DEFAULT_SLOT_MAX_GAMMA = 40;
+/**
+ * Below this γ a differing-text pair is trusted as a VALUE SLOT — the same
+ * element showing other data (a zoom pill reading 146% against 100%, a count
+ * reading 3 against 4). The unrelated-text veto only applies above it.
+ */
+export const DEFAULT_UNRELATED_MIN_GAMMA = 20;
 
 export function gamma(a: ElementNode, b: ElementNode): number {
   return (
@@ -53,6 +65,58 @@ export function slotGamma(a: ElementNode, b: ElementNode): number {
 
 const normText = (t: string | undefined): string | undefined =>
   t === undefined ? undefined : normalizeForMatching(t);
+
+const tokenSet = (t: string): Set<string> => new Set(t.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length > 0));
+const disjoint = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) => !b.has(x));
+
+/**
+ * Is this candidate pair PROVABLY wrong? Geometry alone will pair a rail badge
+ * "6" with a prop-line "element" 89 γ away when a list is in a different order
+ * on the two sides, and then report position, colour, typography, radius and
+ * text-content about two unrelated elements — five findings, all noise, and one
+ * of them cried REGRESSION on the next run. The veto needs POSITIVE evidence
+ * that the pairing is wrong, not merely that the texts differ:
+ *
+ *  - both sides carry text, and their token sets share nothing (no content
+ *    evidence for the pair — `Blok · 12. 7.` vs `Doklad · 12. 7.` still pairs);
+ *  - the distance is at least `minGamma`, so a value slot in (nearly) the same
+ *    place is never touched (measured: 146% vs 100% at γ 0.5, a card count at
+ *    γ 0, the Library's status chips at γ ≤ 19 — all kept). Each pass passes
+ *    its OWN distance: γ in pass 2, the position-only `slotGamma` in pass 3,
+ *    whose full γ is dominated by the width difference it exists to forgive;
+ *  - and EACH text occurs somewhere on the other side. That is the proof: both
+ *    elements have a same-text counterpart available, so this pair is not it.
+ *
+ * The pair then falls through to missing-element + extra-element, which is what
+ * a different list order actually is. Scoped to pass 2 on purpose: pass 1/1b
+ * pair identical text, and pass 3 exists precisely to pair a value slot whose
+ * text differs.
+ */
+export function unrelatedPairing(
+  design: ElementNode,
+  impl: ElementNode,
+  g: number,
+  designTexts: ReadonlySet<string>,
+  implTexts: ReadonlySet<string>,
+  minGamma = DEFAULT_UNRELATED_MIN_GAMMA,
+): boolean {
+  if (minGamma <= 0 || g < minGamma) return false;
+  const dt = normText(design.text);
+  const it = normText(impl.text);
+  if (dt === undefined || it === undefined || dt.length === 0 || it.length === 0) return false;
+  if (!disjoint(tokenSet(dt), tokenSet(it))) return false;
+  return implTexts.has(dt) && designTexts.has(it);
+}
+
+/** Every normalized, non-empty text on one side — the veto's evidence set. */
+function textSet(elements: readonly ElementNode[]): Set<string> {
+  const out = new Set<string>();
+  for (const e of elements) {
+    const t = normText(e.text);
+    if (t !== undefined && t.length > 0) out.add(t);
+  }
+  return out;
+}
 
 /** Indices of elements whose normalized text appears exactly once. */
 function uniqueTextIndices(elements: readonly ElementNode[]): Map<string, number> {
@@ -76,11 +140,16 @@ export function matchElements(
     maxGamma = DEFAULT_MAX_GAMMA,
     textMaxGamma = 2 * maxGamma,
     slotMaxGamma = DEFAULT_SLOT_MAX_GAMMA,
+    unrelatedMinGamma = DEFAULT_UNRELATED_MIN_GAMMA,
   }: MatchOptions = {},
 ): MatchResult {
   const designTaken = new Set<number>();
   const implTaken = new Set<number>();
   const matches: ElementMatch[] = [];
+  // The veto's evidence: every text each side carries, computed once.
+  const designTexts = textSet(design);
+  const implTexts = textSet(impl);
+  const vetoed: VetoedPairing[] = [];
 
   // Pass 1 — content identity: an element whose text appears exactly once
   // on each side IS the same semantic element, wherever it moved
@@ -157,6 +226,11 @@ export function matchElements(
       const i = impl[ii]!;
       const g = gamma(d, i);
       if (g > maxGamma) continue;
+      // Provably the wrong partner: leave both to be reported missing/extra.
+      if (unrelatedPairing(d, i, g, designTexts, implTexts, unrelatedMinGamma)) {
+        vetoed.push({ designText: d.text ?? "", implText: i.text ?? "", gamma: g });
+        continue;
+      }
       const dt = normText(d.text);
       const it = normText(i.text);
       candidates.push({
@@ -195,7 +269,19 @@ export function matchElements(
       for (let ii = 0; ii < impl.length; ii++) {
         if (implTaken.has(ii) || impl[ii]!.text === undefined) continue;
         const dist = slotGamma(design[di]!, impl[ii]!);
-        if (dist <= slotMaxGamma) slots.push({ di, ii, dist });
+        if (dist > slotMaxGamma) continue;
+        // The veto again, or pass 3 would re-create what pass 2 refused — but
+        // measured by THIS pass's distance. A slot pair's full γ is dominated by
+        // the width difference it exists to forgive (a shrink-wrapped cell
+        // against a column-wide one is 130 γ apart and still the same slot),
+        // while its anchor is by construction within slotMaxGamma. So the
+        // position-only distance is what says "same slot" here, exactly as γ
+        // says "same place" in pass 2.
+        if (unrelatedPairing(design[di]!, impl[ii]!, dist, designTexts, implTexts, unrelatedMinGamma)) {
+          vetoed.push({ designText: design[di]!.text ?? "", implText: impl[ii]!.text ?? "", gamma: dist });
+          continue;
+        }
+        slots.push({ di, ii, dist });
       }
     }
     slots.sort((a, b) => a.dist - b.dist);
@@ -212,9 +298,32 @@ export function matchElements(
     }
   }
 
+  const designOnly = design.filter((_, i) => !designTaken.has(i));
+  const implOnly = impl.filter((_, i) => !implTaken.has(i));
+  // Only the vetoes with a VISIBLE consequence are reported. The veto works on
+  // CANDIDATES, so the greedy assignment can still give both elements their
+  // right partners afterwards — that is the point of vetoing early rather than
+  // dissolving a winner — and a refused candidate that would have lost anyway
+  // changed nothing. Measured: the Library pairs refuse two candidates and
+  // their outcome is byte-identical, so a raw count would have read "2 vetoed"
+  // beside "+0 / −0" and meant nothing.
+  const unmatchedText = (side: readonly ElementNode[]): Set<string> => {
+    const out = new Set<string>();
+    for (const e of side) {
+      const t = normText(e.text);
+      if (t !== undefined && t.length > 0) out.add(t);
+    }
+    return out;
+  };
+  const dLeft = unmatchedText(designOnly);
+  const iLeft = unmatchedText(implOnly);
+  const consequential = vetoed.filter(
+    (v) => dLeft.has(normalizeForMatching(v.designText)) && iLeft.has(normalizeForMatching(v.implText)),
+  );
   return {
     matches,
-    designOnly: design.filter((_, i) => !designTaken.has(i)),
-    implOnly: impl.filter((_, i) => !implTaken.has(i)),
+    designOnly,
+    implOnly,
+    ...(consequential.length > 0 ? { vetoed: consequential } : {}),
   };
 }

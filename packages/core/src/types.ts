@@ -32,6 +32,16 @@ export interface ElementNode {
     borderRadius: number
     borderColor: string
     borderWidth: number
+    /**
+     * `solid` / `dashed` / `dotted` … — only set where the element HAS a visible
+     * border, and only compared when both sides know it. A dashed border is a
+     * design decision no other channel can see (measured: a whole ghost
+     * language of dashed footprints, pills and chips produced zero findings
+     * about dashedness). Figma says it with `strokeDashes`.
+     */
+    borderStyle: string
+    /** As extracted (`0 2px 10px rgba(…)`); captured for every element, not just surfaces. */
+    boxShadow: string
     /** Effective CSS opacity (< 1 only), already folded into the colors above. */
     opacity: number
     gap: number
@@ -247,6 +257,21 @@ export interface AcceptedDeviation {
   reason: string
 }
 
+/**
+ * One regression that carries the signature of a re-pairing: the same delta
+ * resolved property findings about the same element text.
+ */
+export interface RepairedNote {
+  /** The regressed finding's id in THIS run. */
+  id: string
+  /** The element text the regression and the resolved findings share. */
+  text: string
+  /** Ids in the PREVIOUS run that resolved in this delta about that text. */
+  resolved: string[]
+  /** Their types, so the reader sees what the old pairing was reporting. */
+  types: string[]
+}
+
 export type SuppressionReason = "text-pattern" | "role" | "region" | "data-slot" | "accepted"
 
 /** A finding a policy rule removed from the kept list — still reported. */
@@ -362,6 +387,14 @@ export interface ComparisonReport {
     resolved: string[]
     introduced: string[]
     regressions?: string[]
+    /**
+     * Evidence beside a regression that looks like a RE-PAIRING: the element
+     * kept its place but lost its partner, so the property findings about the
+     * old pair resolved in this same run and a presence finding took their
+     * place. Read it before undoing anything — but it never removes the
+     * regression, because a genuine vanish has the same shape.
+     */
+    repaired?: RepairedNote[]
   }
   artifacts: {
     designPng: string
