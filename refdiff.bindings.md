@@ -47,25 +47,62 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - The comps hydrate the `dc-runtime` from `support.js` and React from unpkg —
   offline runs fail `hydration-failed`, not silently. The same goes for
   `make-demo-root.ts --capture`.
-- **THE MEASURED BASELINE (2026-09-03, session 20 — a mark is a badge at rest).** Eight pairs, one build, the
-  fixture clock pinned per batch (`make-demo-root.ts --now`, measure, restore), every pair
-  re-run to `+0/−0` before recording. `refdiff summary out/refdiff` reproduces the table:
+- **THE MEASURED BASELINE (2026-09-04, session 21 — the toolbar layout PASSES).** Six pairs
+  measured this session, one build, the fixture clock pinned per batch
+  (`make-demo-root.ts --now`, measure, restore), every pair re-run to `+0/−0` before recording.
+  **TWO ROWS ARE NOT FROM THIS BUILD:** `refdiff-compare-mobile` and `refdiff-compare-mobile-minimal`
+  are the old phone layouts and are OUT OF SCOPE by Mato's 2026-09-04 ruling, so they were not
+  re-measured; their rows below are the stored 2026-09-03 reports and they WILL move when someone
+  runs them, because `.delta-strip .review`'s line-height and the page shadow are shared. Read the
+  set total as "330 with two rows stale", not as a clean measurement.
+  `refdiff summary out/refdiff` reproduces the table:
 
-  | pair | findings (c/M/m) | inst | supp | conf | align |
-  | --- | --- | --- | --- | --- | --- |
-  | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 |
-  | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 |
-  | refdiff-compare-desktop | 69 (20/43/6) | 103 | 66 | 0.72 | 1 / 0,0 |
-  | refdiff-compare-mobile | 15 (3/8/4) | 25 | 29 | 0.97 | 1 / 0,0 |
-  | refdiff-compare-mobile-minimal | 25 (3/14/8) | 35 | 40 | 0.87 | 1 / 0,0 |
-  | refdiff-compare-mobile-toolbar | 10 (3/1/6) | 13 | 29 | **1.00** | 1×0.99937 / 0,0.5 |
-  | refdiff-compare-mobile-toolbar-ghost | 94 (21/56/17) | 179 | 40 | 0.49 | 1×0.994 / 0,4.2 |
-  | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 |
+  | pair | findings (c/M/m) | inst | supp | conf | align | measured |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | refdiff-library-desktop | 10 (1/3/6) | 24 | 26 | 0.89 | 1 / 0,0 | 09-04 |
+  | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 | 09-04 |
+  | refdiff-compare-desktop | 69 (20/43/6) | 103 | 66 | 0.72 | 1 / 0,0 | 09-04 |
+  | refdiff-compare-mobile | 15 (3/8/4) | 25 | 29 | 0.97 | 1 / 0,0 | **09-03, STALE** |
+  | refdiff-compare-mobile-minimal | 25 (3/14/8) | 35 | 40 | 0.87 | 1 / 0,0 | **09-03, STALE** |
+  | refdiff-compare-mobile-toolbar | **4 (3/0/1)** | 4 | 29 | **1.00** | **1 / 0,0** | 09-04 · **PASS** |
+  | refdiff-compare-mobile-toolbar-ghost | 90 (21/56/13) | 174 | 40 | 0.46 | 1 / 0,0 | 09-04 |
+  | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 | 09-04 |
 
-  **Set total 340, of which 137 UNEXPLAINED (2026-09-04, after `ignore.explain`: 136 comp rail row
-  order, 40 comp mark numbering, 27 canvas zoom divergence carry a named cause and stay reported
+  **The toolbar pair went 10 → 4 findings, 5 → 1 unexplained, and its `align` reached the exact
+  IDENTITY** — the `scale y 0.99937 / offset y 0.5` note that stood on it since 2026-09-02 is GONE,
+  and it was NOT the comp's 44px header (design ask 5, which this file and the handoff both blamed):
+  it was the header SEGMENT rendering 32 tall against the comp's 27. Fixing the segment snapped the
+  fit to `1 / 0,0`. Ask 5 is answered by measurement — the app's `calc(44px + 1px)` header is right,
+  both headers render 45 — and the ask can be dropped. Four app-side fixes did it, each measured
+  before and after:
+  1. **The flattened `.seg` kept the default `border-radius:8px`,** and `extract.ts`'s
+     `paintsDecoration` is background OR border OR **radius > 0**, so a container painting nothing
+     but an invisible radius still emits: an `extra-element` surface 215×21 at (12, 123), the Show
+     pill's content box. `border-radius:0` in the flatten rule.
+  2. **`#seg-variant button` had `.seg button`'s 5px/16px metrics** where the comp's segment renders
+     219×**27**: `padding:3px 9px; line-height:15px` (both of the layout's segments use `.seg-p`'s
+     metrics in the comp). That one fix took the `size` finding, the 7px-vs-9.5px `spacing` finding
+     AND the alignment note.
+  3. **`.delta-strip .review` had no line-height,** so the global 1.4 made the button 26.09 tall
+     against the comps' 25 (both comps: `normal` at 11.5px = 15 + 4+4 padding + 1+1 border). On the
+     phone the strip WRAPS, so that button IS the second row: the strip measured 66.09 against the
+     comp's 65 and pushed the canvas, the Show pill and the align pill 1.09px down. `line-height:15px`.
+     Desktop cannot move — its strip is pinned by `min-height:calc(38px + 1px)` — and measured
+     `+0/−0` on `refdiff-compare-desktop`, which is the falsification.
+  4. **The page had no drop shadow.** `parts/Artboard *.dc.html` carry
+     `box-shadow:0 4px 30px rgba(0,0,0,0.35)` on their root; the app draws a PNG of that page and a
+     screenshot cannot contain the shadow its own element casts. `pageShadow(dpr)` in `applyView`,
+     on the two page images only — **the numbers are WORLD units × dpr**, because the img is scaled
+     by `z/dpr`, not `z`. After it the two sides' shadow ramps are byte-identical.
+
+  **Set total 330, of which 129 UNEXPLAINED (2026-09-04 session 21; two rows stale, see above),
+  from 340 · 137. Explained: 138 comp rail row order, 40 comp mark numbering, 23 canvas zoom
+  divergence carry a named cause and stay reported
   without failing the verdict — read the unexplained number, and read the movement lines that watch
-  those rules for staleness). 340 after the ghost pair's swap step; 335 after `contentsOf` — see the architecture entry; 349 after the
+  those rules for staleness. One of those lines fired usefully this session and would have misled a
+  reader who took it at face value: a two-pair run printed `explain rules matching NOTHING in this
+  set … "canvas zoom divergence"`, which is scoped to the pairs JUST RUN — the rule matches 23
+  across the set. Re-run the set before acting on a staleness line.). 340 after the ghost pair's swap step; 335 after `contentsOf` — see the architecture entry; 349 after the
   resting-mark and comment-ownership decisions — the second
   one moved 14 findings between pairs and left the total unchanged), from 383 · 422 · 396 · 403 · 476.** The zoom-on-select
   decision below took the two ghost pairs 150 → 115 and 93 → 89 and moved nothing else. The last core
@@ -211,6 +248,81 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   as live DOM against the app's PNG — the known case, visible because those containers are textless
   so `textPatterns` cannot reach them. They want a `regions` entry or an extended `accepted` rule;
   that is a policy decision, not done.
+- **THE TOOLBAR PAIR'S ONE REMAINING FINDING IS FULLY DIAGNOSED, and it is not the app's
+  (2026-09-04).** `pixel-region` on the canvas surface, 5.4% of 380×721, 172 clusters. Two causes,
+  both measured by best-shift search over the artboard interior (`crops/f4-*.png`, greyscale SAD,
+  dx/dy −10..10 native px):
+  * **A pure 4.0px vertical offset — dx 0.0, no scale, the SAME 4.0 in the top half and the bottom
+    half** (mean |Δ| 10.77 → 2.55 at that shift). It is the DECIDED `paneInsets` divergence and the
+    arithmetic closes exactly: the toolbar layout's insets are t37 b45, the app centres the fit in
+    what they leave and the comps centre in the full pane, so the app's page sits **(45 − 37) / 2 =
+    4.0px** higher. Probed live: pane (0,110) 390×734 → app artboard top 278.2, comp's 282.2.
+    That is design ask 6, and the ask is now worth a NUMBER on this pair, not just the ghost pairs'
+    27.
+  * **The rest is the comp drawing the artboard as live DOM against the app's PNG resampled to
+    0.5265×** — glyph-edge antialiasing. ~5% of the canvas still differs after the 4px is removed,
+    at mean |Δ| 2.55/255 = 1%. No app change reaches it.
+  **Do NOT reach for `explain` here without deciding the cost out loud.** The types would have to
+  include `pixel-region` over the canvas region, and that box is the ONLY channel that sees the
+  artboard at all (the structural channel has no design-side element for it, and `contentsOf` cannot
+  reach a finding whose box is the CANVAS rather than inside the image). Explaining it buys "0
+  unexplained" on a pair that already PASSES, and pays for it by going blind to any future drawing
+  regression in the pane. Left reported on purpose; it is a comp-side ask, half of which
+  disappears the day ask 6 lands.
+- **THE 12px CROP PADDING, CLIPPED — read a crop's origin from the code, not from the finding's
+  box (2026-09-04).** `package-for-model.ts` pads the finding box by `cropPadding = 12` CSS px and
+  then CLIPS to the frame, so a crop of a box at (7.5, 115) 380×721 in a 390×844 frame has origin
+  **(0, 103)**, not (7.5, 115) and not (−4.5, 103). Reading it wrong put every hand-measured pixel
+  probe 7.5px right and 12px down, which reads as a plausible small offset rather than as an error —
+  the first pass this session "found" the page shadow at the wrong edge and had to be redone.
+  Native px = CSS × dpr on top of that.
+- **THE GHOST PAIR'S READABLE FINDINGS, TRIAGED ONE BY ONE (2026-09-04).** At confidence 0.46
+  (x 0.99 / y 0.48) nothing positional is readable, and this is what the rest turned out to be:
+  * **The badge ALPHA family (`"14"` ×4, `"5"`; 2/8 pairs) is a real, deliberate, UNRESOLVED
+    difference between the app and the comps — a DESIGN ASK, not drift.** The app's
+    `.vmarks.has-sel .vmark:not(.sel):not(.ann) { opacity:.35 }` dims every non-selected,
+    non-comment mark while something is selected, and the reason is in the code: three marks can
+    share a box and the neighbour drawn last used to cover the one you just clicked. The comps set
+    mark opacity from STATUS only — `(f.status === 'ignore' || f.status === 'snooze') ? 0.45 :
+    (f.sup ? 0.5 : 1)` — with no selection term at all, while otherwise modelling selection fully
+    (outline, ghost, rail row). So the designer HAS considered selection and chose not to dim; the
+    app is not correcting an oversight. **Not accepted and not changed** — it is product behaviour,
+    and the ask is "when a finding is selected, should the other marks drop to 35%?"
+  * **The `"2"` family (8 findings: colour ×3, border, radius ×2, typography ×2) is ONE
+    cross-pairing**, and it is the same-text gap already on the futures list. Measured in
+    `elements.json`: the design has FOUR elements whose text is "2" (a rail count chip 8.53×18.28
+    grey `rgb(229,231,235)`, two critical finding badges, and a purple `--open` COMMENT badge
+    7×14) and the impl has THREE. The matcher paired the impl's purple comment badge with the
+    design's grey rail chip, and the impl's dimmed critical finding badge with the design's purple
+    comment badge — five and three findings about two unrelated objects each. `unrelatedPairing`
+    cannot reach it: it needs DISJOINT tokens and both sides say "2".
+  * **`"public"` and `"upload_file"` are registration artefacts**: the impl element is a dimmed
+    `.vmark` (border `rgba(255,255,255,0.315)` = the 0.9 white at 0.35 opacity) sitting where the
+    comp draws an artboard ICON. No shared text, so the veto cannot prove them wrong either.
+  * **`"View design"` WAS the one genuine LEAF-SHAPE mismatch, and it is fixed.** The comp
+    interpolates `{{g.btnLabel}}` and the dc runtime wraps every interpolated value in a span, so
+    the design's TEXT is a leaf with no paint and the button div is the surface. The app appended a
+    bare text node, which made `.gsw` a container WITH own text — it emitted as the text leaf and
+    dragged the pill's `background rgb(91,141,239)` and `radius 10.34` onto it. Giving the label its
+    own span split them, and `.gpill .gsw` then needed `line-height:14px` (the comp's `normal` at
+    10.5px; its `btnStyle` declares padding and font-size and nothing else) to render 98×**20** with
+    radius 10 instead of 98×20.69 / 10.34. **Both surfaces are now byte-identical on the two sides
+    and STILL report as `extra-element`** — 192px apart, unpairable at 0.46. Same for the ghost PILL
+    itself: design `div-200` and impl `div-167` are both 304×32, `rgb(51,52,56)`, radius 9, 1px
+    dashed `rgb(229,72,77)`, shadow `0 2px 10px rgba(0,0,0,.35)`. A textless `extra-element` on this
+    pair is evidence about the FIT, not about the paint — check `elements.json` for the counterpart
+    before believing one.
+  * **`text-content` "12 findings · 4 comments · 1 unsaved"** is demo data (gap 34's family).
+- **A CONTROL COPIED FROM A COMP NEEDS ITS LINE-HEIGHT COPIED TOO (2026-09-04, three instances in
+  one session).** The comps set `padding` and `fontSize` on a control and nothing else, so its line
+  box is the browser's `normal`; the app has a global `line-height:1.4`, so the same declaration
+  renders 1–1.1px taller PER LINE. It is invisible until the control DRIVES a height: the strip's
+  Review button is the wrapping phone strip's second row (66.09 vs 65), and the ghost switch became
+  a surface the moment its label got its own span (20.69 vs 20). `.seg.seg-full button` /
+  `.seg.seg-p button` already carried an explicit `line-height:15px` for exactly this reason — that
+  is the idiom here, not a global change. When you copy a comp's control metrics, copy three
+  numbers, not two.
+
 - **An element NEITHER channel can pair is verified by a crop, once — and a CSS class is a
   namespace.** The ghost footprint is an SVG rect: the extractor reads DOM only, so the structural
   channel cannot see it, its design-side counterpart travels suppressed inside the artboard
@@ -297,7 +409,8 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   Library desktop reads 0.89 since the comp's `smartphone` icon stopped being
   a shared anchor — see the textPatterns bullet), alignment at the identity
   (`1 / 0,0`) on the first FIVE pairs and `1×0.99937 / 0,0.5` on the toolbar
-  pair (its own minor `alignment` finding, below).
+  pair (its own minor `alignment` finding, below — **closed 2026-09-04, and the passage
+  below carries the correction: it was the header SEGMENT, not the header**).
   **Two corrections to the numbers recorded on 2026-08-29, both measured with the
   fixture clock pinned (`make-demo-root.ts --now`, then measure IMMEDIATELY):**
   (a) `compare-mobile-minimal` is **11**, not 10 — verified NOT to be the toolbar
@@ -426,9 +539,19 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `(0, -22.4)`. **That attribution was wrong**: removing the row resolved the badges and
   `.work` now starts at y=111 against the comp's canvas at 110. And the `-28px` align-pill
   lift was compensating for the same row; it is gone. The `missing-element` 13x13 box at
-  design (35, 293) also went with it. The minor `alignment` (`scale y 0.99937`,
+  design (35, 293) also went with it. ~~The minor `alignment` (`scale y 0.99937`,
   `offset y 0.5`) is a box-model pixel in the chrome above the anchors and cannot be
-  accepted; the header is `calc(44px + 1px)` against the comp's 44.
+  accepted; the header is `calc(44px + 1px)` against the comp's 44.~~
+  **SUPERSEDED 2026-09-04 (session 21) — the second clause was wrong and it cost a design ask.**
+  The alignment note was real and it is now GONE (`1 / 0,0`), but the missing pixel was NOT the
+  header: it was the header SEGMENT, rendering 219×32 against the comp's 219×27 because
+  `#seg-variant button` inherited `.seg button`'s `padding:5px 10px` / `line-height:16px` where the
+  comp uses the small metrics. `padding:3px 9px; line-height:15px` snapped the fit to the identity
+  and took the `size` and `spacing` findings with it. Both headers render 45, so
+  `calc(44px + 1px)` is CORRECT and **design ask 5 — "does the toolbar comp's 44px header include
+  its border?" — is answered and should not be sent.** The lesson generalises: an `alignment`
+  transform names a systematic size difference "in the chrome above or beside the anchors", and
+  this file read "chrome" as the outermost box; the offending box was one level in.
   **After a refetch, verify `dist` is newer than `render.ts` before measuring.** The
   `pnpm dev` watcher stopped rebuilding silently mid-session (a `git stash`/`pop` of
   `render.ts` during an A/B is the suspected cause): two CSS fixes read as `+0/-0` delta
