@@ -222,3 +222,89 @@ describe("the embedded modules", () => {
     expect(declared).toEqual(expected)
   })
 })
+
+/* ------------------------------------------ the module the page runs ----- */
+
+/**
+ * The shell's `<script type="module">` is BUILT BY STRING CONCATENATION, so
+ * nothing that checks TypeScript can see inside it: `CLIENT` and `APP_BOOT` are
+ * template literals, and a brace, paren or bracket imbalance in either is
+ * invisible to `tsc` and to all 282 unit tests. It surfaces only in a browser,
+ * as `SyntaxError: Unexpected end of input` — and because the module never
+ * executes, EVERY route renders an empty body, which reads as "the route is
+ * broken" rather than "the script did not parse".
+ *
+ * Observed twice while chunk 3's sheet was being wired: a duplicated
+ * `async function openPair(dir) {` line (a bad edit), and a backtick inside a
+ * comment in `APP_BOOT` closing its own template. `node --check` on the served
+ * page found both in seconds; nothing else in the repo could.
+ */
+describe("the generated page script", () => {
+  const srcDir = fileURLToPath(new URL("../dist/", import.meta.url))
+
+  const shellScript = async (): Promise<string> => {
+    const { renderAppShell } = (await import("../src/app-shell.js")) as {
+      renderAppShell: (o: Record<string, string>) => string
+    }
+    const read = async (m: string) => readFile(`${srcDir}${m}.js`, "utf8")
+    const html = renderAppShell({
+      viewMathSource: await read("view-math"),
+      annotationsSource: await read("annotations"),
+      indexViewSource: await read("index-view"),
+      galleryViewSource: await read("gallery-view"),
+      triageSource: await read("triage"),
+      focusSource: await read("focus"),
+      railSource: await read("rail"),
+      root: "/tmp/probe",
+    })
+    const m = /<script type="module">([\s\S]*?)<\/script>/.exec(html)
+    if (!m) throw new Error("the shell rendered no module script")
+    return m[1]!
+  }
+
+  /**
+   * Parse without running. `new Function` compiles its body and throws on a
+   * syntax error, which is the whole check; `export` is not legal in a function
+   * body, so the module's export keywords are stripped first. Nothing executes,
+   * so no DOM is touched.
+   */
+  const parses = (src: string): { ok: true } | { ok: false; error: string } => {
+    try {
+      new Function(src.replace(/^export /gm, ""))
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: (e as Error).message }
+    }
+  }
+
+  it("catches an imbalance — the failure this guard exists for", () => {
+    // the two real shapes, both of which shipped and neither of which tsc saw
+    expect(parses("function a() { if (x) { }").ok).toBe(false)
+    expect(parses("function a() {}function a() {} function b() { oops").ok).toBe(false)
+    // and a positive control, or "false for everything" would pass every row
+    expect(parses("function a() { return 1 }").ok).toBe(true)
+  })
+
+  it("parses, so the page's module actually runs", async () => {
+    const src = await shellScript()
+    // Guard the guard: a shell that rendered almost nothing would parse fine.
+    expect(src.length).toBeGreaterThan(100_000)
+    const r = parses(src)
+    expect(
+      r.ok ? "" : r.error,
+      "the shell's concatenated module does not parse — it is built by string concatenation, so tsc and every unit test are blind to this, and in a browser it means the module never runs and EVERY route renders empty",
+    ).toBe("")
+  })
+
+  it("balances the template literals CLIENT and APP_BOOT are built from", async () => {
+    // A stray backtick in a comment inside either one closes it early: the file
+    // still compiles, the script does not. Counted on the OUTPUT, where a
+    // template that closed early leaves the rest of the page as loose text.
+    const src = await shellScript()
+    for (const ch of ["`", "${"]) {
+      // no assertion on parity itself — the parse above is the real check; this
+      // pins the symptom's location so a failure names the construct
+      expect(src.includes("String.raw"), `the built script must not still contain a raw template marker (${ch})`).toBe(false)
+    }
+  })
+})

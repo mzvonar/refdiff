@@ -477,14 +477,17 @@ export const manifest = [
     // the pair viewport"). 1400x860 is the comp's own $preview.
     //
     // The route is the sheet for the demo root's `ds-button` entry (NOT the flat
-    // `button` card — that one is the Library comp's and stays as it is). It
-    // renders the set index (`ds-button.set.json`) joined with /api/pairs — so this measures
-    // the surface the fixture's set feeds, and a root with no set index renders the
-    // named error state rather than an empty grid.
+    // `button` card — that one is the Library comp's and stays as it is).
+    //
+    // The sheet opens in the COMPARISON TOOL's own view, so `waitFor` names a
+    // CELL SLOT rather than a standalone section: slots exist for every cell of
+    // the cross-product, absent ones included, which makes them the reliable
+    // "the sheet drew" signal. `.gerror` is the un-layoutable fallback (a root
+    // with no set index, or a `gallery` naming a property the set lacks).
     id: "refdiff-gallery-desktop",
     title: "RefDiff \u00b7 Gallery (desktop)",
     design: { file: "RefDiff Gallery.dc.html", frame: "Gallery \u2014 Button variant sheet" },
-    app: { source: "live", route: "/#/set/ds-button", viewport: { width: 1400, height: 860 }, waitFor: "#view-gallery .gsheet, #view-gallery .gerror" },
+    app: { source: "live", route: "/#/set/ds-button", viewport: { width: 1400, height: 860 }, waitFor: "#cells-impl .cellslot, #view-gallery .gerror" },
     ignore: GALLERY_IGNORE,
   },
   {
@@ -494,7 +497,7 @@ export const manifest = [
     id: "refdiff-gallery-mobile",
     title: "RefDiff \u00b7 Gallery (mobile)",
     design: { file: "RefDiff Gallery Mobile.dc.html", frame: "RefDiff gallery mobile", scope: ".cc-theme-dark" },
-    app: { source: "live", route: "/#/set/ds-button", viewport: mobile, waitFor: "#view-gallery .gsheet, #view-gallery .gerror" },
+    app: { source: "live", route: "/#/set/ds-button", viewport: mobile, waitFor: "#cells-impl .cellslot, #view-gallery .gerror" },
     ignore: GALLERY_IGNORE,
   },
   {

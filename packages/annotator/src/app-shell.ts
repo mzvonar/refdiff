@@ -262,14 +262,15 @@ const routeSet = () => {
 // The sheet needs BOTH halves: the set index says which cells were ever
 // supposed to exist, /api/pairs says what a run measured. A deep link arrives
 // with neither loaded.
+//
+// It opens in the COMPARISON TOOL's own view, not a page of its own. That is the
+// whole design: the topbar, the overlay modes, the layer toggles, pan/zoom/fit,
+// the annotation layer and the rail all work on a sheet because they work in one
+// WORLD space, and a sheet is that space with a per-cell offset. A separate page
+// would have had to reimplement every one of them, which is exactly what the
+// first attempt did and why it read as a different, poorer product.
 async function openGallery(entryId) {
   currentSet = entryId;
-  const name = $('gal-name');
-  const count = $('gal-count');
-  const body = $('gal-body');
-  name.textContent = entryId;
-  count.textContent = '';
-  body.innerHTML = '';
   if (!pairs.length) await loadPairs();
   let index;
   try {
@@ -278,29 +279,113 @@ async function openGallery(entryId) {
     index = await res.json();
   } catch (e) {
     // No set index is not an error state to dress up: the entry either is not a
-    // component set, or its root predates the index (every DS root does). Say
-    // which command writes it rather than showing an empty grid.
-    body.innerHTML = galleryError(entryId, 'no ' + entryId + '.set.json in this run root: ' + e.message);
+    // component set, or its root predates the index. Say which command writes it.
+    sheetFailure(entryId, 'no ' + entryId + '.set.json in this run root: ' + e.message);
     return;
   }
-  document.title = 'refdiff — ' + (index.setName || entryId);
-  name.textContent = index.title || index.setName || entryId;
   const r = resolveGallery(index.axes, index.gallery);
-  if (!r.ok) { body.innerHTML = galleryError(entryId, r.error); return; }
+  if (!r.ok) { sheetFailure(entryId, r.error); return; }
+
   const cells = galleryCells(index, r.value, pairs);
   const layout = galleryLayout({
     rows: r.value.rowTuples.length,
     columns: r.value.columns.options.length,
     cells: cells.map((c) => ({
-      key: c.key, row: c.row, col: c.col,
-      pairDir: c.pairDir,
+      key: c.key, row: c.row, col: c.col, pairDir: c.pairDir,
       size: c.summary && c.summary.frame ? c.summary.frame : undefined,
     })),
   });
-  count.textContent = sheetSummary(census(cells), runSpan(cells));
-  body.innerHTML = warningList(r.value.warnings) + sheetMarkup({
-    set: index, resolved: r.value, cells: cells, layout: layout, gutter: GALLERY_GUTTER,
-  });
+  const rectOf = new Map(layout.cells.map((c) => [c.key, c.rect]));
+
+  // Each measured cell's OWN report: its findings, and (step 2) its alignment.
+  // /api/pairs cannot carry either. 41 parallel fetches on a local server is
+  // nothing, and a cell whose report will not load degrades to its slot rather
+  // than failing the sheet — one bad cell never kills a set.
+  const rich = cells.map((c) => Object.assign({}, c, { rect: rectOf.get(c.key) || { x: 0, y: 0, w: 0, h: 0 } }));
+  await Promise.all(rich.map(async (c) => {
+    if (!c.pairDir) return;
+    try {
+      const res = await fetch(c.pairDir + '/findings.json');
+      if (res.ok) { c.report = await res.json(); c.dir = c.pairDir; }
+    } catch (e) { /* the slot stands; the cell simply shows nothing */ }
+  }));
+
+  openReport(sheetReport(index, r.value, rich, layout), null, {
+    indexHref: '#/',
+    base: '',
+    readOnly: serverReadOnly,
+  }, { entryId: entryId, cells: rich, layout: layout, resolved: r.value, index: index });
+}
+
+// The sheet AS a report, so every part of the comparison tool that reads
+// report.* keeps working without knowing a sheet exists.
+//
+// The frame is the sheet's world and the alignment is the IDENTITY, which is
+// honest rather than convenient: each cell's own alignment is baked into where
+// its images sit, so there is no sheet-level registration left to describe.
+// confidence is the worst of the cells — a sheet is no better aligned than its
+// weakest cell, and averaging would hide exactly the cell you need to look at.
+function sheetReport(index, resolved, cells, layout) {
+  const measured = cells.filter((c) => c.report);
+  const conf = measured.length
+    ? Math.min.apply(null, measured.map((c) => (c.report.alignment || {}).confidence || 0))
+    : 0;
+  const findings = sheetFindings(cells);
+  const c = census(cells);
+  const span = runSpan(cells);
+  const frame = { width: Math.round(layout.world.w), height: Math.round(layout.world.h), dpr: 1 };
+  const worst = findings.some((f) => f.severity === 'critical' || f.severity === 'major');
+  return {
+    pair: (index.title || index.setName || index.entryId) + ' — ' + sheetSummary(c, span),
+    createdAt: index.createdAt,
+    design: Object.assign({ source: 'set', ref: index.setName + ' (' + c.total + ' cells)' }, frame),
+    impl: Object.assign({ source: 'set', ref: index.entryId + ' (' + c.measured + ' measured)' }, frame),
+    alignment: { scale: 1, offsetX: 0, offsetY: 0, confidence: conf, basis: 'cells' },
+    findings: findings,
+    suppressed: [],
+    policy: {},
+    verdict: { pass: !worst, failThreshold: 'major' },
+    artifacts: { designPng: '', implPng: '' },
+  };
+}
+
+// Every cell's findings, translated onto the sheet — which is all it takes for
+// the marks layer, the rail, the severity filters and highlight/dim/strobe to
+// work on a sheet, because they were already world-space.
+//
+// Two rules. Ids are NAMESPACED by cell, because every report numbers its own
+// findings from f1 and 41 cells would otherwise collide into one id. And a
+// FRAME-LEVEL finding is dropped from the boxes: pixel-region/frame fires on
+// 194/194 pairs of the DS root and its box IS the whole frame, so translated as
+// a box it paints its cell solid and makes the diff lab useless at sheet scale.
+// It becomes a cell badge instead (step 3), and until then it is counted only.
+function sheetFindings(cells) {
+  const out = [];
+  for (const cell of cells) {
+    if (!cell.report) continue;
+    for (const f of cell.report.findings || []) {
+      const box = f.implBox || f.designBox;
+      if (!box) continue;
+      if (isFrameLevel(box, cell.rect)) continue;
+      const moved = Object.assign({}, f, { id: cell.key + '::' + f.id, cell: cell.key });
+      if (f.implBox) moved.implBox = projectCellBox(f.implBox, cell);
+      if (f.designBox) moved.designBox = projectCellBox(f.designBox, cell);
+      out.push(moved);
+    }
+  }
+  // The marks layer numbers badges by mark; per-cell numbering would repeat.
+  out.forEach((f, i) => { f.mark = i + 1; });
+  return out;
+}
+
+// A sheet that cannot be laid out renders the reason in the report view's own
+// canvas area, so the chrome and the way back stay where they are.
+function sheetFailure(entryId, message) {
+  document.body.classList.remove('route-gallery');
+  document.body.classList.add('route-gallery');
+  $('gal-name').textContent = entryId;
+  $('gal-count').textContent = '';
+  $('gal-body').innerHTML = galleryError(entryId, message);
 }
 
 async function openPair(dir) {
@@ -330,13 +415,17 @@ function route() {
   const setId = routeSet();
   const dir = setId ? null : routePair();
   document.body.classList.toggle('route-index', !dir && !setId);
-  document.body.classList.toggle('route-gallery', !!setId);
-  document.body.classList.toggle('route-report', !!dir);
+  // A sheet opens in the REPORT view — same chrome, same world space, one extra
+  // offset per cell. route-gallery is only the un-layoutable fallback now.
   if (setId) {
     currentPair = null;
+    document.body.classList.remove('route-index');
+    document.body.classList.add('route-report');
     if (setId !== currentSet) void openGallery(setId);
     return;
   }
+  document.body.classList.remove('route-gallery');
+  document.body.classList.toggle('route-report', !!dir);
   currentSet = null;
   if (!dir) {
     currentPair = null;
@@ -382,6 +471,7 @@ document.addEventListener('click', (e) => {
 });
 void loadPairs().then(route);
 `
+
 
 /**
  * The Library's CSS, the comp's values under the comp's token names. The

@@ -232,11 +232,11 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <pattern id="hatch-minor" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch minor" width="2" height="9"></rect></pattern>
         </defs></svg>
         <div class="pane" id="pane-design" data-side="design">
-          <div class="stage"><img class="shot" id="img-design" alt="design"><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg><div class="vmarks" id="vmarks-design"></div></div>
+          <div class="stage"><img class="shot" id="img-design" alt="design"><div class="cellshots" id="cells-design"></div><svg class="marks diffs" id="diffs-design"></svg><svg class="marks" id="marks-design"></svg><svg class="marks anns" id="anns-design"></svg><div class="vmarks" id="vmarks-design"></div></div>
           <div class="pane-label" id="label-design">DESIGN</div>
         </div>
         <div class="pane" id="pane-impl" data-side="impl">
-          <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg><div class="vmarks" id="vmarks-impl"></div><div class="wipe" id="wipe" hidden title="drag to wipe between the design and the implementation"><div class="wipe-line"></div><div class="wipe-knob"><span class="msi" aria-hidden="true">sync_alt</span></div></div></div>
+          <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="cellshots" id="cells-impl"></div><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg><div class="vmarks" id="vmarks-impl"></div><div class="wipe" id="wipe" hidden title="drag to wipe between the design and the implementation"><div class="wipe-line"></div><div class="wipe-knob"><span class="msi" aria-hidden="true">sync_alt</span></div></div></div>
           <div class="pane-label right" id="label-impl">IMPLEMENTATION</div>
         </div>
         <div class="zoom-pill" id="zoom-pill">
@@ -686,6 +686,21 @@ body.single .align-wrap { bottom:58px; }
 .marks rect.sel { stroke-width:2; }
 .marks rect.suppressed { stroke:var(--txt2); stroke-dasharray:2 3; }
 .vmarks { position:absolute; left:0; top:0; width:0; height:0; overflow:visible; transform-origin:0 0; pointer-events:none; z-index:6; --cs:1; }
+/* A SHEET's cell screenshots. Deliberately the same shape as .vmarks: a
+   zero-size world-space container whose children are laid out in WORLD px and
+   which is mapped to the screen by one transform. That is what makes N images
+   cost the same as one — no per-image transform, and the existing pan/zoom moves
+   them by construction. */
+.cellshots { position:absolute; left:0; top:0; width:0; height:0; overflow:visible; transform-origin:0 0; pointer-events:none; }
+/* In sheet mode the single page images have nothing to show: their src is never
+   set, and an unset img still paints a broken-image glyph in some browsers. */
+body.is-sheet .shot { display:none; }
+.cellshot { position:absolute; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+/* The cell's slot, drawn under its screenshot so a cell with nothing to show is
+   still a place on the sheet rather than a hole. */
+.cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:4px; }
+.cellslot.k-skipped, .cellslot.k-pending { border-style:dashed; background:rgba(128,132,140,.06); }
+.cellslot.k-absent { border-style:dotted; opacity:.45; }
 .vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:all; user-select:none;
   box-shadow:0 1px 4px rgba(0,0,0,.4); border:2px solid rgba(255,255,255,.9); transform:scale(var(--cs)); transform-origin:center; }
@@ -991,6 +1006,11 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
 // dir is one path segment down.
 export const CLIENT = String.raw`
 let report = null;
+// A SHEET being viewed, or null for a single pair — and the single pair really is
+// the degenerate case, which is the whole reason this is one extra variable
+// rather than a second view. view-math.ts asserts the geometry half of that
+// (a 1x1 layout puts its cell at the world origin); this is the view half.
+let sheet = null;
 let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations', readOnly: false };
 const $ = (id) => document.getElementById(id);
 
@@ -1668,6 +1688,14 @@ function applyView() {
   markLayers.design.style.transform = designLayer;
   layers.impl.style.transform = annLayers.impl.style.transform = worldLayerTransform(v);
   diffLayers.impl.style.transform = markLayers.impl.style.transform = worldLayerTransform(v);
+  // A sheet's cell layers. The impl side is plain world space; the design side's
+  // cells are placed through their OWN alignment at build time, so it is world
+  // space here too and must NOT take designLayerTransform's re-mapping — that
+  // would apply one cell's registration to all of them.
+  if (sheet) {
+    $('cells-impl').style.transform = worldLayerTransform(v);
+    $('cells-design').style.transform = worldLayerTransform(vd);
+  }
   // Badges keep a constant screen size (the comps' scale(min(2.4, 1/s))); the point circles too.
   for (const side of ['design', 'impl']) {
     const z = viewOf(side).z, cs = Math.min(2.4, 1 / z);
@@ -2895,11 +2923,56 @@ async function loadElements() {
 function loadImage(img, src) {
   return new Promise((resolve) => { img.addEventListener('load', () => resolve(true), { once: true }); img.addEventListener('error', () => resolve(false), { once: true }); img.src = src; });
 }
+// ---- a SHEET's cells ------------------------------------------------------
+// The cells' screenshots, laid out in WORLD px inside the zero-size .cellshots
+// container. No per-image transform: the container's one transform (applyView)
+// maps the lot, so N images cost what one did and the existing pan, zoom, fit
+// and pinch move them by construction.
+//
+// The IMPL side is the easy half and it is exact: world px ARE impl css px, so a
+// cell's screenshot goes at its rect and is sized by its own report's impl
+// width/height. The DESIGN side needs each cell's own alignment (step 2) — until
+// then its container stays empty and the design pane shows the slots only.
+function renderCellShots() {
+  const hosts = { design: $('cells-design'), impl: $('cells-impl') };
+  hosts.design.replaceChildren();
+  hosts.impl.replaceChildren();
+  if (!sheet) return Promise.resolve(true);
+  const loads = [];
+  for (const cell of sheet.cells) {
+    for (const side of ['design', 'impl']) {
+      const slot = document.createElement('div');
+      slot.className = 'cellslot k-' + cell.kind;
+      slot.style.left = cell.rect.x + 'px';
+      slot.style.top = cell.rect.y + 'px';
+      slot.style.width = cell.rect.w + 'px';
+      slot.style.height = cell.rect.h + 'px';
+      hosts[side].appendChild(slot);
+    }
+    if (!cell.report) continue;
+    const img = document.createElement('img');
+    img.className = 'cellshot';
+    img.alt = '';
+    img.style.left = cell.rect.x + 'px';
+    img.style.top = cell.rect.y + 'px';
+    img.style.width = cell.report.impl.width + 'px';
+    img.style.height = cell.report.impl.height + 'px';
+    hosts.impl.appendChild(img);
+    loads.push(loadImage(img, cell.dir + '/' + cell.report.artifacts.implPng));
+  }
+  return Promise.all(loads).then(() => true);
+}
+
 let wired = false;
 // Open a pair. Called once by an emitted file and once per route by the app
 // shell, so every piece of per-pair state is reset here, not at load.
-function openReport(reportData, annotationSet, pageData) {
+function openReport(reportData, annotationSet, pageData, sheetData) {
   report = reportData;
+  // Set BEFORE anything reads it, and always assigned so a pair opened after a
+  // sheet cannot inherit the sheet's cells. Passing it as an argument rather
+  // than setting it around the call is what removes that ordering trap.
+  sheet = sheetData || null;
+  document.body.classList.toggle('is-sheet', !!sheet);
   page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null, readOnly: false }, pageData || {});
   byId = new Map(report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s))).map((f) => [f.id, f]));
   ann.set = annotationSet || { version: 1, pair: report.pair, annotations: [] };
@@ -2920,8 +2993,8 @@ function openReport(reportData, annotationSet, pageData) {
   if (!wired) { wire(); wired = true; }
   applyLayout(); applySide(); applyNarrow(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
   return Promise.all([
-    loadImage(imgs.design, page.base + report.artifacts.designPng),
-    loadImage(imgs.impl, page.base + report.artifacts.implPng),
+    sheet ? renderCellShots() : loadImage(imgs.design, page.base + report.artifacts.designPng),
+    sheet ? Promise.resolve(true) : loadImage(imgs.impl, page.base + report.artifacts.implPng),
     loadAnnotations(),
     loadElements(),
     loadTriage(),
@@ -2934,10 +3007,13 @@ function openReport(reportData, annotationSet, pageData) {
     // DPR = PNG native px per CAPTURE CSS px; a missing image keeps 1. The
     // design side cannot infer it from report.design.width — see
     // designCaptureDpr, which this used to get wrong on 40 of 41 pairs.
-    state.dprD = okD ? designCaptureDpr(imgs.design.naturalWidth, report.design, report.alignment.scale) : 1;
-    state.dprI = okI ? (report.impl.dpr || imgs.impl.naturalWidth / report.impl.width) : 1;
-    if (!okD) $('label-design').textContent += ' — image missing';
-    if (!okI) $('label-impl').textContent += ' — image missing';
+    // A sheet's cell images carry their OWN dpr and are sized in world px by
+    // renderCellShots, so there is no single page image to probe and nothing for
+    // these two to scale. Left at 1 rather than guessed from a cell.
+    state.dprD = sheet ? 1 : (okD ? designCaptureDpr(imgs.design.naturalWidth, report.design, report.alignment.scale) : 1);
+    state.dprI = sheet ? 1 : (okI ? (report.impl.dpr || imgs.impl.naturalWidth / report.impl.width) : 1);
+    if (!sheet && !okD) $('label-design').textContent += ' — image missing';
+    if (!sheet && !okI) $('label-impl').textContent += ' — image missing';
     setLab(state.lab);
     renderRail(); renderMarks(); renderAnnMarks(); renderFocusChip(); fit();
   });
