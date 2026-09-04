@@ -1,0 +1,482 @@
+{
+  "entryId": "ds-button",
+  "title": "Button",
+  "designRef": "demo/ds-button#1:1@47",
+  "setName": "*Button/Fill",
+  "createdAt": "2026-08-27T08:22:05.000Z",
+  "axes": {
+    "source": "definitions",
+    "properties": {
+      "tone": [
+        "Primary",
+        "Secondary",
+        "Tertiary",
+        "Danger"
+      ],
+      "size": [
+        "sm",
+        "md",
+        "lg"
+      ],
+      "State": [
+        "Default",
+        "Hover",
+        "Active",
+        "Focus",
+        "Disabled"
+      ]
+    }
+  },
+  "gallery": {
+    "columns": "State",
+    "rows": "tone",
+    "labels": {
+      "State": {
+        "Disabled": "Disabled"
+      }
+    }
+  },
+  "pairs": [
+    {
+      "slug": "tone-primary_size-sm_state-default",
+      "dir": "ds-button--tone-primary_size-sm_state-default",
+      "props": {
+        "tone": "Primary",
+        "size": "sm",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-primary_size-sm_state-hover",
+      "dir": "ds-button--tone-primary_size-sm_state-hover",
+      "props": {
+        "tone": "Primary",
+        "size": "sm",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-primary_size-sm_state-active",
+      "dir": "ds-button--tone-primary_size-sm_state-active",
+      "props": {
+        "tone": "Primary",
+        "size": "sm",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-primary_size-sm_state-focus",
+      "dir": "ds-button--tone-primary_size-sm_state-focus",
+      "props": {
+        "tone": "Primary",
+        "size": "sm",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-primary_size-sm_state-disabled",
+      "dir": "ds-button--tone-primary_size-sm_state-disabled",
+      "props": {
+        "tone": "Primary",
+        "size": "sm",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-primary_size-md_state-default",
+      "dir": "ds-button--tone-primary_size-md_state-default",
+      "props": {
+        "tone": "Primary",
+        "size": "md",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-primary_size-md_state-hover",
+      "dir": "ds-button--tone-primary_size-md_state-hover",
+      "props": {
+        "tone": "Primary",
+        "size": "md",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-primary_size-md_state-active",
+      "dir": "ds-button--tone-primary_size-md_state-active",
+      "props": {
+        "tone": "Primary",
+        "size": "md",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-primary_size-md_state-focus",
+      "dir": "ds-button--tone-primary_size-md_state-focus",
+      "props": {
+        "tone": "Primary",
+        "size": "md",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-primary_size-md_state-disabled",
+      "dir": "ds-button--tone-primary_size-md_state-disabled",
+      "props": {
+        "tone": "Primary",
+        "size": "md",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-primary_size-lg_state-default",
+      "dir": "ds-button--tone-primary_size-lg_state-default",
+      "props": {
+        "tone": "Primary",
+        "size": "lg",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-primary_size-lg_state-hover",
+      "dir": "ds-button--tone-primary_size-lg_state-hover",
+      "props": {
+        "tone": "Primary",
+        "size": "lg",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-primary_size-lg_state-active",
+      "dir": "ds-button--tone-primary_size-lg_state-active",
+      "props": {
+        "tone": "Primary",
+        "size": "lg",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-primary_size-lg_state-focus",
+      "dir": "ds-button--tone-primary_size-lg_state-focus",
+      "props": {
+        "tone": "Primary",
+        "size": "lg",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-primary_size-lg_state-disabled",
+      "dir": "ds-button--tone-primary_size-lg_state-disabled",
+      "props": {
+        "tone": "Primary",
+        "size": "lg",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-sm_state-default",
+      "dir": "ds-button--tone-secondary_size-sm_state-default",
+      "props": {
+        "tone": "Secondary",
+        "size": "sm",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-sm_state-hover",
+      "dir": "ds-button--tone-secondary_size-sm_state-hover",
+      "props": {
+        "tone": "Secondary",
+        "size": "sm",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-sm_state-active",
+      "dir": "ds-button--tone-secondary_size-sm_state-active",
+      "props": {
+        "tone": "Secondary",
+        "size": "sm",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-sm_state-disabled",
+      "dir": "ds-button--tone-secondary_size-sm_state-disabled",
+      "props": {
+        "tone": "Secondary",
+        "size": "sm",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-md_state-default",
+      "dir": "ds-button--tone-secondary_size-md_state-default",
+      "props": {
+        "tone": "Secondary",
+        "size": "md",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-md_state-hover",
+      "dir": "ds-button--tone-secondary_size-md_state-hover",
+      "props": {
+        "tone": "Secondary",
+        "size": "md",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-md_state-active",
+      "dir": "ds-button--tone-secondary_size-md_state-active",
+      "props": {
+        "tone": "Secondary",
+        "size": "md",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-md_state-focus",
+      "dir": "ds-button--tone-secondary_size-md_state-focus",
+      "props": {
+        "tone": "Secondary",
+        "size": "md",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-md_state-disabled",
+      "dir": "ds-button--tone-secondary_size-md_state-disabled",
+      "props": {
+        "tone": "Secondary",
+        "size": "md",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-lg_state-default",
+      "dir": "ds-button--tone-secondary_size-lg_state-default",
+      "props": {
+        "tone": "Secondary",
+        "size": "lg",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-lg_state-hover",
+      "dir": "ds-button--tone-secondary_size-lg_state-hover",
+      "props": {
+        "tone": "Secondary",
+        "size": "lg",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-lg_state-active",
+      "dir": "ds-button--tone-secondary_size-lg_state-active",
+      "props": {
+        "tone": "Secondary",
+        "size": "lg",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-lg_state-focus",
+      "dir": "ds-button--tone-secondary_size-lg_state-focus",
+      "props": {
+        "tone": "Secondary",
+        "size": "lg",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-secondary_size-lg_state-disabled",
+      "dir": "ds-button--tone-secondary_size-lg_state-disabled",
+      "props": {
+        "tone": "Secondary",
+        "size": "lg",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-tertiary_size-md_state-default",
+      "dir": "ds-button--tone-tertiary_size-md_state-default",
+      "props": {
+        "tone": "Tertiary",
+        "size": "md",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-tertiary_size-md_state-hover",
+      "dir": "ds-button--tone-tertiary_size-md_state-hover",
+      "props": {
+        "tone": "Tertiary",
+        "size": "md",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-tertiary_size-md_state-disabled",
+      "dir": "ds-button--tone-tertiary_size-md_state-disabled",
+      "props": {
+        "tone": "Tertiary",
+        "size": "md",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-tertiary_size-lg_state-default",
+      "dir": "ds-button--tone-tertiary_size-lg_state-default",
+      "props": {
+        "tone": "Tertiary",
+        "size": "lg",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-tertiary_size-lg_state-hover",
+      "dir": "ds-button--tone-tertiary_size-lg_state-hover",
+      "props": {
+        "tone": "Tertiary",
+        "size": "lg",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-danger_size-md_state-default",
+      "dir": "ds-button--tone-danger_size-md_state-default",
+      "props": {
+        "tone": "Danger",
+        "size": "md",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-danger_size-md_state-hover",
+      "dir": "ds-button--tone-danger_size-md_state-hover",
+      "props": {
+        "tone": "Danger",
+        "size": "md",
+        "State": "Hover"
+      }
+    },
+    {
+      "slug": "tone-danger_size-md_state-active",
+      "dir": "ds-button--tone-danger_size-md_state-active",
+      "props": {
+        "tone": "Danger",
+        "size": "md",
+        "State": "Active"
+      }
+    },
+    {
+      "slug": "tone-danger_size-md_state-focus",
+      "dir": "ds-button--tone-danger_size-md_state-focus",
+      "props": {
+        "tone": "Danger",
+        "size": "md",
+        "State": "Focus"
+      }
+    },
+    {
+      "slug": "tone-danger_size-md_state-disabled",
+      "dir": "ds-button--tone-danger_size-md_state-disabled",
+      "props": {
+        "tone": "Danger",
+        "size": "md",
+        "State": "Disabled"
+      }
+    },
+    {
+      "slug": "tone-danger_size-lg_state-default",
+      "dir": "ds-button--tone-danger_size-lg_state-default",
+      "props": {
+        "tone": "Danger",
+        "size": "lg",
+        "State": "Default"
+      }
+    },
+    {
+      "slug": "tone-danger_size-lg_state-hover",
+      "dir": "ds-button--tone-danger_size-lg_state-hover",
+      "props": {
+        "tone": "Danger",
+        "size": "lg",
+        "State": "Hover"
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "nodeId": "1:100",
+      "name": "tone=Secondary, size=sm, State=Focus",
+      "reason": "size=sm story missing for state=focus",
+      "props": {
+        "tone": "Secondary",
+        "size": "sm",
+        "State": "Focus"
+      }
+    },
+    {
+      "nodeId": "1:101",
+      "name": "tone=Tertiary, size=md, State=Active",
+      "reason": "no state mapping for tone=tertiary state=active",
+      "props": {
+        "tone": "Tertiary",
+        "size": "md",
+        "State": "Active"
+      }
+    },
+    {
+      "nodeId": "1:102",
+      "name": "tone=Tertiary, size=md, State=Focus",
+      "reason": "no state mapping for tone=tertiary state=focus",
+      "props": {
+        "tone": "Tertiary",
+        "size": "md",
+        "State": "Focus"
+      }
+    },
+    {
+      "nodeId": "1:103",
+      "name": "tone=Tertiary, size=lg, State=Active",
+      "reason": "no state mapping for tone=tertiary state=active",
+      "props": {
+        "tone": "Tertiary",
+        "size": "lg",
+        "State": "Active"
+      }
+    },
+    {
+      "nodeId": "1:104",
+      "name": "tone=Tertiary, size=lg, State=Focus",
+      "reason": "no state mapping for tone=tertiary state=focus",
+      "props": {
+        "tone": "Tertiary",
+        "size": "lg",
+        "State": "Focus"
+      }
+    },
+    {
+      "nodeId": "1:105",
+      "name": "tone=Danger, size=lg, State=Focus",
+      "reason": "impl exports no focus story for tone=danger",
+      "props": {
+        "tone": "Danger",
+        "size": "lg",
+        "State": "Focus"
+      }
+    },
+    {
+      "nodeId": "1:106",
+      "name": "tone=Danger, size=lg, State=Disabled",
+      "reason": "impl exports no disabled story for tone=danger",
+      "props": {
+        "tone": "Danger",
+        "size": "lg",
+        "State": "Disabled"
+      }
+    }
+  ]
+}

@@ -84,19 +84,62 @@ const LIBRARY_IGNORE = {
       contents: true,
       reason: "decision D6 (mobile): the comp's 34×26 grey plate is matched to the card's 44×56 impl.png tile",
     },
+  ],
+
+  // COUNTS. Every number on this page is a function of what the root HOLDS, and
+  // the root now holds 53 pairs where the comp's demo holds 12 (chunk 3 gave the
+  // fixture a 41-cell variant set — `ds-button` — because the Gallery comp's
+  // subject IS a variant sheet and a sheet cannot be measured against a root
+  // with no set). Masking the numbers and comparing the rest is what keeps the
+  // COPY honest: "53 of 53 comparisons" stops being reported, and a reworded
+  // label still is.
+  //
+  // This replaces two `accepted` rules that LAPSED here, exactly as designed —
+  // they pinned `Major 2` -> `Major 3` and `Minor 2` -> `Minor 3`, and the set
+  // moved the same card to `Major 5` / `Minor 4`, so both rules stopped hitting
+  // and their findings resurfaced. Their reason is kept because it is still
+  // true and is not the same fact as this one: gap 23 — the Library comp's card
+  // counts the opened pair's f1-f6 only, while refdiff also counts the Tool
+  // comp's aggregates g1 (major) and g2 (minor).
+  dataSlots: {
+    patterns: ["\\d+ of \\d+ comparisons", "(Critical|Major|Minor) \\d+", "^\\d+$"],
+  },
+
+  // THE GROUP ROW, and it is one diagnosed cause rather than eight acceptances.
+  //
+  // `RefDiff Library.dc.html` predates grouping entirely: it draws twelve cards
+  // and no group, so the `ds-button` row — its name, its chevron, its
+  // "41 comparisons", its severity roll-up and its regression pill — has no
+  // counterpart anywhere in the comp. Chunk 5 rebuilds this surface against
+  // `RefDiff Library Groups.dc.html`, which draws groups as a six-column table;
+  // the fix is that rebuild, not anything on this pair. So the findings stay
+  // REPORTED with their severity, grouped under the cause, and out of the
+  // verdict — the state the skill's `explain` exists for.
+  //
+  // Measured across this change, and the middle number is the reason the fixture
+  // sorts the set OLDEST (see SET_AGE): with the set's cells timestamped 35 min
+  // ago the group sorted FOURTH and shifted nine cards past their counterparts —
+  // desktop 197 findings at confidence 0.28. Sorted last: 23 findings at 0.89,
+  // mobile 21 at 1.00, and what remains is the row itself.
+  //
+  // `types` is the safety. This cause can add or drop an ELEMENT and move the
+  // pixels under it; it cannot change a colour, a typeface, a border or a
+  // radius, so every `color`, `typography`, `border` and `border-radius`
+  // finding on these pairs stays unexplained and still fails the run.
+  explain: [
     {
-      type: "text-content",
-      text: "Major 2",
-      expected: { text: "Major 2" },
-      actual: { text: "Major 3" },
-      reason: "gap 23: the Library comp's card counts the opened pair's f1–f6 only; refdiff also counts the Tool comp's aggregates g1 (major) and g2 (minor)",
+      types: ["extra-element", "missing-element", "pixel-region"],
+      region: { x: 0, y: 0, w: 4000, h: 4000 },
+      cause: "Library comp predates groups",
+      reason:
+        "the demo root carries a 41-cell `ds-button` variant set since chunk 3, so the Library draws a thirteenth row the comp has no counterpart for; chunk 5 rebuilds this surface against RefDiff Library Groups.dc.html. Measured: 8 named extra elements (ds-button, expand_more, 41 comparisons, trending_up, Critical 21, Major 46, Minor 48, 1 regressed), the row surface, and three 8x8 severity dots",
     },
     {
-      type: "text-content",
-      text: "Minor 2",
-      expected: { text: "Minor 2" },
-      actual: { text: "Minor 3" },
-      reason: "gap 23: see Major 2 — g2 is the minor aggregate",
+      types: ["position", "size"],
+      region: { x: 0, y: 0, w: 4000, h: 4000 },
+      cause: "root holds 53 pairs, the comp's demo 12",
+      reason:
+        "the head's count string is longer than the comp's ('53 of 53 comparisons' against '12 of 12 comparisons'), so the filter row's contents sit further right — measured as one offset of +78px on three elements, which is the string's own width and not a layout change",
     },
   ],
 }
@@ -299,6 +342,12 @@ const TOOLBAR_IGNORE = {
   accepted: COMPARE_IGNORE.accepted,
 }
 
+// CHUNK 3 — what the Gallery comps excuse. Deliberately EMPTY at registration:
+// the first run's findings ARE this surface's specification (the skill's §0), and
+// a policy written before the measurement excuses findings nobody has read. Every
+// entry added here from now on carries the measurement that justified it.
+const GALLERY_IGNORE = {}
+
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
 const COMPARE_ROUTE = "/#/onboarding-document-step"
@@ -420,6 +469,33 @@ export const manifest = [
     },
     // The shared toolbar policy plus the sheet region, first so it wins over the panned canvas.
     ignore: { ...TOOLBAR_IGNORE, explain: [PHONE_SHEET_EXPLAIN, ...TOOLBAR_IGNORE.explain] },
+  },
+  {
+    // CHUNK 3 — the variant sheet. A full-bleed comp, so it MUST carry a viewport:
+    // without one the dc-html adapter captures at its 1560px default canvas and
+    // every column lands offset (see the skill's "A full-bleed comp is captured at
+    // the pair viewport"). 1400x860 is the comp's own $preview.
+    //
+    // The route is the sheet for the demo root's `ds-button` entry (NOT the flat
+    // `button` card — that one is the Library comp's and stays as it is). It
+    // renders the set index (`ds-button.set.json`) joined with /api/pairs — so this measures
+    // the surface the fixture's set feeds, and a root with no set index renders the
+    // named error state rather than an empty grid.
+    id: "refdiff-gallery-desktop",
+    title: "RefDiff \u00b7 Gallery (desktop)",
+    design: { file: "RefDiff Gallery.dc.html", frame: "Gallery \u2014 Button variant sheet" },
+    app: { source: "live", route: "/#/set/ds-button", viewport: { width: 1400, height: 860 }, waitFor: "#view-gallery .gsheet, #view-gallery .gerror" },
+    ignore: GALLERY_IGNORE,
+  },
+  {
+    // The phone half. Its own 390x844 phone frame inside a dark showcase canvas —
+    // NOT the responsive-at-a-narrow-viewport shape the Library pairs use — so
+    // `scope` picks the phone node, exactly as the mobile toolbar pair does.
+    id: "refdiff-gallery-mobile",
+    title: "RefDiff \u00b7 Gallery (mobile)",
+    design: { file: "RefDiff Gallery Mobile.dc.html", frame: "RefDiff gallery mobile", scope: ".cc-theme-dark" },
+    app: { source: "live", route: "/#/set/ds-button", viewport: mobile, waitFor: "#view-gallery .gsheet, #view-gallery .gerror" },
+    ignore: GALLERY_IGNORE,
   },
   {
     // The desktop ghost. Split mode shows both panes, so the ghost appears on the

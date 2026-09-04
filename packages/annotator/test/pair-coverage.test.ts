@@ -28,15 +28,14 @@ import { describe, expect, it } from "vitest"
  * The kind of waiver that has to be re-read whenever its file moves, not only
  * when its reason changes.
  */
-const UNPAIRED_BY_DESIGN = new Map([
-  [
-    "RefDiff Gallery.dc.html",
-    "chunk 3's surface does not exist yet: there is no impl route to capture, and a pair naming a route that 404s compares 'fine' against the wrong comp (design/refdiff.manifest.mjs's header). Register it when the gallery view is stubbed, per the refdiff skill's §0",
-  ],
-  [
-    "RefDiff Gallery Mobile.dc.html",
-    "the phone half of the same unbuilt surface — see RefDiff Gallery.dc.html. It is its own 390×844 phone frame inside a showcase canvas, so its pair will need scope: '.cc-theme-dark'",
-  ],
+const UNPAIRED_BY_DESIGN = new Map<string, string>([
+  // Both Gallery comps were here until chunk 3 stubbed the sheet and registered
+  // `refdiff-gallery-desktop` / `-mobile`. The waivers went in the SAME change,
+  // per their own instruction — a waiver that outlives its comp is a statement
+  // about a real screen that nobody re-reads. `staleWaivers` catches the other
+  // direction (a waiver whose FILE is gone); nothing but this discipline catches
+  // a waiver whose file gained a pair, because the map is consulted only for
+  // comps with no pair.
 ])
 
 export interface PairCoverage {

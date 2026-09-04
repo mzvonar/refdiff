@@ -450,6 +450,294 @@ async function captureOpened(dir: string): Promise<void> {
   }
 }
 
+/* ------------------------------------------- the variant SET (chunk 3) -- */
+
+/**
+ * `CELLS` from `RefDiff Gallery.dc.html`, verbatim — the comp's own demo sheet.
+ *
+ * Why the fixture carries a set at all: the Gallery comp's subject IS a variant
+ * sheet, and until this landed the demo root held twelve FLAT pair dirs and no
+ * `<entryId>.set.json`, so the gallery route had nothing to draw and refdiff
+ * refused the pair outright (`{"kind":"error-page"}` — measured, not assumed).
+ * A sheet cannot be measured against a root with no set.
+ *
+ * The entry id is `ds-button`, not `button`: the flat `button` dir is the
+ * Library comp's own card and has to stay exactly as it is. `entryIdOf` splits
+ * on `--`, so the two never collide — but naming both `button` would put a card
+ * and a group of the same name in one list for no reason.
+ *
+ * THIS MOVES THE TWO LIBRARY PAIRS. The Library gains one group row that
+ * `RefDiff Library.dc.html` does not draw, because that comp predates groups
+ * entirely — chunk 5 rebuilds the Library to `RefDiff Library Groups.dc.html`.
+ * The finding is TRUE and it is not ours to fix here, so it is declared as a
+ * cause on those pairs (`LIBRARY_IGNORE.explain`) rather than accepted: it stays
+ * reported, keeps its severity, and the run prints its count every time.
+ */
+export const SET_ENTRY = "ds-button"
+export const SET_TONES = ["Primary", "Secondary", "Tertiary", "Danger"] as const
+export const SET_SIZES = ["sm", "md", "lg"] as const
+export const SET_STATES = ["Default", "Hover", "Active", "Focus", "Disabled"] as const
+
+/** The comp's SIZE_H, plus a width per size so the sheet's tracks really differ. */
+const SET_FRAME: Record<string, { w: number; h: number }> = {
+  sm: { w: 76, h: 28 },
+  md: { w: 92, h: 36 },
+  lg: { w: 108, h: 44 },
+}
+
+/** The comp's SKIP — a design cell with no impl story to compare it to. */
+const SET_SKIP: Record<string, string> = {
+  "Tertiary/md/Active": "no state mapping for tone=tertiary state=active",
+  "Tertiary/md/Focus": "no state mapping for tone=tertiary state=focus",
+  "Tertiary/lg/Active": "no state mapping for tone=tertiary state=active",
+  "Tertiary/lg/Focus": "no state mapping for tone=tertiary state=focus",
+  "Danger/lg/Focus": "impl exports no focus story for tone=danger",
+  "Danger/lg/Disabled": "impl exports no disabled story for tone=danger",
+  "Secondary/sm/Focus": "size=sm story missing for state=focus",
+}
+
+/** The comp's ABSENT — in the axes, declared by neither side. */
+const SET_ABSENT = new Set([
+  "Tertiary/sm/Default", "Tertiary/sm/Hover", "Tertiary/sm/Active", "Tertiary/sm/Focus", "Tertiary/sm/Disabled",
+  "Danger/sm/Default", "Danger/sm/Hover", "Danger/sm/Active", "Danger/sm/Focus", "Danger/sm/Disabled",
+  "Tertiary/lg/Disabled", "Danger/lg/Active",
+])
+
+/**
+ * The comp's STALE, and it is the load-bearing part of this fixture.
+ *
+ * `run` is the PER-PAIR ordinal, so a sheet legitimately mixes vintages: these
+ * three sit at 45 while the rest sit at 47. A consumer taking the largest
+ * ordinal on screen as a global newest would be right here and wrong on the real
+ * DS root, where `ds-button-icon`'s eleven cells are all r2 — which is why the
+ * sheet reads its span PER SET and the fixture has to be able to prove it.
+ */
+const SET_STALE = new Set(["Danger/md/Default", "Danger/md/Hover", "Danger/md/Active"])
+const SET_NEWEST = 47
+const SET_OLD = 45
+
+/**
+ * The set's cells are the OLDEST runs in the root, and that is a deliberate
+ * ORDER decision, not a detail.
+ *
+ * The Library sorts newest-first, so a cell's `createdAt` decides where the
+ * group row lands among the comp's twelve cards — and refdiff pairs row N with
+ * row N. At 35 min the group sorted FOURTH and shifted nine cards past their
+ * counterparts: measured, `refdiff-library-desktop` went to 197 findings at
+ * confidence 0.28 (+190). Sorting the group after all twelve leaves the comp's
+ * own order intact and costs only the row itself, which is the irreducible part
+ * (chunk 5 rebuilds the Library to a comp that draws groups).
+ *
+ * This is the skill's Order-of-attack step 3, and it is why it comes before
+ * reading a single finding: nine cards' worth of colour, typography and
+ * text-content findings were one wrong timestamp.
+ */
+const SET_AGE = 30 * HOUR
+const SET_STALE_AGE = 33 * HOUR
+/** The comp's REG — a fix come undone. */
+const SET_REG = new Set(["Primary/md/Hover"])
+
+/** The comp's CAUSES: one recurring cause, its severity, and which cells carry it. */
+const SET_CAUSES: {
+  id: string
+  severity: Severity
+  type: Finding["type"]
+  message: string
+  expected: Record<string, string>
+  actual: Record<string, string>
+  hits: (t: string, s: string, st: string) => boolean
+}[] = [
+  { id: "typo", severity: "major", type: "typography", message: "Label typeface differs",
+    expected: { fontFamily: "Oswald", fontWeight: "500" }, actual: { fontFamily: "Montserrat", fontWeight: "700" },
+    hits: (t, s) => !(t === "Secondary" && s === "md") },
+  { id: "colour", severity: "critical", type: "color", message: "Primary fill off-token",
+    expected: { backgroundColor: "#4F46E5" }, actual: { backgroundColor: "#6366F1" },
+    hits: (t) => t === "Primary" },
+  { id: "size", severity: "major", type: "size", message: "sm height inflated",
+    expected: { h: "28" }, actual: { h: "32" }, hits: (_t, s) => s === "sm" },
+  { id: "spacing", severity: "minor", type: "spacing", message: "md padding tighter",
+    expected: { padding: "0 16px" }, actual: { padding: "0 12px" },
+    hits: (t, s, st) => s === "md" && (st === "Hover" || st === "Active") && t !== "Secondary" },
+  { id: "missing", severity: "critical", type: "missing-element", message: "Focus ring missing",
+    expected: { element: "present" }, actual: { element: "missing" },
+    hits: (_t, _s, st) => st === "Focus" },
+]
+
+/** The comp's ONEOFF: one cell each, so the sheet is not uniform. */
+const SET_ONEOFF: Record<string, { severity: Severity; type: Finding["type"]; message: string }> = {
+  "Secondary/lg/Hover": { severity: "major", type: "border", message: "Hover border thickened" },
+  "Primary/lg/Disabled": { severity: "minor", type: "color", message: "Disabled too faint" },
+  "Danger/md/Active": { severity: "minor", type: "border-radius", message: "Corner radius off" },
+}
+
+export type SetCellKind = "measured" | "skipped" | "absent"
+
+export interface SetCell {
+  key: string
+  props: Record<string, string>
+  /** Figma's own variant name, which is what `parseVariantName` reads back. */
+  name: string
+  /** core's `slugify(props)`, so the dir matches what a real expansion writes. */
+  slug: string
+  kind: SetCellKind
+  reason?: string
+  run: number
+  causes: string[]
+  oneoff?: { severity: Severity; type: Finding["type"]; message: string }
+  frame: { w: number; h: number }
+}
+
+/** core's slugify, reproduced: a fixture whose dirs differ from a real run's is a lie. */
+const setSlug = (props: Record<string, string>): string =>
+  Object.entries(props)
+    .map(([k, v]) => `${k}-${v}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))
+    .join("_")
+
+/**
+ * Every cell of the cross-product, in the set's own child order — tone, then
+ * size, then State, which is the order the comp's nested loops walk and the
+ * order a Figma set lists its children in.
+ */
+export function setCells(): SetCell[] {
+  const out: SetCell[] = []
+  for (const tone of SET_TONES)
+    for (const size of SET_SIZES)
+      for (const state of SET_STATES) {
+        const key = `${tone}/${size}/${state}`
+        const props = { tone, size, State: state }
+        const name = `tone=${tone}, size=${size}, State=${state}`
+        const base = { key, props, name, slug: setSlug(props), frame: SET_FRAME[size]! }
+        if (SET_ABSENT.has(key)) {
+          out.push({ ...base, kind: "absent", run: 0, causes: [] })
+          continue
+        }
+        const skip = SET_SKIP[key]
+        if (skip) {
+          out.push({ ...base, kind: "skipped", reason: skip, run: 0, causes: [] })
+          continue
+        }
+        out.push({
+          ...base,
+          kind: "measured",
+          run: SET_STALE.has(key) ? SET_OLD : SET_NEWEST,
+          causes: SET_CAUSES.filter((c) => c.hits(tone, size, state)).map((c) => c.id),
+          ...(SET_ONEOFF[key] ? { oneoff: SET_ONEOFF[key]! } : {}),
+        })
+      }
+  return out
+}
+
+/**
+ * `<entryId>.set.json`, in core's `SetIndex` shape — written by hand here
+ * because the fixture has no Figma node to expand. `axes.source` is
+ * `definitions`: the comp's option order IS the designer's, so a sheet drawn
+ * from it may claim that order (`variantAxes`).
+ */
+export function setIndexJson(cells: readonly SetCell[]): unknown {
+  return {
+    entryId: SET_ENTRY,
+    title: "Button",
+    designRef: `demo/ds-button#1:1@${SET_NEWEST}`,
+    setName: "*Button/Fill",
+    createdAt: iso(SET_AGE),
+    axes: {
+      source: "definitions",
+      properties: { tone: [...SET_TONES], size: [...SET_SIZES], State: [...SET_STATES] },
+    },
+    // The comp's grid: state across, tone x size down. `rows` names which of the
+    // remaining properties LEADS the nesting; `size` follows it in axes order.
+    gallery: {
+      columns: "State",
+      rows: "tone",
+      labels: { State: { Disabled: "Disabled" } },
+    },
+    pairs: cells
+      .filter((c) => c.kind === "measured")
+      .map((c) => ({ slug: c.slug, dir: `${SET_ENTRY}--${c.slug}`, props: c.props })),
+    skipped: cells
+      .filter((c) => c.kind === "skipped")
+      .map((c, i) => ({
+        nodeId: `1:${100 + i}`,
+        name: c.name,
+        reason: c.reason!,
+        props: c.props,
+      })),
+  }
+}
+
+/** One cell's report. Its findings are the causes it carries, in severity order. */
+export function setReportFor(cell: SetCell): ComparisonReport {
+  const findings: Finding[] = []
+  const carried = SET_CAUSES.filter((c) => cell.causes.includes(c.id))
+  const all = [
+    ...carried.map((c) => ({ severity: c.severity, type: c.type, message: c.message, expected: c.expected, actual: c.actual })),
+    ...(cell.oneoff ? [{ ...cell.oneoff, expected: {}, actual: {} }] : []),
+  ]
+  const rank: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
+  all.sort((a, b) => rank[a.severity] - rank[b.severity])
+  all.forEach((f, i) => {
+    const mark = i + 1
+    findings.push({
+      id: `s${mark}`,
+      type: f.type,
+      severity: f.severity,
+      mark,
+      // Inside the cell's own frame, so the sheet's projection has something
+      // real to translate: a box that overflowed its cell would paint a
+      // neighbour and the frame-level rule would never fire correctly.
+      implBox: box(4, 4 + i * 6, Math.max(12, cell.frame.w - 8), 8),
+      message: `${f.message} (${cell.key})`,
+      ...(Object.keys(f.expected).length ? { expected: f.expected } : {}),
+      ...(Object.keys(f.actual).length ? { actual: f.actual } : {}),
+    })
+  })
+  // One frame-level finding per cell, which is the case the sheet must NOT draw
+  // as a box: pixel-region/frame fires on 194/194 pairs of the real DS root and
+  // its box IS the whole frame, so as boxes they would paint the sheet solid.
+  findings.push({
+    id: `s${findings.length + 1}`,
+    type: "pixel-region",
+    severity: "minor",
+    mark: findings.length + 1,
+    implBox: box(0, 0, cell.frame.w, cell.frame.h),
+    message: `frame differs by 3.1% (${cell.key})`,
+    actual: { diffRatio: "0.031", changeKind: "noise" },
+  })
+  const failing = findings.some((f) => f.severity === "critical" || f.severity === "major")
+  return {
+    pair: `Button · ${cell.props.tone} · ${cell.props.size} · ${cell.props.State}`,
+    createdAt: iso(cell.run === SET_OLD ? SET_STALE_AGE : SET_AGE),
+    run: cell.run,
+    design: {
+      source: "figma",
+      ref: `demo/ds-button#1:1@${cell.run}`,
+      width: cell.frame.w,
+      height: cell.frame.h,
+      dpr: 2,
+    },
+    impl: {
+      source: "storybook",
+      ref: `ds-button--${cell.slug}`,
+      width: cell.frame.w,
+      height: cell.frame.h,
+      dpr: 2,
+    },
+    alignment: alignment(0.86),
+    findings,
+    suppressed: [],
+    policy: {},
+    verdict: { pass: !failing, failThreshold: "major" },
+    delta: {
+      previousRun: iso((cell.run === SET_OLD ? SET_STALE_AGE : SET_AGE) + 6 * HOUR),
+      previousRunNumber: cell.run - 1,
+      resolved: [],
+      introduced: SET_REG.has(cell.key) ? ["s1"] : [],
+      ...(SET_REG.has(cell.key) ? { regressions: ["s1"] } : {}),
+    },
+    artifacts: { designPng: "design.png", implPng: "impl.png" },
+  }
+}
+
 async function main(): Promise<void> {
   const capture = process.argv.includes("--capture")
   if (process.argv.includes("--now")) clock = new Date().toISOString()
@@ -482,7 +770,36 @@ async function main(): Promise<void> {
       `${item.slug}: ${report.findings.length} findings (${item.critical}/${item.major}/${item.minor}), ${report.suppressed.length} suppressed, confidence ${item.confidence}, ${notes.annotations.length} comments${elements ? ", anchored to elements.json" : ""}`,
     )
   }
-  const known = new Set(ITEMS.map((i) => i.slug))
+  // ---- the variant SET: one dir per measured cell, plus the set index ----
+  const cells = setCells()
+  const index = setIndexJson(cells)
+  await writeFile(join(ROOT, `${SET_ENTRY}.set.json`), JSON.stringify(index, null, 2))
+  for (const cell of cells) {
+    if (cell.kind !== "measured") continue
+    const dir = join(ROOT, `${SET_ENTRY}--${cell.slug}`)
+    await mkdir(dir, { recursive: true })
+    for (const stale of ["findings.json", "annotations.json", "annotations.md", "triage.json", "focus.json"])
+      await rm(join(dir, stale), { force: true })
+    await writeFile(join(dir, "findings.json"), JSON.stringify(setReportFor(cell), null, 2))
+  }
+  const census = {
+    measured: cells.filter((c) => c.kind === "measured").length,
+    skipped: cells.filter((c) => c.kind === "skipped").length,
+    absent: cells.filter((c) => c.kind === "absent").length,
+  }
+  console.log(
+    `${SET_ENTRY}: ${cells.length} cells — ${census.measured} measured, ${census.skipped} skipped, ${census.absent} absent; ${SET_ENTRY}.set.json written`,
+  )
+
+  // A renamed cell must not leave a stale dir behind — the same reason each
+  // item's dir is cleaned above, and it matters more here: an orphan
+  // `ds-button--*` dir would join the group in the Library and be counted as a
+  // cell of a set whose index does not list it.
+  const known = new Set<string>([
+    ...ITEMS.map((i) => i.slug),
+    `${SET_ENTRY}.set.json`,
+    ...cells.filter((c) => c.kind === "measured").map((c) => `${SET_ENTRY}--${c.slug}`),
+  ])
   for (const name of await readdir(ROOT)) if (!known.has(name)) console.warn(`WARNING: ${name} is not a demo item — delete it by hand`)
 }
 

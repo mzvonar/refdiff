@@ -1,0 +1,104 @@
+{
+  "pair": "Button · Danger · md · Hover",
+  "createdAt": "2026-08-27T05:22:05.000Z",
+  "run": 45,
+  "design": {
+    "source": "figma",
+    "ref": "demo/ds-button#1:1@45",
+    "width": 92,
+    "height": 36,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "storybook",
+    "ref": "ds-button--tone-danger_size-md_state-hover",
+    "width": 92,
+    "height": 36,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.86,
+    "confidenceX": 0.86,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [
+    {
+      "id": "s1",
+      "type": "typography",
+      "severity": "major",
+      "mark": 1,
+      "implBox": {
+        "x": 4,
+        "y": 4,
+        "w": 84,
+        "h": 8
+      },
+      "message": "Label typeface differs (Danger/md/Hover)",
+      "expected": {
+        "fontFamily": "Oswald",
+        "fontWeight": "500"
+      },
+      "actual": {
+        "fontFamily": "Montserrat",
+        "fontWeight": "700"
+      }
+    },
+    {
+      "id": "s2",
+      "type": "spacing",
+      "severity": "minor",
+      "mark": 2,
+      "implBox": {
+        "x": 4,
+        "y": 10,
+        "w": 84,
+        "h": 8
+      },
+      "message": "md padding tighter (Danger/md/Hover)",
+      "expected": {
+        "padding": "0 16px"
+      },
+      "actual": {
+        "padding": "0 12px"
+      }
+    },
+    {
+      "id": "s3",
+      "type": "pixel-region",
+      "severity": "minor",
+      "mark": 3,
+      "implBox": {
+        "x": 0,
+        "y": 0,
+        "w": 92,
+        "h": 36
+      },
+      "message": "frame differs by 3.1% (Danger/md/Hover)",
+      "actual": {
+        "diffRatio": "0.031",
+        "changeKind": "noise"
+      }
+    }
+  ],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": false,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-26T23:22:05.000Z",
+    "previousRunNumber": 44,
+    "resolved": [],
+    "introduced": []
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}

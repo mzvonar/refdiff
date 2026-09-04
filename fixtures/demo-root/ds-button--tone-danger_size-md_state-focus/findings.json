@@ -1,0 +1,104 @@
+{
+  "pair": "Button · Danger · md · Focus",
+  "createdAt": "2026-08-27T08:22:05.000Z",
+  "run": 47,
+  "design": {
+    "source": "figma",
+    "ref": "demo/ds-button#1:1@47",
+    "width": 92,
+    "height": 36,
+    "dpr": 2
+  },
+  "impl": {
+    "source": "storybook",
+    "ref": "ds-button--tone-danger_size-md_state-focus",
+    "width": 92,
+    "height": 36,
+    "dpr": 2
+  },
+  "alignment": {
+    "scale": 1,
+    "scaleY": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "confidence": 0.86,
+    "confidenceX": 0.86,
+    "confidenceY": 1,
+    "basis": "anchors"
+  },
+  "findings": [
+    {
+      "id": "s1",
+      "type": "missing-element",
+      "severity": "critical",
+      "mark": 1,
+      "implBox": {
+        "x": 4,
+        "y": 4,
+        "w": 84,
+        "h": 8
+      },
+      "message": "Focus ring missing (Danger/md/Focus)",
+      "expected": {
+        "element": "present"
+      },
+      "actual": {
+        "element": "missing"
+      }
+    },
+    {
+      "id": "s2",
+      "type": "typography",
+      "severity": "major",
+      "mark": 2,
+      "implBox": {
+        "x": 4,
+        "y": 10,
+        "w": 84,
+        "h": 8
+      },
+      "message": "Label typeface differs (Danger/md/Focus)",
+      "expected": {
+        "fontFamily": "Oswald",
+        "fontWeight": "500"
+      },
+      "actual": {
+        "fontFamily": "Montserrat",
+        "fontWeight": "700"
+      }
+    },
+    {
+      "id": "s3",
+      "type": "pixel-region",
+      "severity": "minor",
+      "mark": 3,
+      "implBox": {
+        "x": 0,
+        "y": 0,
+        "w": 92,
+        "h": 36
+      },
+      "message": "frame differs by 3.1% (Danger/md/Focus)",
+      "actual": {
+        "diffRatio": "0.031",
+        "changeKind": "noise"
+      }
+    }
+  ],
+  "suppressed": [],
+  "policy": {},
+  "verdict": {
+    "pass": false,
+    "failThreshold": "major"
+  },
+  "delta": {
+    "previousRun": "2026-08-27T02:22:05.000Z",
+    "previousRunNumber": 46,
+    "resolved": [],
+    "introduced": []
+  },
+  "artifacts": {
+    "designPng": "design.png",
+    "implPng": "impl.png"
+  }
+}
