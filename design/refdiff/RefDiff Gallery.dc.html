@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Oswald:wght@500&family=Montserrat:wght@700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;overscroll-behavior:none;height:100%}
+a{color:#5b8def;text-decoration:none}a:hover{color:#7da4f2}
+input,textarea{outline:none}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,132,140,.4);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--canvas:#232427}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--canvas:#c6c9ce}
+.msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+</style>
+</helmet>
+<div class="cc-theme-dark {{themeClass}}" style="position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;user-select:none;overflow:hidden" data-screen-label="Gallery — Button variant sheet">
+  <div style="position:relative;display:flex;align-items:center;gap:8px;padding:0 10px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+    <div style="{{hdrLeftStyle}}">
+      <a href="./RefDiff Library Groups.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
+      <div style="width:18px;height:18px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+      <span style="{{brandStyle}}">RefDiff</span>
+      <span style="{{projStyle}}">Actions / Button · 60 variants</span>
+    </div>
+    <div style="{{grpMainStyle}}">
+      <sc-for list="{{mainBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="{{grpStyle}}">
+      <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="{{grpLayerStyle}}">
+      <sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for>
+    </div>
+    <div style="{{hdrRightStyle}}">
+      <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+        <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+      </sc-if>
+      <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
+        <div style="position:relative;flex-shrink:0">
+          <div style="{{setBtnStyle}}" onClick="{{settingsToggle}}" title="Settings"><span class="msi" style="font-size:19px">settings</span></div>
+          <sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}">
+            <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:40;width:198px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:10px 10px 12px;box-shadow:0 10px 30px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2)">Theme</span>
+              <div style="{{grpFullStyle}}"><sc-for list="{{themeBtns}}" as="b" hint-placeholder-count="2"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
+    <div style="{{deltaStyle}}">
+      <span class="msi" style="font-size:17px;color:#e5484d;flex-shrink:0">warning</span>
+      <span style="{{runLabelStyle}}">Run 47 vs 46</span>
+      <span style="font-size:12px;font-weight:600;color:#e5484d;white-space:nowrap">+4 introduced</span>
+      <span style="font-size:12px;font-weight:600;color:#46a758;white-space:nowrap">−2 resolved</span>
+      <span style="width:1px;height:16px;background:var(--line);flex-shrink:0"></span>
+      <span style="font-size:12px;font-weight:700;color:#e5484d;white-space:nowrap">{{regMsg}}</span>
+      <span style="{{regSubStyle}}">fixed in run 44, back again</span>
+      <div style="{{regBtnStyle}}" onClick="{{regBtn}}">{{regBtnLabel}}</div>
+      <div style="{{dismissStyle}}" onClick="{{dismissDelta}}" title="Dismiss for this run"><span class="msi" style="font-size:16px">close</span></div>
+    </div>
+  </sc-if>
+  <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
+    <div style="display:flex;align-items:center;justify-content:center;gap:7px;padding:4px 10px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0">
+      <span style="font-size:10.5px;color:var(--txt2);flex-shrink:0">Show</span>
+      <div style="{{grpMobStyle}}"><sc-for list="{{layerBtns}}" as="b" hint-placeholder-count="4"><div style="{{b.style}}" onClick="{{b.onClick}}">{{b.label}}</div></sc-for></div>
+    </div>
+  </sc-if>
+  <div style="flex:1;display:flex;min-height:0;position:relative">
+    <div style="{{toolStripStyle}}">
+      <sc-for list="{{toolBtns}}" as="b" hint-placeholder-count="6"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}"><span class="msi" style="font-size:18px">{{b.icon}}</span></div></sc-for>
+    </div>
+    <div style="{{canvasStyle}}">
+      <div style="{{paneAStyle}}" ref="{{refA}}" onPointerDown="{{downA}}" onPointerMove="{{moveA}}" onPointerUp="{{upA}}" onWheel="{{wheelA}}">
+        <div style="{{tStyle}}">
+          <sc-for list="{{colLabels}}" as="l" hint-placeholder-count="5"><div style="{{l.style}}">{{l.label}}</div></sc-for>
+          <sc-for list="{{rowLabels}}" as="l" hint-placeholder-count="12"><div style="{{l.style}}"><span>{{l.label}}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;opacity:0.7">{{l.sub}}</span></div></sc-for>
+          <div style="{{layerBase}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12"><div style="{{c.box}}">
+              <sc-if value="{{c.measured}}" hint-placeholder-val="{{true}}"><div style="{{c.dBtn}}">{{c.text}}</div></sc-if>
+              <sc-if value="{{c.skipped}}" hint-placeholder-val="{{false}}"><div style="{{c.dGhost}}">{{c.text}}</div></sc-if>
+            </div></sc-for>
+          </div>
+          <div style="{{ovlStyle}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12"><div style="{{c.box}}">
+              <sc-if value="{{c.measured}}" hint-placeholder-val="{{true}}"><div style="{{c.iBtn}}">{{c.text}}</div></sc-if>
+            </div></sc-for>
+          </div>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}"><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for></sc-if>
+          <sc-for list="{{hlRects}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{hasFocus}}" hint-placeholder-val="{{false}}"><div style="{{focusStyle}}"></div></sc-if>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{whStyle}}" onPointerDown="{{whDownA}}" onPointerMove="{{whMoveA}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <div style="{{layerChrome}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12">
+              <div style="{{c.style}}" onClick="{{c.onClick}}" title="{{c.tip}}" data-cell="1">
+                <sc-if value="{{c.skipped}}" hint-placeholder-val="{{false}}">
+                  <div style="position:absolute;inset:6px;border-radius:6px;border:1px dashed rgba(245,166,35,0.55);background:repeating-linear-gradient(45deg,rgba(245,166,35,0.10) 0 2px,transparent 2px 9px)"></div>
+                  <div style="position:absolute;left:10px;right:10px;bottom:9px;display:flex;flex-direction:column;gap:1px">
+                    <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5a623">Skipped · no impl cell</span>
+                    <span style="font-size:9px;line-height:1.3;color:#f5a623;opacity:0.85;font-family:'IBM Plex Mono',monospace;white-space:normal">{{c.reason}}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{c.absent}}" hint-placeholder-val="{{false}}">
+                  <div style="position:absolute;inset:6px;border-radius:6px;border:1px dotted var(--txt2);opacity:0.45"></div>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);opacity:0.6">Absent</div>
+                </sc-if>
+                <sc-if value="{{c.showBadges}}" hint-placeholder-val="{{true}}">
+                  <div style="{{badgeWrap}}">
+                    <sc-for list="{{c.badges}}" as="b" hint-placeholder-count="1"><span style="{{b.style}}" title="{{b.title}}">{{b.n}}</span></sc-for>
+                    <sc-if value="{{c.reg}}" hint-placeholder-val="{{false}}"><span style="height:16px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;display:flex;align-items:center;gap:2px;font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase" title="Fixed in run 44, back again"><span class="msi" style="font-size:10px">undo</span>reg</span></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{c.stale}}" hint-placeholder-val="{{false}}"><span style="{{staleStyle}}" title="{{c.staleTip}}"><span class="msi" style="font-size:11px">history</span>{{c.runLabel}}</span></sc-if>
+                <sc-for list="{{c.pins}}" as="p" hint-placeholder-count="0"><div style="{{p.style}}" title="{{p.tip}}" onClick="{{p.onClick}}">{{p.num}}</div></sc-for>
+                <sc-if value="{{c.hasDraft}}" hint-placeholder-val="{{false}}"><div style="{{c.draftStyle}}"></div></sc-if>
+                <sc-if value="{{c.isSel}}" hint-placeholder-val="{{false}}">
+                  <div style="{{selPillStyle}}" onClick="{{c.stop}}" onPointerDown="{{c.stop}}">
+                    <a href="./RefDiff Comparison Tool.dc.html" style="display:flex;align-items:center;gap:5px;padding:0 10px;height:28px;border-radius:6px;background:var(--acc);color:#fff;font-size:11.5px;font-weight:600;white-space:nowrap"><span class="msi" style="font-size:15px">open_in_full</span>Open</a>
+                    <div style="display:flex;align-items:center;gap:5px;padding:0 10px;height:28px;border-radius:6px;color:var(--txt);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="background:var(--bg3)" onClick="{{c.commentHere}}"><span class="msi" style="font-size:15px">add_comment</span>Comment</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">DESIGN</div></sc-if>
+      </div>
+      <div style="{{paneBStyle}}" ref="{{refB}}" onPointerDown="{{downB}}" onPointerMove="{{moveB}}" onPointerUp="{{upB}}" onWheel="{{wheelB}}">
+        <div style="{{tStyle}}">
+          <sc-for list="{{colLabels}}" as="l" hint-placeholder-count="5"><div style="{{l.style}}">{{l.label}}</div></sc-for>
+          <sc-for list="{{rowLabels}}" as="l" hint-placeholder-count="12"><div style="{{l.style}}"><span>{{l.label}}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;opacity:0.7">{{l.sub}}</span></div></sc-for>
+          <div style="{{layerBase}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12"><div style="{{c.box}}">
+              <sc-if value="{{c.measured}}" hint-placeholder-val="{{true}}"><div style="{{c.iBtn}}">{{c.text}}</div></sc-if>
+            </div></sc-for>
+          </div>
+          <div style="{{ovlStyle}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12"><div style="{{c.box}}">
+              <sc-if value="{{c.measured}}" hint-placeholder-val="{{true}}"><div style="{{c.dBtn}}">{{c.text}}</div></sc-if>
+              <sc-if value="{{c.skipped}}" hint-placeholder-val="{{false}}"><div style="{{c.dGhost}}">{{c.text}}</div></sc-if>
+            </div></sc-for>
+          </div>
+          <sc-if value="{{dimOn}}" hint-placeholder-val="{{false}}"><sc-for list="{{dimRects}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for></sc-if>
+          <sc-for list="{{hlRects}}" as="r" hint-placeholder-count="0"><div style="{{r.style}}"></div></sc-for>
+          <sc-if value="{{hasFocus}}" hint-placeholder-val="{{false}}"><div style="{{focusStyle}}"></div></sc-if>
+          <sc-if value="{{wipeOn}}" hint-placeholder-val="{{false}}">
+            <div style="{{whStyle}}" onPointerDown="{{whDownB}}" onPointerMove="{{whMoveB}}" onPointerUp="{{whUp}}">
+              <div style="width:2px;position:absolute;top:0;bottom:0;left:13px;background:var(--acc)"></div>
+              <div style="{{whKnob}}"><span class="msi" style="font-size:14px">sync_alt</span></div>
+            </div>
+          </sc-if>
+          <div style="{{layerChrome}}">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="12">
+              <div style="{{c.style}}" onClick="{{c.onClick}}" title="{{c.tip}}" data-cell="1">
+                <sc-if value="{{c.skipped}}" hint-placeholder-val="{{false}}">
+                  <div style="position:absolute;inset:6px;border-radius:6px;border:1px dashed rgba(245,166,35,0.55);background:repeating-linear-gradient(45deg,rgba(245,166,35,0.10) 0 2px,transparent 2px 9px)"></div>
+                  <div style="position:absolute;left:10px;right:10px;bottom:9px;display:flex;flex-direction:column;gap:1px">
+                    <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5a623">Skipped · no impl cell</span>
+                    <span style="font-size:9px;line-height:1.3;color:#f5a623;opacity:0.85;font-family:'IBM Plex Mono',monospace;white-space:normal">{{c.reason}}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{c.absent}}" hint-placeholder-val="{{false}}">
+                  <div style="position:absolute;inset:6px;border-radius:6px;border:1px dotted var(--txt2);opacity:0.45"></div>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2);opacity:0.6">Absent</div>
+                </sc-if>
+                <sc-if value="{{c.showBadges}}" hint-placeholder-val="{{true}}">
+                  <div style="{{badgeWrap}}">
+                    <sc-for list="{{c.badges}}" as="b" hint-placeholder-count="1"><span style="{{b.style}}" title="{{b.title}}">{{b.n}}</span></sc-for>
+                    <sc-if value="{{c.reg}}" hint-placeholder-val="{{false}}"><span style="height:16px;padding:0 5px;border-radius:999px;background:#e5484d;color:#fff;display:flex;align-items:center;gap:2px;font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase" title="Fixed in run 44, back again"><span class="msi" style="font-size:10px">undo</span>reg</span></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{c.stale}}" hint-placeholder-val="{{false}}"><span style="{{staleStyle}}" title="{{c.staleTip}}"><span class="msi" style="font-size:11px">history</span>{{c.runLabel}}</span></sc-if>
+                <sc-for list="{{c.pins}}" as="p" hint-placeholder-count="0"><div style="{{p.style}}" title="{{p.tip}}" onClick="{{p.onClick}}">{{p.num}}</div></sc-for>
+                <sc-if value="{{c.hasDraft}}" hint-placeholder-val="{{false}}"><div style="{{c.draftStyle}}"></div></sc-if>
+                <sc-if value="{{c.isSel}}" hint-placeholder-val="{{false}}">
+                  <div style="{{selPillStyle}}" onClick="{{c.stop}}" onPointerDown="{{c.stop}}">
+                    <a href="./RefDiff Comparison Tool.dc.html" style="display:flex;align-items:center;gap:5px;padding:0 10px;height:28px;border-radius:6px;background:var(--acc);color:#fff;font-size:11.5px;font-weight:600;white-space:nowrap"><span class="msi" style="font-size:15px">open_in_full</span>Open</a>
+                    <div style="display:flex;align-items:center;gap:5px;padding:0 10px;height:28px;border-radius:6px;color:var(--txt);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="background:var(--bg3)" onClick="{{c.commentHere}}"><span class="msi" style="font-size:15px">add_comment</span>Comment</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{showLabels}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:10px;right:10px;padding:3px 9px;border-radius:6px;background:var(--bg1);border:1px solid var(--line);color:var(--txt2);font-size:10px;font-weight:700;letter-spacing:0.1em;font-family:'IBM Plex Mono',monospace;pointer-events:none;z-index:8">IMPLEMENTATION</div></sc-if>
+      </div>
+      <div style="{{zoomWrapStyle}}">
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomOut}}" title="Zoom out"><span class="msi" style="font-size:17px">remove</span></div>
+        <div style="min-width:44px;text-align:center;font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{zoomPct}}</div>
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{zoomIn}}" title="Zoom in"><span class="msi" style="font-size:17px">add</span></div>
+        <div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" style-hover="background:var(--bg3)" onClick="{{fitFn}}" title="Fit to view"><span class="msi" style="font-size:17px">fit_screen</span></div>
+      </div>
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{false}}">
+        <div style="{{fabStyle}}">
+          <div style="{{fabD.style}}" onClick="{{fabD.onClick}}">Design</div>
+          <div style="{{fabI.style}}" onClick="{{fabI.onClick}}">Impl</div>
+        </div>
+      </sc-if>
+      <sc-if value="{{opShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{ctlWrapStyle}}">
+          <span class="msi" style="font-size:16px;color:var(--txt2)">opacity</span>
+          <span style="font-size:11.5px;font-weight:600;white-space:nowrap">{{opLabel}}</span>
+          <input type="range" min="0" max="100" step="1" value="{{opVal}}" onChange="{{onOp}}" style="{{sliderStyle}}">
+          <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);min-width:34px;text-align:right">{{opPct}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{topPillShow}}" hint-placeholder-val="{{false}}">
+        <div style="{{topPillStyle}}">
+          <span class="msi" style="{{topPillIconStyle}}">{{topPillIcon}}</span>
+          <span>{{topPillMsg}}</span>
+          <div style="padding:3px 10px;border-radius:999px;background:var(--bg3);cursor:pointer;font-weight:600;font-size:11.5px" onClick="{{topPillAction}}">{{topPillBtn}}</div>
+        </div>
+      </sc-if>
+    </div>
+    <div style="{{railStyle}}">
+      <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 12px 8px;cursor:pointer;flex-shrink:0" onClick="{{railToggle}}">
+          <div style="width:36px;height:4px;border-radius:2px;background:var(--bg3);position:absolute;top:5px;left:50%;transform:translateX(-50%)"></div>
+          <span style="font-size:12px;font-weight:600">{{railSummary}}</span>
+          <span class="msi" style="font-size:18px;color:var(--txt2)">{{railChev}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--txt2)">Review</span>
+          <span style="{{scopeStyle}}">{{scopeLabel}}</span>
+          <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}"><div style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{deselect}}" title="Back to whole sheet"><span class="msi" style="font-size:16px">close</span></div></sc-if>
+          <div style="margin-left:auto;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{collapseRail}}" title="Collapse panel"><span class="msi" style="font-size:17px">right_panel_close</span></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{railContentShow}}" hint-placeholder-val="{{true}}">
+        <sc-if value="{{isMob}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);flex-shrink:0">
+            <span style="{{scopeStyle}}">{{scopeLabel}}</span>
+            <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}"><div style="margin-left:auto;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2)" onClick="{{deselect}}" title="Back to whole sheet"><span class="msi" style="font-size:16px">close</span></div></sc-if>
+          </div>
+        </sc-if>
+        <div style="display:flex;border-bottom:1px solid var(--line);flex-shrink:0">
+          <div style="{{tabFStyle}}" onClick="{{onTabF}}">Findings · {{fCount}}</div>
+          <div style="{{tabIStyle}}" onClick="{{onTabI}}">Comments · {{iCount}}</div>
+        </div>
+        <sc-if value="{{showFindTab}}" hint-placeholder-val="{{true}}">
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{selInfoShow}}" hint-placeholder-val="{{false}}">
+              <div style="padding:10px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;background:var(--bg2)">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <span style="{{selStateStyle}}">{{selStateLabel}}</span>
+                  <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{selRun}}</span>
+                </div>
+                <span style="font-size:11.5px;line-height:1.45;color:var(--txt2);white-space:normal">{{selNote}}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{showCauses}}" hint-placeholder-val="{{true}}">
+              <div style="padding:10px 12px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Recurring causes</div>
+              <sc-for list="{{causeRows}}" as="c" hint-placeholder-count="5">
+                <div style="{{c.rowStyle}}" onClick="{{c.onClick}}" title="{{c.tip}}">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span style="{{c.dot}}"></span>
+                    <span style="font-size:12.5px;font-weight:600;flex:1;min-width:0">{{c.title}}</span>
+                    <span style="{{c.countStyle}}">{{c.count}}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin:5px 0 0 15px;font-family:'IBM Plex Mono',monospace;font-size:11px;flex-wrap:wrap">
+                    <span style="color:var(--txt2)">{{c.prop}}</span>
+                    <span style="color:var(--txt)">{{c.expected}}</span>
+                    <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                    <span style="color:#e5484d">{{c.actual}}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="padding:12px 12px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2);border-top:1px solid var(--line);margin-top:4px">Other findings · {{otherCount}}</div>
+            </sc-if>
+            <sc-if value="{{emptyF}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">{{emptyFMsg}}</div></sc-if>
+            <sc-for list="{{findingRows}}" as="f" hint-placeholder-count="3">
+              <div style="{{f.rowStyle}}" onClick="{{f.onClick}}">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <div style="{{f.badgeStyle}}">{{f.num}}</div>
+                  <span style="font-size:12.5px;font-weight:600;line-height:1.3">{{f.title}}</span>
+                  <sc-if value="{{f.reg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#e5484d;color:#fff"><span class="msi" style="font-size:12px">undo</span>Regression</span></sc-if>
+                </div>
+                <sc-if value="{{f.hasCell}}" hint-placeholder-val="{{false}}"><div style="margin:4px 0 0 28px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{f.cell}}</div></sc-if>
+                <div style="display:flex;align-items:center;gap:6px;margin:6px 0 0 28px;font-family:'IBM Plex Mono',monospace;font-size:11px;flex-wrap:wrap">
+                  <span style="color:var(--txt2)">{{f.prop}}</span>
+                  <span style="color:var(--txt)">{{f.expected}}</span>
+                  <span class="msi" style="font-size:12px;color:var(--txt2)">arrow_right_alt</span>
+                  <span style="color:#e5484d">{{f.actual}}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{showItemTab}}" hint-placeholder-val="{{false}}">
+          <div style="flex:1;overflow-y:auto;min-height:0">
+            <sc-if value="{{hasDraft}}" hint-placeholder-val="{{false}}">
+              <div style="padding:12px;border-bottom:1px solid var(--line);background:var(--bg2)">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <div style="width:20px;height:20px;border-radius:6px 6px 6px 2px;background:#8f7ee7;border:2px solid #fff;box-sizing:border-box;flex-shrink:0"></div>
+                  <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8f7ee7">New comment</span>
+                    <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{draftCell}}</span>
+                  </div>
+                </div>
+                <textarea rows="3" style="width:100%;box-sizing:border-box;resize:none;background:var(--bg0);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:12.5px;line-height:1.45;color:var(--txt);font-family:'IBM Plex Sans',sans-serif" placeholder="Instruction for the model&#8230;" value="{{draftText}}" onChange="{{onDraftText}}"></textarea>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;justify-content:flex-end">
+                  <div style="padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--txt2)" onClick="{{cancelDraft}}">Cancel</div>
+                  <div style="padding:5px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:var(--acc);color:#fff" onClick="{{saveDraft}}">Send to model</div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{emptyI}}" hint-placeholder-val="{{false}}"><div style="padding:24px 16px;font-size:12.5px;color:var(--txt2);text-align:center;line-height:1.5">No comments yet. Select a cell and press Comment.</div></sc-if>
+            <sc-for list="{{itemRows}}" as="it" hint-placeholder-count="2">
+              <div style="{{it.rowStyle}}" onClick="{{it.onClick}}">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="{{it.badgeStyle}}">{{it.num}}</div>
+                  <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">{{it.cell}}</span>
+                  <span style="{{it.statusStyle}}">{{it.statusLabel}}</span>
+                </div>
+                <div style="font-size:12.5px;line-height:1.45;margin:6px 0 0 28px;white-space:normal">{{it.text}}</div>
+                <sc-if value="{{it.hasReply}}" hint-placeholder-val="{{false}}"><div style="margin:8px 0 0 28px;padding:8px 10px;border-left:2px solid var(--acc);background:var(--bg2);border-radius:0 7px 7px 0;font-size:12px;color:var(--txt2);line-height:1.45;white-space:normal">{{it.reply}}</div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+    <sc-if value="{{railHidden}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;top:12px;right:12px;z-index:16;display:flex;align-items:center;gap:7px;background:var(--bg1);border:1px solid var(--line);border-radius:9px;padding:6px 10px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.25)" onClick="{{expandRail}}" title="Open review panel">
+        <span class="msi" style="font-size:17px;color:var(--txt2)">right_panel_open</span>
+        <span style="font-size:12px;font-weight:600">{{railSummary}}</span>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:860},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;railWidth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:280,&quot;max&quot;:400,&quot;step&quot;:10,&quot;default&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;section&quot;:&quot;Layout&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
+const SEV = { critical: '#e5484d', major: '#f5a623', minor: '#4c9aff' };
+const SEVL = { critical: 'Critical', major: 'Major', minor: 'Minor' };
+const STC = { open: '#8f7ee7', implemented: '#f5a623', done: '#46a758' };
+const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
+const NEWEST = 47;
+const TONES = ['Primary', 'Secondary', 'Tertiary', 'Danger'], SIZES = ['sm', 'md', 'lg'], STATES = ['Default', 'Hover', 'Active', 'Focus', 'Disabled'];
+const SIZE_H = { sm: 28, md: 36, lg: 44 }, SIZE_F = { sm: 12, md: 13.5, lg: 15 }, SIZE_PX = { sm: 12, md: 16, lg: 20 };
+const CW = 176, CH = 96, LW = 118, LH = 30;
+const W = LW + STATES.length * CW, H = LH + TONES.length * SIZES.length * CH;
+const CAUSES = [
+  { id: 'typo', sev: 'major', prop: 'font-family', expected: 'Oswald 500', actual: 'Montserrat 700', title: 'Label typeface differs' },
+  { id: 'colour', sev: 'critical', prop: 'background-color', expected: '#4F46E5', actual: '#6366F1', title: 'Primary fill off-token' },
+  { id: 'size', sev: 'major', prop: 'height', expected: '28px', actual: '32px', title: 'sm height inflated' },
+  { id: 'spacing', sev: 'minor', prop: 'padding', expected: '0 16px', actual: '0 12px', title: 'md padding tighter' },
+  { id: 'missing', sev: 'critical', prop: 'element', expected: 'present', actual: 'missing', title: 'Focus ring missing' }];
+const ONEOFF = [
+  { id: 'o1', cell: 'Secondary/lg/Hover', sev: 'major', prop: 'border-width', expected: '1px', actual: '2px', title: 'Hover border thickened' },
+  { id: 'o2', cell: 'Primary/lg/Disabled', sev: 'minor', prop: 'opacity', expected: '0.45', actual: '0.38', title: 'Disabled too faint' },
+  { id: 'o3', cell: 'Danger/md/Active', sev: 'minor', prop: 'border-radius', expected: '6px', actual: '4px', title: 'Corner radius off' }];
+const SKIP = {
+  'Tertiary/md/Active': 'no state mapping for tone=tertiary state=active',
+  'Tertiary/md/Focus': 'no state mapping for tone=tertiary state=focus',
+  'Tertiary/lg/Active': 'no state mapping for tone=tertiary state=active',
+  'Tertiary/lg/Focus': 'no state mapping for tone=tertiary state=focus',
+  'Danger/lg/Focus': 'impl exports no focus story for tone=danger',
+  'Danger/lg/Disabled': 'impl exports no disabled story for tone=danger',
+  'Secondary/sm/Focus': 'size=sm story missing for state=focus' };
+const ABSENT = new Set(['Tertiary/sm/Default', 'Tertiary/sm/Hover', 'Tertiary/sm/Active', 'Tertiary/sm/Focus', 'Tertiary/sm/Disabled', 'Danger/sm/Default', 'Danger/sm/Hover', 'Danger/sm/Active', 'Danger/sm/Focus', 'Danger/sm/Disabled', 'Tertiary/lg/Disabled', 'Danger/lg/Active']);
+const STALE = new Set(['Danger/md/Default', 'Danger/md/Hover', 'Danger/md/Active']);
+const REG = new Set(['Primary/md/Hover']);
+const CELLS = [];
+let ri = 0;
+for (const t of TONES) for (const s of SIZES) { for (let ci = 0; ci < STATES.length; ci++) {
+  const st = STATES[ci], key = t + '/' + s + '/' + st;
+  const c = { key, tone: t, size: s, state: st, name: t + ' \u00b7 ' + s + ' \u00b7 ' + st, causes: [], run: NEWEST, x: LW + ci * CW, y: LH + ri * CH };
+  if (ABSENT.has(key)) c.kind = 'absent';
+  else if (SKIP[key]) { c.kind = 'skipped'; c.reason = SKIP[key]; }
+  else {
+    c.kind = 'measured';
+    if (!(t === 'Secondary' && s === 'md')) c.causes.push('typo');
+    if (t === 'Primary') c.causes.push('colour');
+    if (s === 'sm') c.causes.push('size');
+    if (s === 'md' && (st === 'Hover' || st === 'Active') && t !== 'Secondary') c.causes.push('spacing');
+    if (st === 'Focus') c.causes.push('missing');
+    if (STALE.has(key)) c.run = 45;
+    c.reg = REG.has(key);
+  }
+  c.oneoff = ONEOFF.filter(o => o.cell === key);
+  c.nF = c.causes.length + c.oneoff.length;
+  CELLS.push(c);
+} ri++; }
+const BY = {}; CELLS.forEach(c => { BY[c.key] = c; });
+const COUNT = {}; CAUSES.forEach(k => { COUNT[k.id] = CELLS.filter(c => c.causes.includes(k.id)).length; });
+const REGN = CELLS.filter(c => c.reg).length;
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.refA = React.createRef(); this.refB = React.createRef(); this._drag = null; this._wh = null; this._tm = null;
+    this.state = {
+      theme: null, mode: 'split', pane: 'design', variant: 'none', tick: 0, layer: 'all', wipeX: Math.round(W / 2), op: { onion: 0.55, diff: 1 },
+      tool: 'pan', highlight: false, dim: false, strobe: false, focusRect: null, lit: null, sel: null,
+      railTab: 'findings', railOpen: false, railCollapsed: false, settingsOpen: false, draft: null, draftText: '', deltaDismissed: false,
+      t: { x: 24, y: 24, s: 0.6 }, anim: false,
+      items: [
+        { id: 'c1', num: 1, cell: 'Primary/md/Default', rx: 0.5, ry: 0.62, status: 'implemented', text: 'Confirm the brand indigo \u2014 design uses #4F46E5, every Primary cell here reads lighter.', reply: 'Token brand.primary resolved to the 500 stop. Repointed to 600; lands in build 344.' },
+        { id: 'c2', num: 2, cell: 'Secondary/lg/Hover', rx: 0.72, ry: 0.4, status: 'open', text: 'Hover border should stay 1px; impl thickens to 2px and shifts the label.', reply: '' }]
+    };
+  }
+  componentDidMount() { setTimeout(() => this.fit(false), 80); }
+  componentWillUnmount() { if (this._tm) clearInterval(this._tm); }
+  theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  isM() { return !!this.props.mobile; }
+  effMode() { return this.isM() ? 'full' : this.state.mode; }
+  syncTimer() { const need = this.state.variant === 'blink' || this.state.strobe; if (need && !this._tm) this._tm = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 550); if (!need && this._tm) { clearInterval(this._tm); this._tm = null; } }
+  setVariant(v) { this.setState({ variant: v, tick: 0 }, () => this.syncTimer()); }
+  paneEl(p) { let el = (p === 'A' ? this.refA : this.refB).current; if (!el || el.offsetParent === null) el = (p === 'A' ? this.refB : this.refA).current; return el && el.offsetParent !== null ? el : null; }
+  toSheet(p, e) { const el = this.paneEl(p), r = el.getBoundingClientRect(), t = this.state.t; return { x: (e.clientX - r.left - t.x) / t.s, y: (e.clientY - r.top - t.y) / t.s }; }
+  nrect(a, b) { return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) }; }
+  inter(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  pDown(p, e) { if (e.button && e.button !== 0) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} this._drag = { p, tool: this.state.tool, sx: e.clientX, sy: e.clientY, t0: { ...this.state.t }, a0: this.toSheet(p, e), moved: false }; if (this.state.anim) this.setState({ anim: false }); }
+  pMove(p, e) { const d = this._drag; if (!d || d.p !== p) return; const dx = e.clientX - d.sx, dy = e.clientY - d.sy; if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true; if (!d.moved) return; if (d.tool === 'pan') this.setState({ t: { x: d.t0.x + dx, y: d.t0.y + dy, s: d.t0.s } }); else if (d.tool === 'focus') this.setState({ focusRect: this.nrect(d.a0, this.toSheet(p, e)) }); }
+  pUp(p, e) { const d = this._drag; if (!d) return; this._moved = d.moved; this._drag = null; if (d.tool === 'focus') this.setState({ tool: 'pan', ...(d.moved ? {} : { focusRect: null }) }); else if (d.tool === 'pan' && !d.moved && !(e.target.closest && e.target.closest('[data-cell]'))) this.setState({ sel: null }); }
+  wheel(p, e) { if (e.cancelable) e.preventDefault(); const el = this.paneEl(p); if (!el) return; const r = el.getBoundingClientRect(), t = this.state.t; const s2 = Math.min(4, Math.max(0.15, t.s * Math.exp(-e.deltaY * 0.0015))); const k = s2 / t.s, mx = e.clientX - r.left, my = e.clientY - r.top; this.setState({ t: { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 } }); }
+  zoom(f) { const el = this.paneEl('A'); if (!el) return; const r = el.getBoundingClientRect(), t = this.state.t; const s2 = Math.min(4, Math.max(0.15, t.s * f)); const k = s2 / t.s, mx = r.width / 2, my = r.height / 2; this.setState({ t: { x: mx - (mx - t.x) * k, y: my - (my - t.y) * k, s: s2 }, anim: true }); }
+  fit(anim = true) { const el = this.paneEl('A'); if (!el) return; const r = el.getBoundingClientRect(); if (r.width < 10) return; const s = Math.min((r.width - 40) / W, (r.height - 40) / H, 1.6); this.setState({ t: { x: (r.width - W * s) / 2, y: Math.max(20, (r.height - H * s) / 2), s }, anim }); }
+  whDown(p, e) { e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} this._wh = p; }
+  whMove(p, e) { if (this._wh !== p) return; const x = this.toSheet(p, e).x; this.setState({ wipeX: Math.min(W - 10, Math.max(10, x)) }); }
+  btn(c, side) {
+    const impl = side === 'impl', dis = c.state === 'Disabled';
+    let bg = 'transparent', fg = '#1f2937', border = '1px solid transparent';
+    const prim = impl ? '#6366F1' : '#4F46E5';
+    const shade = c.state === 'Hover' ? 0.9 : c.state === 'Active' ? 0.8 : 1;
+    const mix = (hex, k) => { const n = parseInt(hex.slice(1), 16); const r = ((n >> 16) & 255) * k | 0, g = ((n >> 8) & 255) * k | 0, b = (n & 255) * k | 0; return 'rgb(' + r + ',' + g + ',' + b + ')'; };
+    if (c.tone === 'Primary') { bg = mix(prim, shade); fg = '#fff'; }
+    else if (c.tone === 'Secondary') { border = (impl && c.state === 'Hover' ? '2px' : '1px') + ' solid ' + (impl ? '#818CF8' : '#6D6AF0'); fg = impl ? '#818CF8' : '#6D6AF0'; bg = c.state === 'Hover' ? 'rgba(129,140,248,0.10)' : c.state === 'Active' ? 'rgba(129,140,248,0.2)' : 'transparent'; }
+    else if (c.tone === 'Tertiary') { fg = impl ? '#818CF8' : '#6D6AF0'; bg = c.state === 'Hover' ? 'rgba(129,140,248,0.10)' : c.state === 'Active' ? 'rgba(129,140,248,0.2)' : 'transparent'; }
+    else { bg = mix('#DC2626', shade); fg = '#fff'; }
+    let h = SIZE_H[c.size], px = SIZE_PX[c.size];
+    if (impl && c.size === 'sm') h = 32;
+    if (impl && c.size === 'md' && (c.state === 'Hover' || c.state === 'Active') && c.tone !== 'Secondary') px = 12;
+    const focus = c.state === 'Focus' && !impl;
+    const typo = impl && c.causes.includes('typo');
+    return { height: h, padding: '0 ' + px + 'px', borderRadius: impl && c.key === 'Danger/md/Active' ? 4 : 6, background: bg, color: fg, border, display: 'flex', alignItems: 'center', fontSize: SIZE_F[c.size], fontFamily: typo ? "'Montserrat',sans-serif" : "'Oswald',sans-serif", fontWeight: typo ? 700 : 500, letterSpacing: typo ? 0 : '0.02em', textTransform: typo ? 'none' : 'uppercase', opacity: dis ? (impl && c.key === 'Primary/lg/Disabled' ? 0.38 : 0.45) : 1, boxShadow: focus ? '0 0 0 3px var(--canvas), 0 0 0 5px ' + prim : 'none', whiteSpace: 'nowrap', boxSizing: 'border-box' };
+  }
+  cellName(k) { const c = BY[k]; return c ? c.name : k; }
+  renderVals() {
+    const S = this.state, light = this.theme() === 'light', isM = this.isM(), V = S.variant, mode = this.effMode(), isFull = mode === 'full';
+    const railW = this.props.railWidth ?? 320, t = S.t, cs = Math.min(2.4, 1 / t.s), odd = S.tick % 2 === 1;
+    const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
+    const inFocus = c => !S.focusRect || this.inter({ x: c.x, y: c.y, w: CW, h: CH }, S.focusRect);
+    const segBtn = act => ({ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '16px' });
+    const segSm = act => ({ ...segBtn(act), padding: '3px 8px', fontSize: 11, lineHeight: '14px' });
+    const grp = { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 };
+    const mainBtns = [['split', 'Split'], ['full', 'Full']].map(([id, label]) => ({ id, label, style: segBtn(mode === id), onClick: () => this.setState({ mode: id }) }));
+    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'One wipe across the whole sheet'], ['onion', 'Onion', 'Other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: isM ? segSm(V === id) : segBtn(V === id), onClick: () => this.setVariant(id) }));
+    const layerBtns = [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']].map(([id, label]) => ({ id, label, style: isM ? segSm(S.layer === id) : segBtn(S.layer === id), onClick: () => this.setState({ layer: id }) }));
+    const toolBtn = act => ({ width: isM ? 30 : 32, height: isM ? 30 : 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? (act === 'c' ? '#8f7ee7' : 'var(--acc)') : 'transparent', flexShrink: 0 });
+    const toolBtns = [
+      ['pan', 'pan_tool', 'Pan / move \u2014 click a cell to select it', () => this.setState({ tool: 'pan' }), S.tool === 'pan'],
+      ['comment', 'add_comment', 'Comment \u2014 tap a cell to pin', () => this.setState({ tool: 'comment', railTab: 'items' }), S.tool === 'comment' ? 'c' : false],
+      ['focus', 'center_focus_strong', 'Focus region \u2014 drag to limit findings', () => this.setState({ tool: 'focus' }), S.tool === 'focus'],
+      ['hl', 'difference', 'Highlight cells with differences', () => this.setState(s => ({ highlight: !s.highlight })), S.highlight],
+      ['dim', 'tonality', 'Dim unchanged cells', () => this.setState(s => ({ dim: !s.dim })), S.dim],
+      ['strobe', 'flare', 'Strobe \u2014 pulse the differences in colour', () => this.setState(s => ({ strobe: !s.strobe, tick: 0 }), () => this.syncTimer()), S.strobe]].map(([id, icon, title, onClick, act]) => ({ id, icon, title, onClick, style: toolBtn(act) }));
+    const litCause = S.lit && S.lit !== 'reg' ? CAUSES.find(k => k.id === S.lit) : null, regLit = S.lit === 'reg';
+    const cursor = S.tool === 'pan' ? 'grab' : 'crosshair';
+    const paneBase = { position: 'relative', overflow: 'hidden', background: 'var(--canvas)', touchAction: 'none', cursor, minWidth: 0 };
+    let paneAStyle, paneBStyle;
+    if (!isFull) { paneAStyle = { ...paneBase, flex: 1, borderRight: '1px solid var(--line)' }; paneBStyle = { ...paneBase, flex: 1 }; }
+    else if (S.pane === 'design') { paneAStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneBStyle = { display: 'none' }; }
+    else { paneBStyle = { ...paneBase, position: 'absolute', inset: 0 }; paneAStyle = { display: 'none' }; }
+    const tStyle = { position: 'absolute', left: 0, top: 0, width: W, height: H, transform: 'translate(' + t.x + 'px,' + t.y + 'px) scale(' + t.s + ')', transformOrigin: '0 0', transition: S.anim ? 'transform 0.35s cubic-bezier(0.2,0.8,0.2,1)' : 'none' };
+    const lbl = { position: 'absolute', fontSize: 11, fontWeight: 500, color: 'var(--txt2)', letterSpacing: '0.02em', pointerEvents: 'none', display: 'flex', alignItems: 'center', boxSizing: 'border-box' };
+    const colLabels = STATES.map((st, i) => ({ label: st, style: { ...lbl, left: LW + i * CW, top: 0, width: CW, height: LH, justifyContent: 'center' } }));
+    const rowLabels = []; let r = 0;
+    for (const tn of TONES) for (const sz of SIZES) { rowLabels.push({ label: tn + ' \u00b7 ' + sz, sub: 'h ' + SIZE_H[sz], style: { ...lbl, left: 0, top: LH + r * CH, width: LW, height: CH, flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', gap: 2, paddingRight: 14 } }); r++; }
+    const layerBase = { position: 'absolute', inset: 0, zIndex: 0 };
+    const ovlStyle = { position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' };
+    if (V === 'none') ovlStyle.display = 'none'; else if (V === 'wipe') ovlStyle.clipPath = 'inset(0 0 0 ' + S.wipeX + 'px)'; else if (V === 'onion') ovlStyle.opacity = S.op.onion; else if (V === 'blink') { ovlStyle.opacity = odd ? 0 : 1; ovlStyle.transition = 'opacity 0.1s'; } else if (V === 'diff') { ovlStyle.mixBlendMode = 'difference'; ovlStyle.opacity = S.op.diff; }
+    const cellBadges = c => { const cnt = { critical: 0, major: 0, minor: 0 }; c.causes.forEach(id => { cnt[CAUSES.find(k => k.id === id).sev]++; }); c.oneoff.forEach(o => { cnt[o.sev]++; }); return ['critical', 'major', 'minor'].filter(s => cnt[s]).map(s => ({ n: cnt[s], title: SEVL[s] + ' ' + cnt[s], style: { minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, background: SEV[s], color: '#fff', fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', border: '1.5px solid rgba(255,255,255,0.85)' } })); };
+    const cells = CELLS.map(c => {
+      const isSel = S.sel === c.key;
+      const litHit = regLit ? !!c.reg : litCause ? c.causes.includes(litCause.id) : null;
+      const dimmed = (S.lit && !litHit) || !inFocus(c);
+      const box = { position: 'absolute', left: c.x, top: c.y, width: CW, height: CH, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: dimmed ? 0.18 : 1, transition: 'opacity 0.15s' };
+      const style = { position: 'absolute', left: c.x, top: c.y, width: CW, height: CH, boxSizing: 'border-box', borderRadius: 8, cursor: S.tool === 'comment' && c.kind === 'measured' ? 'crosshair' : 'pointer', opacity: dimmed ? 0.18 : 1, transition: 'opacity 0.15s', zIndex: isSel ? 5 : 1,
+        outline: isSel ? (2 * cs) + 'px solid var(--acc)' : (litHit ? (2 * cs) + 'px solid #ff5cd0' : 'none'), outlineOffset: -2 * cs, background: isSel ? 'rgba(91,141,239,0.08)' : 'transparent', borderTop: c.run < NEWEST ? '2px dashed var(--txt2)' : 'none' };
+      const pins = showI && c.kind === 'measured' ? S.items.filter(x => x.cell === c.key).map(x => ({ num: x.num, tip: x.text, style: { position: 'absolute', left: (x.rx * 100) + '%', top: (x.ry * 100) + '%', transform: 'translate(-50%,-50%) scale(' + cs + ')', width: 22, height: 22, borderRadius: 6, background: STC[x.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', zIndex: 4, cursor: 'pointer' }, onClick: e => { e.stopPropagation(); this.setState({ sel: c.key, railTab: 'items', railOpen: true, railCollapsed: false }); } })) : [];
+      const dr = S.draft && S.draft.cell === c.key ? S.draft : null;
+      const dBtn = this.btn(c, 'design');
+      return {
+        key: c.key, measured: c.kind === 'measured', skipped: c.kind === 'skipped', absent: c.kind === 'absent', reason: c.reason || '', text: c.tone === 'Danger' ? 'Delete' : 'Continue',
+        box, style, tip: c.name + (c.kind === 'skipped' ? ' \u2014 skipped: ' + c.reason : c.kind === 'absent' ? ' \u2014 declared by neither side' : (c.run < NEWEST ? ' \u2014 measured in run ' + c.run : '')),
+        dBtn, iBtn: this.btn(c, 'impl'), dGhost: { ...dBtn, opacity: 0.3 },
+        showBadges: showF && V !== 'diff' && c.kind === 'measured' && c.nF > 0, badges: cellBadges(c), reg: !!c.reg, stale: c.run < NEWEST, runLabel: 'r' + c.run, staleTip: 'Measured in run ' + c.run + ' \u2014 ' + (NEWEST - c.run) + ' runs behind the rest of the sheet',
+        pins, hasDraft: !!dr, draftStyle: dr ? { position: 'absolute', left: (dr.rx * 100) + '%', top: (dr.ry * 100) + '%', transform: 'translate(-50%,-50%) scale(' + cs + ')', width: 24, height: 24, borderRadius: '50% 50% 50% 4px', background: '#8f7ee7', border: '2px solid #fff', boxShadow: '0 1px 5px rgba(0,0,0,0.4)', zIndex: 6 } : null,
+        isSel, stop: e => e.stopPropagation(),
+        onClick: e => {
+          if (this._moved) return;
+          e.stopPropagation();
+          if (S.tool === 'comment' && c.kind === 'measured') {
+            const rc = e.currentTarget.getBoundingClientRect();
+            this.setState({ draft: { cell: c.key, rx: Math.min(0.95, Math.max(0.05, (e.clientX - rc.left) / rc.width)), ry: Math.min(0.9, Math.max(0.1, (e.clientY - rc.top) / rc.height)) }, draftText: '', sel: c.key, railTab: 'items', railOpen: true, railCollapsed: false, tool: 'pan' });
+          } else if (S.tool === 'pan') this.setState({ sel: isSel ? null : c.key, railOpen: true });
+        },
+        commentHere: e => { e.stopPropagation(); this.setState({ draft: { cell: c.key, rx: 0.5, ry: 0.5 }, draftText: '', railTab: 'items', railOpen: true, railCollapsed: false }); }
+      };
+    });
+    const dimRects = S.dim ? CELLS.filter(c => c.nF === 0).map(c => ({ style: { position: 'absolute', left: c.x, top: c.y, width: CW, height: CH, background: 'rgba(15,17,20,0.55)', borderRadius: 8, zIndex: 2, pointerEvents: 'none' } })) : [];
+    const hlOn = S.highlight || S.strobe;
+    const hlRects = hlOn ? CELLS.filter(c => c.nF > 0 && inFocus(c)).map(c => ({ style: { position: 'absolute', left: c.x + 4, top: c.y + 4, width: CW - 8, height: CH - 8, border: (1.5 * cs) + 'px solid #ff5cd0', background: S.strobe ? (odd ? 'rgba(255,92,208,0.32)' : 'rgba(255,92,208,0.04)') : 'rgba(255,92,208,0.08)', borderRadius: 6, zIndex: 3, pointerEvents: 'none', boxSizing: 'border-box', transition: 'background 0.2s' } })) : [];
+    const fr = S.focusRect;
+    const selCell = S.sel ? BY[S.sel] : null;
+    const rowBase = { padding: '10px 12px', borderBottom: '1px solid var(--line)', cursor: 'pointer' };
+    const badgeSt = sv => ({ width: 20, height: 20, borderRadius: '50%', background: SEV[sv], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 });
+    const focCells = CELLS.filter(inFocus);
+    const causeRows = CAUSES.map(k => { const n = focCells.filter(c => c.causes.includes(k.id)).length; return {
+      title: k.title, prop: k.prop, expected: k.expected, actual: k.actual, count: n + ' cells', tip: S.lit === k.id ? 'Click to clear' : 'Light up the ' + n + ' cells with this cause',
+      dot: { width: 8, height: 8, borderRadius: '50%', background: SEV[k.sev], flexShrink: 0 },
+      countStyle: { fontSize: 10.5, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", padding: '1px 7px', borderRadius: 999, background: S.lit === k.id ? '#ff5cd0' : 'var(--bg3)', color: S.lit === k.id ? '#fff' : 'var(--txt)', whiteSpace: 'nowrap' },
+      rowStyle: { ...rowBase, borderBottom: 'none', padding: '8px 12px', background: S.lit === k.id ? 'rgba(255,92,208,0.12)' : 'transparent', boxShadow: S.lit === k.id ? 'inset 2px 0 0 #ff5cd0' : 'none', opacity: n ? 1 : 0.45 },
+      onClick: () => this.setState(s => ({ lit: s.lit === k.id ? null : k.id }))
+    }; }).filter(x => x.count !== '0 cells');
+    const oneoffVis = ONEOFF.filter(o => inFocus(BY[o.cell]));
+    let findingRows;
+    if (selCell && selCell.kind === 'measured') findingRows = selCell.causes.map(id => CAUSES.find(x => x.id === id)).concat(selCell.oneoff).map((k, i) => ({ num: i + 1, title: k.title, prop: k.prop, expected: k.expected, actual: k.actual, reg: !!selCell.reg && k.id === 'colour', hasCell: false, badgeStyle: badgeSt(k.sev), rowStyle: rowBase, onClick: () => {} }));
+    else if (selCell) findingRows = [];
+    else findingRows = oneoffVis.map((o, i) => ({ num: i + 1, title: o.title, prop: o.prop, expected: o.expected, actual: o.actual, reg: false, hasCell: true, cell: this.cellName(o.cell), badgeStyle: badgeSt(o.sev), rowStyle: rowBase, onClick: () => this.setState({ sel: o.cell }) }));
+    const visItems = selCell ? S.items.filter(x => x.cell === S.sel) : S.items.filter(x => inFocus(BY[x.cell]));
+    const itemRows = visItems.map(it => ({ num: it.num, cell: this.cellName(it.cell), text: it.text, reply: it.reply, hasReply: !!it.reply, rowStyle: { ...rowBase, background: S.sel === it.cell && S.railTab === 'items' ? 'var(--bg2)' : 'transparent' }, onClick: () => this.setState({ sel: it.cell }), badgeStyle: { width: 20, height: 20, borderRadius: 6, background: STC[it.status], color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }, statusLabel: STL[it.status], statusStyle: { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: STC[it.status], flexShrink: 0 } }));
+    const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
+    const totalF = focCells.reduce((n, c) => n + c.nF, 0);
+    const fCount = selCell ? (selCell.kind === 'measured' ? selCell.nF : 0) : totalF;
+    const pill = { display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, boxShadow: '0 4px 16px rgba(0,0,0,0.25)', zIndex: 16 };
+    const ctlWrapStyle = isM ? { ...pill, position: 'absolute', left: '50%', bottom: 100, transform: 'translateX(-50%)', gap: 8, padding: '5px 10px 5px 8px' } : { ...pill, position: 'absolute', bottom: isFull ? 61 : 14, left: '50%', transform: 'translateX(-50%)', padding: '6px 14px 6px 11px' };
+    const topPillStyle = { ...pill, position: 'absolute', top: isM ? 52 : 12, left: '50%', transform: 'translateX(-50%)', padding: '5px 7px 5px 14px', fontSize: 12, whiteSpace: 'nowrap', zIndex: 14 };
+    const fabBtn = act => ({ padding: isM ? '8px 14px' : '7px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', whiteSpace: 'nowrap' });
+    const selState = selCell ? selCell.kind : '';
+    const selStateCol = { measured: '#46a758', skipped: '#f5a623', absent: 'var(--txt2)' }[selState] || 'var(--txt2)';
+    const selNote = !selCell ? '' : selCell.kind === 'measured' ? (selCell.run < NEWEST ? 'Measured in run ' + selCell.run + ', ' + (NEWEST - selCell.run) + ' runs behind the sheet. Re-run this row to refresh.' : (selCell.nF ? 'Measured in the newest run.' : 'Measured in the newest run. No differences.')) : selCell.kind === 'skipped' ? 'Design declares this variant but the implementation has no cell to compare it to \u2014 ' + selCell.reason + '. Nothing was measured.' : 'Neither the design nor the implementation declares this variant.';
+    const smallBtn = act => ({ flex: 1, textAlign: 'center', padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', lineHeight: '15px' });
+    let topPill = null;
+    if (S.tool === 'comment') topPill = { icon: 'add_comment', col: '#8f7ee7', msg: 'Tap a cell to pin a comment', btn: 'Done', act: () => this.setState({ tool: 'pan' }) };
+    else if (S.tool === 'focus') topPill = { icon: 'center_focus_strong', col: 'var(--acc)', msg: 'Drag a region of the sheet to focus', btn: 'Cancel', act: () => this.setState({ tool: 'pan' }) };
+    else if (regLit) topPill = { icon: 'undo', col: '#e5484d', msg: REGN + (REGN === 1 ? ' regressed cell' : ' regressed cells') + ' \u00b7 fixed in run 44, back again', btn: 'Clear', act: () => this.setState({ lit: null }) };
+    else if (litCause) topPill = { icon: 'highlight', col: '#ff5cd0', msg: focCells.filter(c => c.causes.includes(litCause.id)).length + ' cells \u00b7 ' + litCause.title, btn: 'Clear', act: () => this.setState({ lit: null }) };
+    else if (fr) topPill = { icon: 'center_focus_strong', col: 'var(--acc)', msg: 'Region focus \u00b7 ' + focCells.length + ' of ' + CELLS.length + ' cells \u00b7 ' + totalF + ' findings', btn: 'Clear', act: () => this.setState({ focusRect: null }) };
+    const railSummary = selCell ? selCell.name : totalF + ' findings \u00b7 ' + visItems.length + ' comments';
+    return {
+      themeClass: light ? 'cc-theme-light' : '', themeIcon: light ? 'dark_mode' : 'light_mode',
+      toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
+      isDesk: !isM, isMob: isM, isFull,
+      settingsOpen: S.settingsOpen, settingsToggle: () => this.setState(s => ({ settingsOpen: !s.settingsOpen })),
+      setBtnStyle: { width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.settingsOpen ? '#fff' : 'var(--txt2)', background: S.settingsOpen ? 'var(--acc)' : 'transparent', flexShrink: 0 },
+      grpFullStyle: { ...grp, width: '100%', boxSizing: 'border-box' },
+      themeBtns: [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => ({ label, style: smallBtn(this.theme() === id), onClick: () => this.setState({ theme: id }) })),
+      brandStyle: { fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', display: isM ? 'none' : 'block' },
+      projStyle: { fontSize: 12, color: 'var(--txt2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: isM ? 'none' : 'block' },
+      hdrLeftStyle: { display: 'flex', alignItems: 'center', gap: 8, flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
+      hdrRightStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, flex: isM ? '0 0 auto' : '1 1 0', minWidth: 4 },
+      grpMainStyle: { ...grp, display: isM ? 'none' : 'flex' }, grpStyle: isM ? { ...grp, margin: '0 auto' } : grp, grpLayerStyle: { ...grp, display: isM ? 'none' : 'flex' }, grpMobStyle: { ...grp, borderRadius: 7 },
+      mainBtns, variantBtns, layerBtns, toolBtns,
+      deltaShow: !S.deltaDismissed,
+      deltaStyle: { display: 'flex', alignItems: 'center', gap: isM ? 8 : 12, flexWrap: isM ? 'wrap' : 'nowrap', padding: isM ? '7px 10px' : '0 12px', minHeight: isM ? 0 : 38, flexShrink: 0, background: 'rgba(229,72,77,0.13)', borderBottom: '1px solid var(--line)', borderLeft: '3px solid #e5484d' },
+      runLabelStyle: { fontSize: 11.5, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--txt2)', whiteSpace: 'nowrap' },
+      regMsg: REGN + (REGN === 1 ? ' regression' : ' regressions'),
+      regSubStyle: { fontSize: 11.5, color: 'var(--txt2)', whiteSpace: 'nowrap', display: isM ? 'none' : 'block' },
+      regBtnLabel: regLit ? 'Show all cells' : 'Review',
+      regBtnStyle: { marginLeft: isM ? 0 : 'auto', padding: '4px 12px', borderRadius: 7, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: regLit ? 'transparent' : '#e5484d', border: '1px solid ' + (regLit ? 'var(--line)' : '#e5484d'), color: regLit ? 'var(--txt2)' : '#fff', whiteSpace: 'nowrap', flexShrink: 0 },
+      regBtn: () => this.setState(s => ({ lit: s.lit === 'reg' ? null : 'reg', sel: null })),
+      dismissStyle: { marginLeft: isM ? 'auto' : 0, width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt2)', flexShrink: 0 },
+      dismissDelta: () => this.setState({ deltaDismissed: true, lit: S.lit === 'reg' ? null : S.lit }),
+      toolStripStyle: isM
+        ? { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }
+        : { width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 0', background: 'var(--bg1)', borderRight: '1px solid var(--line)' },
+      canvasStyle: { flex: 1, position: 'relative', minWidth: 0, minHeight: 0, display: isFull ? 'block' : 'flex', background: 'var(--canvas)' },
+      refA: this.refA, refB: this.refB, paneAStyle, paneBStyle, tStyle,
+      downA: e => this.pDown('A', e), moveA: e => this.pMove('A', e), upA: e => this.pUp('A', e), wheelA: e => this.wheel('A', e),
+      downB: e => this.pDown('B', e), moveB: e => this.pMove('B', e), upB: e => this.pUp('B', e), wheelB: e => this.wheel('B', e),
+      showLabels: !isM && !isFull && V === 'none',
+      colLabels, rowLabels, cells, layerBase, ovlStyle, layerChrome: { position: 'absolute', inset: 0, zIndex: 4 },
+      dimOn: S.dim, dimRects, hlRects,
+      hasFocus: !!fr, focusStyle: fr ? { position: 'absolute', left: fr.x, top: fr.y, width: fr.w, height: fr.h, border: (1.5 * cs) + 'px dashed var(--acc)', boxShadow: '0 0 0 4000px rgba(15,17,20,0.45)', pointerEvents: 'none', zIndex: 3 } : null,
+      wipeOn: V === 'wipe',
+      whStyle: { position: 'absolute', left: S.wipeX - 14, top: 0, width: 28, height: H, cursor: 'ew-resize', zIndex: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none' },
+      whKnob: { width: 24, height: 24, borderRadius: '50%', background: 'var(--acc)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, boxShadow: '0 2px 8px rgba(0,0,0,0.35)', transform: 'scale(' + cs + ')' },
+      whDownA: e => this.whDown('A', e), whMoveA: e => this.whMove('A', e), whDownB: e => this.whDown('B', e), whMoveB: e => this.whMove('B', e), whUp: () => { this._wh = null; },
+      badgeWrap: { position: 'absolute', top: 6, right: 6, display: 'flex', gap: 3, zIndex: 3, transform: 'scale(' + cs + ')', transformOrigin: '100% 0' },
+      staleStyle: { position: 'absolute', top: 6, left: 6, zIndex: 3, display: 'flex', alignItems: 'center', gap: 3, height: 16, padding: '0 5px', borderRadius: 4, background: 'var(--bg1)', border: '1px dashed var(--txt2)', color: 'var(--txt2)', fontSize: 9.5, fontFamily: "'IBM Plex Mono',monospace", transform: 'scale(' + cs + ')', transformOrigin: '0 0' },
+      selPillStyle: { position: 'absolute', left: '50%', bottom: -8, transform: 'translate(-50%,100%) scale(' + cs + ')', transformOrigin: '50% 0', zIndex: 30, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--acc)', borderRadius: 9, padding: 3, boxShadow: '0 6px 20px rgba(0,0,0,0.35)', cursor: 'default' },
+      deselect: () => this.setState({ sel: null }),
+      zoomWrapStyle: isM
+        ? { position: 'absolute', left: 12, top: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 }
+        : { position: 'absolute', left: 12, bottom: 12, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 9, padding: 3, zIndex: 14 },
+      zoomOut: () => this.zoom(1 / 1.25), zoomIn: () => this.zoom(1.25), fitFn: () => this.fit(), zoomPct: Math.round(t.s * 100) + '%',
+      fabStyle: { position: 'absolute', right: 8, bottom: isM ? 56 : 12, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 999, padding: 3, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      fabD: { style: fabBtn(S.pane === 'design'), onClick: () => this.setState({ pane: 'design' }) },
+      fabI: { style: fabBtn(S.pane === 'impl'), onClick: () => this.setState({ pane: 'impl' }) },
+      opShow: V === 'onion' || V === 'diff', opLabel: V === 'diff' ? 'Diff' : 'Onion',
+      opVal: Math.round((V === 'diff' ? S.op.diff : S.op.onion) * 100), opPct: Math.round((V === 'diff' ? S.op.diff : S.op.onion) * 100) + '%',
+      onOp: e => { const v = Number(e.target.value) / 100, k = V === 'diff' ? 'diff' : 'onion'; this.setState(s => ({ op: { ...s.op, [k]: v } })); },
+      sliderStyle: { width: isM ? 100 : 132, height: 4, accentColor: 'var(--acc)', cursor: 'pointer', margin: 0 },
+      ctlWrapStyle, topPillStyle,
+      topPillShow: !!topPill, topPillIcon: topPill ? topPill.icon : '', topPillIconStyle: { fontSize: 15, color: topPill ? topPill.col : 'var(--txt2)' }, topPillMsg: topPill ? topPill.msg : '', topPillBtn: topPill ? topPill.btn : '', topPillAction: topPill ? topPill.act : () => {},
+      railStyle: isM
+        ? { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' }
+        : (S.railCollapsed ? { display: 'none' } : { width: railW, flexShrink: 0, background: 'var(--bg1)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 }),
+      railToggle: () => this.setState(s => ({ railOpen: !s.railOpen })), railChev: S.railOpen ? 'expand_more' : 'expand_less',
+      railSummary, railContentShow: !isM || S.railOpen,
+      railHidden: !isM && S.railCollapsed, collapseRail: () => this.setState({ railCollapsed: true }), expandRail: () => this.setState({ railCollapsed: false }),
+      hasSel: !!selCell, scopeLabel: selCell ? selCell.name : 'Whole sheet',
+      scopeStyle: { fontSize: 11.5, fontFamily: "'IBM Plex Mono',monospace", color: selCell ? 'var(--txt)' : 'var(--txt2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
+      tabFStyle: tabStyle(S.railTab === 'findings'), tabIStyle: tabStyle(S.railTab === 'items'),
+      onTabF: () => this.setState({ railTab: 'findings' }), onTabI: () => this.setState({ railTab: 'items' }),
+      fCount, iCount: visItems.length, showFindTab: S.railTab === 'findings', showItemTab: S.railTab === 'items',
+      showCauses: !selCell, causeRows, otherCount: oneoffVis.length,
+      selInfoShow: !!selCell, selStateLabel: selState === 'measured' ? 'Measured' : selState === 'skipped' ? 'Skipped \u00b7 design only' : 'Absent',
+      selStateStyle: { fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, border: '1px solid ' + selStateCol, color: selStateCol },
+      selRun: selCell && selCell.kind === 'measured' ? 'run ' + selCell.run : '', selNote,
+      emptyF: !!selCell && findingRows.length === 0, emptyFMsg: selCell && selCell.kind === 'skipped' ? 'Nothing measured. Add an impl mapping for this variant and re-run.' : selCell && selCell.kind === 'absent' ? 'Nothing to measure.' : 'No differences in this cell.',
+      findingRows,
+      hasDraft: !!S.draft, draftCell: S.draft ? this.cellName(S.draft.cell) : '', draftText: S.draftText, onDraftText: e => this.setState({ draftText: e.target.value }),
+      cancelDraft: () => this.setState({ draft: null, draftText: '' }),
+      saveDraft: () => { const { draft, draftText } = this.state; if (!draft) return; this.setState(s => ({ items: s.items.concat([{ id: 'c' + Date.now(), num: s.items.length + 1, cell: draft.cell, rx: draft.rx, ry: draft.ry, status: 'open', text: draftText || '(no instruction)', reply: '' }]), draft: null, draftText: '' })); },
+      emptyI: visItems.length === 0 && !S.draft, itemRows
+    };
+  }
+}
+</script>
+</body>
+</html>

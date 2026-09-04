@@ -6,6 +6,74 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-04 — "it deleted and badly recreated X" can be a RENAME; byte-diff before restoring
+
+- **Context:** asked to restore `RefDiff Mobile Toolbar.dc.html` from our local copy after Claude
+  Design "accidentally deleted it and recreated it badly". I pushed our committed copy back. Minutes
+  later the file was gone from the project again — because the real event was a CONSOLIDATION: the
+  comp had been renamed to `RefDiff Mobile.dc.html`, and my restore re-created a duplicate under the
+  old name that the next consolidation step removed.
+- **Lesson:** the diff, not the report, settles what happened. Fetching the "bad" file and comparing
+  it against the committed copy costs one call and answers three questions at once — is it really
+  bad, is the good version still somewhere under another name, and is a restore needed at all. Here
+  the answer was **one hunk**: a caption linking to two now-deleted siblings, in a region the pairs
+  do not even scope to, so nothing had been lost and nothing needed restoring. **A rename presents
+  exactly like a delete-plus-recreate in a flat file listing**, and the tell is that content survives
+  under a new name — invisible unless you compare. Corollary for an external store with no history:
+  `list_files` twice, minutes apart, is a cheap change detector, and it is what caught the second
+  rename mid-task.
+- **Candidate home:** `SKILL.md` "Environment pre-flight" as the general shape (a comp reported
+  lost is diffed before it is restored) · the design-sync flow in `refdiff.bindings.md`.
+
+## 2026-09-04 — a recorded "the tool cannot do X" is a dated MEASUREMENT, not a property
+
+- **Context:** `docs/plan-annotator-redesign.md` recorded, on 2026-08-28, that "the Claude Design
+  project is not reachable as a writable design-system project through DesignSync (404 / no writable
+  projects)", and told the next session to re-make a change by hand in the app's prop editor. I
+  nearly acted on it as a constraint.
+- **Lesson:** it was wrong, and wrong in an instructive way. `list_projects` FILTERS to design-system
+  projects; this project is `PROJECT_TYPE_PROJECT`, so it reads as "no writable projects" while
+  `get_project` says `canEdit: true` and `finalize_plan` + `write_files` succeed. The original
+  session generalised one tool's empty result into a property of the service. **Re-verify a recorded
+  negative capability before trusting it** — one read call did it — and when recording one, record
+  WHAT WAS OBSERVED (`list_projects` returned nothing) rather than the conclusion drawn from it,
+  because the observation stays true and the conclusion may not.
+- **Candidate home:** CLAUDE.md, near the guidance on stale assertions — a negative capability claim
+  gets the same treatment as a stale positive one, plus "record the observation, not the inference".
+
+## 2026-09-04 — a waiver keyed by FILENAME goes stale when the name is reused
+
+- **Context:** `pair-coverage.test.ts` waived `RefDiff Mobile.dc.html` as "the designer's phone-frame
+  showcase, not a screen under measurement". The design consolidation deleted that showcase and
+  reused the NAME for the renamed toolbar comp — a real screen with two pairs.
+- **Lesson:** the guard stayed green throughout, because a waiver keyed on a path is satisfied by any
+  file at that path. Its REASON silently became a false statement about a different artifact, and it
+  would have suppressed the coverage check for a comp that genuinely needed a pair. Same shape as the
+  repo's existing rule about content-shaped vs position-shaped ignore rules: a waiver naming the
+  CONTENT ("the phone-frame showcase") expires when the content changes; one naming a POSITION (a
+  filename) never expires. Since a waiver must key on the path, the mitigation is to re-read every
+  waiver's reason whenever its file moves — which is now written above the map.
+- **Candidate home:** CLAUDE.md "Suppression is visible or it does not happen" — extend the
+  content-over-position preference to waivers, with the note that a path-keyed one needs re-reading
+  on any rename.
+
+## 2026-09-04 — large tool results persist to disk; decode them instead of retyping
+
+- **Context:** refetching seven comps (~400 KB) from the design project. `get_file` returns content
+  inline, and transcribing it back out through a Write call risks exactly the escape corruption
+  `population-registry`'s CLAUDE.md warns about — these files carry `·` / `→` escapes
+  inside JS string literals, where emitting the CHARACTER instead of the six-character escape would
+  be a silent, invisible change to a reference artifact.
+- **Lesson:** results over ~32 KB are saved to a file under the session's `tool-results/` directory
+  and the tool prints the path. `json.loads` on that file plus one `write_text` puts the bytes on
+  disk with no transcription at all — verified byte-exact against the committed copies (two of the
+  refetched files came back byte-identical, which is itself the proof the route is lossless). Below
+  that threshold there is no such path, and the honest move is to DEFER rather than hand-copy a
+  reference artifact: a typo in a comp becomes a false finding in every future measurement of its
+  pair. Two files were deferred on exactly that reasoning.
+- **Candidate home:** `SKILL.md` / the bindings' refetch procedure — name the decode-from-persisted
+  route, and the rule that a comp is never hand-transcribed.
+
 ## 2026-09-04 — persist a durable fact WHERE it becomes computable, not on the success path
 
 - **Context:** chunk 2's set index. `expandFigmaSet` reads the Figma set, expands it (pure),

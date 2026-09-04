@@ -10,7 +10,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | what | where |
 | --- | --- |
 | manifest | `design/refdiff.manifest.mjs` |
-| design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a`, files fetched with DesignSync `get_file` (`RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html`, `RefDiff Mobile Minimal.dc.html`, `parts/*`, `support.js`; `ios-frame.jsx` is an unused starter). Re-fetch to refresh; never edit a comp to make a finding go away. After a refetch run `node packages/annotator/scripts/icon-subset.mjs` — a new icon in a comp renders as its NAME until the subset has it |
+| design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a` ("Visual comparison tool UI design", type `PROJECT_TYPE_PROJECT`, `canEdit: true`), files fetched with DesignSync `get_file`. **The set was CONSOLIDATED on 2026-09-04 — see the trap below.** On disk now: `RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html` (the renamed toolbar comp), `RefDiff Gallery.dc.html` + `… Mobile` (no pair yet — waived in `pair-coverage.test.ts`), `parts/*`, `support.js`; `ios-frame.jsx` is an unused starter, and `screenshots/*.jpg` are the designer's own references, never fetched. NOT on disk: `RefDiff Library Groups.dc.html` + `… Mobile` (deliberate, see the trap). Re-fetch to refresh; never edit a comp to make a finding go away. After a refetch run `node packages/annotator/scripts/icon-subset.mjs` — a new icon in a comp renders as its NAME until the subset has it (2026-09-04: the Gallery comps added `grid_view`, `highlight`, `history`, `open_in_full`, taking it 97 → 101) |
 | impl | the annotator app itself serving the demo root: `refdiff-annotator fixtures/demo-root --serve` (default port 7378; on the Linux devbox `svc up annotator` — `services.toml` — which hands out the next free port, 7379 while another worktree's annotator holds 7378) |
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
 | viewing from a laptop / phone | `svc up annotator-tailnet` — the same read-only instance bound to the devbox's Tailscale IP only (`http://uctoinak-dev.tail31a8b9.ts.net:7390/`, `svc ports` for the port). Never `--host 0.0.0.0` here: the box has a public interface and no firewall. Tailscale Serve is NOT enabled on the tailnet (admin console), which is why a second instance rather than a proxy of 7379 |
@@ -51,11 +51,14 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - **THE MEASURED BASELINE (2026-09-04, session 21 — the toolbar layout PASSES).** Six pairs
   measured this session, one build, the fixture clock pinned per batch
   (`make-demo-root.ts --now`, measure, restore), every pair re-run to `+0/−0` before recording.
-  **TWO ROWS ARE NOT FROM THIS BUILD:** `refdiff-compare-mobile` and `refdiff-compare-mobile-minimal`
-  are the old phone layouts and are OUT OF SCOPE by Mato's 2026-09-04 ruling, so they were not
-  re-measured; their rows below are the stored 2026-09-03 reports and they WILL move when someone
-  runs them, because `.delta-strip .review`'s line-height and the page shadow are shared. Read the
-  set total as "330 with two rows stale", not as a clean measurement.
+  **AMENDED 2026-09-04 (the design consolidation):** `refdiff-compare-mobile-minimal` is RETIRED —
+  its comp was deleted in the design project, so the row is gone from the table below rather than
+  left stale. The two toolbar rows were RE-MEASURED after their comp was renamed to
+  `RefDiff Mobile.dc.html` and came back `+0/−0`, byte-identical to what they read before the
+  rename. **ONE ROW IS STILL NOT FROM THIS BUILD:** `refdiff-compare-mobile` is the old phone
+  default layout, OUT OF SCOPE by Mato's 2026-09-04 ruling, so it was not re-measured; its row is
+  the stored 2026-09-03 report and it WILL move when someone runs it, because
+  `.delta-strip .review`'s line-height and the page shadow are shared.
   `refdiff summary out/refdiff` reproduces the table:
 
   | pair | findings (c/M/m) | inst | supp | conf | align | measured |
@@ -64,9 +67,8 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   | refdiff-library-mobile | 8 (1/3/4) | 8 | 9 | 1.00 | 1 / 0,0 | 09-04 |
   | refdiff-compare-desktop | 69 (20/43/6) | 103 | 66 | 0.72 | 1 / 0,0 | 09-04 |
   | refdiff-compare-mobile | 15 (3/8/4) | 25 | 29 | 0.97 | 1 / 0,0 | **09-03, STALE** |
-  | refdiff-compare-mobile-minimal | 25 (3/14/8) | 35 | 40 | 0.87 | 1 / 0,0 | **09-03, STALE** |
-  | refdiff-compare-mobile-toolbar | **4 (3/0/1)** | 4 | 29 | **1.00** | **1 / 0,0** | 09-04 · **PASS** |
-  | refdiff-compare-mobile-toolbar-ghost | 90 (21/56/13) | 174 | 40 | 0.46 | 1 / 0,0 | 09-04 |
+  | refdiff-compare-mobile-toolbar | **4 (3/0/1)** | 4 | 29 | **1.00** | **1 / 0,0** | 09-04 · **PASS**, re-measured after the rename |
+  | refdiff-compare-mobile-toolbar-ghost | 90 (21/56/13) | 174 | 40 | 0.46 | 1 / 0,0 | 09-04, re-measured after the rename |
   | refdiff-compare-desktop-ghost | 109 (37/54/18) | 179 | 60 | 0.56 | 1 / 0,0 | 09-04 |
 
   **The toolbar pair went 10 → 4 findings, 5 → 1 unexplained, and its `align` reached the exact
@@ -460,7 +462,12 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   2026-08-28, so the rule stopped hitting — §3a's lapse working as designed.)
 - **`showDeltaStrip` defaults to true in the Tool comp, remotely too** since
   the 2026-08-29 refetch (gap 29, closed): a refetch no longer reverts it.
-- **The phone's MINIMAL layout is its own pair**, `refdiff-compare-mobile-minimal`:
+- **RETIRED 2026-09-04 — the phone's MINIMAL layout no longer exists as a comp or a pair**
+  (the design consolidation deleted `RefDiff Mobile Minimal.dc.html`; the phone has one layout
+  now, the former toolbar one, under the name `RefDiff Mobile.dc.html`). Everything below this
+  bullet is kept as the RECORD of what that pair measured, not as the present state — the
+  `?layout=minimal` route still exists in the app, it is simply no longer measured.
+- *(history)* **The phone's MINIMAL layout was its own pair**, `refdiff-compare-mobile-minimal`:
   the comp `RefDiff Mobile Minimal.dc.html` draws a fixed 390×844 phone inside
   a dark showcase canvas, so the pair's `design.scope: ".cc-theme-dark"` picks
   the phone node (its design line reads `scope explicit fluid`, 390×844); the

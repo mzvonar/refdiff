@@ -133,7 +133,58 @@ the matching cells light up. Probably the most useful affordance on a 41-cell sh
 
 ---
 
-## Chunk 0 — comps (DESIGN GATE, blocks chunk 3 only)
+## Chunk 0 — comps (DESIGN GATE, blocks chunk 3 only) — **DRAWN, IN PROGRESS 2026-09-04**
+
+**Both comps exist in the design project, plus mobile halves** (Mato, still working
+on them — treat them as in flight, not final):
+
+| comp | frame | `$preview` | shape |
+| --- | --- | --- | --- |
+| `RefDiff Library Groups.dc.html` | `Library — grouped` | 1240×860 | full-bleed |
+| `RefDiff Library Groups Mobile.dc.html` | `Library — grouped (mobile)` | 460×910 | 390×844 phone in a showcase ⇒ needs `scope: ".cc-theme-dark"` |
+| `RefDiff Gallery.dc.html` | `Gallery — Button variant sheet` | 1400×860 | full-bleed |
+| `RefDiff Gallery Mobile.dc.html` | `RefDiff gallery mobile` | 460×950 | 390×844 phone in a showcase ⇒ needs `scope` |
+
+**The finding that matters: the Library comp is a REBUILD, not a delta against
+what chunk 1 shipped.** Chunk 1 added group sections inside the existing
+thumbnail card grid. The comp replaces the grid with a six-column TABLE
+(`Component set │ Source │ Cells │ Findings roll-up │ Measured │ ⌄`), uppercase
+column headers, a 44×34 mini variant-sheet thumbnail per group and a section
+`path` line. Chunk 1's UI cannot converge on it by adjustment — that is a new
+chunk, and its measured spec is what a `refdiff-library-groups-*` pair would
+report on day one. Smaller divergences in the same file: rows show variant PROPS
+(`Primary · md · Default`) where the app shows the full pair id (chunk 2's
+`props` makes the comp's form possible); a 10-row cap with "Show N more"; a
+filter-semantics explainer line plus a Clear button; two named groups open by
+default where chunk 1 chose all-collapsed. **Chunk 1's filter semantics are
+CONFIRMED by the comp**, in its own words: "Filters apply to cells. Groups with
+no matching cell are hidden; matching groups open to show only their matches."
+
+**Two chips were renamed**: `Diverging` → `Regressed`, `Low confidence` →
+`Stale cells`.
+
+**The comps assume TWO things the tool does not have yet:**
+
+1. **A global run number.** They show `run 47`, `Run 47 vs 46` and `r45 → r47`
+   spans across a whole set. `ComparisonReport.run` is documented as the ordinal
+   *of that pair*, derived from that pair's own previous report and reset when its
+   dir is deleted — there is no cross-set counter, so `r45 → r47` over a 45-cell
+   set is not expressible today. Either core grows a run counter (a chunk-2-sized
+   change) or the vintage span stays time-based, which is what chunk 1 ships.
+2. **Chunk 4's hierarchy.** The `Foundations` row is a pure grouping node —
+   children, "Hierarchy only — nothing measured", "No sheet / nothing to
+   compare" — and every group carries a section `path`. Chunk 4 arrived inside
+   the chunk-0 comp.
+
+**Confirmed for chunk 3:** the Gallery comp draws exactly the three cell states
+this plan specified — `measured` / `skipped` ("Skipped · no impl cell") /
+`absent` — plus recurring-cause chips and per-cell staleness. Chunk 2's set index
+feeds all of it, and `absent` is the axes cross-product minus pairs minus skipped
+(measured: 9 for Alert, 30 for Button/Fill).
+
+### The original brief
+
+
 
 The annotator is dogfooded: `design/refdiff/*.dc.html` are the comps,
 `design/refdiff.manifest.mjs` measures the app against them, and the loop rule

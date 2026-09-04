@@ -18,11 +18,24 @@ import { describe, expect, it } from "vitest"
  * the check that stops the first being reported as the second.
  */
 
-/** Comps that are deliberately NOT a pair, each with the reason. */
+/**
+ * Comps that are deliberately NOT a pair, each with the reason.
+ *
+ * `RefDiff Mobile.dc.html` used to be here — the designer's phone-frame
+ * showcase. The design project reused that NAME for the renamed toolbar comp on
+ * 2026-09-04 and deleted the showcase, so the file at that name now has two
+ * pairs and the waiver would have been a false statement about a real screen.
+ * The kind of waiver that has to be re-read whenever its file moves, not only
+ * when its reason changes.
+ */
 const UNPAIRED_BY_DESIGN = new Map([
   [
-    "RefDiff Mobile.dc.html",
-    "the designer's phone-frame showcase (a toggle + <dc-import> of the two pages), not a screen under measurement — stated in design/refdiff.manifest.mjs's header",
+    "RefDiff Gallery.dc.html",
+    "chunk 3's surface does not exist yet: there is no impl route to capture, and a pair naming a route that 404s compares 'fine' against the wrong comp (design/refdiff.manifest.mjs's header). Register it when the gallery view is stubbed, per the refdiff skill's §0",
+  ],
+  [
+    "RefDiff Gallery Mobile.dc.html",
+    "the phone half of the same unbuilt surface — see RefDiff Gallery.dc.html. It is its own 390×844 phone frame inside a showcase canvas, so its pair will need scope: '.cc-theme-dark'",
   ],
 ])
 

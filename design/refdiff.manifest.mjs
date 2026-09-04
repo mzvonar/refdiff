@@ -11,12 +11,34 @@
 //
 // Both comps are responsive: the same file renders its mobile layout when the
 // capture viewport is narrow (Library < 640px, Comparison Tool < 760px), so the
-// mobile pairs reuse the desktop comps at 390×844. `RefDiff Mobile.dc.html` is
-// only the designer's phone-frame showcase (a toggle + <dc-import> of the two
-// pages) and is deliberately not a pair. The phone's MINIMAL layout has its
-// own comp, `RefDiff Mobile Minimal.dc.html` (2026-08-29) — a fixed 390×844
-// phone frame inside a showcase canvas — and its own pair below, scoped to
-// the phone node.
+// mobile pairs reuse the desktop comps at 390×844.
+//
+// THE PHONE COMPS WERE CONSOLIDATED IN THE DESIGN PROJECT ON 2026-09-04, and the
+// names moved under us — read this before trusting an older comment:
+//   - `RefDiff Mobile Toolbar.dc.html` was RENAMED to `RefDiff Mobile.dc.html`
+//     and is now "the default mobile layout" (Mato). Byte-identical to the file
+//     it replaced apart from a caption linking to two now-deleted siblings, and
+//     that caption sits outside the `.cc-theme-dark` phone node this pair scopes
+//     to — so the rename moved no measurement. Its frame is still
+//     `RefDiff mobile toolbar`.
+//   - `RefDiff Mobile.dc.html` USED to be the designer's phone-frame showcase
+//     (a toggle + <dc-import> of the two pages), deliberately unpaired. That
+//     file is gone and the NAME now means the layout above, so the waiver it
+//     held in packages/annotator/test/pair-coverage.test.ts went with it.
+//   - `RefDiff Mobile Minimal.dc.html` was DELETED (deliberate, confirmed).
+//     Its pair `refdiff-compare-mobile-minimal` is retired here, and
+//     MINIMAL_IGNORE with it.
+//   - Four comps arrived that have no pair yet: `RefDiff Library Groups.dc.html`
+//     + `… Mobile` (frames `Library — grouped` / `Library — grouped (mobile)`)
+//     and `RefDiff Gallery.dc.html` + `… Mobile` (frames
+//     `Gallery — Button variant sheet` / `RefDiff gallery mobile`). The Gallery
+//     pair waits on chunk 3 — there is no impl surface to capture yet, and a
+//     route that does not exist compares "fine" against the wrong comp. The
+//     Library Groups comps are a REBUILD of the Library, not a delta against
+//     what chunk 1 shipped: see docs/handoff-gallery-groups.md.
+//   - The MOBILE comps are separate FILES with their own phone frames, not the
+//     responsive-at-a-narrow-viewport shape the Library pairs use, so each needs
+//     `scope: ".cc-theme-dark"` like the pair below.
 //
 // The impl route for the comparison page is a hash route into one run dir of
 // the served demo root — the pair the comps open (`fixtures/make-demo-root.ts`
@@ -252,46 +274,12 @@ COMPARE_IGNORE.textPatterns.push({
 // ordinals and compare the rest rather than excusing the whole string.
 COMPARE_IGNORE.dataSlots = { patterns: ["Run \\d+ vs \\d+"] }
 
-// The minimal layout's comp abbreviates the pair title in its 44px header ("Onboarding — Document");
-// the app shows the pair's name — data, not copy.
-const MINIMAL_IGNORE = {
-  textPatterns: COMPARE_IGNORE.textPatterns,
-  // The artboard rule is the shared Comparison-tool policy's; carry it explicitly, because this
-  // object is built by hand and a missing key here reads as "the minimal pair reports more", not as
-  // a policy gap.
-  contentsOf: COMPARE_IGNORE.contentsOf,
-  explain: COMPARE_IGNORE.explain,
-  accepted: COMPARE_IGNORE.accepted.concat([
-    {
-      type: "text-content",
-      expected: { text: "Onboarding — Document" },
-      actual: { text: "Onboarding — Document step" },
-      reason: "the Minimal comp's header shows a shortened demo title; the app shows the pair's name as the Library card does",
-    },
-    // The Minimal comp draws no delta strip; Mato (2026-08-29): it renders as in the default
-    // layout. Its copy is excused by the patterns above; its two glyphs are excused here by
-    // content. The canvas below it sits ~66px lower than the comp's, which no rule may hide
-    // (positions lapse) — the ask is the strip in the comp (plan gap 36).
-    {
-      type: "extra-element",
-      role: "text",
-      text: "warning",
-      reason: "gap 36: the delta strip's icon — the Minimal comp omits the strip; Mato 2026-08-29: render it as in the default layout",
-    },
-    {
-      type: "extra-element",
-      role: "text",
-      text: "close",
-      reason: "gap 36: the delta strip's × — the Minimal comp omits the strip; Mato 2026-08-29: render it as in the default layout",
-    },
-  ]),
-}
-
 // The TOOLBAR layout starts from the shared Comparison-tool policy (the comp's artboard
-// vocabulary, the two screenshots, the delta strip's copy) and deliberately NOT from
-// MINIMAL_IGNORE: that set's extra acceptances are claims about the MINIMAL comp — its
-// shortened demo title, and its omission of the delta strip — which say nothing about this
-// one. Whatever this comp needs gets its own rule with its own reason, once measured.
+// vocabulary, the two screenshots, the delta strip's copy). It deliberately did NOT start from
+// the retired MINIMAL_IGNORE (removed 2026-09-04 with its pair): that set's extra acceptances
+// were claims about the MINIMAL comp — its shortened demo title, and its omission of the delta
+// strip — which said nothing about this one. The rule that outlives it: whatever this comp needs
+// gets its own entry with its own reason, once measured.
 // This pair's steps OPEN the rail, and on a phone the rail is a bottom SHEET — a region the shared
 // desktop rail box cannot cover. Same cause and the same types, at the sheet's measured box; it is
 // scoped to the one pair that opens it, because on a pair whose sheet is closed the same rectangle
@@ -350,18 +338,6 @@ export const manifest = [
     ignore: COMPARE_IGNORE,
   },
   {
-    // The phone's MINIMAL layout (2026-08-29): its own comp, a 390×844 phone frame drawn inside a
-    // dark 460×950 showcase canvas — `scope` picks the phone (the one `.cc-theme-dark` node) so
-    // the showcase padding and its caption are never compared. The app renders that layout when
-    // the settings popover says so; `?layout=minimal` presets it for this capture without
-    // touching the saved preference.
-    id: "refdiff-compare-mobile-minimal",
-    title: "RefDiff · Comparison tool (mobile, minimal layout)",
-    design: { file: "RefDiff Mobile Minimal.dc.html", frame: "RefDiff mobile minimal", scope: ".cc-theme-dark" },
-    app: { source: "live", route: "/?layout=minimal" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
-    ignore: MINIMAL_IGNORE,
-  },
-  {
     // The phone's TOOLBAR layout (2026-09-02): the minimal layout plus a header toolbar and a
     // top floating toolbar, in its own comp — again a 390x844 phone inside a dark showcase
     // canvas, so `scope` picks the phone node. The comp drops BOTH the tune and the settings
@@ -369,7 +345,7 @@ export const manifest = [
     // no phone-layout switch at all: `?layout=toolbar` is the only way into it.
     id: "refdiff-compare-mobile-toolbar",
     title: "RefDiff \u00b7 Comparison tool (mobile, toolbar layout)",
-    design: { file: "RefDiff Mobile Toolbar.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark" },
+    design: { file: "RefDiff Mobile.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark" },
     app: { source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
     ignore: TOOLBAR_IGNORE,
   },
@@ -402,7 +378,7 @@ export const manifest = [
     id: "refdiff-compare-mobile-toolbar-ghost",
     title: "RefDiff \u00b7 Comparison tool (mobile, toolbar) \u2014 ghost of a one-sided finding",
     design: {
-      file: "RefDiff Mobile Toolbar.dc.html",
+      file: "RefDiff Mobile.dc.html",
       frame: "RefDiff mobile toolbar",
       scope: ".cc-theme-dark",
       // The SWAP COMES FIRST, and the order is the whole trick (2026-09-03). o1 is design-only, so

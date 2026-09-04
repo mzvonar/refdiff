@@ -20,6 +20,17 @@ would rather not wait.
 
 **Nothing pushed** — Mato has not asked.
 
+**The design project was CONSOLIDATED on 2026-09-04 and the file names moved.** What this
+repo did about it, in one commit: `RefDiff Mobile Toolbar.dc.html` → `RefDiff Mobile.dc.html`
+(a rename in the project; byte-identical apart from a caption linking to two deleted
+siblings, and that caption is outside the scoped phone node, so **both toolbar pairs
+re-measured `+0/−0`**); `refdiff-compare-mobile-minimal` retired with `MINIMAL_IGNORE` (its
+comp was deleted); the `RefDiff Mobile.dc.html` waiver dropped from `pair-coverage.test.ts`
+because the NAME now means a paired comp; the Gallery comps landed and waived; the icon
+subset re-run (97 → 101 glyphs — the Gallery added `grid_view`, `highlight`, `history`,
+`open_in_full`, and a glyph missing from the subset renders as its NAME). `refdiff.bindings.md`
+carries the new inventory and the amended baseline table.
+
 ## What's DONE
 
 - **The plan** — `docs/plan-gallery-groups.md`: the measured problem, the decisions taken
@@ -67,12 +78,24 @@ would rather not wait.
 
 ## What REMAINS (in order)
 
-### 1. CHUNK 0 — the two comps ← DESIGN GATE, blocks chunk 3
+### 1. CHUNK 0 — the comps are DRAWN and still in flight (Mato, 2026-09-04)
 
-Plan § "Design asks". A Library-with-groups comp (extending `RefDiff Library.dc.html` —
-chunk 1 shipped seven sub-decisions the comp can overrule, all listed in the plan's chunk 1
-table) and a new `RefDiff Gallery.dc.html`. The brief is written; it needs Mato and the
-Claude Design canvas, not a session here.
+All four exist in the design project — Library Groups + Gallery, each with a mobile half —
+and Mato said he is **still working on the design**, so treat them as in progress. Frames,
+previews and which need `scope: ".cc-theme-dark"`: plan § "Chunk 0". Two of them are on
+disk (the Gallery pair, waived in `pair-coverage.test.ts` until chunk 3 has a surface).
+
+**The two Library Groups comps are NOT on disk yet, deliberately.** They came back from
+`get_file` small enough to land in the conversation rather than in a file, and a reference
+comp must not be hand-transcribed — a typo in one becomes a false finding in every future
+measurement of that pair. Fetch them when the rebuild chunk starts, and decode from the
+persisted tool result rather than retyping (see the lessons inbox).
+
+**The headline: the Library Groups comp is a REBUILD of the Library, not a delta against
+chunk 1.** Six-column table, not the card grid. Chunk 1's UI cannot converge on it by
+adjustment. That is a new chunk, and the first `refdiff-library-groups-desktop` run IS its
+specification. Details, plus the two things the comps assume that the tool does not have
+(a global run number; chunk 4's hierarchy nodes), are in the plan's chunk 0 section.
 
 ### 2. CHUNK 4 — manifest hierarchy — the one that needs NEITHER comp nor data
 

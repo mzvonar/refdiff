@@ -1462,11 +1462,17 @@ with Mato where the two comps disagree.
     hinge on it. **RESOLVED 2026-08-28 — (a), at Mato's request:** the one
     token `"default":false → true` in `RefDiff Comparison Tool.dc.html`'s
     `data-props`, nothing else touched. Measured right after (phase 3
-    Numbers, "after the flip"). NOTE the flip is in the LOCAL copy only —
-    the Claude Design project is not reachable as a writable design-system
-    project through DesignSync (404 / no writable projects), so make the
-    same change in the app's prop editor before the next refetch, or the
-    refetch reverts it.
+    Numbers, "after the flip"). NOTE the flip was in the LOCAL copy only, and
+    the reason recorded here — "the Claude Design project is not reachable as a
+    writable design-system project through DesignSync (404 / no writable
+    projects)" — **was WRONG, corrected 2026-09-04.** `list_projects` filters to
+    design-system projects, and this one is `PROJECT_TYPE_PROJECT`, so it shows
+    up empty there while `get_project` reports `canEdit: true` and
+    `finalize_plan` + `write_files` succeed against it (verified by writing a
+    comp back). A recorded "the tool cannot do X" about an external service is a
+    dated measurement, not a property — re-verify before treating it as a
+    constraint. The flip itself was made moot by the 2026-08-29 refetch, which
+    carries `showDeltaStrip: true` remotely (see the bindings trap).
 30. **The Tool comp fits once, on load, and never on resize.** Under the
     adapter's slack canvas it fitted for a 1480px window (zoom 75%). Closed on
     the harness side — the dc-html adapter now reloads a fluid comp at the
