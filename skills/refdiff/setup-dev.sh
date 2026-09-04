@@ -161,6 +161,11 @@ else
   node packages/core/dist/cli.js --help | head -1
 fi
 echo "tests: $(pnpm -r test 2>&1 | grep -oE 'Tests +[0-9]+ passed' | awk '{s+=$2} END {print s+0}') passing"
+# The pre-flight is the same check a session runs before its first compare, so running it here
+# proves the install is COHERENT rather than merely complete — a build that landed but did not
+# finish, or a checkout behind origin, shows up now instead of as a +0/-0 delta later.
+echo
+bash "$CHECKOUT/skills/refdiff/preflight.sh" || true
 echo
 echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."
 echo "A consuming repo needs only: its manifest + a refdiff.bindings.md (see SKILL.md 'Repo bindings')."

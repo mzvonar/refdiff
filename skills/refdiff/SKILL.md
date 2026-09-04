@@ -1,6 +1,6 @@
 ---
 name: refdiff
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design. It covers a surface that does NOT EXIST YET as much as a drifted one — "implement this comp", "build this design", "a new .dc.html / Figma frame landed", "implement the new layout / screen": stub the surface, register its pair, and let the delta drive it (§0). Also when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh). Never eyeball two screenshots and never hand-derive a layout by reading the comp's source; every claim is a number from findings.json.
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design. It covers a surface that does NOT EXIST YET as much as a drifted one — "implement this comp", "build this design", "a new .dc.html / Figma frame landed", "implement the new layout / screen": stub the surface, register its pair, and let the delta drive it (§0). Also when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh); to "check the refdiff skill version", "is refdiff up to date", "sync/update the refdiff skill", or to vendor it into a repo (preflight.sh / sync-skill.sh). Run preflight.sh once before the first compare of a session: a dist behind src, or an annotator process older than dist, reports as +0/-0 and is indistinguishable from a fix that did nothing. Never eyeball two screenshots and never hand-derive a layout by reading the comp's source; every claim is a number from findings.json.
 ---
 
 # refdiff — the bounded fix loop over its reports
@@ -16,10 +16,24 @@ times, and stop on diminishing returns.
 
 ## Repo bindings
 
-This skill is a USER-level skill (symlinked from
-`~/.claude-shared/skills/refdiff` → the refdiff checkout; both
-profiles link it), so it is available in every project. Nothing of it lives
-in a consuming repo — the repo only carries its manifest and a bindings file.
+This skill installs in one of two modes, and the difference decides whether it can
+go stale (`preflight.sh` reports which one you are in as `skill_mode`):
+
+- **dev** — the skill dir is a SYMLINK into a refdiff checkout
+  (`~/.claude/skills/refdiff` → `~/.claude-shared/skills/refdiff` → `<checkout>/skills/refdiff`;
+  both profiles link it). SKILL.md IS the checkout's file, so there is no copy that can drift
+  and nothing to sync. Nothing of the skill lives in a consuming repo — the repo carries only
+  its manifest and a bindings file. This is what `setup-dev.sh` builds.
+- **vendored** — the skill dir is a COPY carrying a `.skill-version` stamp, written by
+  `sync-skill.sh` (below). It survives a fresh clone, CI, a cloud session and a teammate,
+  which a symlink does not — and it is a copy, so it CAN drift from upstream. That is the
+  whole reason `preflight.sh` exists.
+
+In both modes the ENGINE is a checkout: `refdiff` and `refdiff-annotator` are wrappers that
+exec `<checkout>/packages/*/dist/cli.js`. Vendoring copies the skill TEXT and never the engine,
+so a vendored consumer still runs `setup-dev.sh` once per machine — and can still have a stale
+build, which is why the pre-flight checks the build in both modes.
+
 **Read the bindings first** — they are the source of truth for paths, ports,
 seeds and gotchas. Each repo keeps the file wherever its visual tooling lives,
 so locate it rather than assuming a path:
@@ -36,10 +50,63 @@ before running anything.
 The CLIs are on PATH as wrapper scripts written by `setup-dev.sh`, each one
 `exec node <checkout>/packages/*/dist/cli.js`: `refdiff` (core) and
 `refdiff-annotator`. They run from `dist` — keep `pnpm dev` (tsc --watch)
-running in that checkout while developing, or `pnpm build` after pulling. The
+running in that checkout while developing, or `pnpm build` after pulling; **`preflight.sh`
+checks that for you and HALTS when dist is behind src**, because the watcher has stopped
+silently before and a stale dist reads as `+0/−0`, not as an error. The
 wrapper is indirect on purpose: it needs no relink after a rebuild, and tsc
 emits `dist/cli.js` mode 0644, so a symlink straight to it would stop being
 executable the moment `dist` is rebuilt from clean.
+
+## Tool pre-flight — is the thing you measure WITH current?
+
+**Run this once, before the first `compare` of a session.** It is not ceremony: two of the
+things it checks make the numbers lie rather than merely being old, and both have cost real
+sessions real time.
+
+```bash
+bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/preflight.sh" --port <annotator port>
+```
+
+`--port` (or `--app-url`) is optional and adds the served-instance check; everything else runs
+without it. Exit `0` = proceed · `1` = HALT · `2` = the pre-flight itself broke.
+
+| fact | value | what you do |
+| --- | --- | --- |
+| `build_freshness` | `STALE` / `MISSING` | **HALT.** The CLI execs `dist/cli.js`, so a dist behind src measures code you did not write. `(cd <checkout> && pnpm build)`, or start the watcher. |
+| `server_freshness` | `STALE` | **HALT.** The annotator renders its page shell at process START, so an instance older than dist serves the previous build however fresh dist is. Kill by PID, poll until the port frees, restart, verify by CONTENT. |
+| `skill_freshness` | `stale-<N>` / `differs` | **ASK the user, never auto-sync and never block** (`AskUserQuestion`): *sync now* → run `sync-skill.sh` and restart against the updated copy; *proceed* → continue on the copy as vendored. `stale-<N>` is a commit count (local objects available); `differs` means only `ls-remote` could answer, so the direction is unknowable and claiming "behind" would be a guess. |
+| `checkout_freshness` | `behind-<N>` / `diverged-…` | Surface it in one line and carry on. **Never blocks** — you are often deliberately ahead, or on a branch, and a stop mid-loop is worse than a printed line. |
+| any `skipped-*` / `current` | | Continue silently. |
+
+Why the first two halt and the last two do not: a stale build or a stale server both produce a
+delta of `+0/−0` — "my fix did nothing" — which is *indistinguishable from a fix that genuinely
+did nothing*, so the loop converges on a lie and the model reports success. Upstream drift only
+makes you old, and you can read an old rule and still measure correctly.
+
+`REFDIFF_SKIP_FRESHNESS=1` skips every network fetch (the two upstream checks report
+`skipped-opt-out`; the build and server checks are local and still run). `REFDIFF_DIR` names the
+checkout explicitly. `bash preflight-selftest.sh` falsifies every row against synthetic offender
+trees — run it after touching either script.
+
+## Vendoring the skill into a consumer (non-dev installs)
+
+`sync-skill.sh` copies the skill into a repo (or into `~/.claude/skills/`) and stamps it, and
+**re-running it IS the update** — it is the "sync now" branch of the ask above.
+
+```bash
+# from a checkout: vendor into a repo → <repo>/.claude/skills/refdiff/ + .skill-version
+bash <checkout>/skills/refdiff/sync-skill.sh /path/to/repo --ref main
+bash <checkout>/skills/refdiff/sync-skill.sh /path/to/repo --dry-run   # what would change
+
+# from inside a vendored copy, with no checkout on the machine: update in place
+bash .claude/skills/refdiff/sync-skill.sh
+```
+
+With no `--from` and no surrounding checkout it shallow-clones upstream to a temp dir, so the
+command works on a machine that has never had refdiff. It **refuses** to overwrite a dev-mode
+symlink (that would swap a live skill for a frozen one), and a stamp cut from a DIRTY source
+records `dirty=true` rather than letting `preflight.sh` call it `current`. Commit the refreshed
+`.claude/skills/refdiff/` on its own `chore/` branch; review the diff first.
 
 ## Dev-mode setup (new machine / VM)
 
@@ -185,6 +252,10 @@ error instead of a report, and stubbing without registering gives you no
 measurement at all.
 
 ### 1. Run
+
+First run of a session: `preflight.sh` (see "Tool pre-flight"). It is one command and it is the
+difference between a `+0/−0` that means "no change" and one that means "you measured yesterday's
+build".
 
 ```bash
 refdiff compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
@@ -675,6 +746,9 @@ items is now a typed finding — read it there:
   offset 0` and the note goes.
 
 ## Environment pre-flight (fill in per repo)
+
+This one is about the REPO you are measuring; the "Tool pre-flight" section above is about the
+tool you are measuring WITH. Run that one first — it is scripted and it halts.
 
 The repo's `refdiff.bindings.md` holds the specifics; these are the
 failure shapes that recur everywhere and impersonate product bugs.

@@ -21,6 +21,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 ## Run
 
 ```bash
+bash skills/refdiff/preflight.sh --port 7381               # FIRST: is dist behind src? is the server behind dist?
 pnpm dev                                                  # keep tsc --watch running; CLIs run from dist
 svc up annotator                                          # or: refdiff-annotator fixtures/demo-root --serve --read-only --port 7378 &
 svc restart annotator                                     # after any annotator edit — the served shell is rendered at start
@@ -557,6 +558,13 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   `render.ts` during an A/B is the suspected cause): two CSS fixes read as `+0/-0` delta
   because the served shell was 25 minutes stale. `pnpm --filter @refdiff/annotator build`
   and compare the mtimes; the served shell is rendered at annotator START, so restart it too.
+  **Both halves of that are now SCRIPTED (2026-09-04): `bash skills/refdiff/preflight.sh --port
+  7381` reports `build_freshness` (newest `packages/*/src/**/*.ts` against newest
+  `packages/*/dist/**/*.js`) and `server_freshness` (the listening PID's start time against the
+  same dist) and exits 1 on either.** Run it once per session before the first compare. This
+  paragraph stays because the script automates the check, not the understanding — and the
+  session that added the script had ALREADY started with `dist/render.js` at 04:52 against
+  `src/render.ts` at 04:55, caught only because this paragraph told it to look.
 - **A comp's new icon renders as its NAME until the subset has it.** The
   served icon font is Google's subset of exactly the glyphs in
   `packages/annotator/src/icon-names.ts` (generated); `settings` / `tune` /
