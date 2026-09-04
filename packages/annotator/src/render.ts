@@ -717,6 +717,17 @@ body.is-sheet .shot { display:none; }
 .cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:4px; }
 .cellslot.k-skipped, .cellslot.k-pending { border-style:dashed; background:rgba(128,132,140,.06); }
 .cellslot.k-absent { border-style:dotted; opacity:.45; }
+.cellslot { display:flex; align-items:center; justify-content:center; }
+.cellnote { font-size:9px; line-height:1.25; text-align:center; color:var(--txt2); text-transform:uppercase; letter-spacing:.06em; padding:0 3px; }
+/* The axes. Both panes draw them, as the comp does. */
+.cellhead { position:absolute; display:flex; align-items:center; color:var(--txt2); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; }
+.cellhead.col { justify-content:center; }
+.cellhead.row { justify-content:flex-end; text-align:right; padding-right:8px; text-transform:none; letter-spacing:0; font-weight:500; }
+/* The CELL's finding count — the cell's number, not a finding's, so renderMarks
+   never touches it and it does not dim with a lit cause. */
+.cellcount { position:absolute; transform:translate(-100%, 0); font-family:var(--font-mono); font-size:9.5px; font-weight:600; line-height:1; padding:2px 3px; border-radius:3px; pointer-events:none; }
+.cellcount.has { background:var(--major); color:#1b1400; }
+.cellcount.ok { color:var(--ok); }
 .vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:all; user-select:none;
   box-shadow:0 1px 4px rgba(0,0,0,.4); border:2px solid rgba(255,255,255,.9); transform:scale(var(--cs)); transform-origin:center; }
@@ -3036,26 +3047,116 @@ function renderCellShots() {
   hosts.impl.replaceChildren();
   if (!sheet) return Promise.resolve(true);
   const loads = [];
+  const res = sheet.resolved;
+
+  // ---- the axes, drawn on BOTH panes ------------------------------------
+  // Both panes draw the whole grid — the comp does, and a header on one pane
+  // only would label the cells of the other by accident when the reader swaps
+  // sides. World px, so they zoom with everything else.
+  for (const side of ['design', 'impl']) {
+    (res.columns.labels || []).forEach((label, i) => {
+      const tick = sheet.layout.columns[i];
+      if (!tick) return;
+      const el = document.createElement('div');
+      el.className = 'cellhead col';
+      el.style.left = tick.at + 'px';
+      el.style.top = '0px';
+      el.style.width = tick.extent + 'px';
+      el.style.height = GALLERY_GUTTER.h + 'px';
+      el.textContent = label;
+      hosts[side].appendChild(el);
+    });
+    (res.rowTuples || []).forEach((tuple, i) => {
+      const tick = sheet.layout.rows[i];
+      if (!tick) return;
+      const el = document.createElement('div');
+      el.className = 'cellhead row';
+      el.style.left = '0px';
+      el.style.top = tick.at + 'px';
+      el.style.width = GALLERY_GUTTER.w + 'px';
+      el.style.height = tick.extent + 'px';
+      el.textContent = tuple.map((o, k) => {
+        const axis = res.rows[k];
+        const at = axis ? axis.options.indexOf(o) : -1;
+        return (at >= 0 && axis ? axis.labels[at] : o) || o;
+      }).join(' \u00b7 ');
+      hosts[side].appendChild(el);
+    });
+  }
+
+  // ---- the cells --------------------------------------------------------
   for (const cell of sheet.cells) {
+    const count = cell.report ? (cell.report.findings || []).length : 0;
     for (const side of ['design', 'impl']) {
       const slot = document.createElement('div');
       slot.className = 'cellslot k-' + cell.kind;
-      slot.style.left = cell.rect.x + 'px';
-      slot.style.top = cell.rect.y + 'px';
-      slot.style.width = cell.rect.w + 'px';
-      slot.style.height = cell.rect.h + 'px';
+      // The SLOT is the track; the content rect inside it is centred, as the
+      // comp centres it. Drawing the slot at the content box would shrink every
+      // cell's outline to its button.
+      const t = cell.track || cell.rect;
+      slot.style.left = t.x + 'px';
+      slot.style.top = t.y + 'px';
+      slot.style.width = t.w + 'px';
+      slot.style.height = t.h + 'px';
+      // The state the cell is in, in the comp's own words, INSIDE the slot: a
+      // greyed box with no text cannot say whether nobody declared the cell or
+      // the implementation simply has no story for it, and those are different
+      // facts about the design system.
+      if (CELL_NOTE[cell.kind]) {
+        const note = document.createElement('span');
+        note.className = 'cellnote';
+        note.textContent = CELL_NOTE[cell.kind];
+        note.title = cell.reason || '';
+        slot.appendChild(note);
+      }
       hosts[side].appendChild(slot);
     }
     if (!cell.report) continue;
-    const img = document.createElement('img');
-    img.className = 'cellshot';
-    img.alt = '';
-    img.style.left = cell.rect.x + 'px';
-    img.style.top = cell.rect.y + 'px';
-    img.style.width = cell.report.impl.width + 'px';
-    img.style.height = cell.report.impl.height + 'px';
-    hosts.impl.appendChild(img);
-    loads.push(loadImage(img, cell.dir + '/' + cell.report.artifacts.implPng));
+
+    // The count the comp draws in each measured cell. It is the CELL's number,
+    // not a finding's, so it is not a mark and renderMarks never touches it.
+    for (const side of ['design', 'impl']) {
+      const b = document.createElement('span');
+      b.className = 'cellcount' + (count ? ' has' : ' ok');
+      const tb = cell.track || cell.rect;
+      b.style.left = (tb.x + tb.w - 4) + 'px';
+      b.style.top = (tb.y + 4) + 'px';
+      b.textContent = count ? String(count) : '\u2713';
+      b.title = count + ' finding(s) in this cell';
+      hosts[side].appendChild(b);
+    }
+
+    // IMPL: world px ARE impl css px, so the shot goes at the cell's origin.
+    const impl = document.createElement('img');
+    impl.className = 'cellshot';
+    impl.alt = '';
+    impl.style.left = cell.rect.x + 'px';
+    impl.style.top = cell.rect.y + 'px';
+    impl.style.width = cell.report.impl.width + 'px';
+    impl.style.height = cell.report.impl.height + 'px';
+    hosts.impl.appendChild(impl);
+    loads.push(loadImage(impl, cell.dir + '/' + cell.report.artifacts.implPng));
+
+    // DESIGN: through the cell's OWN alignment, and this is the whole of step 2.
+    // report.design.width already carries the run's scale (see rawDesignSize),
+    // so the WORLD size is that width verbatim and no natural size is needed —
+    // which is what lets the image be positioned before it has loaded. The
+    // offset is the cell's own registration, on top of its cellOrigin.
+    //
+    // Consequence, stated: the align-mode pill (Anchors / Width / Top left /
+    // Top right) is a per-PAIR registration control and does not reach a sheet's
+    // design pane, because each cell here is registered by its own fit. On a
+    // sheet the pill has nothing to re-register.
+    const a = cell.report.alignment || { scale: 1, offsetX: 0, offsetY: 0 };
+    const design = document.createElement('img');
+    design.className = 'cellshot';
+    design.alt = '';
+    design.style.left = (cell.rect.x + (a.offsetX || 0)) + 'px';
+    design.style.top = (cell.rect.y + (a.offsetY || 0)) + 'px';
+    design.style.width = cell.report.design.width + 'px';
+    design.style.height = cell.report.design.height + 'px';
+    hosts.design.appendChild(design);
+    loads.push(loadImage(design, cell.dir + '/' + cell.report.artifacts.designPng));
   }
   return Promise.all(loads).then(() => true);
 }

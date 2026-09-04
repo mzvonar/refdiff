@@ -184,6 +184,15 @@ const EMBEDDED = [
 describe("the embedded modules", () => {
   const srcDir = fileURLToPath(new URL("../src/", import.meta.url))
 
+  // SCOPE OF THIS GUARD, because it is not the whole scope that collides: it
+  // scans the seven MODULE FILES. `CLIENT` and `APP_BOOT` are concatenated into
+  // the same module and can collide with them too — chunk 3 declared `CELL_NOTE`
+  // in CLIENT where gallery-view.ts already had it — but their bodies are
+  // template literals whose end cannot be found without a real TypeScript scan
+  // (see the note above). That case is covered instead by "the generated page
+  // script > parses", which found exactly this one and named it: `Identifier
+  // 'CELL_NOTE' has already been declared`. Two guards, one class, and the
+  // parse one is the backstop.
   it("declare no name twice across the shared top-level scope", async () => {
     const scans = await Promise.all(
       EMBEDDED.map(async (m) => topLevelDeclarations(m, await readFile(`${srcDir}${m}.ts`, "utf8"))),
@@ -308,3 +317,28 @@ describe("the generated page script", () => {
     }
   })
 })
+
+/**
+ * NOT GUARDED, deliberately, and this is the note that replaced the attempt.
+ *
+ * A backtick inside `CLIENT` / `EMBEDDED_BOOT` (render.ts) or `APP_BOOT` /
+ * `INDEX_CSS` (app-shell.ts) closes the template early and the rest of the file
+ * parses as TypeScript — a run of `TS1005 ',' expected` pointing at the comment,
+ * never at the backtick. It happened THREE times in one session, always the same
+ * way: writing an identifier in a comment the way this repo writes identifiers
+ * everywhere else.
+ *
+ * A scanner for it was written and removed. Finding a block's body requires
+ * knowing which backtick is its terminator, which is precisely the thing in
+ * question — the first implementation scanned to the next backtick and so could
+ * never find one inside the body, and its own synthetic offenders caught that.
+ * Parity over the file does not work either: the common case is TWO backticks in
+ * one comment, which keeps the count even. Doing it properly needs a real
+ * TypeScript scan, which is not worth it here because **typecheck already
+ * catches every instance** — the gap is the message, not the detection.
+ *
+ * So the standing advice, where it is useful: on a burst of `TS1005` in
+ * render.ts or app-shell.ts, do not read the reported line. Count the backticks
+ * in the named block first.
+ */
+

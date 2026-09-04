@@ -423,10 +423,18 @@ export function sheetSummary(c: GCensus, span: { min: number; max: number } | nu
   return `${c.total} cells · ${parts.join(" · ")}${runs}`
 }
 
-const CELL_NOTE: Record<GCellKind, string> = {
+/**
+ * What a cell of each kind SAYS, in the comp's words — exported because the
+ * canvas draws it too (render.ts's renderCellShots) and two copies of a user-
+ * facing string is two copies that drift. It is also why they must not be
+ * re-declared there: every embedded module and both page templates concatenate
+ * into ONE module scope, so a second `CELL_NOTE` is a `SyntaxError` that takes
+ * the whole app down — which is exactly how this was found.
+ */
+export const CELL_NOTE: Record<GCellKind, string> = {
   measured: "",
   skipped: "Skipped · no impl cell",
-  absent: "Declared by neither side",
+  absent: "Absent",
   pending: "Declared, not measured",
 }
 

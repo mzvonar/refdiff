@@ -542,9 +542,11 @@ describe("the variant sheet", () => {
     })
     expect(l.colWidths).toEqual([1320, 96])
     expect(l.rowHeights).toEqual([92, 220])
-    // The row-0 button is in a 1300-wide column: its rect takes the column, so
-    // the cell is a slot in the grid rather than a shrink-wrap of its content.
-    expect(l.cells[1]!.rect).toEqual({ x: 50 + 1320 + 10, y: 20 + 10, w: 76, h: 72 })
+    // The row-0 button is in a 1300-wide column. Its TRACK takes the column —
+    // the cell is a slot in the grid, not a shrink-wrap — and its content box is
+    // its own 76x40 CENTRED in that slot, because the comp centres it.
+    expect(l.cells[1]!.track).toEqual({ x: 50 + 1320 + 10, y: 20 + 10, w: 76, h: 72 })
+    expect(l.cells[1]!.rect).toEqual({ x: 50 + 1320 + 10, y: 20 + 10 + (72 - 40) / 2, w: 76, h: 40 })
     expect(l.world).toEqual({ x: 0, y: 0, w: 50 + 1320 + 96, h: 20 + 92 + 220 })
   })
 
@@ -552,12 +554,12 @@ describe("the variant sheet", () => {
     const l = grid(3, 4)
     for (const c of l.cells) {
       const o = cellOrigin(l.colWidths, l.rowHeights, c.row, c.col)
-      expect({ x: c.rect.x, y: c.rect.y }).toEqual(o)
+      expect({ x: c.track.x, y: c.track.y }).toEqual(o)
     }
-    // ticks agree with the origins, minus the pad
+    // ticks agree with the track origins, minus the pad
     for (const c of l.cells) {
-      expect(l.columns[c.col]!.at).toBe(c.rect.x - GALLERY_PAD)
-      expect(l.rows[c.row]!.at).toBe(c.rect.y - GALLERY_PAD)
+      expect(l.columns[c.col]!.at).toBe(c.track.x - GALLERY_PAD)
+      expect(l.rows[c.row]!.at).toBe(c.track.y - GALLERY_PAD)
     }
   })
 
@@ -578,6 +580,12 @@ describe("the variant sheet", () => {
     expect(l.columns).toHaveLength(3)
     expect(l.colWidths[1]).toBe(GALLERY_MIN_CELL.w + 2 * GALLERY_PAD)
     expect(l.colWidths[2]).toBe(GALLERY_MIN_CELL.w + 2 * GALLERY_PAD)
+    // …and that floor IS the Gallery comp's cell (CW 176, CH 96). Pinned as the
+    // SUM, because min and pad are only correct together and an edit to either
+    // alone silently moves the whole grid off the comp.
+    expect(GALLERY_MIN_CELL.w + 2 * GALLERY_PAD).toBe(176)
+    expect(GALLERY_MIN_CELL.h + 2 * GALLERY_PAD).toBe(96)
+    expect(GALLERY_GUTTER).toEqual({ w: 118, h: 30 })
     expect(l.cells.map((c) => c.pairDir)).toEqual(["e--m", undefined])
   })
 
@@ -612,5 +620,70 @@ describe("the variant sheet", () => {
     const l = galleryLayout({ rows: 0, columns: 0, cells: [] })
     expect(l.cells).toEqual([])
     expect(l.world).toEqual({ x: 0, y: 0, w: GALLERY_GUTTER.w, h: GALLERY_GUTTER.h })
+  })
+})
+
+describe("a cell's content is centred in its track", () => {
+  // The comp centres: every cell is a flex box with alignItems/justifyContent
+  // 'center' in a fixed 176x96. Anchoring at the corner offsets every cell by
+  // half its own slack — content-size-dependent, so absorbed by NO single
+  // alignment, and measured as the pair's vertical confidence stuck at 0.40
+  // against 0.71 horizontal while the fit reported a clean identity.
+  it("centres a small cell and leaves a full one alone", () => {
+    const l = galleryLayout({
+      rows: 1,
+      columns: 2,
+      pad: 0,
+      gutter: { w: 0, h: 0 },
+      minCell: { w: 100, h: 100 },
+      cells: [
+        { key: "small", row: 0, col: 0, size: { w: 20, h: 10 } },
+        { key: "full", row: 0, col: 1, size: { w: 100, h: 100 } },
+      ],
+    })
+    const small = l.cells[0]!
+    expect(small.track).toEqual({ x: 0, y: 0, w: 100, h: 100 })
+    expect(small.rect).toEqual({ x: 40, y: 45, w: 20, h: 10 })
+    const full = l.cells[1]!
+    expect(full.rect).toEqual({ x: 100, y: 0, w: 100, h: 100 })
+    expect(full.rect).toEqual(full.track)
+  })
+
+  // A finding is measured in the pair's own frame, whose origin is the CONTENT's
+  // corner — so it must project through the centred rect, not the track.
+  it("projects a finding through the centred content box", () => {
+    const l = galleryLayout({
+      rows: 1, columns: 1, pad: 0, gutter: { w: 0, h: 0 },
+      minCell: { w: 200, h: 100 },
+      cells: [{ key: "c", row: 0, col: 0, size: { w: 40, h: 20 } }],
+    })
+    const cell = l.cells[0]!
+    expect(cell.rect).toEqual({ x: 80, y: 40, w: 40, h: 20 })
+    expect(projectCellBox({ x: 2, y: 3, w: 8, h: 4 }, cell)).toEqual({ x: 82, y: 43, w: 8, h: 4 })
+  })
+
+  // Nothing to centre, and a zero-size content box would put a finding's origin
+  // at the track's middle instead of its corner.
+  it("gives a cell with no measured size the whole track", () => {
+    const l = galleryLayout({
+      rows: 1, columns: 1, pad: 0, gutter: { w: 0, h: 0 },
+      minCell: { w: 80, h: 40 },
+      cells: [{ key: "skipped", row: 0, col: 0 }],
+    })
+    expect(l.cells[0]!.rect).toEqual(l.cells[0]!.track)
+    expect(l.cells[0]!.rect).toEqual({ x: 0, y: 0, w: 80, h: 40 })
+  })
+
+  // The identity the whole surface rests on still holds: strip pad and gutter
+  // from a 1x1 sheet and the content sits at the world origin, because a cell
+  // that fills its track has nothing to centre.
+  it("leaves the one-cell case at the origin", () => {
+    const one = galleryLayout({
+      rows: 1, columns: 1, pad: 0, gutter: { w: 0, h: 0 },
+      minCell: { w: 1, h: 1 },
+      cells: [{ key: "only", row: 0, col: 0, size: { w: 680, h: 740 } }],
+    })
+    expect(one.cells[0]!.rect).toEqual({ x: 0, y: 0, w: 680, h: 740 })
+    expect(projectCellBox({ x: 36, y: 586, w: 280, h: 48 }, one.cells[0]!)).toEqual({ x: 36, y: 586, w: 280, h: 48 })
   })
 })

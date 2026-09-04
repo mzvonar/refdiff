@@ -520,8 +520,20 @@ export interface GalleryCellInput {
 }
 
 export interface GalleryCell extends GalleryCellInput {
-  /** The cell's box in SHEET world space, padding included. */
+  /**
+   * The cell's CONTENT box in sheet world space — where its screenshot goes and
+   * what a finding's box is relative to.
+   *
+   * CENTRED in the track, because the comp is: every cell is a flex box with
+   * `alignItems: center, justifyContent: center` in a fixed 176x96. Anchoring
+   * content at the track's corner instead offsets every cell by half its own
+   * slack, which is content-size-dependent and therefore absorbed by NO single
+   * alignment — measured as the pair's vertical confidence stuck at 0.40 against
+   * 0.71 horizontal while the fit reported a clean identity.
+   */
   rect: VBox
+  /** The full track box — the slot, which is what a cell's outline draws. */
+  track: VBox
 }
 
 /** One column header or row label, with the span it heads. */
@@ -556,8 +568,29 @@ export interface GalleryLayoutInput {
   gutter?: Size
 }
 
-export const GALLERY_MIN_CELL: Size = { w: 96, h: 48 }
+/**
+ * The MINIMUM cell, and it reconciles two rules that looked opposed.
+ *
+ * The plan sizes tracks from content — "row height / column width from the max
+ * of both sides per row/column" — because cells differ wildly on a real design
+ * system: a button 76x40, a checkbox row 120x20, an alert ~1300x72, and a
+ * uniform cell either crops the alert or shrinks the button to a speck. The
+ * Gallery comp, whose subject is a Button sheet, draws a FIXED 176x96.
+ *
+ * Both are right about their own case, so the minimum IS the comp's cell and
+ * growth is the plan's rule: 152 + 2x12 of padding = 176 across, 72 + 24 = 96
+ * down. A Button sheet then lands exactly on the comp's grid while an alert
+ * still gets its 1300. Measured: the pair's vertical alignment confidence was
+ * stuck at 0.40 against 0.71 horizontal — a systematic row-rhythm difference,
+ * which is what a wrong track height looks like and what no per-element finding
+ * shows.
+ *
+ * Change these together with `GALLERY_PAD`: it is the SUM that has to equal the
+ * comp's cell, and a reader who edits one will not think to check the other.
+ */
+export const GALLERY_MIN_CELL: Size = { w: 152, h: 72 }
 export const GALLERY_PAD = 12
+/** The comp's label column (LW) and header row (LH), verbatim. */
 export const GALLERY_GUTTER: Size = { w: 118, h: 30 }
 
 /**
@@ -637,13 +670,26 @@ export function galleryLayout(input: GalleryLayoutInput): GalleryLayout {
 
   const cells = inGrid.map((c) => {
     const o = cellOrigin(colWidths, rowHeights, c.row, c.col, pad, gutter)
+    const track = {
+      x: o.x,
+      y: o.y,
+      w: colWidths[c.col]! - 2 * pad,
+      h: rowHeights[c.row]! - 2 * pad,
+    }
+    // The content's own size, CENTRED in its track. A cell with no measured size
+    // (skipped, absent) fills its track: there is nothing to centre, and a
+    // zero-size content box would give its findings — if any ever arrive — an
+    // origin at the track's middle rather than its corner.
+    const cw = Math.min(c.size?.w ?? track.w, track.w)
+    const ch = Math.min(c.size?.h ?? track.h, track.h)
     return {
       ...c,
+      track,
       rect: {
-        x: o.x,
-        y: o.y,
-        w: colWidths[c.col]! - 2 * pad,
-        h: rowHeights[c.row]! - 2 * pad,
+        x: track.x + (track.w - cw) / 2,
+        y: track.y + (track.h - ch) / 2,
+        w: cw,
+        h: ch,
       },
     }
   })
