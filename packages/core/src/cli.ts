@@ -48,7 +48,7 @@ import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks 
 import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
 import { hiddenMovement } from "./policy-audit.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
-import { applyPolicy, mergePolicies } from "./policy.js"
+import { applyPolicy, explainFindings, mergePolicies } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
 import { alignmentNote, alignStructural } from "./structural/align.js"
@@ -527,7 +527,41 @@ async function runPair(
     policy,
     { implElements: aligned.impl.elements, frame: { w: i.width, h: i.height } },
   )
-  const findings = o.aggregate ? aggregate(kept) : kept
+  // Explained LAST, on the aggregated list: an aggregate is one cause, so it is explained (or not)
+  // as one thing, and the count a person reads is the count of causes they still have to explain.
+  const findings = explainFindings(
+    o.aggregate ? aggregate(kept) : kept,
+    policy,
+    aligned.impl.elements,
+  )
+  // AN EXPLANATION CAN GO STALE, and unlike an `accepted` rule it cannot lapse on its own: it is
+  // keyed to a region and a set of types, not to measured values, so when the cause is finally
+  // fixed on the comp's side the rule stays and would quietly explain a REAL finding in the same
+  // place. There is no maintained number to keep — the previous run is the baseline. Any movement
+  // in what a cause explains is printed: a count that FELL means the cause may be gone (drop the
+  // rule), one that GREW means findings joined a bucket nobody re-read, which is the case where
+  // something would otherwise be missed.
+  const causeCounts = (fs: readonly { explained?: { cause: string } }[]): Map<string, number> => {
+    const m = new Map<string, number>()
+    for (const f of fs) if (f.explained) m.set(f.explained.cause, (m.get(f.explained.cause) ?? 0) + 1)
+    return m
+  }
+  // A rule that matches nothing on THIS pair is not news — the rules are shared across pairs and a
+  // cause that lives in the rail says nothing about a pair with no rail. `refdiff summary` makes
+  // that call for the whole set, where "nothing, anywhere" is the reading that means stale.
+  const nowCauses = causeCounts(findings)
+  if (previous !== undefined) {
+    const before = causeCounts(previous.findings)
+    for (const cause of new Set([...before.keys(), ...nowCauses.keys()])) {
+      const a = before.get(cause) ?? 0
+      const b = nowCauses.get(cause) ?? 0
+      if (a === b) continue
+      const how = b > a ? "GREW" : "fell"
+      console.log(
+        `  explain: "${cause}" ${how} ${a} → ${b}${b > a ? " — findings joined a cause nobody re-read; check they belong to it" : " — the cause may be going away"}`,
+      )
+    }
+  }
   const report = await packageForModel(aligned, findings, {
     outDir: o.outDir,
     failThreshold: o.failThreshold,
@@ -550,12 +584,31 @@ function printReport(report: ComparisonReport): void {
   for (const f of report.findings) counts[f.severity]++
   const instances = report.findings.reduce((n, f) => n + (f.instances ?? 1), 0)
   const aggregated = instances !== report.findings.length ? ` covering ${instances} instances` : ""
+  const explained = report.findings.filter((f) => f.explained !== undefined)
+  const openN = report.findings.length - explained.length
   console.log(
     `\n${report.findings.length} findings (${counts.critical} critical, ${counts.major} major, ${counts.minor} minor)${aggregated}, ${report.suppressed.length} suppressed`,
   )
-  for (const f of report.findings.slice(0, 40)) {
+  // The number a person is meant to act on is the UNEXPLAINED one; the rest carry a diagnosed cause
+  // and are printed under it, never hidden.
+  if (explained.length > 0) {
+    const byCause = new Map<string, number>()
+    for (const f of explained) byCause.set(f.explained!.cause, (byCause.get(f.explained!.cause) ?? 0) + 1)
+    console.log(
+      `  ${openN} unexplained · ${explained.length} explained: ${[...byCause]
+        .sort((a, b) => b[1] - a[1])
+        .map(([cause, n]) => `${n} ${cause}`)
+        .join(", ")}`,
+    )
+  }
+  // Unexplained first: they are the list, the explained ones are the context.
+  const ordered = [...report.findings].sort(
+    (a, b) => (a.explained === undefined ? 0 : 1) - (b.explained === undefined ? 0 : 1),
+  )
+  for (const f of ordered.slice(0, 40)) {
     const times = f.instances !== undefined ? ` ×${f.instances}` : ""
-    console.log(`  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}`)
+    const why = f.explained ? ` [${f.explained.cause}]` : ""
+    console.log(`  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}${why}`)
   }
   if (report.findings.length > 40) console.log(`  … ${report.findings.length - 40} more`)
   if (report.suppressed.length > 0) {

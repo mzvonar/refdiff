@@ -2,7 +2,7 @@ import type { Box, ElementNode, Finding } from "./types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { applyPolicy, mergePolicies } from "./policy.js"
+import { applyPolicy, explainFindings, mergePolicies } from "./policy.js"
 
 const finding = (id: string, partial: Partial<Finding>): Finding => ({
   id,
@@ -463,6 +463,79 @@ describe("accepted deviations", () => {
       const straddling: Finding = { ...card, id: "straddle", message: "straddle", implBox: { x: 1052, y: 176, w: 85, h: 23 } }
       expect(applyPolicy([straddling], { contentsOf: [rule] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
       expect(applyPolicy([card], { contentsOf: [{ ...rule, role: "icon" }] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
+    })
+  })
+
+  // The THIRD state: reported, but with a diagnosed cause. Suppression hides; explanation labels.
+  describe("explain — a known cause, named on the findings it produces", () => {
+    const box = (x: number, y: number, w = 20, h = 10): Box => ({ x, y, w, h })
+    const mk = (id: string, type: Finding["type"], b: Box, text?: string): Finding => ({
+      id,
+      mark: 0,
+      type,
+      severity: "critical",
+      role: "text",
+      message: id,
+      designBox: b,
+      ...(text === undefined ? {} : { text }),
+    })
+    const rail = { x: 1000, y: 0, w: 360, h: 2000 }
+    const rule = {
+      types: ["position", "missing-element"] as Finding["type"][],
+      region: rail,
+      cause: "comp rail row order",
+      reason: "the comp's demo lists its rows in another order",
+    }
+    const inRail = mk("shifted", "position", box(1100, 300))
+    const colourInRail = mk("colour", "color", box(1100, 320))
+    const outside = mk("outside", "position", box(10, 300))
+
+    it("keeps the finding, its severity and its place in `findings` — it labels, it does not hide", () => {
+      const { kept, suppressed } = applyPolicy([inRail], { explain: [rule] })
+      const explained = explainFindings(kept, { explain: [rule] })
+      expect(suppressed).toHaveLength(0)
+      expect(explained).toHaveLength(1)
+      expect(explained[0]!.severity).toBe("critical")
+      expect(explained[0]!.explained).toEqual({ cause: rule.cause, rule: rule.reason })
+    })
+
+    it("explains ONLY the types the cause can physically produce — this is the safety argument", () => {
+      // Reordering rows moves things and breaks pairings. It cannot repaint one. A colour finding
+      // in the very same region stays unexplained and still fails the run.
+      const out = explainFindings([inRail, colourInRail, outside], { explain: [rule] })
+      expect(out.map((f) => [f.message, f.explained?.cause])).toEqual([
+        ["shifted", rule.cause],
+        ["colour", undefined],
+        ["outside", undefined],
+      ])
+    })
+
+    it("takes its region from an ELEMENT when the content moves, and a text scope narrows further", () => {
+      const canvas = [{ id: "img", role: "image", box: { x: 0, y: 0, w: 500, h: 500 }, style: {} }]
+      const numeral = mk("numeral", "missing-element", box(100, 100), "12")
+      const label = mk("label", "missing-element", box(100, 120), "Continue")
+      const numerals = {
+        types: ["missing-element"] as Finding["type"][],
+        within: { role: "image" },
+        text: "^\\d+$",
+        cause: "comp mark numbering",
+        reason: "the two sides number from different sources",
+      }
+      const out = explainFindings([numeral, label], { explain: [numerals] }, canvas)
+      // A missing LABEL inside the same canvas is not a numbering difference and stays open.
+      expect(out.map((f) => [f.message, f.explained?.cause])).toEqual([
+        ["numeral", "comp mark numbering"],
+        ["label", undefined],
+      ])
+    })
+
+    it("first rule wins, so the more specific region goes first; a boxless finding is never explained", () => {
+      const wide = { ...rule, region: { x: 0, y: 0, w: 4000, h: 4000 }, cause: "the whole page" }
+      expect(explainFindings([inRail], { explain: [rule, wide] })[0]!.explained?.cause).toBe(rule.cause)
+      expect(explainFindings([inRail], { explain: [wide, rule] })[0]!.explained?.cause).toBe("the whole page")
+      // The alignment note and the frame remainder are about the PAIR, not a place in it.
+      const boxless: Finding = { id: "a", mark: 0, type: "position", severity: "major", message: "boxless" }
+      expect(explainFindings([boxless], { explain: [wide] })[0]!.explained).toBeUndefined()
     })
   })
 

@@ -20,7 +20,9 @@ import type {
 } from "./pipeline.js"
 import type {
   AcceptedDeviation,
+  Box,
   ContentsOfRule,
+  ExplainRule,
   FindingType,
   IgnorePolicy,
   TextPattern,
@@ -119,7 +121,46 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
     out.accepted = v["accepted"].flatMap((a: unknown) => readAccepted(a) ?? [])
   if (Array.isArray(v["contentsOf"]))
     out.contentsOf = v["contentsOf"].flatMap((c: unknown) => readContentsOf(c) ?? [])
+  if (Array.isArray(v["explain"]))
+    out.explain = v["explain"].flatMap((e: unknown) => readExplain(e) ?? [])
   return out
+}
+
+/**
+ * `{ types, cause, reason, region? | within? }` — `types` non-empty and one of the two region forms
+ * required. A rule with no region would explain a cause everywhere on the page, which is the shape
+ * that turns an explanation into a blanket excuse.
+ */
+const readBox = (v: unknown): Box | undefined =>
+  isRecord(v) &&
+  typeof v["x"] === "number" &&
+  typeof v["y"] === "number" &&
+  typeof v["w"] === "number" &&
+  typeof v["h"] === "number"
+    ? { x: v["x"], y: v["y"], w: v["w"], h: v["h"] }
+    : undefined
+
+export function readExplain(e: unknown): ExplainRule | undefined {
+  if (!isRecord(e) || typeof e["cause"] !== "string" || typeof e["reason"] !== "string")
+    return undefined
+  const types = e["types"]
+  if (!Array.isArray(types) || types.length === 0 || types.some((t) => typeof t !== "string"))
+    return undefined
+  const region = isRecord(e["region"]) ? readBox(e["region"]) : undefined
+  const within =
+    isRecord(e["within"]) && typeof e["within"]["role"] === "string"
+      ? { role: e["within"]["role"] }
+      : undefined
+  if (region === undefined && within === undefined) return undefined
+  if (e["text"] !== undefined && typeof e["text"] !== "string") return undefined
+  return {
+    types: types as ExplainRule["types"],
+    ...(region ? { region } : {}),
+    ...(within ? { within } : {}),
+    ...(typeof e["text"] === "string" ? { text: e["text"] } : {}),
+    cause: e["cause"],
+    reason: e["reason"],
+  }
 }
 
 /**

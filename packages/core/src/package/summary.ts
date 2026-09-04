@@ -24,6 +24,12 @@ export interface RunRow {
   createdAt: string;
   findings: number;
   critical: number;
+  /** How many of `findings` carry a diagnosed cause (see ExplainRule) — reported, not hidden. */
+  explained: number;
+  /** cause → count, so the set summary can name what the explained ones are. */
+  causes: Record<string, number>;
+  /** Every cause the pair's policy DECLARES, matched or not — the set summary calls the stale ones. */
+  declaredCauses: string[];
   major: number;
   minor: number;
   instances: number;
@@ -104,6 +110,12 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
     createdAt: r.createdAt,
     findings: r.findings.length,
     ...counts,
+    explained: r.findings.filter((f) => f.explained !== undefined).length,
+    causes: r.findings.reduce<Record<string, number>>((acc, f) => {
+      if (f.explained) acc[f.explained.cause] = (acc[f.explained.cause] ?? 0) + 1;
+      return acc;
+    }, {}),
+    declaredCauses: (r.policy?.explain ?? []).map((e) => e.cause),
     instances: r.findings.reduce((n, f) => n + (f.instances ?? 1), 0),
     suppressed: r.suppressed.length,
     pass: r.verdict.pass,
@@ -248,6 +260,37 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
   lines.push(
     `${t.pairs} pairs: ${t.pass} PASS / ${t.fail} FAIL — ${t.findings} findings covering ${t.instances} instances, ${t.suppressed} suppressed` +
       (s.runs.some((r) => r.delta) ? `; delta +${t.introduced} / −${t.resolved}${t.regressions > 0 ? `, ${t.regressions} REGRESSION(S)` : ""}` : ""),
+    ...(() => {
+      // The split a reader needs first: how many findings still have no diagnosed cause, and what
+      // the rest are. Explained findings are in the counts above — they are labelled, not removed.
+      const causes: Record<string, number> = {};
+      let explained = 0;
+      for (const r of s.runs) {
+        explained += r.explained ?? 0;
+        for (const [c, n] of Object.entries(r.causes ?? {})) causes[c] = (causes[c] ?? 0) + n;
+      }
+      if (explained === 0) return [];
+      const named = Object.entries(causes)
+        .sort((a, b) => b[1] - a[1])
+        .map(([c, n]) => `${n} ${c}`)
+        .join(", ");
+      const lines = [`${t.findings - explained} unexplained · ${explained} explained: ${named}`];
+      // STALE EXPLANATIONS: a cause declared by some pair's policy and matched by NO pair in the
+      // set. An explain rule cannot lapse by itself the way an `accepted` one does — it is keyed to
+      // a region and a set of types, not to measured values — so the moment its cause is actually
+      // fixed on the comp's side the rule becomes a standing excuse over live ground. Nothing
+      // matching it anywhere is the signal to re-read it.
+      const declared = new Set(s.runs.flatMap((r) => r.declaredCauses ?? []));
+      const stale = [...declared].filter((c) => !(c in causes));
+      if (stale.length > 0) {
+        lines.push(
+          `explain rules matching NOTHING in this set — re-read them, their cause may be fixed: ${stale
+            .map((c) => `"${c}"`)
+            .join(", ")}`,
+        );
+      }
+      return lines;
+    })(),
     "",
   );
 

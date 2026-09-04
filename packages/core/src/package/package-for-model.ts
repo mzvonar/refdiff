@@ -12,6 +12,7 @@
  * impl-only snapshot of the same numbers had no reader.
  */
 
+import { verdictOf } from "./verdict.js"
 import type { AlignedPair } from "../pipeline.js"
 import type {
   Box,
@@ -48,11 +49,6 @@ export interface PackageOptions {
   /** What earlier runs resolved → `delta.regressions` (needs `previous`). */
   ledger?: ResolvedLedger
 }
-
-const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
-
-const atOrAbove = (s: Severity, threshold: Severity): boolean =>
-  SEVERITY_RANK[s] <= SEVERITY_RANK[threshold]
 
 async function cropTo(srcPng: string, box: Box, outPath: string): Promise<boolean> {
   const meta = await sharp(srcPng).metadata()
@@ -165,10 +161,7 @@ export async function packageForModel(
     findings: withKeys,
     suppressed: suppressedWithKeys,
     policy,
-    verdict: {
-      pass: !withCrops.some((f) => atOrAbove(f.severity, failThreshold)),
-      failThreshold,
-    },
+    verdict: verdictOf(withCrops, failThreshold),
     ...(previous !== undefined
       ? { delta: diffReports(previous, { findings: withCrops }, {}, ledger) }
       : {}),

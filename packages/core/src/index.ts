@@ -21,11 +21,13 @@ export type {
   IgnorePolicy,
   Severity,
   SuppressedFinding,
+  Explanation,
+  ExplainRule,
   SuppressionReason,
 } from "./types.js"
 
 export { hiddenMovement, movementPx, type HiddenMovement } from "./policy-audit.js"
-export { applyPolicy, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js"
+export { applyPolicy, explainFindings, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js"
 export {
   acceptedFor,
   acceptedFromFinding,

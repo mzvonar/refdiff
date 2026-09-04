@@ -95,6 +95,11 @@ export interface Finding {
    * `packageForModel`; absent on findings built by hand.
    */
   key?: string
+  /**
+   * A known cause, when a policy `explain` rule named one. The finding is still reported and keeps
+   * its severity; it is grouped under the cause and left out of the verdict (see `ExplainRule`).
+   */
+  explained?: Explanation
   designBox?: Box
   implBox?: Box
   /** Machine-readable expected vs actual, e.g. { fontSize: [24, 28] }. */
@@ -237,6 +242,46 @@ export interface IgnorePolicy {
    * implementation ELEMENT, not a finding — see `ContentsOfRule` for why that matters.
    */
   contentsOf?: ContentsOfRule[]
+  /**
+   * Findings whose CAUSE is already known and is not the implementation's. They stay reported,
+   * keep their severity, and are named — see `ExplainRule`.
+   */
+  explain?: ExplainRule[]
+}
+
+/**
+ * A known cause, attached to the findings it produces. This is a THIRD state beside reported and
+ * suppressed, and the difference from suppression is the point: an explained finding is still in
+ * `findings`, still carries its severity, and still shows in the report — it is labelled, counted
+ * under its cause, and left out of the VERDICT, because a verdict about a cause you have already
+ * diagnosed and cannot fix from here is noise that trains people to ignore the number.
+ *
+ * `types` is required and it is the safety argument: name only what the cause can PHYSICALLY
+ * produce. A comp whose demo rows are in another order moves things and breaks pairings, so it
+ * explains `position`, `spacing`, `missing-element` and `extra-element` — it cannot change a
+ * colour, a font or a string, so a `color`, `typography` or `text-content` finding in the same
+ * region stays unexplained and still fails the verdict. A cause that would need every type to
+ * explain it is not a cause, it is a wish.
+ *
+ * The region is either a literal `region` box — right for CHROME, which does not move — or
+ * `within: { role }`, the live box of an implementation element, which is what content on a canvas
+ * the reader can pan and zoom needs. Rules are tried in order and the first match wins, so put the
+ * more specific region first.
+ */
+export interface ExplainRule {
+  types: FindingType[]
+  region?: Box
+  within?: { role: string }
+  /**
+   * Regex (`u`) the finding's own text must match, when the cause is about a KIND of content rather
+   * than a place — a bare numeral, say, where both sides number from different sources. It narrows,
+   * never widens: a rule with a text scope explains strictly less than the same rule without one.
+   */
+  text?: string
+  /** Short label; the summary groups by it. */
+  cause: string
+  /** The audit trail: why this cause explains those types here, and who owns the fix. */
+  reason: string
 }
 
 /**
@@ -353,6 +398,13 @@ export type SuppressionReason =
   | "contents"
 
 /** A finding a policy rule removed from the kept list — still reported. */
+/** A known cause attached to a finding that is still reported (see `ExplainRule`). */
+export interface Explanation {
+  cause: string
+  /** The rule's `reason`, so the report carries the audit trail with the label. */
+  rule: string
+}
+
 export interface SuppressedFinding extends Finding {
   suppressedBy: SuppressionReason
   /** The concrete rule that hit: regex source, role name, region, … */

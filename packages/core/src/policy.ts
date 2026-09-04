@@ -16,6 +16,7 @@ import type {
   AcceptedDeviation,
   Box,
   ElementNode,
+  ExplainRule,
   Finding,
   FindingType,
   IgnorePolicy,
@@ -364,6 +365,49 @@ export function applyPolicy(
   return { kept: renumber("f", kept), suppressed: renumber("s", suppressed) }
 }
 
+/**
+ * Attach a known CAUSE to the findings a rule names — the third state beside reported and
+ * suppressed (see `ExplainRule`). Applied after suppression, so a suppressed finding is already
+ * gone and cannot be explained twice; first matching rule wins, so the more specific region goes
+ * first.
+ */
+export function explainFindings(
+  findings: readonly Finding[],
+  policy: IgnorePolicy = {},
+  implElements: readonly ElementNode[] = [],
+): Finding[] {
+  const rules = policy.explain ?? []
+  if (rules.length === 0) return [...findings]
+  const regionsFor = (r: ExplainRule): Box[] => {
+    const out: Box[] = []
+    if (r.region) out.push(r.region)
+    if (r.within) {
+      for (const el of implElements) {
+        if (el.role === r.within.role && el.box.w > 0 && el.box.h > 0) out.push(el.box)
+      }
+    }
+    return out
+  }
+  const compiled = rules.map((r) => ({
+    rule: r,
+    regions: regionsFor(r),
+    re: r.text === undefined ? undefined : new RegExp(r.text, "u"),
+  }))
+  return findings.map((f) => {
+    const boxes = [f.designBox, f.implBox].filter((b): b is Box => b !== undefined)
+    for (const { rule, regions, re } of compiled) {
+      if (!rule.types.includes(f.type)) continue
+      if (re !== undefined && (f.text === undefined || !re.test(f.text))) continue
+      // A boxless finding (the alignment note, the whole-frame remainder) is never explained by a
+      // region rule: it is about the pair, not about a place in it.
+      if (boxes.length === 0) continue
+      if (!boxes.every((b) => regions.some((rg) => within(rg, b) || centerIn(rg, b)))) continue
+      return { ...f, explained: { cause: rule.cause, rule: rule.reason } }
+    }
+    return { ...f }
+  })
+}
+
 /** Merge policies; later ones win on `scope`/`dataSlots`, lists concatenate. */
 export function mergePolicies(...policies: readonly (IgnorePolicy | undefined)[]): IgnorePolicy {
   const out: IgnorePolicy = {}
@@ -374,6 +418,7 @@ export function mergePolicies(...policies: readonly (IgnorePolicy | undefined)[]
     if (p.regions) out.regions = [...(out.regions ?? []), ...p.regions]
     if (p.accepted) out.accepted = [...(out.accepted ?? []), ...p.accepted]
     if (p.contentsOf) out.contentsOf = [...(out.contentsOf ?? []), ...p.contentsOf]
+    if (p.explain) out.explain = [...(out.explain ?? []), ...p.explain]
     if (p.scope !== undefined) out.scope = p.scope
     if (p.dataSlots !== undefined) out.dataSlots = p.dataSlots
   }

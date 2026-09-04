@@ -87,6 +87,36 @@ describe("readAccepted", () => {
   // the rule was meant to excuse and nothing says why. That is how `contentsOf` first shipped —
   // core, policy and manifest all correct, and five of six pairs unchanged because readIgnore
   // whitelists keys. Every new ignore field needs a row here.
+  it("reads explain rules, and drops one with no types, no cause or no region", async () => {
+    const { parseManifest, readExplain } = await import("./manifest.js");
+    const parsed = parseManifest([
+      {
+        ...entry,
+        ignore: {
+          explain: [
+            { types: ["position"], region: { x: 1, y: 2, w: 3, h: 4 }, cause: "c", reason: "r" },
+            { types: ["position"], cause: "no region or within", reason: "r" },
+            { types: [], region: { x: 1, y: 2, w: 3, h: 4 }, cause: "empty types", reason: "r" },
+            { region: { x: 1, y: 2, w: 3, h: 4 }, cause: "no types", reason: "r" },
+            { types: ["position"], region: { x: 1, y: 2, w: 3, h: 4 }, cause: "no reason" },
+          ],
+        },
+      },
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs[0]?.ignore?.explain).toEqual([
+      { types: ["position"], region: { x: 1, y: 2, w: 3, h: 4 }, cause: "c", reason: "r" },
+    ]);
+    expect(readExplain({ types: ["size"], within: { role: "image" }, text: "^\\d+$", cause: "c", reason: "r" })).toEqual({
+      types: ["size"],
+      within: { role: "image" },
+      text: "^\\d+$",
+      cause: "c",
+      reason: "r",
+    });
+  });
+
   it("reads contentsOf rules, and drops one without a type scope or a reason", async () => {
     const { parseManifest, readContentsOf } = await import("./manifest.js");
     const parsed = parseManifest([

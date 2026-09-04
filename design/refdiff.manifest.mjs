@@ -117,6 +117,56 @@ const COMPARE_IGNORE = {
   // pair that draws the ghost was the one pair that hid it. `contentsOf` names the ELEMENT: it fires
   // every run and its region follows the canvas when the reader pans it, which a literal `regions`
   // box cannot do.
+  // KNOWN CAUSES, named on the findings they produce (ignore.explain). These stay REPORTED with
+  // their severity — they are labelled, counted under their cause and left out of the verdict,
+  // because a verdict about a cause already diagnosed and not ours to fix trains a reader to
+  // ignore the number. Measured 2026-09-04: of 340 findings across the eight pairs, 189 are the
+  // first rule and 109 the second — 88% of the set, and neither is the implementation's drift.
+  //
+  // `types` is the safety argument, not a convenience: each rule names only what its cause can
+  // PHYSICALLY produce. Reordering rows moves things and breaks pairings; a different canvas zoom
+  // moves and scales them. NEITHER can change a colour, a font, a border or a string — so every
+  // `color`, `typography`, `border`, `border-radius` and `text-content` finding in these very
+  // regions stays unexplained and still fails the run.
+  explain: [
+    {
+      // The RAIL, and it goes first: on a ghost pair the panned artboard image below "contains" the
+      // rail too, so the more specific region has to win. The box is chrome, which does not move
+      // with the canvas, and it runs past the frame's height on purpose — the rail scrolls, and its
+      // rows below y=820 are the ones that read as off-frame.
+      types: ["position", "spacing", "missing-element", "extra-element"],
+      region: { x: 1039, y: 86, w: 321, h: 2000 },
+      cause: "comp rail row order",
+      reason:
+        "the comp's demo lists its rail rows 1,2,3,7,8,9,10,11,4,5,6,12..15 while refdiff lists by severity, so the two columns shift past each other and re-pair; design ask 1 (sort the demo array high → medium → low). Measured: 189 findings across three pairs, and it is why compare-mobile-toolbar-ghost sits at 0.49 alignment confidence",
+    },
+    {
+      // NUMERALS with no counterpart, anywhere on the canvas. The two sides number from different
+      // sources — the comp's badges follow its demo array order and its artboard draws its own step
+      // numbers as live DOM, the app numbers by severity and draws a screenshot — so a bare numeral
+      // present on one side and not the other is never the implementation drifting. The text scope
+      // is what keeps it honest: a missing BUTTON, LABEL or icon inside the same region does not
+      // match `^\d+$` and still fails the run, and a numeral's colour or typography is not a
+      // presence type, so it stays compared too. Asks 1 and 3 both end here.
+      types: ["missing-element", "extra-element"],
+      within: { role: "image" },
+      text: "^\\d+$",
+      cause: "comp mark numbering",
+      reason:
+        "the comp numbers its marks by demo array order and draws its artboard's step numbers as live DOM; the app numbers by severity and draws the run's screenshot, so a bare numeral on one side only is a numbering difference, not drift — design asks 1 (row order) and 3 (the demo comments' side)",
+    },
+    {
+      // The CANVAS. Its region has to be the image's LIVE box, not a literal one: the artboard moves
+      // and scales with every pan and zoom (450×489 at (69,208) flat, 995×1083 at (−338,−440) on a
+      // ghost pair), which is exactly the case a fixed rectangle cannot express.
+      types: ["position", "size", "spacing"],
+      within: { role: "image" },
+      cause: "canvas zoom divergence",
+      reason:
+        "the app's fit and focus solve for the canvas its floating panels leave visible; the comps size from the full pane, so the two canvases end at different zoom and everything drawn on them differs by one transform (measured: the ghost pill's four parts as one offset of (7.5, -190.7), the footprint unpaired at γ 217). Decided app-side 2026-08-28 and widened 2026-09-03; design ask 6 asks whether the comps should adopt it",
+    },
+  ],
+
   contentsOf: [
     {
       role: "image",
@@ -210,6 +260,7 @@ const MINIMAL_IGNORE = {
   // object is built by hand and a missing key here reads as "the minimal pair reports more", not as
   // a policy gap.
   contentsOf: COMPARE_IGNORE.contentsOf,
+  explain: COMPARE_IGNORE.explain,
   accepted: COMPARE_IGNORE.accepted.concat([
     {
       type: "text-content",
@@ -241,9 +292,22 @@ const MINIMAL_IGNORE = {
 // MINIMAL_IGNORE: that set's extra acceptances are claims about the MINIMAL comp — its
 // shortened demo title, and its omission of the delta strip — which say nothing about this
 // one. Whatever this comp needs gets its own rule with its own reason, once measured.
+// This pair's steps OPEN the rail, and on a phone the rail is a bottom SHEET — a region the shared
+// desktop rail box cannot cover. Same cause and the same types, at the sheet's measured box; it is
+// scoped to the one pair that opens it, because on a pair whose sheet is closed the same rectangle
+// would sit over live canvas and mislabel it.
+const PHONE_SHEET_EXPLAIN = {
+  types: ["position", "spacing", "missing-element", "extra-element"],
+  region: { x: 0, y: 418, w: 390, h: 1600 },
+  cause: "comp rail row order",
+  reason:
+    "the phone's rail, opened by this pair's steps: the comp's demo row order shifts the sheet's rows against the app's exactly as it does the desktop rail — design ask 1",
+}
+
 const TOOLBAR_IGNORE = {
   textPatterns: COMPARE_IGNORE.textPatterns,
   contentsOf: COMPARE_IGNORE.contentsOf,
+  explain: COMPARE_IGNORE.explain,
   accepted: COMPARE_IGNORE.accepted,
 }
 
@@ -378,7 +442,8 @@ export const manifest = [
         { wait: 400 },
       ],
     },
-    ignore: TOOLBAR_IGNORE,
+    // The shared toolbar policy plus the sheet region, first so it wins over the panned canvas.
+    ignore: { ...TOOLBAR_IGNORE, explain: [PHONE_SHEET_EXPLAIN, ...TOOLBAR_IGNORE.explain] },
   },
   {
     // The desktop ghost. Split mode shows both panes, so the ghost appears on the

@@ -124,7 +124,8 @@ the sandbox off). Then the repo you are in needs only its manifest and a
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
    `regions`, `accepted: [{ type, expected?, actual?, reason }]`,
-   `contentsOf: [{ role, types, reason }]`) or the CLI
+   `contentsOf: [{ role, types, reason }]`, `explain: [{ types, region|within, cause, reason }]`)
+   or the CLI
    flags (`--ignore-text`, `--accept '<json>'`), and shows up under
    `suppressed` with its rule. Never "skip" a finding by ignoring it in your
    head.
@@ -201,7 +202,10 @@ merge under each pair's own `ignore`.
 
 Read the console summary (`N findings (c critical, m major, k minor) covering
 I instances, S suppressed`, `delta vs …: +introduced / −resolved`, the
-`by region:` block, `verdict`). **On a page pair read `by region` before the
+`by region:` block, `verdict`). **When the pair declares `explain` rules there is a second line —
+`N unexplained · M explained: …` — and the UNEXPLAINED number is the one you work.** The explained
+ones are printed after them, each tagged `[cause]`; they are findings with a diagnosed cause that is
+not the implementation's, kept visible on purpose (see "Configuring a pair"). **On a page pair read `by region` before the
 list** (`report.byRegion`, one group per smallest containing container): "36 in
 the rail, 24 in the artboard image, 12 in the design pane" is three different
 causes, and a severity-sorted list shows none of them. A converged loop once
@@ -305,6 +309,7 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 | **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image), `alignment` (the fit is not the identity on a same-size page — a chrome size / box model difference, §1a) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members; fix `alignment` before anything positional |
 | **intended deviation** | the value is right for the product and the comp is the outlier (rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference". Textless boxes INSIDE an accepted element (a placeholder's bars) are the same decision: add `contents: true` to that rule by hand, never a `regions` entry — and when the container is an ELEMENT that exists whether or not it is reported (the run's own screenshot against a comp that draws live DOM), `contentsOf` is the rule that fires every time instead of when the container happens to go unpaired |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
+| **known cause, not the implementation's** | many findings in one region or of one shape, all traceable to one thing you have already diagnosed and cannot fix from here — a comp whose demo rows are in another order, two canvases at different zoom, a numbering that starts from different sources | declare it once as `explain: [{ types, region|within, cause, reason }]`: the findings stay reported and keep their severity, they are grouped under the cause, and they stop failing the verdict. Scope `types` to what the cause can PHYSICALLY produce — that is what keeps a real defect in the same region visible |
 | **needs a human** | the comp itself is inconsistent; the fix would change product behaviour, copy, or information architecture (a row set, a label's meaning); the finding is inside a region you were told not to touch | do NOT fix; list it in the report with the measurement, and leave a note for the designer in the annotator if one is running |
 
 Aggregates first: one `×15` color finding or one `×7` position shift is one
@@ -469,6 +474,7 @@ data strings).
     roles: ["backdrop"],
     accepted: [{ type: "color", expected: { color: "rgb(26,26,26)" }, actual: { color: "rgb(44,36,25)" }, reason: "…" }],
     contentsOf: [{ role: "image", types: ["missing-element"], reason: "the app draws the run's screenshot where the comp imports live DOM" }],
+    explain: [{ types: ["position", "spacing"], region: { x: 1039, y: 86, w: 321, h: 2000 }, cause: "comp rail row order", reason: "the comp's demo lists its rows in another order — design ask 1" }],
   },
 }
 ```
@@ -482,6 +488,7 @@ Pick the narrowest tool that covers the case:
 | an element entirely — geometry, colour and text alike | `textPatterns` | every finding type about a matching string, geometry included; reach for it last |
 | a kind of element (backdrops, focus rings, an SVG overlay's `shape`s) | `roles` | that role everywhere in the pair |
 | artboard chrome (labels, notes around the frame) | `regions` or `scope` | prefer `scope`: it fixes the ALIGNMENT too, which `regions` does not |
+| a class of findings whose CAUSE you have diagnosed and cannot fix from here (the comp's demo order, a canvas-zoom difference, a numbering scheme) | `explain: [{ types, region \| within: { role }, text?, cause, reason }]` — the finding stays in `findings` with its severity, carries `explained: { cause, rule }`, is grouped under the cause in the run line, and is left OUT of the verdict | `types` is required and is the safety: name only what the cause can physically produce, so a `color`/`typography`/`text-content` finding in the same region still fails. It does NOT lapse by itself — see the staleness note below |
 | a specific, reviewed value difference | `accepted: [{ type, expected, actual, reason }]`, by hand or via `refdiff accept` (§3a) — add `text` to scope it to one element when the values alone cannot | nothing — it lapses automatically when either value changes |
 | the INSIDES of an accepted element (a comp's placeholder plate drawn with bars, a logo square inside an accepted image) | `contents: true` on that `accepted` rule, by hand in the manifest only (`refdiff accept` never writes it): every TEXTLESS finding whose boxes lie inside the boxes of the finding the rule hit is suppressed too, as `"<reason> (inside)"` | text inside the region is never excused (a missing label or a badge drawn over the region still shows); nothing when the rule itself hits nothing |
 | the insides of an element that is THERE whether or not it is reported — the run's own screenshot where the comp draws live DOM, a canvas, a video | `contentsOf: [{ role, types, reason }]`: every TEXTLESS finding of those `types` whose boxes lie inside an impl element of that `role` is suppressed as `"<reason> (contents of <role>)"` | `types` is required — an unscoped rule would forgive its container's whole interior, including the app's own marks drawn over it. Text is never excused (the comp draws its BADGES over that region and a badge is a numeral). A container the FRAME does not contain is skipped: a panned, zoomed canvas "contains" everything beside it |
@@ -495,6 +502,20 @@ because a comp container sat inside the γ cutoff; the sixth had a panned canvas
 there and nowhere else, and among the findings it excused was the very thing that pair existed to
 measure. A `contentsOf` rule names the element, so it fires every run, and its region is the
 element's live box, so it follows a canvas the reader pans — which a literal `regions` box cannot do.
+
+**An EXPLANATION is not a suppression, and it can go STALE — that is the one thing to watch.**
+Suppression removes a finding from the list and says a rule hid it; an explanation leaves it there,
+severity intact, and says what caused it. Reach for it when a large share of a pair is one diagnosed
+cause that is not the implementation's: on one dogfooded set, 203 of 340 findings were three such
+causes, and the verdict failing on them had trained everyone to read the number as weather.
+An `accepted` rule lapses by itself because it is keyed to MEASURED VALUES — the moment either side
+changes, it stops hitting. An `explain` rule is keyed to a region and a set of types, so it does
+NOT: when the cause is finally fixed on the comp's side, the rule stays and becomes a standing
+excuse over live ground. Two things watch it for you, and neither needs a maintained number:
+every run compares each cause's count against the PREVIOUS run's and prints the movement (`"comp
+rail row order" GREW 51 → 58 — findings joined a cause nobody re-read`, or `fell … — the cause may
+be going away`), and `refdiff summary` names any declared cause that matched NOTHING anywhere in
+the set, which is what a fixed cause looks like. Read those lines; they are the price of the quiet.
 
 **`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
 from BOTH strings and the remainder compared: equal remainder = data churn

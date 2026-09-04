@@ -942,6 +942,31 @@ fall through to the area rule, as do unlabelled artboards.
   **The lesson is in `SKILL.md`'s pre-flight now:** every pair pins the URL that reaches the state it
   measures, so a green pair says the STATE matches the comp and nothing about whether a user can get
   there — three mobile pairs were green while the default nobody pinned was the old layout.
+- **A finding can be EXPLAINED — decided 2026-09-04.** A third state beside reported and suppressed:
+  `ignore.explain: [{ types, region | within: { role }, text?, cause, reason }]` leaves the finding in
+  `findings` with its severity, attaches `explained: { cause, rule }`, groups it under the cause in
+  the run line and the set summary, and leaves it OUT of the verdict (`package/verdict.ts`, extracted
+  so the rule is unit-testable). Built because the number had stopped being read: a census of the
+  eight dogfood pairs put **189 of 340 findings on the comp's demo rail ROW ORDER and 109 inside the
+  artboard on the canvas-zoom divergence — 88% of the set, and neither is the implementation's**,
+  while every pair reported `+0/−0` and every pair said FAIL.
+  **`types` is the safety argument, not a convenience.** Each rule names only what its cause can
+  PHYSICALLY produce: reordering rows moves things and breaks pairings, a different canvas zoom moves
+  and scales them, and neither can repaint an element or rewrite a string — so `color`, `typography`,
+  `border` and `text-content` findings in those same regions stay unexplained and still fail. A
+  `text` scope narrows further (a bare numeral with no counterpart is a numbering difference; a
+  missing BUTTON in the same canvas is not). Measured with the three rules the manifest declares:
+  `compare-desktop` 69 → **9 unexplained**, the set 340 → **137 unexplained · 203 explained** (136
+  rail order, 40 mark numbering, 27 canvas zoom), no finding removed and no delta changed.
+  **It does NOT lapse by itself, and that is its one hazard.** An `accepted` rule is keyed to measured
+  values, so it stops hitting the moment either side changes; an `explain` rule is keyed to a region
+  and a set of types, so when the cause is fixed on the comp's side the rule stays and becomes a
+  standing excuse over live ground. Two audits watch it, neither needing a maintained number: each
+  run compares every cause's count against the PREVIOUS run's and prints the movement (a count that
+  GREW means findings joined a bucket nobody re-read; one that fell means the cause may be going
+  away), and `refdiff summary` names any declared cause that matched nothing anywhere in the set.
+  The delta is the backstop underneath both: an explained finding is still in it, so a NEW one inside
+  an explained region still reports as introduced.
 - **Findings carry WHERE they are — decided 2026-09-03.** `report.byRegion` groups every finding
   under the smallest captured container that holds its box (`package/regions.ts`), printed as a
   `by region:` block. Smallest, not first: containers nest and the outermost holds everything.
