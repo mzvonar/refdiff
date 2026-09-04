@@ -5,6 +5,32 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-04 — two comps that render the same furniture are not the same surface
+
+- **Context:** chunk 3's Gallery comp turned out to be the comparison tool's chrome with a sheet in
+  its panes. I recommended scoping the pair to the grid alone, arguing the chrome "belongs to the
+  comparison tool, already paired and converged against its own comp", so measuring it twice would
+  only let two comps disagree about one top bar. **The repo owner refuted it in one sentence: the
+  gallery's findings rail has a Recurring-causes section the tool's rail has not.**
+- **Lesson:** the premise was inferred from the comp LOOKING like the tool and was never diffed. One
+  command settles it — `grep -oiE '>[^<>{}]{2,40}<'` over both files, set difference, count: **21
+  shared chrome strings, 18 gallery-ONLY**, with `Recurring causes` and `Other findings` present in
+  the Gallery comp and absent from the Comparison Tool comp entirely (the sheet's rail groups by
+  CAUSE; the tool's lists findings with instance aggregates). The rest of the gallery-only list said
+  the same thing twice over — a cell-state legend, `DESIGN`/`IMPLEMENTATION` against the tool's
+  `Design`/`Impl`, four comment affordances, and a section breadcrumb. **Scoping would have shipped a
+  whole rail with no pair measuring it** — the pair-per-comp-gap class, which is the defect the
+  workstream exists to remove and the one that reports itself nowhere. Generalised: **"this surface
+  is already covered by another pair" is a claim about two comps' CONTENT, so diff the content
+  before you act on it.** The measurement is cheap; the failure mode is invisible and permanent.
+- **Second-order, and the reason this one stings:** the argument I made was itself a
+  parity-by-eyeball argument, in a tool built to abolish those — the skill's rule 1 aimed at a
+  comp-to-comp comparison instead of a design-to-impl one. **Rule 1 applies to comparing two
+  DESIGNS, not only a design and an implementation.**
+- **Candidate home:** `SKILL.md` rule 4's neighbourhood (a comp can contradict its siblings — this
+  is the same family: a comp can also silently DIFFER from the sibling you were about to delegate to)
+  · `docs/plan-gallery-groups.md` chunk 3 and the handoff both carry the measurement now.
+
 ## 2026-09-04 — concatenated modules share ONE scope, and the symptom points somewhere else
 
 - **Context:** chunk 3 added `gallery-view.ts` to the six modules `app-shell.ts` concatenates into a

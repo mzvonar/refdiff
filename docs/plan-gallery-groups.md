@@ -402,17 +402,49 @@ table.
 >    comparison-tool chrome (`REPORT_BODY` + `CLIENT` in `render.ts`) instead of a
 >    standalone `#view-gallery` section, and the 777 findings are the real spec. Biggest
 >    change, and the one the comp actually draws.
-> 2. **The pair is scoped to the SHEET.** Chunk 3 owns the grid; the chrome is the
->    comparison tool's, already paired and converged against
->    `RefDiff Comparison Tool.dc.html`, and measuring it twice invites the two comps to
->    disagree (skill rule 4). **Blocked on a design ask:** neither Gallery comp carries a
->    `data-vc-scope`, and their markup is inline styles with no semantic hook, so there
->    is nothing to scope to. Precedent: `data-vc-step` was added to the rail rows at our
->    ask on 2026-09-02.
+> 2. ~~**The pair is scoped to the SHEET.**~~ **REFUTED 2026-09-04 by the repo owner, on
+>    measured evidence — see the CAUTION block below.** This option rested on the chrome
+>    being the comparison tool's own; it is not.
 >
-> Until that is decided the desktop pair sits at 777 findings by construction. **The
-> geometry, the resolver and the data path are done and are correct under either
-> answer** — they are the sheet, not the page it sits on.
+> **DECIDED: option 1.** The geometry, the resolver and the data path are done and were
+> correct under either answer — they are the sheet, not the page it sits on.
+
+> [!CAUTION]
+> **THE CHROME IS NOT THE COMPARISON TOOL'S — measured 2026-09-04, after the owner said so.**
+> The option-2 argument was that the sheet's surrounding chrome already had a pair
+> (`RefDiff Comparison Tool.dc.html`), so scoping the gallery pair to the grid would lose
+> nothing and would stop two comps describing one top bar. **That premise was inferred from
+> the comp LOOKING like the tool. It was never diffed.** Diffing the rendered text of the
+> two comps:
+>
+> | | Gallery comp | Comparison Tool comp |
+> | --- | --- | --- |
+> | distinct chrome strings | 39 | 36 |
+> | shared | **21** | |
+> | gallery-ONLY | **18** | |
+>
+> `Recurring causes` and `Other findings` are in the Gallery comp and **nowhere in the
+> Comparison Tool comp** — the sheet's rail is organised by CAUSE, where the tool's rail
+> lists findings with instance aggregates (`×15` / `×6`, see `COMPARE_IGNORE`). The rest of
+> the gallery-only list says the same thing: the cell-state legend (`Absent`,
+> `Skipped · no impl cell`, `Regression`, `reg`), pane labels `DESIGN` / `IMPLEMENTATION`
+> where the tool comp says `Design` / `Impl`, the comment affordances (`New comment`,
+> `Open`, `history`, `open_in_full`), and the breadcrumb `Actions / Button · 60 variants`.
+>
+> **So scoping to the grid would have shipped a whole rail with no pair measuring it** —
+> the pair-per-comp-gap class, which is the defect this workstream exists to remove and
+> which reports itself nowhere. The 21 shared strings ARE a real shared shell and should be
+> reused; the rail is chunk 3's SCOPE, not chrome to be excused. A large share of the 777
+> findings is that rail, and it is work rather than noise.
+>
+> **Consequence for chunk 4's `section`:** the breadcrumb `Actions / Button · 60 variants`
+> is the hierarchy's first UI consumer. This plan records `section` as "validated and
+> REPORTED, not persisted — its shape is chunk 5's decision"; the sheet needs it, so that
+> decision is now chunk 3's dependency too.
+>
+> **Method lesson, worth more than the finding:** two comps that render the same furniture
+> are not the same surface until the TEXT is diffed — `grep -oiE` over both files, set
+> difference, count. One command, and it reversed the recommendation.
 
 **What LANDED** (all verified — 641 tests: 364 core + 277 annotator, typecheck and build clean):
 

@@ -201,7 +201,16 @@ the sandbox off). Then the repo you are in needs only its manifest and a
    copy regressions, so use it only for a deliberately data-only comparison.
    Unmatched rows show up as `missing-element` / `extra-element` instead.
 4. **A comp frame can contradict its siblings — encode the axis, not the
-   frame.** Before changing a shared token or rule because one comp says so,
+   frame. And two comps that render the same furniture are not the same
+   SURFACE until their text is diffed.** Before deciding that a region of one
+   comp is "already covered" by another pair — and scoping it out — diff the
+   two comps' rendered strings (`grep -oiE '>[^<>{}]{2,40}<'` over both, set
+   difference, count). Measured on this repo's own comps: the Gallery comp and
+   the Comparison Tool comp share 21 chrome strings and the Gallery comp has 18
+   of its own, including a whole findings rail grouped by CAUSE that the tool's
+   comp does not contain. Scoping it out would have shipped that rail with no
+   pair measuring it, which is the one failure that reports itself nowhere.
+   Rule 1 applies to comparing two DESIGNS, not only a design and an impl.** Before changing a shared token or rule because one comp says so,
    measure the other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l`
    per file, or the other frames of the same component). If the comp you
    are comparing is the outlier, the implementation is right: record the

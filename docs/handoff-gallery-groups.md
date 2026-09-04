@@ -6,11 +6,14 @@ Node ≥22. Rewritten at the end of the 2026-09-04 session, then amended twice t
 when chunk 4 shipped, and when the consuming repo's bindings debt (§0) was paid — so nothing
 in it is inherited from an earlier revision.
 
-**Chunk 3's SEAM, RESOLVER and DATA PATH are shipped; where the sheet LIVES is an open
-question for Mato** — the Gallery comp turned out to be the comparison tool's own chrome
-with a sheet in its panes, measured at 777 findings, not the standalone page the plan
-assumed. §"What REMAINS" step 1 carries the fork with both options and what blocks the
-cheaper one. Read the plan's § "Chunk 3" second — its IMPORTANT block is the finding.
+**Chunk 3's SEAM, RESOLVER and DATA PATH are shipped, and the one open question is
+ANSWERED: the sheet lives INSIDE the comparison tool's chrome.** The Gallery comp is that
+tool with a variant sheet in its panes, measured at 777 findings — not the standalone page
+the plan assumed. **Mato refuted the cheaper option (scope the pair to the grid) on
+2026-09-04**: the gallery's findings rail has a Recurring-causes section the tool's rail
+does not, so scoping would have shipped a rail nothing measured. §"What REMAINS" step 1
+carries the diff that settled it. Read the plan's § "Chunk 3" second — its CAUTION block is
+the same measurement.
 
 **This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical repo
 handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair). This
@@ -204,53 +207,68 @@ two of them want the same run:
    pair-per-comp-gap class, which reports itself nowhere. Probe the node and the story's
    tagging before assuming it belongs in the untagged row.
 
-### 1. CHUNK 3 — WHERE THE SHEET LIVES ← MATO'S CALL, then converge
+### 1. CHUNK 3 — DECIDED: the sheet lives INSIDE the tool. Converge on the 777.
 
-The seam, the resolver and the data path are shipped (see What's DONE). What is open is one
-question, and it is not a preference — it decides what the desktop pair MEANS.
+The seam, the resolver and the data path are shipped (see What's DONE). **The one open
+question was answered by Mato on 2026-09-04 and the answer reversed the recommendation this
+file used to carry.**
 
 **The finding, measured.** The stubbed route ran against `RefDiff Gallery.dc.html` and
 returned **777 findings (391 critical, 323 major, 63 minor) at confidence 0.00**, 586 of
-them `missing-element`. The design-only text list names the cause: `RefDiff`, `light_mode`,
-`Split`/`Off`/`Onion`/`Blink`/`Diff`, `Findings`/`Comments`/`All`/`Clean`,
-`Actions / Button · 60 variants`, `Run 47 vs 46`/`+4 introduced`/`−2 resolved`/`Review`,
-`DESIGN`/`IMPLEMENTATION`/`REVIEW`, `pan_tool`/`Whole sheet`/`center_focus_strong`/
-`add_comment`, `Findings · 74`, `Comments · 2`, `RECURRING CAUSES` with per-cause cell
-counts, `OTHER FINDINGS ·`, and the cells' own button labels drawn in BOTH panes.
-**The comp is the comparison tool's own chrome with a variant sheet in its panes** — the
-same "REBUILD, not a delta" chunk 0 found for the Library comp, and nobody had checked it
-for this one. A frame name tells you a comp's subject, never its surface.
+them `missing-element`. The comp is **the comparison tool's chrome with a variant sheet in
+its panes**, not the standalone page the plan assumed — the same "REBUILD, not a delta"
+chunk 0 found for the Library comp, which nobody had checked for this one. A frame name
+tells you a comp's SUBJECT, never its surface.
 
-**Option 1 — the sheet is the report view's content.** Render it inside the existing
-comparison-tool chrome (`REPORT_BODY` + `CLIENT` in `render.ts`) rather than the standalone
-`#view-gallery` section the stub added, and the 777 findings are the real spec. This is what
-the comp draws. Biggest change; `render.ts` is 2,945 lines and this touches its report body.
+**Why the recommendation flipped, and it is the reusable part.** This file used to recommend
+scoping the pair to the grid and leaving the chrome to the comparison tool, "already paired
+and converged against its own comp". **Mato pointed out the chrome is not the same — the
+gallery's findings rail has a Recurring-causes section the tool's rail has not.** Diffing
+the two comps' rendered text confirmed it and then some:
 
-**Option 2 — scope the pair to the SHEET.** Chunk 3 owns the grid; the chrome belongs to the
-comparison tool, which is already paired and converged against
-`RefDiff Comparison Tool.dc.html`. Measuring it twice invites the two comps to disagree
-(skill rule 4). **BLOCKED on a design ask:** neither Gallery comp carries a `data-vc-scope`
-and their markup is inline styles with no semantic hook, so there is nothing to scope to.
-Precedent — `data-vc-step` was added to the rail rows at our ask on 2026-09-02, and the
-ghost pair depends on it.
+| | Gallery comp | Comparison Tool comp |
+| --- | --- | --- |
+| distinct chrome strings | 39 | 36 |
+| shared | **21** | |
+| gallery-ONLY | **18** | |
 
-**Recommendation: option 2, plus the ask.** It measures the new thing against the new thing,
-keeps the chrome's single source of truth, and the ask is one attribute. Option 1 is right
-only if the sheet is genuinely meant to replace the pair panes rather than sit in them —
-which the comp cannot settle, because it draws both panes showing the same sheet.
+`Recurring causes` and `Other findings` are in the Gallery comp and **nowhere** in the
+Comparison Tool comp: the sheet's rail groups by CAUSE, the tool's rail lists findings with
+instance aggregates (`×15` / `×6`, see `COMPARE_IGNORE`). The other gallery-only strings
+agree — the cell-state legend (`Absent`, `Skipped · no impl cell`, `Regression`, `reg`),
+pane labels `DESIGN` / `IMPLEMENTATION` against the tool comp's `Design` / `Impl`, the
+comment affordances (`New comment`, `Open`, `history`, `open_in_full`), and the breadcrumb
+`Actions / Button · 60 variants`.
 
-**Until it is decided the desktop pair sits at 777 by construction.** That is not drift and
-not a regression; it is an unmeasurable pair, and the plan's IMPORTANT block says so where
-the number lives. Everything shipped is correct under either answer: the geometry, the
-resolver and the data path are the SHEET, not the page it sits on.
+**Scoping would therefore have shipped a whole rail with NO pair measuring it** — the
+pair-per-comp-gap class, the defect this workstream exists to remove, and the one that
+reports itself nowhere. The premise had been inferred from the comp looking like the tool
+and never diffed. **Two comps that render the same furniture are not the same surface until
+the TEXT is diffed:** `grep -oiE` over both, set difference, count. One command.
 
-**When it is decided, the loop continues from the delta, not from the comp's source.** The
-gallery pairs are registered (`refdiff-gallery-desktop` at 1400×860 full-bleed, no scope;
-`refdiff-gallery-mobile` at 390×844 with `scope: ".cc-theme-dark"`), `GALLERY_IGNORE` is
-deliberately EMPTY, and both `UNPAIRED_BY_DESIGN` waivers are gone.
+**So: option 1.** Render the sheet as the report view's content — the existing chrome
+(`REPORT_BODY` + `CLIENT` in `render.ts`, 2,945 lines) rather than the standalone
+`#view-gallery` section the stub added. The 21 shared strings are a real shared shell and
+should be reused; the rail is chunk 3's SCOPE, not chrome to be excused. A large share of
+the 777 findings is that rail — work, not noise. **No design ask is needed any more**: the
+`data-vc-scope` request only existed to serve the refuted option.
+
+**A dependency this surfaced: chunk 4's `section` now has a UI consumer.** The breadcrumb
+`Actions / Button · 60 variants` is the hierarchy rendered. This workstream records
+`section` as "validated and REPORTED, not persisted — its shape is chunk 5's decision"
+(What's DONE, and the plan's chunk 4). The sheet needs it, so **that decision is chunk 3's
+dependency too** — decide the persisted shape before building the breadcrumb, or the
+breadcrumb hard-codes what the artifact should carry.
+
+**What is already in place for the converge.** Both gallery pairs are registered
+(`refdiff-gallery-desktop` 1400×860 full-bleed, no scope; `refdiff-gallery-mobile` 390×844
+with `scope: ".cc-theme-dark"`), `GALLERY_IGNORE` is deliberately EMPTY — the first run's
+findings are the specification and a policy written before the measurement excuses findings
+nobody has read — and both `UNPAIRED_BY_DESIGN` waivers are gone. The delta drives from
+here, never the comp's source.
 
 **The mobile pair, for reference:** 426 findings (161/214/51), confidence 0.00 with
-`x 0.67 / y 0.06` — 311 comp leaf elements against the app's 87. Its own frame, not a
+`x 0.67 / y 0.06` — 311 comp leaf elements against the app's 87. Its own phone frame, not a
 narrow-viewport render of the desktop comp.
 
 **Still open, and small:** the Library's group row does not yet LINK to the sheet (the
