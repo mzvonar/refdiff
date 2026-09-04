@@ -621,6 +621,8 @@ async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | Br
       suppressed: report.suppressed.length,
       confidence: report.alignment.confidence,
       createdAt: report.createdAt,
+      // Omitted rather than defaulted when the report has none — see PairSummary.run.
+      ...(report.run !== undefined ? { run: report.run } : {}),
       designSource: report.design.source,
       implSource: report.impl.source,
       implRef: report.impl.ref,

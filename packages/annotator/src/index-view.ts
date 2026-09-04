@@ -23,6 +23,23 @@ export interface PairSummary {
   /** Alignment confidence: under 0.5 the findings stop meaning much. */
   confidence: number
   createdAt: string
+  /**
+   * 1-based ordinal of this run OF THIS PAIR (`ComparisonReport.run`), which
+   * is what makes a group's `r<min> → r<max>` span and per-cell staleness
+   * expressible at all.
+   *
+   * PER PAIR, and that is the whole caveat: ordinals count independently, so
+   * two cells of one variant set legitimately sit at r2 and r10. There is no
+   * global newest run to compare against, and taking the largest ordinal on
+   * screen for one would mark every cell of a young pair stale against a run
+   * it was never behind. Both ends of a span, and the staleness test, are
+   * computed WITHIN a group.
+   *
+   * Optional because `ComparisonReport.run` is: every run dir written before
+   * runs were numbered has none, and inventing one would print a confident
+   * ordinal over a result that was never counted.
+   */
+  run?: number
   designSource: string
   implSource: string
   /** What the impl side captured — the route or the story — shown in mono. */

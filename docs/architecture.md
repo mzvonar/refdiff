@@ -266,7 +266,9 @@ identity instead of fragile geometry migration. Rendered annotation digests
 
 **One shell, two routes.** `--serve` ships ONE document (markup + CSS + client,
 from memory) holding both routes and loads data at request time: the
-**Library** at `/` (`GET /api/pairs` summarises every run dir) and the
+**Library** at `/` (`GET /api/pairs` summarises every run dir — one
+`PairSummary` per dir, plus `run`, the report's own per-PAIR ordinal, OPTIONAL
+because a run dir written before runs were numbered has none) and the
 **Comparison tool** at `#/<run-dir>` (fetches `<run-dir>/findings.json`; notes,
 verdicts and the focus region ride on `/api/pairs/<dir>/{annotations,triage,
 focus}`). Because the shell is one document, an id or class chosen for the
@@ -1312,6 +1314,17 @@ fall through to the area rule, as do unlabelled artboards.
   runs where the question is live. The write is a typed error that never sets
   `anyError`: a set is expensive, and losing 41 measured pairs to a failed
   4 KB provenance write would be the costliest possible failure.
+- **`/api/pairs` carries `run` — 2026-09-04.** `ComparisonReport.run` was on
+  disk since runs were numbered and the payload dropped it, so no library
+  surface could say WHICH run a cell came from. Optional, mirroring the report
+  (a dir written before numbering has none, and inventing one would print a
+  confident ordinal over an uncounted result). **The ordinal counts PER PAIR**,
+  which is the whole caveat: measured on the 194-pair DS root,
+  `ds-button-fill` spans r9→r10 and `ds-button-ghost` r6→r7 while
+  `ds-button-icon`'s eleven cells all sit at r2 — so there is no global newest
+  to compare against, and taking the largest ordinal on screen for one would
+  mark every cell of a young pair stale against a run it was never behind.
+  Both ends of a span, and the staleness test, are computed WITHIN a group.
 - **Manifest hierarchy and grid declarations — built 2026-09-04, chunk 4 of
   the gallery plan.** The manifest gains three optional declarations, none of
   which changes a measurement: `section: "Core components/Buttons"` per entry,
