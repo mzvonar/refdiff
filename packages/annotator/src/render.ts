@@ -456,6 +456,22 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .instchip.on { border-color:var(--acc); color:#fff; background:var(--acc); }
 .rail-scroll { flex:1; overflow-y:auto; min-height:0; }
 .rail-empty { padding:24px 16px; font-size:12.5px; color:var(--txt2); text-align:center; line-height:1.5; }
+/* A SHEET's rail: sections of causes, in the Gallery comp's order. */
+.csec { display:flex; align-items:center; gap:8px; padding:10px 12px 6px; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--txt2); background:var(--bg0); border-bottom:1px solid var(--line); }
+.csec-n { font-family:var(--font-mono); font-weight:500; letter-spacing:0; }
+.crow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+.crow:hover { background:var(--bg2); }
+.crow.lit { background:rgba(91,141,239,.10); box-shadow:inset 2px 0 0 var(--acc); }
+.chead { display:flex; align-items:center; gap:8px; }
+.cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.cdot.critical { background:var(--critical); } .cdot.major { background:var(--major); } .cdot.minor { background:var(--minor); }
+.ctitle { flex:1; min-width:0; font-size:12.5px; color:var(--txt); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ccount { font-size:11px; font-weight:600; color:var(--txt2); white-space:nowrap; }
+.ccount.one { font-weight:400; }
+.cprop { margin-top:4px; font-size:10.5px; color:var(--txt2); }
+.cvals { margin-top:3px; display:flex; align-items:center; gap:6px; font-size:11px; }
+.cexp { color:var(--txt2); } .cact { color:var(--txt); }
+.carrow { font-size:14px; color:var(--txt2); flex-shrink:0; }
 /* ---- a finding row: badge · title · ×N · Regression · triage tag; the mono prop line under it;
    the instance box, the verdict buttons and the note only while selected (the canvas is the crop) */
 /* The comp's finding rows have NO left edge (rowBase); only its comment rows carry the 3px transparent
@@ -717,6 +733,8 @@ body.is-sheet .shot { display:none; }
    of the one you just selected — you clicked 1 and read 95. While something is selected its badge
    is drawn LAST and everything else steps back. */
 .vmarks.has-sel .vmark:not(.sel):not(.ann) { opacity:.35; }
+.vmarks.has-cause .vmark:not(.cause-lit):not(.ann) { opacity:.2; }
+.vmarks .vmark.cause-lit { outline:2px solid var(--acc); outline-offset:1px; }
 /* ---- the ghost of a one-sided finding (the comps' ghost()). A missing-element has no implBox and
    an extra-element no designBox, so one pane has nothing to mark. The comps draw the element THERE
    anyway, for the selected finding only: a hatched dashed footprint where it would be, and a pill
@@ -1049,6 +1067,9 @@ const state = {
   // showMembers: every instance of an aggregate marked, or the primary only (the comps' default —
   // a ×15 aggregate carpets the artboard otherwise, gap 12).
   layer: 'all', showMarks: true, showMembers: false,
+  // Which CAUSE is lit on a sheet, by its causeGroups key. Per-view, never
+  // saved: it is a reading gesture, not a preference.
+  cause: null,
   // The rail: which tab, and whether the suppressed rows are unfolded (persisted).
   tab: 'findings', showSup: false,
   selected: null, sev: { critical: true, major: true, minor: true }, q: '',
@@ -1864,6 +1885,63 @@ function triageActionsHtml(f) {
   return '<div class="factions">' + btn('fix', 'To fix') + btn('ignore', 'Ignore') + btn('snooze', 'Snooze') + until + '</div>' +
     '<input class="fnote" data-key="' + esc(f.key) + '" placeholder="Note for the model…" value="' + esc(noteVal) + '" title="why — stored with the verdict, read by the fix loop">' + stick;
 }
+// ---- a SHEET's rail ------------------------------------------------------
+// The Gallery comp organises its rail by CAUSE, not by finding, and that is the
+// single biggest difference between this view and the comp: measured on the
+// dogfooded pair, the app listed 183 findings individually where the comp shows
+// five causes and three one-offs, and 1111 of 1163 impl-only elements were in
+// the rail — 95% of everything left.
+//
+// A cause row carries what the comp's rows carry: the severity, the sample
+// message, the property, expected -> actual, and how many CELLS have it. Cells,
+// never findings: two findings in one cell are one cell's problem, and the count
+// is what tells you whether to fix a token or a variant.
+function causeRowHtml(c, oneOff) {
+  const lit = state.cause === c.key;
+  let h = '<div class="crow' + (lit ? ' lit' : '') + '" data-cause="' + esc(c.key) + '" title="' +
+    esc(c.type + (c.role ? ' \u00b7 ' + c.role : '') + ' \u00b7 ' + c.severity + ' \u2014 click to light up every cell with this cause') + '">';
+  h += '<div class="chead"><span class="cdot ' + c.severity + '"></span><span class="ctitle">' + esc(c.sample || c.type) + '</span>' +
+    '<span class="ccount' + (oneOff ? ' one' : '') + '">' + esc(cellCountLabel(c.cells.length)) + '</span></div>';
+  if (c.property) h += '<div class="cprop mono">' + esc(c.property) + '</div>';
+  if (c.expected || c.actual) {
+    h += '<div class="cvals mono"><span class="cexp">' + esc(c.expected || '\u2014') +
+      '</span><span class="carrow msi" aria-hidden="true">arrow_right_alt</span><span class="cact">' + esc(c.actual || '\u2014') + '</span></div>';
+  }
+  return h + '</div>';
+}
+// The two sections, in the comp's order. The headers are always drawn when the
+// section has rows, because a sheet with no recurring cause is a real and
+// informative state (every difference is local) and an absent header reads as a
+// rail that failed to render rather than as that answer.
+function sheetRailHtml(kept) {
+  const groups = causeGroups(kept);
+  if (groups.recurring.length === 0 && groups.oneOffs.length === 0) {
+    return '<div class="rail-empty">No findings match the current filters.</div>';
+  }
+  let h = '';
+  if (groups.recurring.length) {
+    h += '<div class="csec">Recurring causes<span class="csec-n">' + groups.recurring.length + '</span></div>';
+    h += groups.recurring.map((c) => causeRowHtml(c, false)).join('');
+  }
+  if (groups.oneOffs.length) {
+    h += '<div class="csec">Other findings<span class="csec-n">' + groups.oneOffs.length + '</span></div>';
+    h += groups.oneOffs.map((c) => causeRowHtml(c, true)).join('');
+  }
+  return h;
+}
+
+// The findings of the lit cause, as a Set. Empty when nothing is lit, which is
+// what makes the dimming a no-op rather than a special case at every call site.
+let causeCache = { key: null, ids: new Set() };
+function causeIds() {
+  if (!sheet || !state.cause) return new Set();
+  if (causeCache.key === state.cause) return causeCache.ids;
+  const groups = causeGroups(report.findings);
+  const hit = groups.recurring.concat(groups.oneOffs).find((c) => c.key === state.cause);
+  causeCache = { key: state.cause, ids: new Set(hit ? hit.findingIds : []) };
+  return causeCache.ids;
+}
+
 function findingRowHtml(f, suppressed) {
   const sel = state.selected === f.id;
   const verdict = suppressed ? undefined : triageStateOf(f);
@@ -2006,7 +2084,12 @@ function renderRail() {
     ? '<button type="button" class="instchip' + (state.showMembers ? ' on' : '') + '" data-act="inst" title="Repeated differences share one row and one number. Toggle whether every instance is marked on the canvas or only the primary one."><span class="msi" aria-hidden="true">' + (state.showMembers ? 'select_all' : 'crop_free') + '</span><span>' + instanceChipLabel(state.showMembers, kept) + '</span></button>'
     : '';
   const sup = report.suppressed.filter(visible);
-  let h = kept.length ? kept.map((f) => findingRowHtml(f, false)).join('') : '<div class="rail-empty">No findings match the current filters.</div>';
+  // A sheet's rail is by CAUSE; a pair's is by finding. Same rail, same filters,
+  // same summary — only the rows differ, because on 41 cells a per-finding list
+  // is 183 rows of the same five problems.
+  let h = sheet
+    ? sheetRailHtml(kept)
+    : kept.length ? kept.map((f) => findingRowHtml(f, false)).join('') : '<div class="rail-empty">No findings match the current filters.</div>';
   if (sup.length) {
     h += '<button type="button" class="sup-toggle" id="sup-toggle" title="Findings a policy rule excused — still reported in findings.json, not part of the verdict"><span class="msi" aria-hidden="true">' + (state.showSup ? 'visibility_off' : 'visibility') + '</span><span class="lbl">' + SUPPRESSED_LABEL(sup.length) + '</span><span class="act">' + (state.showSup ? 'Hide' : 'Show') + '</span></button>';
     if (state.showSup) h += sup.map((s) => findingRowHtml(byId.get(s.id), true)).join('');
@@ -2138,6 +2221,11 @@ function renderMarks() {
     // the rest of the session (the layer is shared with the comment badges, which renderAnnMarks owns).
     for (const b of blayer.querySelectorAll('.vmark:not(.ann), .gpill')) b.remove();
     blayer.classList.toggle('has-sel', !!state.selected);
+    // A lit cause dims everything that is not it, the same way a selection does.
+    // Computed once per render rather than per finding: on a 41-cell sheet the
+    // per-finding form re-grouped 183 findings for every badge it drew.
+    const litIds = causeIds();
+    blayer.classList.toggle('has-cause', !!state.cause);
     if (!state.showMarks) continue;
     const key = side === 'design' ? 'designBox' : 'implBox';
     // While the region is being ADJUSTED the canvas shows what it leaves out, muted ('outside'):
@@ -2168,7 +2256,7 @@ function renderMarks() {
       if (primary) {
         // The box itself only while selected (the comps' 4px-padded outline); Highlight draws the rest.
         if (sel) layer.append(rect(pad(primary, 4), f.severity + ' sel' + (suppressed ? ' suppressed' : '') + out(primary), f.id, 6));
-        blayer.append(badge(primary, f, cls + (only ? ' one-sided' : '') + out(primary), false));
+        blayer.append(badge(primary, f, cls + (only ? ' one-sided' : '') + out(primary) + (litIds.has(f.id) ? ' cause-lit' : ''), false));
       }
       if (state.showMembers && f.members) {
         f.members.slice(1).forEach((m) => {
@@ -2645,6 +2733,15 @@ function wire() {
     }
     const act = t.closest('[data-act]'); if (act) { railAction(act.dataset.act, act.dataset.ann); return; }
     if (t.closest('input, textarea, button, a')) return;
+    // A cause row lights every cell that carries it — the affordance the plan
+    // called the most useful thing on a 41-cell sheet. Clicking the lit one
+    // clears it, so the gesture is its own undo.
+    const crow = t.closest('.crow');
+    if (crow) {
+      state.cause = state.cause === crow.dataset.cause ? null : crow.dataset.cause;
+      renderRail(); renderMarks();
+      return;
+    }
     const frow = t.closest('.frow'); if (frow) { select(frow.dataset.id === state.selected ? null : frow.dataset.id, true); return; }
     const irow = t.closest('.irow'); if (irow) selectAnn(irow.dataset.ann === ann.selected ? null : irow.dataset.ann, true);
   });
@@ -2984,6 +3081,7 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; state.focusEdit = false; focusBand = null; focusDrag = null;
   state.diffIndex = -1; state.regOnly = false; state.deltaDismissed = false; state.alignOpen = false;
+  state.cause = null; causeCache = { key: null, ids: new Set() };
   state.wipeX = report.impl.width / 2;
   document.body.classList.remove('ann-mode');
   $('q').value = ''; $('fsearch').hidden = true;

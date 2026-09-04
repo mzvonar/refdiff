@@ -303,8 +303,11 @@ describe("renderReport", () => {
     expect(html).toContain("if (only && only !== side) {")
     expect(html).toContain("        if (!sel) return;")
     // The home-side badge carries the dashed halo instead — on EVERY one-sided finding, as the
-    // comps do (outline, not border: the badge already has the 2px white one).
-    expect(html).toContain("badge(primary, f, cls + (only ? ' one-sided' : '') + out(primary), false)")
+    // comps do (outline, not border: the badge already has the 2px white one). Asserted on the
+    // one-sided CLASS rather than the whole call, because the call's tail grows: a sheet's lit
+    // cause appends to the same class string, and pinning the entire expression made this test
+    // fail on a change that had nothing to do with the ghost.
+    expect(html).toContain("cls + (only ? ' one-sided' : '')")
     expect(html).toContain(".vmark.one-sided.critical { outline:1.5px dashed var(--critical); }")
     // The switch is a BUTTON on the pill, shown only where one pane is on screen (the comp's
     // canSwitch === full mode). CSS decides it, because setLayout() re-renders no marks and a

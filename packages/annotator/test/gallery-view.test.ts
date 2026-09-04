@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   FRAME_COVERAGE,
-  census,
+  causeGroups,
+  cellCountLabel,
   cellSeverity,
+  census,
   galleryCells,
   isFrameLevel,
   markStale,
@@ -252,5 +254,94 @@ describe("isFrameLevel", () => {
 
   it("is false for a zero-sized cell rather than dividing by it", () => {
     expect(isFrameLevel({ w: 10, h: 10 }, { w: 0, h: 0 })).toBe(false)
+  })
+})
+
+describe("causeGroups", () => {
+  const f = (
+    id: string,
+    cell: string,
+    type: string,
+    severity: "critical" | "major" | "minor",
+    expected?: Record<string, unknown>,
+    actual?: Record<string, unknown>,
+    message = "",
+  ) => ({ id, cell, type, role: "text", severity, message, ...(expected ? { expected } : {}), ...(actual ? { actual } : {}) })
+
+  const TYPO_E = { fontFamily: "Oswald", fontWeight: "500" }
+  const TYPO_A = { fontFamily: "Montserrat", fontWeight: "700" }
+
+  it("groups by the CAUSE and counts distinct CELLS, not findings", () => {
+    const { recurring, oneOffs } = causeGroups([
+      f("1", "a", "typography", "major", TYPO_E, TYPO_A),
+      f("2", "b", "typography", "major", TYPO_E, TYPO_A),
+      // same cell, same cause: a second finding, NOT a second cell
+      f("3", "b", "typography", "major", TYPO_E, TYPO_A),
+      f("4", "c", "border", "minor", { borderWidth: "1" }, { borderWidth: "2" }),
+    ])
+    expect(recurring).toHaveLength(1)
+    expect(recurring[0]!.cells).toEqual(["a", "b"])
+    expect(recurring[0]!.findingIds).toEqual(["1", "2", "3"])
+    expect(oneOffs.map((c) => c.type)).toEqual(["border"])
+  })
+
+  // The distinction summary.json's groups cannot make, and the reason this is
+  // computed rather than reused: same type, role and severity, different cause.
+  it("tells two different colour drifts apart", () => {
+    const { recurring } = causeGroups([
+      f("1", "a", "color", "critical", { backgroundColor: "#4F46E5" }, { backgroundColor: "#6366F1" }),
+      f("2", "b", "color", "critical", { backgroundColor: "#4F46E5" }, { backgroundColor: "#6366F1" }),
+      f("3", "c", "color", "critical", { color: "#111" }, { color: "#222" }),
+      f("4", "d", "color", "critical", { color: "#111" }, { color: "#222" }),
+    ])
+    expect(recurring).toHaveLength(2)
+    expect(new Set(recurring.map((c) => c.key)).size).toBe(2)
+  })
+
+  // Text is NOT in the key: the same cause lands on many cells with a different
+  // element text in each, which is exactly what makes it recurring.
+  it("groups across differing messages, keeping one as the sample", () => {
+    const { recurring } = causeGroups([
+      f("1", "a", "typography", "major", TYPO_E, TYPO_A, 'the "LABEL" typeface differs'),
+      f("2", "b", "typography", "major", TYPO_E, TYPO_A, 'the "GHOST" typeface differs'),
+    ])
+    expect(recurring).toHaveLength(1)
+    expect(recurring[0]!.sample).toBe('the "LABEL" typeface differs')
+  })
+
+  it("renders the property and values the way the comp's rows read", () => {
+    const { recurring } = causeGroups([
+      f("1", "a", "typography", "major", TYPO_E, TYPO_A),
+      f("2", "b", "typography", "major", TYPO_E, TYPO_A),
+    ])
+    expect(recurring[0]!.property).toBe("font-family, font-weight")
+    expect(recurring[0]!.expected).toBe("Oswald 500")
+    expect(recurring[0]!.actual).toBe("Montserrat 700")
+  })
+
+  it("orders by how many cells carry it, then by severity", () => {
+    const { recurring } = causeGroups([
+      f("1", "a", "border", "minor", { w: 1 }, { w: 2 }),
+      f("2", "b", "border", "minor", { w: 1 }, { w: 2 }),
+      f("3", "a", "color", "critical", { c: 1 }, { c: 2 }),
+      f("4", "b", "color", "critical", { c: 1 }, { c: 2 }),
+      f("5", "c", "color", "critical", { c: 1 }, { c: 2 }),
+    ])
+    expect(recurring.map((c) => c.type)).toEqual(["color", "border"])
+    expect(recurring.map((c) => c.cells.length)).toEqual([3, 2])
+  })
+
+  it("ignores a finding with no cell — it is not on the sheet", () => {
+    const { recurring, oneOffs } = causeGroups([
+      { id: "x", type: "color", severity: "minor" },
+      undefined,
+    ])
+    expect(recurring).toEqual([])
+    expect(oneOffs).toEqual([])
+  })
+
+  it("labels the count in the comp's words", () => {
+    expect(cellCountLabel(36)).toBe("36 cells")
+    expect(cellCountLabel(1)).toBe("1 cell")
   })
 })

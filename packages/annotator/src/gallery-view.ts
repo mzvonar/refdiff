@@ -533,3 +533,120 @@ export function warningList(warnings: readonly string[]): string {
     "</ul>"
   )
 }
+
+/* ------------------------------------------------- causes across cells --- */
+
+/** One recurring cause, and the cells that carry it. */
+export interface GCause {
+  /** Stable identity: the cause, not its position or its cell. */
+  key: string
+  type: string
+  role?: string
+  severity: "critical" | "major" | "minor"
+  /** The property names the two sides disagree about (`font-family`). */
+  property?: string
+  /** The values, as the comp's rows show them (`Oswald 500` → `Montserrat 700`). */
+  expected?: string
+  actual?: string
+  /**
+   * A representative message. Same convention as `summary.json`'s `sample`, and
+   * for the same reason: the app's messages name the ELEMENT, so members of one
+   * cause differ in their text while the cause does not.
+   */
+  sample: string
+  /** Distinct cells carrying it, which is what the comp counts ("36 cells"). */
+  cells: string[]
+  findingIds: string[]
+}
+
+const SEV_RANK: Record<string, number> = { critical: 0, major: 1, minor: 2 }
+
+const valueOf = (v: unknown): string =>
+  v && typeof v === "object"
+    ? Object.values(v as Record<string, unknown>)
+        .map((x) => String(x))
+        .join(" ")
+    : ""
+
+const propOf = (a: unknown, b: unknown): string => {
+  const keys = new Set<string>()
+  for (const o of [a, b]) {
+    if (o && typeof o === "object") for (const k of Object.keys(o as object)) keys.add(k)
+  }
+  // camelCase → the CSS-ish names the comp's rows use (`fontFamily` → font-family).
+  return [...keys].map((k) => k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())).join(", ")
+}
+
+/**
+ * Group a sheet's findings by CAUSE, and split the recurring ones from the
+ * one-offs — which is how the Gallery comp's rail is organised
+ * ("Recurring causes" over "Other findings") and the single biggest thing
+ * between the app's rail and the comp's: measured on the dogfooded pair, the
+ * app listed 183 findings individually where the comp shows five causes and
+ * three one-offs, and 1111 of 1163 impl-only elements were in the rail.
+ *
+ * The key is `type|role|severity|expected|actual`, which is FINER than
+ * `summary.json`'s `groups` (type, role, severity) on purpose, and the plan's
+ * "do not recompute `groups`" does not cover this: those groups carry no
+ * expected/actual, and a sheet's rail has to tell two different colour drifts
+ * apart — they are the same type, role and severity and a different cause. What
+ * is not recomputed is the ROOT roll-up; this is per-sheet and value-keyed.
+ *
+ * Text is deliberately NOT in the key: the same cause lands on many cells with
+ * a different element text in each, which is exactly what makes it recurring.
+ */
+export function causeGroups(
+  findings: readonly (GProjectedFinding | undefined)[],
+): { recurring: GCause[]; oneOffs: GCause[] } {
+  const by = new Map<string, GCause>()
+  for (const f of findings) {
+    if (!f || !f.cell) continue
+    const expected = valueOf(f.expected)
+    const actual = valueOf(f.actual)
+    const key = [f.type, f.role ?? "", f.severity, expected, actual].join("|")
+    let c = by.get(key)
+    if (!c) {
+      const property = propOf(f.expected, f.actual)
+      c = {
+        key,
+        type: f.type,
+        ...(f.role !== undefined ? { role: f.role } : {}),
+        severity: f.severity,
+        ...(property ? { property } : {}),
+        ...(expected ? { expected } : {}),
+        ...(actual ? { actual } : {}),
+        sample: f.message ?? "",
+        cells: [],
+        findingIds: [],
+      }
+      by.set(key, c)
+    }
+    if (!c.cells.includes(f.cell)) c.cells.push(f.cell)
+    c.findingIds.push(f.id)
+  }
+  const all = [...by.values()].sort(
+    (a, b) =>
+      b.cells.length - a.cells.length ||
+      (SEV_RANK[a.severity] ?? 3) - (SEV_RANK[b.severity] ?? 3) ||
+      a.key.localeCompare(b.key),
+  )
+  return {
+    recurring: all.filter((c) => c.cells.length > 1),
+    oneOffs: all.filter((c) => c.cells.length === 1),
+  }
+}
+
+/** A finding after `projectCellBox`, carrying the cell it came from. */
+export interface GProjectedFinding {
+  id: string
+  cell?: string
+  type: string
+  role?: string
+  severity: "critical" | "major" | "minor"
+  message?: string
+  expected?: Record<string, unknown>
+  actual?: Record<string, unknown>
+}
+
+/** `36 cells` / `1 cell` — the count the comp puts on a cause row. */
+export const cellCountLabel = (n: number): string => n + (n === 1 ? " cell" : " cells")
