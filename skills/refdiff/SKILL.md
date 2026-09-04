@@ -389,6 +389,21 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   human` with those numbers attached, not a fix you commit.
 - Sets share one out root; `summary.md` there always covers every run dir
   under it (all sets), the console shows the set just run.
+- **What a set CONTAINS is an artifact, not a console line: `<out-root>/<entryId>.set.json`.**
+  Written at expansion time, before any capture, so it lands even when the
+  captures or the Figma render fail. It carries the set's `axes.properties`,
+  every pair (`slug`, run `dir`, `props`) and every SKIPPED cell with its
+  reason and props — so it answers the one question a run root structurally
+  cannot: **what was never measured.** `pairs.length + skipped.length` is the
+  set's variant count, the same pair the run prints as `N variant pairs, M
+  skipped`; the cross-product of `axes.properties` is what was DECLARED, and
+  the difference is cells that exist in neither list. Measured on a DS set:
+  `ds-chip` expands to 5 pairs and 63 skipped out of 105 declared, with 2 run
+  dirs in the Library. **Read `axes.source` before you trust the option
+  ORDER** — `definitions` is the designer's own order, `child-names` is the
+  fallback's traversal order, and on real sets the two disagree. It is a FILE
+  at the root, so every run-dir walker ignores it, and a subset re-run
+  rewrites only the entries it names.
 - **The annotator's Library folds a set into ONE row.** It groups run dirs by
   the entry their pair id names — every variant pair is `<entryId>--<slug>`,
   so `ds-button-fill--state-hover_variant-default` sits under

@@ -17,7 +17,7 @@ import type { Capture, CaptureError, LiveAuth } from "./pipeline.js"
 import type { ComparisonReport, Finding, IgnorePolicy, Severity } from "./types.js"
 import type { Browser } from "playwright"
 
-import { readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
@@ -33,7 +33,7 @@ import {
 import { launchBrowser } from "./adapters/browser.js"
 import { captureDcHtml } from "./adapters/dc-html.js"
 import { FigmaClient, parseFigmaRef, readToken } from "./adapters/figma-api.js"
-import { expandVariants } from "./adapters/figma-variants.js"
+import { expandVariants, variantAxes } from "./adapters/figma-variants.js"
 import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
 import { captureLiveUrl } from "./adapters/live-url.js"
 import { ensureStorybook } from "./adapters/storybook-server.js"
@@ -42,6 +42,7 @@ import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./man
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
 import { packageForModel } from "./package/package-for-model.js"
 import { describeRegions } from "./package/regions.js"
+import { buildSetIndex, setIndexFileName, type SetIndex } from "./package/set-index.js"
 import { renderSummary, summarizeReports } from "./package/summary.js"
 import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
 import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks } from "./pixel/checks.js"
@@ -684,8 +685,10 @@ type Prefetched = NonNullable<FigmaCaptureOptions["prefetched"]>
 async function expandFigmaSet(
   spec: PairSpec,
   figmaScale: number | undefined,
+  outRoot: string,
 ): Promise<Result<{ specs: PairSpec[]; prefetched: Map<string, Prefetched> }, CaptureError>> {
   if (spec.design.kind !== "figma" || spec.design.variants === undefined) {
+    // Not a set: no index. An entry with one pair has nothing to be the index OF.
     return ok({ specs: [spec], prefetched: new Map() })
   }
   const { variants, ...design } = spec.design
@@ -724,6 +727,34 @@ async function expandFigmaSet(
     `${spec.id}: ${set.name} → ${expanded.value.pairs.length} variant pairs, ${expanded.value.skipped.length} skipped`,
   )
   for (const sk of expanded.value.skipped) console.log(`  skipping ${sk.name}: ${sk.reason}`)
+
+  // The set index: what this set CONTAINS, which the run dirs cannot say —
+  // they are only what was measured.
+  //
+  // Written HERE, not by the caller on the success path, and the difference is
+  // not cosmetic: the /images and /variables calls below can fail (rate limit,
+  // a cooldown, a dead token), and on that path the whole entry returns a
+  // typed error. An index built above and returned below would be lost on
+  // exactly the runs where "what is this set supposed to contain?" is the
+  // question — which is the invisible-coverage failure this artifact exists to
+  // end. Everything it needs is in hand at this line, so it lands at this line.
+  //
+  // The same reasoning covers the empty expansion: a set whose every variant
+  // skipped still records its cells and their reasons, and that is the case
+  // where the run root ends up with not one directory.
+  const index = buildSetIndex({
+    entryId: spec.id,
+    ...(spec.title !== undefined ? { title: spec.title } : {}),
+    designRef: `${design.fileKey}#${design.nodeId}${version ? `@${version}` : ""}`,
+    axes: variantAxes(set),
+    expansion: expanded.value,
+  })
+  const wrote = await writeSetIndex(outRoot, index)
+  console.log(
+    wrote.ok
+      ? `  set index: ${wrote.value} (${index.pairs.length} pairs, ${index.skipped.length} skipped, axes from ${index.axes.source})`
+      : `  set index NOT written for ${wrote.error.entryId}: ${wrote.error.detail}`,
+  )
   if (expanded.value.pairs.length === 0) return ok({ specs: [], prefetched: new Map() })
 
   const variables = await client.localVariables(design.fileKey)
@@ -761,6 +792,41 @@ async function expandFigmaSet(
     }
   })
   return ok({ specs, prefetched })
+}
+
+/**
+ * Write one set's index, `<root>/<entryId>.set.json`.
+ *
+ * A FILE at the root, never a directory: both run-dir walkers filter on
+ * `isDirectory()` (`readRunDirs` below, and the annotator's own), so a file is
+ * invisible to them with no exclusion to remember, where a `sets/` directory
+ * would be read as a run dir — counted by `summary` and drawn as a broken
+ * card in the Library until every walker special-cased it.
+ *
+ * Per-set and NEVER fatal (CLAUDE.md: one bad pair must never kill a run). A
+ * set is expensive; losing 41 measured pairs to a failed 4 KB write would be
+ * the costliest possible failure. The failure is a value, printed with its
+ * cause by the caller — and it deliberately does NOT set `anyError`, because
+ * the exit code means "a pair failed to compare" and a run whose measurements
+ * are all sound must not claim otherwise over its provenance file.
+ */
+async function writeSetIndex(
+  root: string,
+  index: SetIndex,
+): Promise<Result<string, { kind: "set-index-write"; entryId: string; path: string; detail: string }>> {
+  const path = resolve(join(root, setIndexFileName(index.entryId)))
+  try {
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, `${JSON.stringify(index, null, 2)}\n`, "utf8")
+    return ok(path)
+  } catch (e) {
+    return err({
+      kind: "set-index-write",
+      entryId: index.entryId,
+      path,
+      detail: e instanceof Error ? e.message : String(e),
+    })
+  }
 }
 
 async function loadManifest(file: string): Promise<PairSpec[]> {
@@ -1018,7 +1084,7 @@ async function compare(argv: string[]): Promise<void> {
   {
     const expanded: PairSpec[] = []
     for (const spec of specs) {
-      const r = await expandFigmaSet(spec, figmaScale)
+      const r = await expandFigmaSet(spec, figmaScale, outRoot ?? "out")
       if (!r.ok) {
         anyError = true
         console.error(`\n${spec.id}: component-set expansion failed (typed error):`)

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import type { FigmaNode, FigmaNodesResponse } from "./figma-api.js";
-import { expandVariants, parseVariantName, variantProperties, type VariantConfig } from "./figma-variants.js";
+import { expandVariants, parseVariantName, variantAxes, variantProperties, type VariantConfig } from "./figma-variants.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = JSON.parse(
@@ -45,6 +45,48 @@ describe("variantProperties", () => {
     const { componentPropertyDefinitions: _defs, ...bare } = set;
     void _defs;
     expect(variantProperties(bare)["State"]).toContain("Default");
+  });
+});
+
+describe("variantAxes", () => {
+  it("says the axes came from the DEFINITIONS, in the designer's declared order", () => {
+    const axes = variantAxes(set);
+    expect(axes.source).toBe("definitions");
+    expect(axes.properties).toEqual({
+      State: ["Default", "Hover", "Active", "Disabled", "Loading", "Focus"],
+      iconPlacement: ["left", "none", "right"],
+      variant: ["label", "danger", "default", "success"],
+    });
+  });
+
+  it("says the axes came from the CHILD NAMES when a set has no definitions — a DIFFERENT order", () => {
+    // The whole reason the source travels with the axes: on this real set the
+    // two branches disagree about State (the designer declares
+    // Default,Hover,Active,Disabled,Loading,Focus; the children are traversed
+    // Default,Loading,Hover,Focus,Active,Disabled). A consumer that labels a
+    // grid's columns from the fallback while claiming the designer's order
+    // looks entirely fine and is wrong — and only `source` can tell it.
+    const { componentPropertyDefinitions: _defs, ...bare } = set;
+    void _defs;
+    const axes = variantAxes(bare);
+    expect(axes.source).toBe("child-names");
+    expect(axes.properties["State"]).toEqual([
+      "Default",
+      "Loading",
+      "Hover",
+      "Focus",
+      "Active",
+      "Disabled",
+    ]);
+    expect(axes.properties["State"]).not.toEqual(variantAxes(set).properties["State"]);
+    // Same SET of options either way — it is the order that differs.
+    expect([...(axes.properties["State"] ?? [])].sort()).toEqual(
+      [...(variantAxes(set).properties["State"] ?? [])].sort(),
+    );
+  });
+
+  it("is what variantProperties returns, minus the provenance", () => {
+    expect(variantProperties(set)).toEqual(variantAxes(set).properties);
   });
 });
 

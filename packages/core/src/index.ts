@@ -112,7 +112,10 @@ export { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapte
 export {
   expandVariants,
   parseVariantName,
+  variantAxes,
   variantProperties,
+  type VariantAxes,
+  type VariantAxesSource,
   type VariantConfig,
   type VariantExpandError,
   type VariantExpansion,
@@ -234,3 +237,11 @@ export {
   type SetGroup,
   type SetSummary,
 } from "./package/summary.js"
+export {
+  buildSetIndex,
+  setIndexFileName,
+  type SetIndex,
+  type SetIndexInput,
+  type SetIndexPair,
+  type SetIndexSkipped,
+} from "./package/set-index.js"

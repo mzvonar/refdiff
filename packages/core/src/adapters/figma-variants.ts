@@ -18,7 +18,8 @@
  * error (the template is wrong); an option a map does not list skips THAT
  * variant with the reason (the story has no such cell) — skipped variants
  * are returned, never dropped silently. Fed by the set's
- * `componentPropertyDefinitions` when present, else by the child names.
+ * `componentPropertyDefinitions` when present, else by the child names —
+ * `variantAxes` says WHICH, because the two orders are not the same fact.
  */
 
 import type { FigmaNode } from "./figma-api.js";
@@ -72,18 +73,48 @@ export function parseVariantName(name: string): Record<string, string> {
 
 const PLACEHOLDER = /\{([^{}|]+)(?:\|([^{}|]+))?\}/g;
 
-/** The VARIANT properties a set defines, from its definitions or (fallback) its children's names. */
-export function variantProperties(set: FigmaNode): Record<string, string[]> {
+/** Which of the two sources produced a set's axes. See `variantAxes`. */
+export type VariantAxesSource = "definitions" | "child-names";
+
+export interface VariantAxes {
+  source: VariantAxesSource;
+  /** property → its options, in the source's order. */
+  properties: Record<string, string[]>;
+}
+
+/**
+ * The VARIANT properties a set defines, WITH the branch that produced them.
+ *
+ * Option ORDER is the designer's on the `definitions` branch only, where it
+ * echoes Figma's own `componentPropertyDefinitions.variantOptions`. The
+ * fallback accumulates options out of the children's names, so its order is
+ * TRAVERSAL order. A consumer that labels a grid's columns in traversal order
+ * while claiming the designer's is a "looks fine but is wrong" state, and the
+ * only defence is that the source travels WITH the axes — so this returns
+ * both and nobody has to guess which they are holding.
+ */
+export function variantAxes(set: FigmaNode): VariantAxes {
   const defs = set.componentPropertyDefinitions ?? {};
   const fromDefs = Object.entries(defs).filter(([, d]) => d.type === "VARIANT" && Array.isArray(d.variantOptions));
   if (fromDefs.length > 0) {
-    return Object.fromEntries(fromDefs.map(([name, d]) => [name, [...(d.variantOptions ?? [])]]));
+    return {
+      source: "definitions",
+      properties: Object.fromEntries(fromDefs.map(([name, d]) => [name, [...(d.variantOptions ?? [])]])),
+    };
   }
   const seen: Record<string, Set<string>> = {};
   for (const child of set.children ?? []) {
     for (const [k, v] of Object.entries(parseVariantName(child.name))) (seen[k] ??= new Set()).add(v);
   }
-  return Object.fromEntries(Object.entries(seen).map(([k, s]) => [k, [...s]]));
+  return {
+    source: "child-names",
+    properties: Object.fromEntries(Object.entries(seen).map(([k, s]) => [k, [...s]])),
+  };
+}
+
+/** The properties alone, for a caller with no use for their provenance. */
+export function variantProperties(set: FigmaNode): Record<string, string[]> {
+  return variantAxes(set).properties;
 }
 
 const slugify = (props: Record<string, string>): string =>

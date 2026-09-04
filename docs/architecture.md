@@ -169,6 +169,11 @@ What the model receives — every item evidence-backed (research §4):
 - `findings.json` (`ComparisonReport` in `core/src/types.ts`):
   bbox-grounded, typed, severity-ranked findings with machine-readable
   expected-vs-actual values and code-actionable messages.
+- **Set index** (`<out-root>/<entryId>.set.json`, pure `package/set-index.ts`
+  `buildSetIndex`): for a component set, what it CONTAINS as opposed to what
+  a run measured — `axes { source, properties }`, every pair's `slug` / run
+  `dir` / `props`, and every skipped cell with its reason and props. The one
+  artifact that can express ABSENCE, which no run root can.
 - **Set-of-marks overlay**: one annotated image with numbered marks
   matching finding ids.
 - **Per-finding native-resolution crop pairs**, presented as separate
@@ -1279,6 +1284,31 @@ fall through to the area rule, as do unlabelled artboards.
   the root's files. Measured: Alert 153 findings → 10 causes, Button 201 → 16.
   Lossless in the only sense that matters: the rows point back to the per-cell
   reports, which stay the truth.
+- **Set index — built 2026-09-04, chunk 2 of the gallery plan.** A run root
+  can only show what was measured; it structurally cannot show ABSENCE, and
+  absence is what misled us (`ds-button-stroke` 24 pairs / 36 skipped;
+  `ds-chip` 5 / 63 out of 105 declared combinations, with 2 run dirs). The
+  skip list was printed and persisted NOWHERE, so it vanished the moment a
+  run log was piped through `tail`. Pure `package/set-index.ts`
+  `buildSetIndex({ entryId, title?, designRef, axes, expansion, now? })` →
+  `<out-root>/<entryId>.set.json`; `variantAxes(set)` now returns
+  `{ source, properties }` because option ORDER is the designer's on the
+  `definitions` branch only and traversal order on the child-names fallback —
+  measured on the real Button/Fill set, the two disagree about `State`, and a
+  grid labelled from the fallback while claiming the designer's order looks
+  entirely right and is wrong. Three placement decisions, each with a
+  consequence: a **FILE** at the root, because both run-dir walkers filter on
+  `isDirectory()` and a `sets/` directory would be counted by `summary` and
+  drawn as a broken card in the Library; **one file per entry**, which makes
+  "a subset re-run must not truncate it" structural rather than a merge rule
+  (`--pair` filters manifest entry ids BEFORE expansion, so a selected entry
+  is always re-expanded whole and an unselected one's file is never opened —
+  verified byte-identical across a re-run); and written **at the expansion**,
+  not on the success path, because the `/images` and `/variables` calls after
+  it can fail and an index returned below them would be lost on exactly the
+  runs where the question is live. The write is a typed error that never sets
+  `anyError`: a set is expensive, and losing 41 measured pairs to a failed
+  4 KB provenance write would be the costliest possible failure.
 - **Finding identity is by content when the element has text — decided
   2026-08-27 (S11).** `Finding.text` (design side wins; spacing `"a → b"`)
   is set by every check. `delta.ts` `identityKey`: position / presence /
