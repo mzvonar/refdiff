@@ -5,6 +5,107 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-04 — concatenated modules share ONE scope, and the symptom points somewhere else
+
+- **Context:** chunk 3 added `gallery-view.ts` to the six modules `app-shell.ts` concatenates into a
+  single `<script type="module">`. It declared `escapeHtml`, which `index-view.ts` already declared.
+- **Lesson:** the shared top-level scope makes a repeated declaration — **exported or not** — a
+  `SyntaxError` that takes the whole app down. Nothing local catches it: typecheck passed, 266 unit
+  tests passed, the build passed, because each module is valid ALONE. It surfaced as
+  `{"kind":"selector-not-found"}` on the new refdiff pair, which reads as a wrong selector or an
+  unbuilt route — an ENVIRONMENT failure — so the first ten minutes went into the selector. **A
+  whole-app failure whose only symptom is one pair's capture error is the shape to remember.** Guard
+  landed: `embedded-modules.test.ts`, a pure `topLevelDeclarations` scanner with synthetic offenders
+  (including the not-exported case an exported-only grep misses) plus a mutation probe, and a check
+  that the guarded list is the set `app-shell.ts` actually embeds.
+- **Candidate home:** `docs/architecture.md` (landed) · the handoff's env gotchas, beside the
+  backtick-in-`APP_BOOT` trap, which is the same class: one file, whole-page consequence.
+
+## 2026-09-04 — a repeated non-`multiple` flag silently keeps the LAST one
+
+- **Context:** `refdiff compare … --pair refdiff-gallery-desktop --pair refdiff-gallery-mobile` ran
+  the mobile pair alone. Twice, in one session, before it was noticed.
+- **Lesson:** Node's `parseArgs` keeps only the last occurrence of a non-`multiple` option, and
+  **a run that measured half of what you asked for looks completely healthy in the log** — the same
+  count of `===` headers you would get from asking for one. The comma form (`--pair a,b`) was the
+  only working way to select several and nothing said so. Fixed at the source (`multiple: true`,
+  flatten and split, both forms work; the single-pair form now refuses two ids rather than picking
+  one). The durable half: **when a flag can be given more than once, verify the COUNT of what ran
+  against what you asked for** — that is the only place a dropped selection shows.
+- **Candidate home:** `SKILL.md`'s run section (landed).
+
+## 2026-09-04 — a run-wide DEFAULT that writes its key overrides every per-pair declaration
+
+- **Context:** `LIBRARY_IGNORE.dataSlots = { patterns: [...] }` did not fire. `applyPolicy` handled
+  it correctly in isolation, and the pair's `explain` rules on the same object DID fire.
+- **Lesson:** the CLI built its run-wide policy with an explicit `dataSlots: false` whenever neither
+  `--data-slots` nor `--data-slot-text` was passed, `mergePolicies` is last-wins on that key, and
+  the run-wide policy merges LAST — so **a default nobody asked for silently disabled the key for
+  every pair in every manifest**. Two shipped pairs had carried `{ patterns: ["Run \d+ vs \d+"] }`
+  since 2026-09-02 and recorded `dataSlots: false` in their reports the whole time. **A declared
+  rule with no effect reports itself nowhere** — the same class as a comp with no pair, and the
+  reason it survived is that a rule which never fires is indistinguishable from a rule with nothing
+  to do. Two habits fall out: **read `findings.json`'s own `policy` block** (it is what the run
+  actually used, not what the manifest says), and **omit a key nobody passed** rather than writing
+  its default — `runWidePolicy` now does, with the measurement in its doc comment.
+- **Candidate home:** `SKILL.md`'s ignore-policy section (landed) · CLAUDE.md's "Suppression is
+  visible or it does not happen", one level up again.
+
+## 2026-09-04 — one timestamp was worth 174 findings
+
+- **Context:** giving the demo root a 41-cell variant set added ONE group row to the Library. The
+  desktop Library pair went to 197 findings at confidence 0.28.
+- **Lesson:** the new row's `createdAt` put it FOURTH in a newest-first list, and refdiff pairs row
+  N with row N, so nine cards shifted past their counterparts and reported colour, typography and
+  text-content differences each. Re-timestamping the set as the oldest run in the root — one
+  constant — took it to **23 findings at 0.89**, and the mobile pair to 21 at 1.00. This is the
+  skill's Order-of-attack step 3 and it is why the step comes BEFORE reading a single finding: the
+  whole 174 were one wrong sort position, and every one of them looked like a real drift finding
+  with real measured values.
+- **Candidate home:** `SKILL.md` already states the rule; the value here is the MAGNITUDE — worth
+  quoting as the anchor next to it.
+
+## 2026-09-04 — a "new view" comp can be a rebuild of an existing surface
+
+- **Context:** the plan treated chunk 3's gallery as a new page and chunk 3 stubbed it as a new
+  route (`#/set/<entryId>`). The first measurement against `RefDiff Gallery.dc.html` returned
+  **777 findings, 586 of them `missing-element`, at confidence 0.00**.
+- **Lesson:** the design-only elements named the cause exactly — `RefDiff`, `Split`/`Off`/`Onion`/
+  `Blink`/`Diff`, `DESIGN`/`IMPLEMENTATION`/`REVIEW`, `RECURRING CAUSES`, `Findings · 74`,
+  `Run 47 vs 46`, `pan_tool`, `Whole sheet`. The comp is **the comparison tool's own chrome with a
+  variant sheet in its panes**, not a standalone sheet page — the same discovery chunk 0 made about
+  the Library comp ("a REBUILD, not a delta"), and nobody had made it about this one. **A comp's
+  frame name tells you its subject, never its surface**: read the design-only text list before
+  choosing where a route lives. The measurement cost one run and would have cost a rewrite.
+- **Candidate home:** `docs/plan-gallery-groups.md` chunk 3 (landed) · the run-story/`§0` habit of
+  reading the design-only list as the first act after a stub.
+
+## 2026-09-04 — a cell key must not be the grid's order
+
+- **Context:** the sheet keyed each cell by its resolved axes joined in GRID order
+  (`columns.property` first).
+- **Lesson:** flipping `gallery.columns` from `tone` to `State` transposes the sheet and must not
+  rename a single cell — but in grid order every key changed, so every per-cell selection, lit state
+  and record would silently detach from its subject on a LAYOUT PREFERENCE. Sorting the property
+  names fixes it. Caught only because the test was written to assert the property ("keys a cell by
+  its options, not by its position") rather than the current behaviour; a test written after the
+  code would have recorded the bug as correct.
+- **Candidate home:** `docs/architecture.md`'s sheet section · the general form is worth keeping:
+  **an identity derived from a presentation choice is not an identity.**
+
+## 2026-09-04 — a sheet cannot be measured against a root with no set
+
+- **Context:** the plan listed "the demo root must learn to emit a variant SET" as a chunk 5
+  prerequisite. It is a chunk 3 prerequisite: the Gallery comp's subject IS a sheet.
+- **Lesson:** the harness said so itself rather than reporting a bad grid —
+  `{"kind":"error-page", "detail": "near-empty page says \"…This sheet cannot be laid out. no
+  ds-button.set.json in this run root…\""}`, exit 2, nothing compared. Rule 6 doing its job. Two
+  things worth keeping: **a route rendering a NAMED error state is a good stub** (it is
+  deterministic, it does not 404, and the harness classifies it honestly instead of comparing it),
+  and **a prerequisite's chunk is decided by what the comp's SUBJECT is**, not by which chunk first
+  wrote it down.
+- **Candidate home:** `SKILL.md` §0 (landed, in the sheet bullet) · the plan's chunk ordering.
+
 
 ## 2026-09-04 — an EMPTY declaration block is what catches a misspelled key
 

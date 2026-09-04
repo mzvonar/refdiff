@@ -377,7 +377,107 @@ in a log.
 name it where the run artifacts are listed. `docs/architecture.md` — the artifact
 table.
 
-## Chunk 3 — the gallery view
+## Chunk 3 — the gallery view — **SEAM + RESOLVER SHIPPED 2026-09-04; the comp is a REBUILD**
+
+> [!IMPORTANT]
+> **MEASURED 2026-09-04, and it changes this chunk's shape: `RefDiff Gallery.dc.html`
+> is the COMPARISON TOOL's own chrome with a variant sheet in its panes — not a
+> standalone sheet page.** The first run of the stubbed route against it returned
+> **777 findings (391 critical, 323 major, 63 minor) at confidence 0.00**, 586 of them
+> `missing-element`, and the design-only text list names the cause outright: `RefDiff`,
+> `light_mode`, `Split` / `Off` / `Onion` / `Blink` / `Diff`, `Findings` / `Comments` /
+> `All` / `Clean`, `Actions / Button · 60 variants`, `Run 47 vs 46` / `+4 introduced` /
+> `−2 resolved` / `fixed in run 44, back again` / `Review`, `DESIGN` / `IMPLEMENTATION` /
+> `REVIEW`, `right_panel_close` / `pan_tool` / `Whole sheet` / `center_focus_strong` /
+> `add_comment`, `Findings · 74`, `Comments · 2`, `RECURRING CAUSES` with per-cause
+> counts (`36 cells`, `15 cells`, `9 cells`, `6 cells`, `5 cells`), `OTHER FINDINGS ·`,
+> and the cells' own button labels (`Continue`, `CONTINUE`, `Delete`, `DELETE`,
+> `arrow_right_alt`) drawn in BOTH panes.
+>
+> This is the same discovery chunk 0 made about the Library comp — "a REBUILD, not a
+> delta" — and nobody had made it about this one. **The open decision is where the sheet
+> LIVES**, and it is the user's:
+>
+> 1. **The sheet is the report view's content.** Render it inside the existing
+>    comparison-tool chrome (`REPORT_BODY` + `CLIENT` in `render.ts`) instead of a
+>    standalone `#view-gallery` section, and the 777 findings are the real spec. Biggest
+>    change, and the one the comp actually draws.
+> 2. **The pair is scoped to the SHEET.** Chunk 3 owns the grid; the chrome is the
+>    comparison tool's, already paired and converged against
+>    `RefDiff Comparison Tool.dc.html`, and measuring it twice invites the two comps to
+>    disagree (skill rule 4). **Blocked on a design ask:** neither Gallery comp carries a
+>    `data-vc-scope`, and their markup is inline styles with no semantic hook, so there
+>    is nothing to scope to. Precedent: `data-vc-step` was added to the rail rows at our
+>    ask on 2026-09-02.
+>
+> Until that is decided the desktop pair sits at 777 findings by construction. **The
+> geometry, the resolver and the data path are done and are correct under either
+> answer** — they are the sheet, not the page it sits on.
+
+**What LANDED** (all verified — 641 tests: 364 core + 277 annotator, typecheck and build clean):
+
+- **The seam, in `packages/annotator/src/view-math.ts`** (pure, import-free):
+  `cellOrigin(colWidths, rowHeights, row, col, pad, gutter)`, `galleryLayout(...)` →
+  `{ cells, columns, rows, colWidths, rowHeights, world }`, plus `projectCellBox` /
+  `unprojectCellBox`. Tracks are the max over the column and the row of BOTH sides;
+  the grid's extent is DECLARED by the axes, so a column whose every cell skipped keeps
+  its track and an out-of-range cell is dropped rather than widening the sheet. **The
+  pair view is asserted to be the one-cell case at the origin** — a 1×1 layout with no
+  gutter and no pad puts its cell at `(0,0)` and `projectCellBox` is the identity.
+- **The meaning, in `packages/annotator/src/gallery-view.ts`** (new, pure):
+  `resolveGallery`, `galleryCells`, `markStale`, `runSpan`, `census`, `cellSeverity`,
+  `isFrameLevel`, and the sheet markup.
+- **FOUR cell kinds, not three.** `measured` / `skipped` / `absent` are the comp's and
+  the plan's. **`pending` is the case none of them covers**: the set index lists the cell
+  under `pairs` — declared, expanded, expected — and the root holds no readable report
+  for it. Calling that `absent` would say "nobody declared this", which is false, and
+  absence of the wrong kind is the defect this workstream exists to remove. Rendered like
+  `skipped`, reads as its own thing. **Flagged rather than folded in silence.**
+- **`PairSummary.frame`** — the per-axis max of the two sides, added to `/api/pairs`
+  where both are known (52/53 pairs carry it; the deliberately-broken one correctly does
+  not). Cell size lived only inside each pair's `findings.json`, and a 41-cell sheet
+  cannot fetch 41 reports before it can lay itself out. Same additive move as `run`.
+- **The route `#/set/<entryId>`**, a third body class, and a measured cell links to its
+  own pair — the sheet is a way INTO the pairs, not a replacement.
+- **The fixture emits a set** (`ds-button`, `fixtures/make-demo-root.ts`): the Gallery
+  comp's own `CELLS` verbatim — 60 cells = **41 measured / 7 skipped / 12 absent**, three
+  stale at r45 against r47, one regression, five recurring causes plus three one-offs.
+  A sheet cannot be measured against a root with no set: the harness said so itself
+  (`{"kind":"error-page"}`, exit 2, nothing compared). Pulled forward from chunk 5's
+  prerequisite 1 — the prerequisite belongs to whichever chunk the comp's SUBJECT is.
+
+**The three defects the measurement found on the way, all fixed with guards:**
+
+- **`--pair` repeated kept only the LAST id** (`parseArgs`, non-`multiple`). Two runs in
+  this session measured one pair while asking for two, and the log looked healthy. Now
+  `multiple: true`; both `--pair a,b` and the repeated flag work; the single-pair form
+  refuses two ids rather than picking one.
+- **A pair's `dataSlots` had never applied, in any manifest.** The CLI wrote an explicit
+  `dataSlots: false` when neither flag was passed, `mergePolicies` is last-wins on that
+  key, and the run-wide policy merges LAST. Both `refdiff-compare-*` pairs had carried
+  `{ patterns: ["Run \d+ vs \d+"] }` since 2026-09-02 and recorded `dataSlots: false`
+  in their reports throughout. `runWidePolicy` now omits a key nobody passed; four tests.
+- **The embedded modules share ONE top-level scope.** `gallery-view.ts` declared
+  `escapeHtml`, which `index-view.ts` already had → a `SyntaxError` that took the whole
+  app down and presented as `{"kind":"selector-not-found"}` on the new pair. Renamed to
+  `gEscape`; `embedded-modules.test.ts` guards the class with synthetic offenders (the
+  not-exported case included) and a mutation probe.
+
+**The two Library pairs are RE-BASELINED**, as this plan said they would be. The root now
+holds 53 pairs where the comp's demo holds 12, and the Library draws a thirteenth row
+`RefDiff Library.dc.html` has no counterpart for. Both **PASS** with two declared causes —
+`"Library comp predates groups"` (30 findings across the two) and `"root holds 53 pairs,
+the comp's demo 12"` (3) — plus `dataSlots` for the counts. Desktop **18 findings, 1
+unexplained, confidence 0.88**; mobile **16 findings, 0 unexplained, confidence 1.00**.
+Chunk 5 removes those rules when it re-pairs the Library.
+
+**Ordering lesson worth keeping:** the set's cells are timestamped as the OLDEST runs in
+the root, deliberately. At 35 min old the group row sorted FOURTH in the newest-first list
+and shifted nine cards past their counterparts — **197 findings at confidence 0.28**.
+Sorted last: 23 at 0.89. One constant, 174 findings, every one of them looking like real
+drift with real measured values.
+
+### The original spec
 
 Blocked on chunk 0 (comp) and chunk 2 (data).
 

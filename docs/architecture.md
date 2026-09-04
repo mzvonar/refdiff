@@ -1487,3 +1487,60 @@ Once the core works end-to-end on one real pair per source type:
 - `population-registry/frontend/ds/tooling/visual` + annotator → core
   Figma adapter + `@refdiff/annotator` (fixes: scale mismatch,
   three competing Figma mappings, fraction-based annotation fragility).
+
+## The variant sheet (chunk 3, 2026-09-04)
+
+A set's cells drawn as one grid, at `#/set/<entryId>` in the served annotator.
+It adds no second geometry and no second data path — that is the whole design.
+
+**Geometry lives in `view-math.ts`, with the pair view as the degenerate case.**
+`cellOrigin(colWidths, rowHeights, row, col)` is the entire difference between a
+pair view and a sheet: a finding at `implBox` in the pair view is at
+`implBox + cellOrigin(...)` on the sheet, and a note authored on the sheet
+subtracts the same offset to be stored in the pair's own coordinates. A 1×1
+layout with no gutter and no padding puts its cell at the world origin, which is
+asserted rather than assumed — the moment a sheet needs its own projection,
+findings and notes stop being expressible in pair coordinates and every
+`annotations.md` written so far becomes unreadable. `galleryLayout` solves the
+tracks (column width and row height are the max over that column and that row,
+of both sides), and the grid's EXTENT is declared by the axes rather than
+inferred from the cells present: a column whose every cell skipped still has its
+track, because the absence is the point.
+
+**Meaning lives in `gallery-view.ts`**, the same split the Library has
+(`index-view.ts` decides what a row says, `view-math.ts` where it is).
+`resolveGallery` turns the entry's `gallery` declaration plus the set's real axes
+into ordered, labelled column and row axes; `galleryCells` is TOTAL over the
+cross-product, so every cell comes back as one of four kinds.
+
+**Four cell kinds, not three.** `measured`, `skipped` and `absent` are what the
+comp draws and what the plan specified. `pending` is the case none of them
+covers: the set index lists the cell under `pairs`, so it was declared, expanded
+and expected — and the run root holds no readable report for it. Calling that
+`absent` would say "nobody declared this", which is false, and absence of the
+wrong kind is the defect this whole workstream exists to remove.
+
+**Two data sources, joined in the page.** `<out-root>/<entryId>.set.json` says
+which cells were ever supposed to exist; `/api/pairs` says what a run measured.
+Cell SIZE comes from `PairSummary.frame` (the per-axis max of the two sides,
+taken server-side where both are known) — without it a 41-cell sheet would have
+to fetch 41 reports before it could lay itself out.
+
+**Staleness is per set.** `run` is the per-PAIR ordinal, so a sheet legitimately
+mixes vintages and the newest run on a sheet is the max over its own cells. A
+global newest would mark all eleven `ds-button-icon` cells stale against a run
+they were never behind.
+
+**Frame-level findings are a cell badge, never a box**, and the test is geometric
+rather than by type: any box covering ≥90% of its cell says nothing about WHERE.
+`pixel-region/frame` fires on 194/194 pairs of the DS root and its box IS the
+frame, so as boxes they would paint the sheet solid and make highlight, dim and
+strobe useless at sheet scale.
+
+**The embedded modules share ONE top-level scope.** `app-shell.ts` concatenates
+seven modules into a single `<script type="module">`, so a name declared in two
+of them — exported or not — is a `SyntaxError` that takes the whole app down.
+`gallery-view.ts` therefore has `gEscape` where `index-view.ts` has `escapeHtml`,
+and `embedded-modules.test.ts` guards the class. It presents as a refdiff
+CAPTURE error on whichever pair happens to be running, which reads like a wrong
+selector and sends you looking in the wrong place.

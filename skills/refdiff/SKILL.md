@@ -283,7 +283,11 @@ refdiff summary $OUT_ROOT      # sets / many pairs: one table + causes across pa
 ```
 
 `--out` is a ROOT, always: the run dir is `$OUT_ROOT/<pair>/`, for one pair and
-for forty. In **manifest mode the per-pair capture flags are rejected** —
+for forty. **`--pair` selects several either way — `--pair a,b` or the flag
+repeated — and until 2026-09-04 the repeated form silently kept only the LAST
+one**, so a run measured one pair while its log looked entirely healthy. Read the
+`===` header count against what you asked for; that is the only place a dropped
+selection shows. In **manifest mode the per-pair capture flags are rejected** —
 `--viewport`, `--selector`, `--wait-for`, `--full-page`, `--story`, `--url`,
 `--design-file/-frame`, `--figma` all belong on the manifest entry, and passing
 one is a usage error naming the field to set. Policy flags (`--ignore-text`,
@@ -417,6 +421,20 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   top-level card. Expanding a group lists that entry's cards unchanged; a
   search or a filter chip expands every group it left a match in, and the head
   row keeps counting comparisons, never groups.
+- **A set also has a SHEET: `#/set/<entryId>` draws its whole cross-product as a
+  grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
+  one surface that can show what was never measured — every cell is `measured`
+  (verdict + severity badge), `skipped` (greyed, its reason on hover), `absent`
+  (in the axes but declared by neither side) or `pending` (expanded as a pair,
+  but the root holds no readable report for it — declared and NOT measured, which
+  is a different fact from absent). A measured cell links to its own pair, because
+  the sheet is a way INTO the pairs rather than a replacement: a finding's box
+  means something in the pair view. Staleness is read PER SET (`run` is the
+  per-pair ordinal — there is no global newest), and the entry's `gallery`
+  declaration decides the arrangement. A route with no `<entryId>.set.json` says
+  so and names the command that writes one, rather than drawing an empty grid;
+  refdiff reports such a page as `{"kind":"error-page"}`, so a sheet cannot be
+  measured against a root with no set.
 
 ### 2. Classify every finding — this is the whole skill
 
@@ -636,6 +654,19 @@ rail row order" GREW 51 → 58 — findings joined a cause nobody re-read`, or `
 be going away`), and `refdiff summary` names any declared cause that matched NOTHING anywhere in
 the set, which is what a fixed cause looks like. Read those lines; they are the price of the quiet.
 
+**A pair's `dataSlots` only started applying on 2026-09-04 — check the report,
+not the manifest.** The CLI built its run-wide policy with an explicit
+`dataSlots: false` whenever neither `--data-slots` nor `--data-slot-text` was
+passed, and the run-wide policy merges LAST over each pair's own, so every
+`ignore.dataSlots` in every manifest was overridden by a default nobody asked
+for. Measured: two shipped pairs carried `{ patterns: ["Run \\d+ vs \\d+"] }` for
+two days and recorded `dataSlots: false` in their reports the whole time. The
+generalisation is the thing to keep: **a declared rule with no effect reports
+itself nowhere** — `findings.json`'s own `policy` block is what the run actually
+used, so read it there when a rule "does not fire". Same shape as a comp with no
+pair, and it is why `runWidePolicy` omits a key nobody passed instead of writing
+its default.
+
 **`dataSlots: { patterns }` masks, it does not match.** Each shape is removed
 from BOTH strings and the remainder compared: equal remainder = data churn
 (suppressed), different remainder = copy drift (reported). So a mixed slot
@@ -728,6 +759,23 @@ export const manifest = [
   rows=variant` — which is where a mismatch can be seen at all. `order` earns
   its keep on the `child-names` branch specifically: there the axes' own order
   is traversal order, not the designer's (§1b).
+- **An unresolvable `gallery` name is graded, and the grade is the rule.** The
+  manifest parser holds no Figma node, so it can only check the SHAPE; the
+  annotator's sheet holds both the declaration and the axes and is the first
+  place a NAME can be checked at all. `columns` / `rows` naming a property the
+  set does not define is FATAL — the sheet refuses and names the properties that
+  do exist, because there is no correct grid to draw and a plausible one the
+  declaration did not shape is worse than none. An `order` option no cell
+  carries, or a `labels` entry for something absent, is a WARNING shown on the
+  page and otherwise ignored: membership belongs to the SET, not to a
+  declaration ordering it. Partial pinning is not a warning — it is the
+  documented use. And with `axes.source: "child-names"` the sheet warns that its
+  option order is TRAVERSAL order rather than the designer's, which `order`
+  silences per property by pinning what the fallback could only guess.
+- **With no `gallery` at all the sheet takes the axes' own order** — the first
+  property across, the rest nested down the rows. Most sets declare nothing, so
+  this is the common path; it is arbitrary but stable, and it is what `gallery`
+  exists to override.
 - **`section` is validated and reported, not yet persisted.** `compare` prints
   one line for a manifest that declares any (`hierarchy: 3 sections declared,
   1/2 entries placed`) and nothing for one that does not. The run root does not
