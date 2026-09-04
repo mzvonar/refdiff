@@ -2,7 +2,9 @@
 
 Started 2026-09-04, from a design discussion with Mato while running the DS
 (`population-registry`) at 194 pairs. **Chunks 1 and 2 are SHIPPED (2026-09-04).
-Chunk 0 (comps) is the remaining gate and it blocks chunk 3 only.**
+Chunk 0's comps are DRAWN and still in flight, which unblocked chunk 3 and added
+CHUNK 5 — the Library rebuilt to the comp, because the comp turned out to be a
+different Library rather than a grouped one.**
 
 Sibling plans: `docs/plan-annotator-redesign.md` (the redesign this builds on),
 `docs/plan-next.md` (history). Working agreement: `CLAUDE.md` — note the HARD
@@ -163,15 +165,37 @@ no matching cell are hidden; matching groups open to show only their matches."
 **Two chips were renamed**: `Diverging` → `Regressed`, `Low confidence` →
 `Stale cells`.
 
-**The comps assume TWO things the tool does not have yet:**
+**The `r45 → r47` span is a per-group RANGE, and it is already expressible.**
+(Corrected 2026-09-04 — an earlier revision of this section called it a global
+run number and said core would need a counter. Wrong, and wrong in the
+direction that would have cost a chunk.) `oldest` in the comp is
+`Math.min` over that group's own cells; `ComparisonReport.run` is the per-PAIR
+ordinal and every report already carries it. Measured on the DS root:
 
-1. **A global run number.** They show `run 47`, `Run 47 vs 46` and `r45 → r47`
-   spans across a whole set. `ComparisonReport.run` is documented as the ordinal
-   *of that pair*, derived from that pair's own previous report and reset when its
-   dir is deleted — there is no cross-set counter, so `r45 → r47` over a 45-cell
-   set is not expressible today. Either core grows a run counter (a chunk-2-sized
-   change) or the vintage span stays time-based, which is what chunk 1 ships.
-2. **Chunk 4's hierarchy.** The `Foundations` row is a pure grouping node —
+| entry | cells | run ordinals |
+| --- | --- | --- |
+| `ds-button-fill` | 41 | **min r9, max r10** — genuinely mixed |
+| `ds-button-ghost` | 24 | **min r6, max r7** — genuinely mixed |
+| `ds-checkbox` | 45 | all r3 |
+| `ds-alert` | 23 | all r4 |
+| `ds-button-icon` | 11 | all r2 |
+
+Two things follow, and the second is the trap. **What is missing is only the
+plumbing:** `/api/pairs` does not surface `run` at all, so the Library cannot
+see it — one field in `PairSummary` and one line in `packages/annotator/src/cli.ts`,
+which already holds `report.run` when it builds the payload. **And the comp's
+module-level `NEWEST = 47` must NOT be read as data:** run ordinals count per
+pair, so they differ wildly between groups (r2 … r10 above), and a global
+newest would mark all eleven `ds-button-icon` cells stale against a 10 they were
+never behind. Both ends of the span, and the `stale` test, are per group:
+`min`/`max` over the cells, `stale = cell.run < max(group)`. The one genuinely
+global claim left in the comps is the Library topbar's static
+`Design system · run 47`, for which the app has no root-level run identity —
+chrome, and a design ask rather than a data gap.
+
+**One thing the comps assume that the tool does not have yet:**
+
+1. **Chunk 4's hierarchy.** The `Foundations` row is a pure grouping node —
    children, "Hierarchy only — nothing measured", "No sheet / nothing to
    compare" — and every group carries a section `path`. Chunk 4 arrived inside
    the chunk-0 comp.
@@ -221,7 +245,15 @@ is what separates it from a stale-dist `+0/−0`, and a byte-identity unit test
 (`libraryList(groupEntries(loneItems), …) === pairCards(loneItems, …)`,
 falsified by breaking `isFoldable`) is its mechanical twin.
 
-**Decisions taken while building**, beyond the spec below:
+**Decisions taken while building**, beyond the spec below. **The chunk-0 comp
+now overrules the appearance half of this table** (it arrived after chunk 1
+shipped — see chunk 0 and chunk 5): the card grid becomes a six-column table,
+cell names become variant props, the vintage span gains run ordinals, and a
+10-row cap appears. **The comp CONFIRMS the semantics half**, in its own words —
+"Filters apply to cells. Groups with no matching cell are hidden; matching
+groups open to show only their matches" — and it keeps `N of M` counting,
+roll-ups over shown cells, and `regressed` as a fix come undone. The pure layer
+survives the rebuild intact; only the two renderers go.
 
 | question the spec left open | decision |
 | --- | --- |
@@ -403,6 +435,84 @@ bindings go stale the moment this lands — say so in the handoff even though th
 repo cannot edit them.
 
 ---
+
+## Chunk 5 — the Library rebuilt to the comp (NEW, 2026-09-04)
+
+Chunk 1 grouped the existing card grid. The chunk-0 comp
+(`RefDiff Library Groups.dc.html`) draws something else: a **six-column table**.
+This is that work, specified from the comp rather than from taste — and the
+first `refdiff-library-groups-desktop` run IS the specification, so the loop
+drives it exactly as §0 of the skill prescribes.
+
+**What survives from chunk 1: the whole pure layer.** `entryIdOf`,
+`groupEntries`, `cellsShown`, `isFoldable`, `isFilterActive`, `openGroups`,
+`groupWhen` and the roll-up keep their contracts — the comp confirms every
+semantic they encode. What goes: `groupHeader` and `libraryList`, the two
+renderers, plus the `.grp` / `.gcells` CSS.
+
+**The desktop table**, values read off the comp:
+`grid-template-columns: minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px`,
+`gap:12`, `min-width:1064`, an uppercase 10.5px/0.07em header row
+(`Component set · Source · Cells · Findings roll-up · Measured · ⌄`), rows at
+`min-height:54` inside a `bg1` card with a 12px radius, the whole thing in an
+`overflow-x:auto` wrapper. A group row carries: the chevron, a **44×34 mini
+variant-sheet thumbnail** (3-column grid of 6 tiles), the set name over its
+**section path** (`Actions / Button`), the source chip, a `N cells` / `N of M`
+count, the severity roll-up as MONO NUMERALS with a dot (plus a green `Clean`
+when there are none), a red `N regressed` pill with `undo`, the comment count,
+the Measured column (below), and an **`Open sheet`** button to the gallery.
+
+**Expanded rows** are the cells: a verdict dot (filled by severity, hollow
+green ring when clean), a 34×24 per-cell thumbnail, the cell's **variant props**
+as its name (`Primary · md · Default` — chunk 2's `props` is what makes this
+possible; today the card shows the whole pair id), its badges, a run pill, and
+`Compare ›`. Capped at **10 rows** with a `Show N more`.
+
+**The Measured column** is the run range: `r<min> → r<max>` over the group's
+cells with a `history` icon on the older end, the relative-time span underneath,
+and `N stale`; a group whose cells share one run shows `r<n>` plus its `when`.
+Per-cell, a run behind the group's max gets the pill treatment. **Nothing here
+needs a global counter** — see the correction in chunk 0.
+
+**Two chips are renamed**: `Diverging` → `Regressed`, `Low confidence` →
+`Stale cells`. Both change what the filter MEANS, so `matchesFilter` gains a
+`stale` arm and its `diverging` arm goes. A filter-semantics explainer line and
+a `Clear` button appear above the list.
+
+**`countMessage` changes shape**: `N cells in M groups`, or
+`N of M cells · X of Y groups` when filtered. It counts cells, still not groups.
+
+**Prerequisites, in order:**
+
+1. **Fetch the two Library Groups comps to disk** (deliberately deferred — see
+   the handoff) and register their pairs. The mobile one is its own 390×844
+   phone frame in a showcase canvas, so its pair needs `scope: ".cc-theme-dark"`
+   — NOT the responsive-at-a-narrow-viewport shape today's Library pairs use.
+2. **Re-run `icon-subset.mjs`.** The Library comps need `chevron_right`,
+   `account_tree`, `folder`, `filter_alt` and `unfold_more`, none of which are
+   in the subset — the 2026-09-04 run picked up only the Gallery's four, because
+   these two files were not on disk. A glyph the subset lacks renders as its
+   NAME and poisons every measurement of the pair.
+3. **Surface `run` in `/api/pairs`** (one `PairSummary` field, one line in
+   `packages/annotator/src/cli.ts`). Without it the Measured column cannot be
+   built at all.
+4. **Teach `fixtures/make-demo-root.ts` to emit a variant SET** — run dirs
+   shaped `<entryId>--<slug>`. The demo root's twelve pair ids carry no `--`, so
+   no group renders in it and the comp cannot be measured against the app at
+   all. **This moves the two OLD Library pairs' numbers too** (shared fixture),
+   so re-baseline them in the same change and say so.
+5. **Chunk 4** for the section paths and the hierarchy-only nodes, or ship the
+   table without the `path` line first and add it with chunk 4.
+6. **Chunk 3** for `Open sheet`'s destination, or render it disabled.
+
+**Verify:** the two new pairs measured against their comps, converging by delta;
+the existing `refdiff-library-desktop` / `-mobile` pairs re-baselined against
+the fixture change. **Docs:** `SKILL.md`'s §1b sentence about the Library
+describes the card grid's grouping — it is rewritten here, not appended to.
+
+**And decide before starting** whether the old `RefDiff Library.dc.html` and its
+two pairs retire at the end of this chunk. They are the only comp matching the
+app until this lands, which is exactly why they were kept on 2026-09-04.
 
 ## Open questions for the owner
 

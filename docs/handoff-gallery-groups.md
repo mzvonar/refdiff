@@ -93,11 +93,28 @@ persisted tool result rather than retyping (see the lessons inbox).
 
 **The headline: the Library Groups comp is a REBUILD of the Library, not a delta against
 chunk 1.** Six-column table, not the card grid. Chunk 1's UI cannot converge on it by
-adjustment. That is a new chunk, and the first `refdiff-library-groups-desktop` run IS its
-specification. Details, plus the two things the comps assume that the tool does not have
-(a global run number; chunk 4's hierarchy nodes), are in the plan's chunk 0 section.
+adjustment, so it is now **CHUNK 5** in the plan, specified from the comp — and the first
+`refdiff-library-groups-desktop` run IS its specification. Chunk 1's pure layer survives
+intact; only its two renderers go.
 
-### 2. CHUNK 4 — manifest hierarchy — the one that needs NEITHER comp nor data
+**One correction to carry forward, because the wrong version costs a chunk:** the comp's
+`r45 → r47` Measured column is a **per-group RANGE** over the cells' own `run` ordinals,
+not a global run counter. Every report already carries `run`, and two DS groups are mixed
+right now (`ds-button-fill` r9→r10, `ds-button-ghost` r6→r7). The only gap is plumbing —
+`/api/pairs` never surfaces `run`. What must NOT be inherited from the comp is its
+module-level `NEWEST`: ordinals count per pair and differ wildly between groups (r2 … r10),
+so a global newest would mark all eleven `ds-button-icon` cells stale against a 10 they were
+never behind. Chunk 0's section has the measurements; chunk 5 has the design.
+
+### 2. CHUNK 5 — the Library rebuilt to the comp
+
+Plan § "Chunk 5". Fully specified from the comp, with its six prerequisites in order — the
+two Library Groups comps to disk, a re-run of `icon-subset.mjs` (they need five glyphs the
+subset lacks, `chevron_right` among them), `run` surfaced in `/api/pairs`, and a demo root
+that emits a variant SET so the comp can be measured at all. That last one moves the two
+OLD Library pairs' numbers, so it re-baselines them in the same change.
+
+### 3. CHUNK 4 — manifest hierarchy — the one that needs NEITHER comp nor data
 
 Plan § "Chunk 4". Independent of chunk 0, so it can go while the comps are drawn. Heaviest
 docs obligation of the four, and it **invalidates `population-registry`'s

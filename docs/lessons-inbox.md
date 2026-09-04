@@ -6,6 +6,27 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-04 — a constant in a comp's DEMO DATA is fixture scaffolding, not a model claim
+
+- **Context:** the new Library comp's Measured column reads `r45 → r47`, built from a
+  module-level `const NEWEST = 47` and a per-group `Math.min` over its cells. I reported it as
+  "the comps assume a global run number the tool does not have" and costed core a run counter.
+  Mato corrected it in one line: it is a RANGE — the oldest and current run across the group.
+- **Lesson:** he was right, and the measurement settles it. `ComparisonReport.run` is the per-pair
+  ordinal, every report already carries it, and `min`/`max` per group is exactly what the comp
+  draws — two DS groups are mixed right now (`ds-button-fill` r9→r10, `ds-button-ghost` r6→r7).
+  The real gap was one missing field in `/api/pairs`, not a counter in core. **The general shape:
+  a comp's demo data has to come from SOMEWHERE, and a designer reaches for a module constant
+  where the real system would compute per scope. Before calling a comp's value a modelling gap,
+  ask what the live data can already express at each scope the comp groups by** — here the answer
+  was "all of it". And the inverse trap is the expensive one: had I implemented the constant
+  literally, a global newest would have marked all eleven `ds-button-icon` cells stale against a
+  run they were never behind, which is a wrong measurement wearing a correct-looking pill.
+- **Candidate home:** `SKILL.md` §0 / the "reading a comp" guidance — a comp's constants are
+  fixture data at the SCOPE the fixture happened to need, and the implementation resolves them
+  per real scope · pairs with the existing rule that the comp is the reference for APPEARANCE
+  while the tool's own model decides what a number means.
+
 ## 2026-09-04 — "it deleted and badly recreated X" can be a RENAME; byte-diff before restoring
 
 - **Context:** asked to restore `RefDiff Mobile Toolbar.dc.html` from our local copy after Claude
