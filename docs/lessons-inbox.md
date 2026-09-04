@@ -6,6 +6,56 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-04 — an EMPTY declaration block is what catches a misspelled key
+
+- **Context:** chunk 4 added `gallery: { columns?, rows?, order?, labels? }` to a manifest entry.
+  The obvious validation is per field: check each key's type, ignore what you do not know. Written
+  that way, `gallery: { colums: "State" }` validates cleanly as `{}` — and an empty config is
+  indistinguishable from "this entry declares no layout", so the sheet lays out on whatever the
+  consumer defaults to and looks entirely right.
+- **Lesson:** for an all-optional block, **refusing the EMPTY result is the check that catches every
+  misspelling at once** — it is one condition, it needs no list of near-misses, and it fires on the
+  typo you did not imagine. Rejecting unknown KEYS is the sharper message (it names `colums`), but
+  it only covers the keys you enumerated; the empty check covers the whole class, including a block
+  whose every key is wrong. Ship both: the pair turns a silent default into a message naming the
+  field. Falsified by removing each one and watching the test go red.
+- **Candidate home:** CLAUDE.md's "Suppression is visible or it does not happen" neighbourhood — it
+  is the same rule one level up (a DECLARATION that quietly does nothing is the same failure as a
+  finding that quietly disappears) · or `SKILL.md`'s manifest section, which now states it.
+
+## 2026-09-04 — trim the segments, or two identical-looking rows are two different nodes
+
+- **Context:** section paths are flat `"/"`-separated strings (`"Core components/Buttons"`). The
+  comps draw a path as `Actions / Button`, with spaces, so a hand-written manifest naturally copies
+  that. Without normalizing, `"Actions / Button"` and `"Actions/Button"` are two distinct group keys
+  that RENDER IDENTICALLY.
+- **Lesson:** whenever a user-typed string becomes a GROUP KEY, ask what two keys that render the
+  same look like on screen — the failure has no error, no warning and no visible cause, and the
+  reader's only symptom is a duplicate row they cannot explain. Trim/normalize at the parser, and
+  refuse the shapes that produce a NAMELESS node (`""`, `"/A"`, `"A/"`, `"A//B"`) rather than
+  repairing them: each one is a typo whose only symptom is a blank row. Same family as the
+  `foreignKeyEdges` collision — a rendered-string key is lossy by construction.
+- **Candidate home:** `SKILL.md`'s "Declaring the library's shape" (states it) · the general rule
+  belongs with the set-valued-assertion lesson if one is ever promoted.
+
+## 2026-09-04 — "validated" is not "wired": a parsed field with no consumer is the same defect as a dropped one
+
+- **Context:** chunk 4's three declarations (`section`, `sections`, `gallery`) change no
+  measurement. It would have been easy to land the parser, pass the tests, and call it done — with
+  `sections` read out of the module and thrown away, which from the outside is exactly the
+  `contentsOf` bug the manifest test file already warns about ("a policy field the PARSER does not
+  read is dropped in silence").
+- **Lesson:** for every new declaration, name the CONSUMER before writing the parser, and if there
+  is none yet, ship the smallest thing that makes the field observable. Here: `gallery` rides into
+  `<entryId>.set.json` (a real consumer, chunk 3, gets it verbatim), and `section` — which needs a
+  root-level artifact that does not exist — gets a printed line (`hierarchy: 3 sections declared,
+  1/2 entries placed`) plus an explicit "validated and reported, NOT persisted" sentence in
+  `SKILL.md` and the plan. A declaration with no output is indistinguishable from a key nobody
+  reads, and the next session cannot tell which it is holding.
+- **Candidate home:** CLAUDE.md HARD RULE table — a row like "a new manifest/config field | name
+  its consumer, or make it observable and say what does not read it yet".
+
+
 ## 2026-09-04 — a constant in a comp's DEMO DATA is fixture scaffolding, not a model claim
 
 - **Context:** the new Library comp's Measured column reads `r45 → r47`, built from a

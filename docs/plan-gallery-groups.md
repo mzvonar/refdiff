@@ -1,10 +1,10 @@
 # Plan — Library groups + the gallery (variant-sheet) view
 
 Started 2026-09-04, from a design discussion with Mato while running the DS
-(`population-registry`) at 194 pairs. **Chunks 1 and 2 are SHIPPED (2026-09-04).
-Chunk 0's comps are DRAWN and still in flight, which unblocked chunk 3 and added
-CHUNK 5 — the Library rebuilt to the comp, because the comp turned out to be a
-different Library rather than a grouped one.**
+(`population-registry`) at 194 pairs. **Chunks 1, 2 and 4 are SHIPPED
+(2026-09-04). Chunk 0's comps are DRAWN and still in flight, which unblocked
+chunk 3 and added CHUNK 5 — the Library rebuilt to the comp, because the comp
+turned out to be a different Library rather than a grouped one.**
 
 Sibling plans: `docs/plan-annotator-redesign.md` (the redesign this builds on),
 `docs/plan-next.md` (history). Working agreement: `CLAUDE.md` — note the HARD
@@ -121,8 +121,9 @@ composites would go stale per-cell with no signal.
 Payloads that already exist (do not recompute):
 
 - `/api/pairs` → `{ root, pairs: [{ dir, pair, pass, critical, major, minor,
-  findings, suppressed, confidence, createdAt, designSource, implSource,
-  implRef, implPng, delta, openNotes, notes }] }`
+  findings, suppressed, confidence, createdAt, `run?`, designSource, implSource,
+  implRef, implPng, delta, openNotes, notes }] }` — `run` landed 2026-09-04
+  (the quick win below); it is OPTIONAL, and it is a PER-PAIR ordinal.
 - `out/refdiff/summary.json` → `runs[]` (194, per-pair counts + verdict +
   confidence + alignment + delta + `createdAt`), `groups[]` (**64 causes, each
   with its `pairs[]` list**), `totals`.
@@ -180,10 +181,11 @@ ordinal and every report already carries it. Measured on the DS root:
 | `ds-alert` | 23 | all r4 |
 | `ds-button-icon` | 11 | all r2 |
 
-Two things follow, and the second is the trap. **What is missing is only the
-plumbing:** `/api/pairs` does not surface `run` at all, so the Library cannot
-see it — one field in `PairSummary` and one line in `packages/annotator/src/cli.ts`,
-which already holds `report.run` when it builds the payload. **And the comp's
+Two things follow, and the second is the trap. ~~**What is missing is only the
+plumbing:** `/api/pairs` does not surface `run` at all~~ — **DONE 2026-09-04**:
+`PairSummary.run?: number` plus one line in `packages/annotator/src/cli.ts`.
+Verified against the real DS root: 194/194 pairs carry it, and the per-group
+spans reproduce the table above exactly. **And the comp's
 module-level `NEWEST = 47` must NOT be read as data:** run ordinals count per
 pair, so they differ wildly between groups (r2 … r10 above), and a global
 newest would mark all eleven `ds-button-icon` cells stale against a 10 they were
@@ -414,25 +416,65 @@ plus unit tests on `GalleryLayout` and the finding-projection function.
 **Docs:** `SKILL.md` — a whole new review surface; the annotator section and the
 "read the human's notes" flow both change. `docs/architecture.md`.
 
-## Chunk 4 — manifest hierarchy + label/order overrides
+## Chunk 4 — manifest hierarchy + label/order overrides — **SHIPPED 2026-09-04**
 
-- `manifest.ts`: optional `section?: string` on an entry (`"Core components/Buttons"`),
-  validated. Optional second named export `sections` for order/label metadata only.
-  Deeper hierarchy than chunk 1's derived level.
-- Optional per-entry `gallery?: { columns?: string, rows?: string,
-  order?: Record<prop, string[]>, labels?: Record<prop, Record<option,string>> }`
-  — which axis is columns, pinned option order (the fallback-order caveat), and
-  human labels (`"Focus on text"` → `"Focus"`).
-- A `section` path with no entries is a valid pure grouping node (Mato's ask:
-  mirror Figma's Core components / Core patterns).
+**What landed**, all additive and measurement-neutral — a run with the new
+declarations and a run without them produce identical reports:
 
-**Docs — this is the chunk with the heaviest obligation.** Per `CLAUDE.md`, a
-manifest shape change updates the manifest example in `SKILL.md` AND
-`docs/architecture.md`. And: **`population-registry`'s
-`frontend/ds/tooling/visual/refdiff.bindings.md` asserts the manifest shape and
-its entry inventory** ("11 entries, 152 pairs", the selector templates). Those
-bindings go stale the moment this lands — say so in the handoff even though this
-repo cannot edit them.
+- `packages/core/src/manifest.ts`: `readSectionPath`, `sectionSegments`,
+  `readSections`, `readGallery`; `PairSpec` gains `section?` + `gallery?`,
+  `ManifestParse` gains `sections: SectionMeta[]`, `ManifestError` gains
+  `invalid-sections`. `parseManifest(raw, sectionsRaw?)` — a second argument
+  rather than a second function, because a path an entry names and a label
+  `sections` gives it are one declaration seen from two ends.
+- `GalleryConfig` lives in `adapters/figma-variants.ts`, beside the axes every
+  one of its fields names — the same split as `VariantConfig` / `readVariants`.
+- `sections` rows take **either** shape, like `textPatterns`: a bare path
+  string, or `{ path, label? }`. **Array position IS the order**, so there is no
+  `order` field to disagree with it.
+- **`gallery` reaches a consumer**: `SetIndex.gallery` carries it VERBATIM into
+  `<out-root>/<entryId>.set.json`, beside the `axes` it refers to, and the run
+  prints it back (`axes from definitions, gallery columns=State rows=variant`).
+  Unresolved on purpose — see the decision below.
+- `packages/core/src/cli.ts`: `loadManifest` passes `mod["sections"]`, and
+  prints `hierarchy: N sections declared, M/K entries placed` for a manifest
+  that declares any — nothing at all for one that does not, so no existing
+  manifest's output moves. The line exists because a declaration with no output
+  is indistinguishable from a key the parser never read.
+- 11 new unit tests in `manifest.test.ts` + 2 in `set-index.test.ts`
+  (598 total: 360 core + 238 annotator).
+
+**Five decisions, each with its consequence:**
+
+| decision | why |
+| --- | --- |
+| **segments TRIMMED, empty segment refused** | the comps draw `Actions / Button`, so a hand-written manifest carries the spaces — untrimmed, `"Actions / Button"` and `"Actions/Button"` are two groups rendering under ONE name, a split with no visible cause. Every way of making an empty segment (`""`, `"/A"`, `"A/"`, `"A//B"`) is a typo whose only symptom is a blank row |
+| **malformed FAILS the manifest** | the opposite call from an `ignore` rule. A dropped `ignore` rule makes the run report everything it would have excused (loud); a dropped hierarchy field loses a label, a position or an axis in silence and the library still draws, looking finished |
+| **unknown key AND empty `gallery: {}` refused** | that pair of checks is the only thing between `gallery: { colums: "State" }` and a sheet laid out on whatever the consumer defaults to. Falsified: removing them makes the typo validate as "declares nothing" |
+| **`gallery` needs `design.variants`** | every field of it names a variant PROPERTY, so on a one-cell pair there is nothing to describe — a block moved to the wrong entry, or left when `variants` went |
+| **`gallery` carried, never resolved** | the parser has no Figma node, so `columns: "Nonsense"` is shape-valid. It travels unaltered to the consumer holding `axes`, which is the only place the miss can be seen. A test asserts exactly that non-repair |
+
+**The one thing chunk 4 did NOT do: persist `section`.** It is validated and
+reported, not written to the out root. A root-level tree artifact has to cover
+unplaced entries and pure grouping nodes as well as set entries, and it carries
+the subset-re-run merge hazard chunk 2 solved structurally (per-entry files) —
+so its shape is decided WITH the surface that consumes it, not ahead of it.
+That is chunk 5 prerequisite 5, and it is the only reason the Library cannot
+draw a `path` line today.
+
+**Also open for chunk 3, stated here so it is not rediscovered:** resolving
+`gallery.columns` / `.rows` / `.order` against the real `axes.properties`, and
+deciding what a name that misses means (fall back, or fail the sheet). The
+declaration is in the set index; the resolution has no home yet.
+
+**Docs — this was the chunk with the heaviest obligation, and it is paid.** Per
+`CLAUDE.md`: the manifest example in `SKILL.md` (plus a new
+"Declaring the library's shape" section and a §1b pointer) and
+`docs/architecture.md` (the packaging bullet, the `buildSetIndex` signature and
+a decision-log entry). **Still outstanding and NOT fixable from this repo:
+`population-registry`'s `frontend/ds/tooling/visual/refdiff.bindings.md`
+asserts the manifest shape and its entry inventory** ("11 entries, 152 pairs",
+the selector templates) — carried into the handoff.
 
 ---
 
@@ -493,16 +535,24 @@ a `Clear` button appear above the list.
    in the subset — the 2026-09-04 run picked up only the Gallery's four, because
    these two files were not on disk. A glyph the subset lacks renders as its
    NAME and poisons every measurement of the pair.
-3. **Surface `run` in `/api/pairs`** (one `PairSummary` field, one line in
-   `packages/annotator/src/cli.ts`). Without it the Measured column cannot be
-   built at all.
+3. ~~**Surface `run` in `/api/pairs`**~~ — **DONE 2026-09-04.**
+   `PairSummary.run?: number`, optional because `ComparisonReport.run` is.
+   Measured on the DS root: 194/194 carry it; `ds-button-fill` r9→r10,
+   `ds-button-ghost` r6→r7, `ds-button-icon` eleven cells all r2. Read the
+   span PER GROUP — a global newest would call those eleven stale.
 4. **Teach `fixtures/make-demo-root.ts` to emit a variant SET** — run dirs
    shaped `<entryId>--<slug>`. The demo root's twelve pair ids carry no `--`, so
    no group renders in it and the comp cannot be measured against the app at
    all. **This moves the two OLD Library pairs' numbers too** (shared fixture),
    so re-baseline them in the same change and say so.
-5. **Chunk 4** for the section paths and the hierarchy-only nodes, or ship the
-   table without the `path` line first and add it with chunk 4.
+5. **The section paths and the hierarchy-only nodes.** Chunk 4 shipped the
+   manifest half (declared, validated, reported); what is missing is the
+   ROOT-LEVEL artifact that carries the tree into the out root, because the
+   annotator never reads the manifest. Its shape is this chunk's decision — it
+   must cover unplaced entries and pure grouping nodes as well as set entries,
+   and a subset re-run must MERGE rather than replace it (chunk 2's per-entry
+   files made that structural; a single root file does not). Ship the table
+   without the `path` line first if the comp is still moving.
 6. **Chunk 3** for `Open sheet`'s destination, or render it disabled.
 
 **Verify:** the two new pairs measured against their comps, converging by delta;
