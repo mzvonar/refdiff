@@ -6,6 +6,108 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-04 — a backtick in `app-shell.ts`'s APP_BOOT or INDEX_CSS closes the template
+
+- **Context:** chunk 1 of the Library groups. Wrote two ordinary repo-style comments —
+  ``// `opened` / `closed` are …`` inside `APP_BOOT`, and
+  ``/* `chevron_right` is not in the icon subset */`` inside `INDEX_CSS`.
+- **Lesson:** `APP_BOOT` is a `String.raw` template and `INDEX_CSS` a plain one, so a backtick
+  in a comment **ends the template** and the rest of the file parses as TypeScript. The build
+  reported five `TS1005 ',' expected` errors at the comment lines and at the CSS, with nothing
+  pointing at the backtick — it reads as a mystery syntax break in code you did not touch. Every
+  existing comment in those two literals happens to avoid backticks, so the convention is real
+  but nowhere stated, and this repo's comment style backticks identifiers everywhere else. Same
+  family as the Kotlin nested-block-comment trap in `population-registry`'s CLAUDE.md.
+- **Candidate home:** a one-line note beside each literal in `app-shell.ts` (one is now there) ·
+  CLAUDE.md if it recurs in `render.ts`'s `CLIENT`, which is the same shape.
+
+## 2026-09-04 — a self-measurement whose fixture lacks the new case is a REGRESSION guard, not evidence
+
+- **Context:** chunk 1 groups the Library by entry id (`<entryId>--<slug>`). The annotator's own
+  Library pairs measure the app while it serves `fixtures/demo-root`, whose twelve pair ids carry
+  no `--` — so **not one group header renders in the measured page**. Both pairs came back
+  `+0/−0`, byte-identical counts to the recorded baseline.
+- **Lesson:** that `+0/−0` is worth having and is exactly what it says — *the ungrouped case did
+  not move* — but it is evidence about the code the change did NOT alter. Two things make it
+  honest: (a) a **positive control** on the served page (`curl | grep -c "function groupEntries"`
+  → the measured process really is the new build, which is the only thing separating a true
+  `+0/−0` from `preflight.sh`'s stale-dist `+0/−0`); and (b) a unit test asserting the
+  BYTE IDENTITY the measurement is standing in for (`libraryList(groupEntries(loneItems), …)`
+  === `pairCards(loneItems, …)`), falsified by breaking `isFoldable` and watching it go red.
+  Then the new behaviour is measured where it can be: the pure functions against the real
+  194-pair DS payload (194 → 14 groups; collapsed markup 9,241 bytes / 11 headers / 3 images vs
+  244,735 / 194 cards / 194 images expanded).
+- **Candidate home:** `SKILL.md` §0/§4 — when the fixture root cannot contain the new case, say
+  which of the two claims the run supports and add the positive control · a `preflight.sh`
+  companion idea: a `--expect <symbol>` flag that greps the served page for a symbol the change
+  introduced, so "the server is the new build" is a checked fact rather than a habit.
+
+## 2026-09-04 — "same run?" is answered by the relative-time BUCKET, not by a tolerance
+
+- **Context:** chunk 1's group header shows an `oldest → newest` span when a group's cells come
+  from different runs. `createdAt` is stamped per PAIR and no run identity is shared across
+  pairs (`ComparisonReport.run` is the per-pair ordinal), so "different runs" has to be inferred.
+- **Lesson:** measured on the DS root — ONE `compare` spreads its stamps over 66s across
+  `ds-checkbox`'s 45 cells and 59s across `ds-button-fill`'s 41, while a subset re-run mixes
+  vintages **hours** apart (06:29 against 10:04 in the same root). No fixed tolerance separates
+  those without a magic number that a slower or bigger set breaks. Reusing `relativeWhen`'s own
+  buckets does it for free, needs no constant, is exactly what the reader can perceive (the span
+  appears precisely when two cells would *read* differently), decays on its own (a one-minute
+  spread is two words for an hour and one word after), and fails toward DISCLOSURE — which is the
+  right direction, since the failure being prevented is a sheet mixing vintages silently.
+  Corollary, twice over: two of my own test expectations were wrong about bucket boundaries while
+  the code was right (`3h` vs `3h − 66s` is `3 h ago` vs `2 h ago`). Budget for the falsification
+  round to fail on the expectation's side.
+- **Candidate home:** chunk 3's per-cell staleness in `docs/plan-gallery-groups.md` inherits this
+  rule verbatim — a gallery cell's staleness mark is the same question · `docs/architecture.md`
+  if a second reader ever needs it.
+
+
+## 2026-09-04 — a set run's completeness is not observable from its reports (DS, 194 pairs)
+
+- **Context:** driving `population-registry`'s DS set (194 pairs) through the fix loop, then
+  verifying a deliberate revert. Four separate ways the run's own artifacts misreported what
+  had been measured, all found in one session.
+- **Lesson (four, one root — an absent measurement leaves the PREVIOUS one in place):**
+  1. **A failed capture writes no `findings.json`, so the stale one survives.** Any verification
+     that scans `findings.json` for an error field is *structurally* blind to capture failures —
+     it reads the previous run's report and calls it healthy. My own "capture problems: 0" check
+     did exactly that while 3 pairs had failed. The honest checks are the exit code and
+     `grep -c '^=== ' log` vs `grep -c '^report: ' log` (112 vs 109 named it instantly).
+  2. **`refdiff summary` aggregates every run dir under the root**, including orphans whose pair
+     id no longer exists. A Figma variant-property rename (`ds-checkbox` gained `hasIcon`, so
+     every id grew `_hasicon-false`) left 6 dead dirs; the header read `200 pairs / 1185
+     findings` where the run had produced `194 / 1134`, and the 51 stale findings were
+     indistinguishable from live ones.
+  3. **`SKILL.md` rule 6 is misleading for a SET run.** It says "Exit code 2 with a JSON
+     `CaptureError` means NOTHING was compared". For a set, `cli.ts:1113` is
+     `process.exit(anyError ? 2 : anyFail ? 1 : 0)` — exit 2 means *at least one* pair errored
+     while the rest compared fine. On a 112-pair run, exit 2 with 109 good reports read to me as
+     a regression signal and then as a total failure; it was neither.
+  4. Consequence to state plainly: a subset re-run makes a root **mixed-vintage by design**, so
+     "the number in the report" and "the number this run measured" are different quantities and
+     nothing in the artifacts distinguishes them.
+- **Candidate home:** `SKILL.md` rule 6 reworded for set runs (exit 2 = some pair errored, read
+  the report/header counts) + a line in the loop about verifying completeness, not just deltas ·
+  a `summary` change: flag run dirs not written by the newest run in the root, and print the
+  vintage span — this is also **chunk 3's per-cell staleness requirement** in
+  `docs/plan-gallery-groups.md`, same root cause · possibly make `summary` warn on orphan dirs.
+
+## 2026-09-04 — reverting a story file makes the next captures fail with `story-error`
+
+- **Context:** `git checkout --` on `frontend/ds/gallery/button.stories.tsx` mid-session, then an
+  immediate `compare` of that entry.
+- **Lesson:** 3 of 65 pairs failed with a typed `story-error`:
+  `"Failed to fetch dynamically imported module: …/gallery/button.stories.tsx?t=1788505121723"`.
+  Vite still advertises the pre-revert timestamped module URL, which 404s until the page reloads,
+  and Storybook then reports it as the story failing to render "likely due to a configuration
+  issue" — which reads like a real story bug and is not. **Transient: warm the story URL and
+  re-run the entry.** Same family as the existing bindings trap "token / global-CSS edits may not
+  HMR", but the signature is a typed per-pair capture error rather than a wrong measurement.
+- **Candidate home:** `SKILL.md` "Environment pre-flight" as the general shape (editing the served
+  source mid-session invalidates modules; the first captures after can fail transiently) ·
+  `population-registry`'s bindings trap list.
+
 ## 2026-09-02 — what NEITHER channel measures is verified by a crop, once (session 18, the ghost)
 
 - **Context:** implementing the comps' one-sided GHOST in the annotator
