@@ -1,216 +1,249 @@
-# refdiff — Handoff: Library groups + gallery, CHUNK 0/3 (2026-09-04)
+# refdiff — Handoff: Library groups + gallery, CHUNK 4 next (2026-09-04)
 
-**Workstream-scoped handoff.** Repo `~/development/refdiff` (Mato's Mac:
-`~/Development/refdiff`), branch **`main`**, pnpm 10 workspace, TypeScript/ESM, Node ≥22.
+**Workstream-scoped handoff, canonical and current.** Repo `~/development/refdiff` (Mato's
+Mac: `~/Development/refdiff`), branch **`main`**, pnpm 10 workspace, TypeScript/ESM,
+Node ≥22. Rewritten from scratch at the end of the 2026-09-04 session, so nothing in it is
+inherited from an earlier revision.
 
-**This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical
-repo handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair).
-This file covers only the Library-groups / gallery workstream, whose plan is
-**`docs/plan-gallery-groups.md`** (read that second; it is the real brief).
+**This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical repo
+handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair). This
+file covers only the Library-groups / gallery workstream, whose plan is
+**`docs/plan-gallery-groups.md`** (read that second; it is the real brief, chunks 0–5).
 
 ## State of play
 
-**Chunks 1 and 2 are SHIPPED and committed** (2026-09-04, on `main`). The gallery now has
-both halves of what it needs: the Library groups by entry, and core persists a per-set
-index carrying the axes, the pairs and the SKIPPED cells. **What remains is CHUNK 0 — the
-two comps — and it is a design gate, not code.** Chunk 3 (the gallery view) cannot be
-verified without them: a new surface with no comp cannot be measured, which is the loop
-rule. Chunk 4 (manifest hierarchy) is independent of the comps and could go first if you
-would rather not wait.
+**Chunks 1 and 2 are SHIPPED. Six commits on `main`, nothing pushed** (Mato has not asked).
+`4b57f12` was the session's base; HEAD is **`e70697f`**:
 
-**Nothing pushed** — Mato has not asked.
+| sha | what |
+| --- | --- |
+| `64237e0` | feat(annotator): group the Library by the entry its pair ids name — chunk 1 |
+| `31e5c6c` | docs: the plan, its handoff, five lessons |
+| `313191d` | feat(core): persist what a component set CONTAINS — chunk 2, the set index |
+| `e49ab66` | docs: chunk 2 shipped, two lessons |
+| `e1ec7fb` | chore(design): absorb the 2026-09-04 comp consolidation |
+| `e70697f` | docs(plan): the Measured column is a per-group range; chunk 5 added |
 
-**The design project was CONSOLIDATED on 2026-09-04 and the file names moved.** What this
-repo did about it, in one commit: `RefDiff Mobile Toolbar.dc.html` → `RefDiff Mobile.dc.html`
-(a rename in the project; byte-identical apart from a caption linking to two deleted
-siblings, and that caption is outside the scoped phone node, so **both toolbar pairs
-re-measured `+0/−0`**); `refdiff-compare-mobile-minimal` retired with `MINIMAL_IGNORE` (its
-comp was deleted); the `RefDiff Mobile.dc.html` waiver dropped from `pair-coverage.test.ts`
-because the NAME now means a paired comp; the Gallery comps landed and waived; the icon
-subset re-run (97 → 101 glyphs — the Gallery added `grid_view`, `highlight`, `history`,
-`open_in_full`, and a glyph missing from the subset renders as its NAME). `refdiff.bindings.md`
-carries the new inventory and the amended baseline table.
+**584 tests green** (346 core + 238 annotator), typecheck and build clean, `icon-subset.mjs
+--check` in sync, `pair-coverage` green both directions, seven manifest pairs.
+
+**Chunk 0's comps are DRAWN but Mato is still working on the design** — so the next chunk a
+session can own is **CHUNK 4**, which needs neither a comp nor new data. Chunk 3 (gallery)
+and chunk 5 (Library rebuild) both read comps that are still moving.
 
 ## What's DONE
 
-- **The plan** — `docs/plan-gallery-groups.md`: the measured problem, the decisions taken
-  with Mato, the two findings that decide the design, chunks 0–4, open questions, and the
-  Claude Design brief for chunk 0. Chunk 1's section now records what landed, the numbers,
-  and the seven sub-decisions taken while building.
-- **CHUNK 1 — the Library groups by entry.** `packages/annotator/src/index-view.ts`:
-  `entryIdOf`, `groupEntries`, `cellsShown`, `isFoldable`, `isFilterActive`, `openGroups`,
-  `groupWhen`, `groupHeader`, `libraryList` (all pure); `app-shell.ts` renders through
-  them, holds `lib.opened` / `lib.closed`, toggles on `.ghead`, and styles `.grp` /
-  `.gcells` to span the card grid. **Measured on the live 194-pair DS payload: 194 → 14
-  groups**, collapsed markup 9,241 bytes / 11 headers / 3 images against 244,735 / 194
-  cards / 194 images expanded. Annotator tests 203 → 238 (repo 538 → 573); the annotator's
-  own Library pairs re-measured `+0/−0`, counts byte-identical to the 09-04 baseline.
-  `SKILL.md` §1b and `docs/architecture.md`'s Library paragraph say so (that paragraph also
-  lost two pre-existing stale claims — `minmax(250px …)` where the CSS says 262, and "or
-  with the toggle" for a control removed on 2026-08-28).
-- **Open question 3 is answered** — always collapsed, no threshold. Reasoning and the two
-  structural carve-outs are in the plan and in `openGroups`' own doc comment.
-- **Five lessons captured** — `docs/lessons-inbox.md`, top of file, per the standing
-  instruction in `CLAUDE.md`. Chunk 1 added three; one is load-bearing for chunk 3 (the
-  vintage-bucket rule) and one for any future self-measurement (the fixture that cannot
-  contain the new case).
-- **CHUNK 2 — core persists the set index.** `packages/core/src/package/set-index.ts`
-  (pure `buildSetIndex` + `setIndexFileName`, beside `summary.ts`), `variantAxes(set) →
-  { source, properties }` in `adapters/figma-variants.ts`, and the write inside
-  `expandFigmaSet`. **`<out-root>/<entryId>.set.json`** — a flat FILE (open question 2,
-  answered on evidence: both run-dir walkers filter `isDirectory()`, so a `sets/`
-  directory would be counted by `summary` and drawn as a broken card in the Library),
-  one file per entry (which makes no-truncation structural), written at the expansion
-  (so it survives a failed `/images` call and a run that captures nothing). Core tests
-  335 → 346. Verified hermetically against the two recorded real COMPONENT_SET fixtures,
-  then live end-to-end: every index reproduced its console `N variant pairs, M skipped`
-  line, an unselected entry's file stayed byte-identical across a re-run, and a run
-  whose every capture failed (exit 2) still wrote both indexes.
-- **The artifact earned itself on first use.** `ds-chip` expands to **5 pairs and 63
-  skipped** out of **105 declared** combinations — and shows 2 run dirs in the Library.
-  `ds-dialog-header` is 4 and 4 out of 16. Nothing had ever persisted those numbers.
-  **A full 14-entry pass is one `--pair` list away and would be the programme's first
-  real coverage census** — worth doing with Storybook up, so the captures succeed and
-  the run refreshes the reports at the same time.
-- **The DS side is measured and quiet** — `population-registry` at 194 pairs / 1071
-  findings; that repo's own state is its business, not this chunk's. Its COVERAGE, on the
-  other hand, is now measurable — see the census note above.
+- **CHUNK 1 — the Library groups by entry** (`64237e0`). All pure logic in
+  `packages/annotator/src/index-view.ts`: `entryIdOf`, `groupEntries`, `cellsShown`,
+  `isFoldable`, `isFilterActive`, `openGroups`, `groupWhen`, `groupHeader`, `libraryList`;
+  `app-shell.ts` renders through them, holds `lib.opened` / `lib.closed`, toggles on
+  `.ghead`, and styles `.grp` / `.gcells` to span the card grid. Measured on the live
+  194-pair DS payload: **194 → 14 groups**, 11 foldable + 3 one-cell entries as bare cards;
+  collapsed markup **9,241 bytes / 11 headers / 3 images** against **244,735 / 194 cards /
+  194 images** expanded. Both self-measured Library pairs `+0/−0`.
+- **CHUNK 2 — core persists the set index** (`313191d`). Pure
+  `packages/core/src/package/set-index.ts` (`buildSetIndex`, `setIndexFileName`) beside
+  `summary.ts`; `variantAxes(set) → { source, properties }` in
+  `adapters/figma-variants.ts` with `variantProperties` kept as a wrapper; the write inside
+  `expandFigmaSet` in `packages/core/src/cli.ts`. Artifact:
+  **`<out-root>/<entryId>.set.json`** — a flat FILE, one per entry, written AT the expansion.
+  Verified hermetically against the two recorded real COMPONENT_SET fixtures, then live:
+  every index reproduced its console `N variant pairs, M skipped` line, an unselected
+  entry's file stayed byte-identical across a re-run, and a run whose every capture failed
+  (exit 2) still wrote both indexes.
+- **The set index earned itself immediately.** `ds-chip` expands to **5 pairs / 63 skipped**
+  out of **105 declared** combinations, with 2 run dirs in the Library; `ds-dialog-header`
+  is 4 / 4 out of 16. Nothing had ever persisted those numbers.
+- **The 2026-09-04 design consolidation absorbed** (`e1ec7fb`). `RefDiff Mobile
+  Toolbar.dc.html` → `RefDiff Mobile.dc.html` (a RENAME, byte-identical apart from a caption
+  linking to two deleted siblings, and that caption is outside the scoped phone node — both
+  toolbar pairs re-measured `+0/−0`); `refdiff-compare-mobile-minimal` retired with
+  `MINIMAL_IGNORE`; the `RefDiff Mobile.dc.html` waiver dropped from `pair-coverage.test.ts`
+  because that NAME now holds a paired comp; both Gallery comps landed and waived; icon
+  subset re-run **97 → 101** glyphs. `refdiff.bindings.md` carries the new inventory and the
+  amended baseline table.
+- **Two corrections landed where the stale text lived**: `refdiff.bindings.md`'s file
+  inventory + baseline table, and `docs/plan-annotator-redesign.md`'s claim that the design
+  project "is not reachable as a writable design-system project" — it is writable
+  (`PROJECT_TYPE_PROJECT`, `canEdit: true`); `list_projects` merely filters to design-system
+  projects.
+- **Open questions 2 and 3 answered**, both on measured evidence rather than taste — see
+  the plan's "Open questions".
+- **Twelve lessons captured today** (33 in the inbox) — `docs/lessons-inbox.md`, newest at
+  top, per the standing `CLAUDE.md` instruction.
 
 ## What REMAINS (in order)
 
-### 1. CHUNK 0 — the comps are DRAWN and still in flight (Mato, 2026-09-04)
+### 1. CHUNK 4 — manifest hierarchy + label/order overrides ← DO FIRST
 
-All four exist in the design project — Library Groups + Gallery, each with a mobile half —
-and Mato said he is **still working on the design**, so treat them as in progress. Frames,
-previews and which need `scope: ".cc-theme-dark"`: plan § "Chunk 0". Two of them are on
-disk (the Gallery pair, waived in `pair-coverage.test.ts` until chunk 3 has a surface).
+Plan § "Chunk 4". **The only chunk that needs neither a comp nor new data**, which is why it
+goes first while the design moves. It is also a chunk-5 prerequisite and it is already drawn
+in the chunk-0 comps, so doing it now de-risks both.
 
-**The two Library Groups comps are NOT on disk yet, deliberately.** They came back from
-`get_file` small enough to land in the conversation rather than in a file, and a reference
-comp must not be hand-transcribed — a typo in one becomes a false finding in every future
-measurement of that pair. Fetch them when the rebuild chunk starts, and decode from the
-persisted tool result rather than retyping (see the lessons inbox).
+- `packages/core/src/manifest.ts`: optional `section?: string` on an entry
+  (`"Core components/Buttons"`), validated. Optional second named export `sections` for
+  order/label metadata only. A `section` path with no entries is a valid pure grouping node
+  (Mato's ask: mirror Figma's Core components / Core patterns) — and the comps already draw
+  exactly that as the `Foundations` row, "Hierarchy only — nothing measured".
+- Optional per-entry `gallery?: { columns?, rows?, order?, labels? }` — which axis is
+  columns, pinned option order (see the axes-order caveat below), human labels
+  (`"Focus on text"` → `"Focus"`).
+- **Heaviest docs obligation of the set.** Per `CLAUDE.md`'s HARD RULE a manifest-shape
+  change updates the manifest example in `skills/refdiff/SKILL.md` AND
+  `docs/architecture.md`. And it **invalidates `population-registry`'s
+  `frontend/ds/tooling/visual/refdiff.bindings.md`**, which asserts the manifest shape and
+  "11 entries, 152 pairs" — this repo cannot edit that file, so say so in the handoff.
 
-**The headline: the Library Groups comp is a REBUILD of the Library, not a delta against
-chunk 1.** Six-column table, not the card grid. Chunk 1's UI cannot converge on it by
-adjustment, so it is now **CHUNK 5** in the plan, specified from the comp — and the first
-`refdiff-library-groups-desktop` run IS its specification. Chunk 1's pure layer survives
-intact; only its two renderers go.
+### 2. CHUNK 3 — the gallery view ← DO SECOND
 
-**One correction to carry forward, because the wrong version costs a chunk:** the comp's
-`r45 → r47` Measured column is a **per-group RANGE** over the cells' own `run` ordinals,
-not a global run counter. Every report already carries `run`, and two DS groups are mixed
-right now (`ds-button-fill` r9→r10, `ds-button-ghost` r6→r7). The only gap is plumbing —
-`/api/pairs` never surfaces `run`. What must NOT be inherited from the comp is its
-module-level `NEWEST`: ordinals count per pair and differ wildly between groups (r2 … r10),
-so a global newest would mark all eleven `ds-button-icon` cells stale against a 10 they were
-never behind. Chunk 0's section has the measurements; chunk 5 has the design.
+Plan § "Chunk 3". Both Gallery comps are on disk already (waived in `pair-coverage.test.ts`
+until a surface exists). **Confirm with Mato that the Gallery comp has settled before
+converging on it** — he is still designing. The seam is `packages/annotator/src/view-math.ts`:
+add the pure `cellOrigin` composition and a `GalleryLayout` (cell → `{ pairDir, rect, row,
+col }`) built from the set index; the pair view is the one-cell case at the origin. Chunk 2's
+index supplies the axes, the pairs and the skipped cells; `absent` is the axes cross-product
+minus pairs minus skipped (measured: 9 for Alert, 30 for Button/Fill).
 
-### 2. CHUNK 5 — the Library rebuilt to the comp
+### 3. CHUNK 5 — the Library rebuilt to the comp
 
-Plan § "Chunk 5". Fully specified from the comp, with its six prerequisites in order — the
-two Library Groups comps to disk, a re-run of `icon-subset.mjs` (they need five glyphs the
-subset lacks, `chevron_right` among them), `run` surfaced in `/api/pairs`, and a demo root
-that emits a variant SET so the comp can be measured at all. That last one moves the two
-OLD Library pairs' numbers, so it re-baselines them in the same change.
+Plan § "Chunk 5", fully specified from the comp. Its six prerequisites are ordered there;
+two are traps worth repeating: the demo root must learn to emit a variant SET
+(`<entryId>--<slug>` dirs) or the comp cannot be measured against the app at all, and that
+fixture change **moves the two old Library pairs' numbers**, so it re-baselines them in the
+same change; and `icon-subset.mjs` must run again for `chevron_right`, `account_tree`,
+`folder`, `filter_alt`, `unfold_more`.
 
-### 3. CHUNK 4 — manifest hierarchy — the one that needs NEITHER comp nor data
+### Two quick wins, independent of the design
 
-Plan § "Chunk 4". Independent of chunk 0, so it can go while the comps are drawn. Heaviest
-docs obligation of the four, and it **invalidates `population-registry`'s
-`frontend/ds/tooling/visual/refdiff.bindings.md`** (which asserts the manifest shape and
-"11 entries, 152 pairs"): say so in that chunk's handoff.
+- **Surface `run` in `/api/pairs`** — one `PairSummary` field in `index-view.ts`, one line in
+  `packages/annotator/src/cli.ts` (which already holds `report.run` where it builds the
+  payload). Chunk 5 prerequisite #3, safe to do any time, and nothing else can build the
+  Measured column without it.
+- **The DS coverage census.** One `--pair` list over all 14 entries writes 14
+  `.set.json` files and gives the programme its first real coverage numbers. Run it with
+  **Storybook up** so the captures succeed and the reports refresh in the same pass;
+  point `--out` at the DS root only when you mean to refresh it.
 
-### Later / future reference
-- **Chunk 0** — comps from Claude Design (Library-with-groups + `RefDiff Gallery.dc.html`).
-  Brief is in the plan; blocks chunk 3 only.
-- **Chunk 3** — the gallery view (`view-math.ts` `cellOrigin`; pair = 1-cell case).
-- **Chunk 4** — manifest `section:` hierarchy + column/order/label overrides. **This is the
-  chunk that invalidates `population-registry`'s
-  `frontend/ds/tooling/visual/refdiff.bindings.md`** (it asserts the manifest shape and
-  "11 entries, 152 pairs"). Say so in that chunk's handoff.
+### Chunk 0 — Mato's, not a session's
+All four comps exist (Library Groups + Gallery, each with a mobile half). Frames, previews
+and which need `scope: ".cc-theme-dark"` are tabulated in the plan's chunk 0 section. **The
+two Library Groups comps are deliberately NOT on disk**: they came back from `get_file`
+below the persist-to-disk threshold, and a reference comp must never be hand-transcribed —
+a typo becomes a false finding in every future measurement of its pair. Fetch them when
+chunk 5 starts, decoding from the persisted tool result.
 
 ### Needs research / open questions
-**One left**, and it is chunk 3's, not a blocker for anything shipped:
-1. Set-level notes (a note owned by no single cell): allow with a set-level file, or forbid?
-   Plan's recommendation stands — allow it, because forcing the note onto an arbitrary cell
-   is a lie about where the problem is.
-2. ~~Set index location~~ — **ANSWERED 2026-09-04: the flat `<root>/<entryId>.set.json`**,
-   decided on measured walker behaviour rather than taste. Reasoning and the verification
-   are in the plan's chunk 2 table.
-3. ~~Chunk 1's collapse threshold~~ — **ANSWERED 2026-09-04: always collapsed, no
-   threshold**, with two structural carve-outs (a group of one is its card; an active
-   filter expands what survived it) and an explicit toggle winning over both. Full
-   reasoning: plan § "Open questions" and `openGroups` in `index-view.ts`.
+1. **Set-level notes** (a note owned by no single cell): allow with a set-level file, or
+   forbid? Chunk 3's question, not a blocker for anything shipped. Plan's recommendation
+   stands — allow it, because forcing the note onto an arbitrary cell is a lie about where
+   the problem is.
+2. ~~Set index location~~ — **ANSWERED**: the flat `<root>/<entryId>.set.json`, decided on
+   measured walker behaviour. Plan § "Chunk 2".
+3. ~~Chunk 1's collapse threshold~~ — **ANSWERED**: always collapsed, no threshold, two
+   structural carve-outs. Plan § "Open questions" and `openGroups`' doc comment.
 
 ## How to run
 
 ```bash
 cd ~/development/refdiff
 pnpm build                      # or: pnpm dev  (tsc --watch; the CLIs exec dist/)
-pnpm -r test                    # 584 tests after chunk 2 (346 core + 238 annotator)
-pnpm --filter @refdiff/annotator test
+pnpm -r test                    # 584 tests (346 core + 238 annotator)
+pnpm typecheck
 
-# the annotator's own self-measurement (dogfooding — this is how UI work is verified)
-refdiff compare --manifest design/refdiff.manifest.mjs --out out/refdiff \
-  --pair refdiff-library-desktop,refdiff-library-mobile
-refdiff summary out/refdiff
-
-# serve the Library to look at it (a DS root with 194 pairs is the real stress case)
-refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
-  --serve --read-only --port 7384 --host 0.0.0.0
-```
-
-Pre-flight before the first compare of a session (halts on a stale build):
-```bash
+# FIRST, before the first compare of a session — halts on a stale build/server
 bash skills/refdiff/preflight.sh --port <annotator port>
+
+# the annotator's own self-measurement (dogfooding — how UI work is verified here).
+# Serve the COMMITTED fixture root, measure into out/refdiff, restore the clock after.
+refdiff-annotator fixtures/demo-root --serve --read-only --port 7379 &
+node fixtures/make-demo-root.ts --now        # fixture clock = wall clock, for the measure
+refdiff compare --manifest design/refdiff.manifest.mjs --design-dir design/refdiff \
+  --app-url http://127.0.0.1:7379 --out out/refdiff --pair refdiff-library-desktop
+refdiff summary out/refdiff
+node fixtures/make-demo-root.ts              # ALWAYS restore before committing
+
+# after any comp refetch — a glyph missing from the subset renders as its NAME
+node packages/annotator/scripts/icon-subset.mjs --check   # exit 1 = out of date
+node packages/annotator/scripts/icon-subset.mjs           # writes face + icon-names.ts
+
+# look at the Library against a real 194-pair root
+refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
+  --serve --read-only --port 7380
 ```
 
 ## Key facts / decisions
 
 - **The gallery is composed, never re-compared.** A whole-sheet compare would put one
-  alignment fit across 41 cells and the `pixel-region/frame` noise (firing **194/194** on
-  the DS today) would swallow every real finding. The comparison unit stays one variant
-  component ↔ one story cell.
-- **Notes: authored from either view, stored against the PAIR** in pair-world coordinates.
-  Composite coordinates would drift the moment a cell resizes.
-- **Column labels need no heuristic.** `variantProperties(set)` already returns
-  `Record<property, options[]>` from Figma's `componentPropertyDefinitions.variantOptions`,
-  in the designer's order. The old `population-registry` annotator's positional heuristic
+  alignment fit across 41 cells and the `pixel-region/frame` noise (firing 194/194 on the DS
+  today) would swallow every real finding. The unit stays one variant component ↔ one story
+  cell.
+- **`view-math.ts` is the entire seam.** One world space (impl CSS px), `View { z, tx, ty }`,
+  `screen = world · z + t`. A gallery is `pairWorld + cellOrigin`; the pair view is the
+  degenerate one-cell case.
+- **Notes: authored from either view, stored against the PAIR** in that pair's world
+  coordinates. Composite coordinates would drift the moment a cell resizes.
+- **The set index is what makes ABSENCE expressible** — `<out-root>/<entryId>.set.json`
+  carries `axes { source, properties }`, every pair (`slug`, `dir`, `props`) and every
+  skipped cell (`reason`, `props`). A run root can only ever show what was measured.
+- **`variantAxes(set).source` is load-bearing.** Option ORDER is the designer's on the
+  `definitions` branch only; the child-names fallback is TRAVERSAL order, and on the real
+  Button/Fill set the two disagree about `State`. Never claim the designer's order without
+  reading `source`.
+- **The comp's `r45 → r47` is a per-group RANGE, not a global run number.** `min`/`max` over
+  that group's own cells; `ComparisonReport.run` is the per-pair ordinal and every report
+  carries it (`ds-button-fill` r9→r10 and `ds-button-ghost` r6→r7 are mixed today).
+  **Do NOT implement the comp's module-level `NEWEST`**: ordinals count per pair and differ
+  wildly between groups (r2 … r10), so a global newest would mark all eleven
+  `ds-button-icon` cells stale against a run they were never behind.
+- **Column labels need no heuristic.** `variantProperties(set)` returns
+  `Record<property, options[]>` from Figma's own `componentPropertyDefinitions.variantOptions`.
+  The old `population-registry` annotator's positional heuristic
   (`capture-assets.mjs:139-175`, column centres as image fractions) exists only because it
-  captures one bitmap of the whole grid. Do not port it.
-- **`view-math.ts` is the entire seam.** One world space (impl CSS px),
-  `View { z, tx, ty }`, `screen = world · z + t`. A gallery is `pairWorld + cellOrigin`.
-- **A set run's completeness is not observable from its reports** — this session's main
-  lesson, and chunk 1 inherits half of it. A failed capture writes no `findings.json`, so
-  the stale one survives and any check that scans those files for an error is blind.
-  `refdiff summary` also counts every dir under the root, orphans included. Hence chunk 1's
-  `createdAt` span on a group header and chunk 3's per-cell staleness: both are the same
-  defect surfaced in the UI. Full entry at the top of `docs/lessons-inbox.md`.
-- **`summary.json` already carries the roll-up** — `runs[]` (per-pair counts, verdict,
-  confidence, alignment, delta, `createdAt`), `groups[]` (**64 causes, each with its
-  `pairs[]`** — a free "light up the cells with this cause" affordance), `totals`. Do not
-  recompute it. NOTE: the root key `groups` means *cause* groups; chunk 4 uses `sections`
+  captures one bitmap of the whole grid. **Do not port it.**
+- **`summary.json` already carries the roll-up** — `runs[]`, `groups[]` (64 causes, each
+  with its `pairs[]` — a free "light up the cells with this cause" affordance), `totals`.
+  Do not recompute it. Its root key `groups` means *cause* groups; chunk 4 uses `sections`
   for hierarchy to avoid the collision.
 - **`/api/pairs`** → `{ root, pairs: [{ dir, pair, pass, critical, major, minor, findings,
   suppressed, confidence, createdAt, designSource, implSource, implRef, implPng, delta,
-  openNotes, notes }] }`. No variant props, no group — chunk 1 needs neither.
+  openNotes, notes }] }` — **no `run`, no variant props, no group.**
+- **A set run's completeness is not observable from its reports.** A failed capture writes no
+  `findings.json`, so the stale one survives and any check scanning those files for an error
+  is blind; `refdiff summary` counts every dir under the root, orphans included. Chunk 1's
+  `createdAt` span and chunk 3's per-cell staleness are the same defect surfaced in the UI.
 
 ## Env gotchas
 
-- **`CLAUDE.md:114` — do not commit unless asked.** Also the HARD RULE: any behaviour or
-  usage change updates `skills/refdiff/SKILL.md` in the SAME change, and
+- **`CLAUDE.md` — do not commit unless asked.** Also the HARD RULE: any behaviour or usage
+  change updates `skills/refdiff/SKILL.md` in the SAME change, and
   `grep -n "<term>" skills/ packages/ docs/` must come back clean.
-- **Standing instruction:** durable lessons get appended to `docs/lessons-inbox.md` the
-  moment they are noticed (newest at top, under the `<!-- LESSONS-LOG -->` marker).
-- **`dist` is what runs.** The CLIs exec `packages/*/dist/cli.js`; a stale dist measures
-  code you did not write and reports `+0/−0`. Keep `pnpm dev` running or `pnpm build`.
+- **Standing instruction:** durable lessons go to `docs/lessons-inbox.md` the moment they are
+  noticed (newest at top, under the `<!-- LESSONS-LOG -->` marker).
+- **`dist` is what runs.** The CLIs exec `packages/*/dist/cli.js`; a stale dist measures code
+  you did not write and reports `+0/−0`. Keep `pnpm dev` running, or `pnpm build`.
 - **The served annotator renders its page shell at process START** — restart it after a
   rebuild or it serves the old build however fresh dist is. `preflight.sh --port` catches it.
-- **Serve `--read-only` while measuring** a root that a `compare` is touching.
+  A `+0/−0` is only evidence once you have a POSITIVE CONTROL that the served page carries
+  the new code (`curl -s <url> | grep -c "<new symbol>"`).
+- **A BACKTICK inside `app-shell.ts`'s `APP_BOOT` or `INDEX_CSS` closes the template
+  literal** and the rest of the file parses as TypeScript — five `TS1005` errors pointing at
+  your comment, not at the backtick. No backticked identifiers in comments in there.
+- **DesignSync CAN write to the design project** (`5a1a95c3-beee-457a-815b-ef6f6bf3e06a`,
+  `PROJECT_TYPE_PROJECT`, `canEdit: true`) even though `list_projects` returns nothing — it
+  filters to design-system projects. Flow: `get_project` → `list_files` → `finalize_plan`
+  (needs both `writes` and `deletes`) → `write_files` with `localPath`.
+- **A `get_file` result over ~32 KB is persisted to a file** under the session's
+  `tool-results/` directory and the tool prints the path. `json.loads` it and write
+  `payload["content"]` — no transcription. Below that threshold there is no such path, and
+  the honest move is to DEFER rather than hand-copy a comp.
+- **A comp reported as "deleted and badly recreated" may be a RENAME.** Byte-diff the
+  remote against the committed copy before restoring anything; `list_files` twice, minutes
+  apart, is a cheap change detector.
+- **Serve `--read-only` while measuring** a root a `compare` is touching, and never serve
+  `out/refdiff` as the impl — it would put every result dir in the Library as a card.
+- **Never pipe a gate/run command** — you get the pipe's exit code and lose the log head
+  where the skip list and capture errors live. Redirect to a file.
 - `find` on the devbox is `bfs`: `-newermt` needs an ISO timestamp, not `-40 minutes`.
 - **Editing or reverting a served source file mid-session** makes the next captures fail
   transiently with `story-error: Failed to fetch dynamically imported module …?t=<ts>`
-  (Vite's stale module URL). Warm the URL and re-run the entry; it is not a story bug.
-- **Never pipe a gate/run command** — you get the pipe's exit code, and you lose the log
-  head where the skip list and capture errors live. Redirect to a file instead.
+  (Vite's stale module URL). Warm the URL and re-run the entry; not a story bug.
