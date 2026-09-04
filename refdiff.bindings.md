@@ -21,7 +21,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 ## Run
 
 ```bash
-bash skills/refdiff/preflight.sh --port 7381               # FIRST: is dist behind src? is the server behind dist?
+bash skills/refdiff/preflight.sh --port 7381               # FIRST. exit 0 go / 1 fix it / 3 ask the user
 pnpm dev                                                  # keep tsc --watch running; CLIs run from dist
 svc up annotator                                          # or: refdiff-annotator fixtures/demo-root --serve --read-only --port 7378 &
 svc restart annotator                                     # after any annotator edit — the served shell is rendered at start
@@ -561,10 +561,15 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   **Both halves of that are now SCRIPTED (2026-09-04): `bash skills/refdiff/preflight.sh --port
   7381` reports `build_freshness` (newest `packages/*/src/**/*.ts` against newest
   `packages/*/dist/**/*.js`) and `server_freshness` (the listening PID's start time against the
-  same dist) and exits 1 on either.** Run it once per session before the first compare. This
+  same dist) and exits 1 on either.** Run it once per session before the first compare. It also
+  exits **3 = ASK** on upstream drift — the checkout behind its origin, or a vendored skill copy
+  behind the tip — which is a PAUSE for the user to answer (sync, or carry on), never a block:
+  a version behind measures just as correctly, so "carry on" is a real option; what is ruled out
+  is settling it silently in either direction. Read the `action` field, not the prose. This
   paragraph stays because the script automates the check, not the understanding — and the
   session that added the script had ALREADY started with `dist/render.js` at 04:52 against
-  `src/render.ts` at 04:55, caught only because this paragraph told it to look.
+  `src/render.ts` at 04:55, caught only because this paragraph told it to look. It then caught a
+  stale SERVER on that same session, minutes after being written.
 - **A comp's new icon renders as its NAME until the subset has it.** The
   served icon font is Google's subset of exactly the glyphs in
   `packages/annotator/src/icon-names.ts` (generated); `settings` / `tune` /

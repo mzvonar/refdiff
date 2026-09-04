@@ -4,23 +4,32 @@
 #
 #   bash <skill-dir>/preflight.sh [--port <n> | --app-url <url>] [--quiet]
 #
-# It prints a fact block and exits:
-#   0  proceed (warnings may be present — they never change the exit code)
+# It prints a fact block, an `action`, and exits:
+#   0  PROCEED — nothing to decide.
 #   1  HALT — a stale BUILD or a stale SERVED INSTANCE. Not a style complaint:
 #      both make the numbers lie. The CLIs exec `<checkout>/packages/*/dist/cli.js`,
 #      so a dist behind src measures code you did not write, and the annotator
 #      renders its shell at process START, so a server older than dist serves code
 #      you did not write. Either one reads as `+0/−0` — "my fix did nothing" —
-#      which is indistinguishable from a fix that genuinely did nothing.
+#      which is indistinguishable from a fix that genuinely did nothing. ONE right
+#      remedy, printed beside the finding: rebuild / restart, then re-run this.
+#   3  ASK — upstream drift. The model PAUSES and puts the choice to the user
+#      (AskUserQuestion: sync to the newer version, or carry on with this one).
+#      It is a DECISION, not a defect: a stale copy still measures correctly, so
+#      "carry on" is a legitimate answer and must stay available. What is not
+#      acceptable is settling it silently in either direction — neither
+#      auto-syncing under the user, nor printing a line into a scrollback nobody
+#      reads and continuing.
 #   2  usage / IO error
 #
 # Never collapse 1 into 2: exit 2 is the crash detector, and routing "your build is
-# stale" there makes it indistinguishable from "the pre-flight itself broke".
+# stale" there makes it indistinguishable from "the pre-flight itself broke". And
+# never collapse 3 into 0: an ask that exits 0 IS a printed line, which is the thing
+# it exists to stop being.
 #
-# UPSTREAM drift NEVER halts. It is surfaced so a drifted copy is visible rather
-# than silent, and the caller decides (SKILL.md → "Tool pre-flight"). A hard stop
-# on "behind origin" would be wrong: you are often deliberately ahead, or on a
-# branch, and a stop mid-loop is worse than a printed line.
+# HALT outranks ASK for the exit code when both fire, but BOTH are printed — a pull
+# usually fixes the build too, so the user should see one decision rather than solve
+# the halt and meet the question afterwards.
 #
 # Env:
 #   REFDIFF_DIR             checkout to check (else: resolved from this skill's own
@@ -58,6 +67,10 @@ WARNINGS=()
 warn() { WARNINGS+=("$1"); }
 HALT_REASON=""
 halt() { HALT_REASON="$1"; }
+# An ASK is a question for the USER, not a warning for the log: anything registered here
+# makes the script exit 3, which is the model's signal to pause and put it to them.
+ASKS=()
+ask() { ASKS+=("$1"); }
 
 # ---- 0. where does this skill live, and in which mode? ----------------------
 # DEV: the skill dir is (or is symlinked to) <checkout>/skills/refdiff, so SKILL.md is
@@ -152,10 +165,10 @@ else
       elif [ "$BEHIND" = 0 ]; then fact checkout_freshness "ahead-${AHEAD}"
       elif [ "$AHEAD" = 0 ]; then
         fact checkout_freshness "behind-${BEHIND}"
-        warn "the checkout is ${BEHIND} commit(s) behind origin/${BRANCH}. The CLI and (in dev mode) SKILL.md are both that old. Pull + rebuild, or proceed knowingly — this never blocks."
+        ask "The refdiff checkout is ${BEHIND} commit(s) behind origin/${BRANCH}. The engine you would measure with -- and in dev mode SKILL.md itself -- are that old. PUT IT TO THE USER: pull and rebuild now, (cd ${CO} && git pull --ff-only && pnpm build), or carry on with this version. Both are legitimate; do not pick one silently."
       else
         fact checkout_freshness "diverged-${BEHIND}b/${AHEAD}a"
-        warn "the checkout has diverged from origin/${BRANCH} (${BEHIND} behind, ${AHEAD} ahead) — proceed knowingly."
+        ask "The refdiff checkout has DIVERGED from origin/${BRANCH}: ${BEHIND} behind, ${AHEAD} ahead. Reconciling it is a merge/rebase decision, not a pull. PUT IT TO THE USER: reconcile now, or carry on with this version."
       fi
     fi
   fi
@@ -184,7 +197,7 @@ else
     else
       N=$(git -C "$CO" rev-list --count "${V_SHA}..${U_SHA}" 2>/dev/null || echo "?")
       fact skill_freshness "stale-${N}"
-      warn "the VENDORED skill copy is ${N} commit(s) behind ${V_ORG} ${V_REF} (copy=${V_SHA:0:8}, upstream=${U_SHA:0:8}). ASK the user: sync now, or proceed with the stale copy. Sync: bash ${SKILL_DIR}/sync-skill.sh"
+      ask "The VENDORED skill copy is ${N} commit(s) behind ${V_ORG} ${V_REF}: copy=${V_SHA:0:8}, upstream=${U_SHA:0:8}. PUT IT TO THE USER: sync to the newer version, bash ${SKILL_DIR}/sync-skill.sh, and restart against it -- or carry on with this copy, which still measures correctly and may simply not know a newer rule."
     fi
   else
     # No objects locally. `ls-remote` still answers "is the copy at the tip?" without a
@@ -199,7 +212,7 @@ else
       fact skill_freshness "current"
     else
       fact skill_freshness "differs"
-      warn "the VENDORED skill copy is NOT at the tip of ${V_ORG} ${V_REF} (copy=${V_SHA:0:8}, upstream=${U_SHA:0:8}). Without local objects the direction is unknowable — it is 'differs', not 'behind'. ASK the user: sync now, or proceed. Sync: bash ${SKILL_DIR}/sync-skill.sh"
+      ask "The VENDORED skill copy is NOT at the tip of ${V_ORG} ${V_REF}: copy=${V_SHA:0:8}, upstream=${U_SHA:0:8}. Without local objects the direction is unknowable, so say DIFFERS to the user, never BEHIND. PUT IT TO THEM: sync to the tip, bash ${SKILL_DIR}/sync-skill.sh, or carry on with this copy."
     fi
   fi
 fi
@@ -235,14 +248,26 @@ else
 fi
 
 # ---- verdict ---------------------------------------------------------------
+# `action` is the ONE field a caller branches on, so the contract is mechanical rather than
+# prose a reader has to weigh. Printed even under --quiet.
+ACTION="proceed"
+[ ${#ASKS[@]} -gt 0 ] && ACTION="ask"
+[ -n "$HALT_REASON" ] && ACTION="halt"
+printf '  %-18s = %s\n' action "$ACTION"
+
 if [ "$QUIET" != 1 ] && [ ${#WARNINGS[@]} -gt 0 ]; then
   echo ""
   for w in "${WARNINGS[@]}"; do echo "  WARN: $w"; done
+fi
+if [ ${#ASKS[@]} -gt 0 ]; then
+  echo ""
+  for a in "${ASKS[@]}"; do echo "ASK: $a"; done
 fi
 if [ -n "$HALT_REASON" ]; then
   echo ""
   echo "HALT: ${HALT_REASON}"
   exit 1
 fi
+if [ ${#ASKS[@]} -gt 0 ]; then exit 3; fi
 [ "$QUIET" = 1 ] || { echo ""; echo "PROCEED"; }
 exit 0

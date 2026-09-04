@@ -112,6 +112,78 @@ OUT=$(REFDIFF_SKIP_FRESHNESS=1 bash "$T/preflight.sh" 2>&1)
 M=$(factof "$OUT" skill_mode)
 case "$M" in vendored\ *) ok "the vendored copy reports itself vendored" ;; *) bad "round trip" "skill_mode='$M'" ;; esac
 
+# --- 10..14. The ASK path. Upstream drift must PAUSE THE RUN and put the choice to the
+#        user — not print a line and carry on, which is what a warning at exit 0 is. These
+#        rows use a LOCAL git repo as "upstream" so they need no network and cannot flake.
+mkgit() {   # $1 = upstream dir, $2 = clone dir. Leaves the clone ONE commit behind.
+  local up="$1" co="$2"
+  git init -q -b main "$up"
+  mkfake "$up"
+  git -C "$up" -c user.email=t@t -c user.name=t add -A >/dev/null
+  git -C "$up" -c user.email=t@t -c user.name=t commit -qm one
+  git clone -q "$up" "$co"
+  echo later > "$up/NEWER.md"
+  git -C "$up" -c user.email=t@t -c user.name=t add -A >/dev/null
+  git -C "$up" -c user.email=t@t -c user.name=t commit -qm two
+  touch "$co/packages/core/dist/index.js"          # dist newest, so only the ASK is in play
+}
+
+# 10. dev mode, checkout behind its own origin → ask, exit 3.
+mkgit "$TMP/up10" "$TMP/co10"
+OUT=$(REFDIFF_DIR="$TMP/co10" bash "$TMP/co10/skills/refdiff/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); C=$(factof "$OUT" checkout_freshness)
+case "$C:$A:$EXIT" in behind-1:ask:3) ok "checkout behind origin → action=ask, exit 3" ;;
+  *) bad "checkout behind" "checkout_freshness='$C' action='$A' exit=$EXIT" ;; esac
+printf '%s\n' "$OUT" | grep -q "^ASK: " && ok "  …and the question is printed for the user" || bad "ask text" "no ASK: line"
+
+# 11. vendored copy behind, with local objects → a COUNT.
+mkgit "$TMP/up11" "$TMP/co11"
+FIRST=$(git -C "$TMP/co11" rev-parse HEAD)
+printf 'sha=%s\nref=main\norigin=%s\n' "$FIRST" "$TMP/up11" > "$TMP/co11/skills/refdiff/.skill-version"
+OUT=$(REFDIFF_DIR="$TMP/co11" bash "$TMP/co11/skills/refdiff/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in stale-1:ask:3) ok "vendored copy behind (local objects) → stale-1, ask, exit 3" ;;
+  *) bad "vendored stale" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 12. vendored copy, NO local objects → ls-remote can only say `differs`, never `behind`.
+#     The direction is unknowable without the objects and guessing it would be a lie.
+mkgit "$TMP/up12" "$TMP/co12"
+FIRST=$(git -C "$TMP/co12" rev-parse HEAD)
+mkfake "$TMP/nogit12"; touch "$TMP/nogit12/packages/core/dist/index.js"
+printf 'sha=%s\nref=main\norigin=%s\n' "$FIRST" "$TMP/up12" > "$TMP/nogit12/skills/refdiff/.skill-version"
+OUT=$(REFDIFF_DIR="$TMP/nogit12" bash "$TMP/nogit12/skills/refdiff/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in differs:ask:3) ok "vendored copy, no objects → differs (not behind), ask, exit 3" ;;
+  *) bad "vendored differs" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+printf '%s\n' "$OUT" | grep -q "never BEHIND" && ok "  …and it tells the reader not to say BEHIND" || bad "differs wording" "missing"
+
+# 13. A copy AT the tip must NOT ask. Without this row every row above passes on a script
+#     that asks unconditionally.
+mkgit "$TMP/up13" "$TMP/co13"
+TIP=$(git -C "$TMP/up13" rev-parse main)
+printf 'sha=%s\nref=main\norigin=%s\n' "$TIP" "$TMP/up13" > "$TMP/co13/skills/refdiff/.skill-version"
+git -C "$TMP/co13" fetch -q origin main; git -C "$TMP/co13" reset -q --hard FETCH_HEAD
+touch "$TMP/co13/packages/core/dist/index.js"
+OUT=$(REFDIFF_DIR="$TMP/co13" bash "$TMP/co13/skills/refdiff/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in current:proceed:0) ok "control: copy at the tip → no ask (proceed, exit 0)" ;;
+  *) bad "at tip" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 14. HALT outranks ASK for the exit code, and BOTH are printed — a pull usually fixes the
+#     build too, so the user meets one decision, not a halt followed by a question.
+mkgit "$TMP/up14" "$TMP/co14"
+# core/src/index.ts, not annotator/src/render.ts: mkfake leaves annotator/src EMPTY and git
+# does not track empty directories, so it does not exist in a clone. The first draft of this
+# row touched a path that was not there, `touch` failed, and the row reported the ASK it was
+# meant to be testing PRECEDENCE against — a green-for-the-wrong-reason that only the exact
+# action assertion caught.
+sleep 1; touch "$TMP/co14/packages/core/src/index.ts"
+OUT=$(REFDIFF_DIR="$TMP/co14" bash "$TMP/co14/skills/refdiff/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action)
+HAS_ASK=$(printf '%s\n' "$OUT" | grep -c "^ASK: ")
+case "$A:$EXIT:$HAS_ASK" in halt:1:1) ok "halt outranks ask (exit 1) and the ask is still printed" ;;
+  *) bad "halt vs ask" "action='$A' exit=$EXIT ask-lines=$HAS_ASK" ;; esac
+
 echo ""
 echo "  ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" = 0 ] || exit 1

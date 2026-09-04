@@ -68,30 +68,49 @@ bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/preflight.sh
 ```
 
 `--port` (or `--app-url`) is optional and adds the served-instance check; everything else runs
-without it. Exit `0` = proceed · `1` = HALT · `2` = the pre-flight itself broke.
+without it. **Read the `action` field — it is the one thing to branch on:**
 
-| fact | value | what you do |
+| exit | `action` | what you do |
 | --- | --- | --- |
-| `build_freshness` | `STALE` / `MISSING` | **HALT.** The CLI execs `dist/cli.js`, so a dist behind src measures code you did not write. `(cd <checkout> && pnpm build)`, or start the watcher. |
-| `server_freshness` | `STALE` | **HALT.** The annotator renders its page shell at process START, so an instance older than dist serves the previous build however fresh dist is. Kill by PID, poll until the port frees, restart, verify by CONTENT. |
-| `skill_freshness` | `stale-<N>` / `differs` | **ASK the user, never auto-sync and never block** (`AskUserQuestion`): *sync now* → run `sync-skill.sh` and restart against the updated copy; *proceed* → continue on the copy as vendored. `stale-<N>` is a commit count (local objects available); `differs` means only `ls-remote` could answer, so the direction is unknowable and claiming "behind" would be a guess. |
-| `checkout_freshness` | `behind-<N>` / `diverged-…` | Surface it in one line and carry on. **Never blocks** — you are often deliberately ahead, or on a branch, and a stop mid-loop is worse than a printed line. |
-| any `skipped-*` / `current` | | Continue silently. |
+| `0` | `proceed` | Nothing to decide. Start the loop. |
+| `1` | `halt` | The measurement would be wrong. Fix it (one command, printed), re-run the pre-flight, then start. |
+| `3` | `ask` | **PAUSE and put the choice to the user** — `AskUserQuestion`, one question, two real options. Do not sync under them and do not carry on under them. |
+| `2` | — | The pre-flight itself broke. |
 
-Why the first two halt and the last two do not: a stale build or a stale server both produce a
-delta of `+0/−0` — "my fix did nothing" — which is *indistinguishable from a fix that genuinely
-did nothing*, so the loop converges on a lie and the model reports success. Upstream drift only
-makes you old, and you can read an old rule and still measure correctly.
+| fact | value | why it lands where it does |
+| --- | --- | --- |
+| `build_freshness` | `STALE` / `MISSING` | **halt.** The CLI execs `dist/cli.js`, so a dist behind src measures code you did not write. `(cd <checkout> && pnpm build)`, or start the watcher. |
+| `server_freshness` | `STALE` | **halt.** The annotator renders its page shell at process START, so an instance older than dist serves the previous build however fresh dist is. Kill by PID, poll until the port frees, restart, verify by CONTENT. |
+| `skill_freshness` | `stale-<N>` / `differs` | **ask.** *Sync* → `sync-skill.sh`, then restart against the updated copy. *Carry on* → this copy still measures correctly, it may simply not know a newer rule. `stale-<N>` is a real commit count (local objects present); `differs` means only `ls-remote` could answer — say **differs**, never "behind", because without the objects the direction is unknowable. |
+| `checkout_freshness` | `behind-<N>` / `diverged-…` | **ask.** *Pull + rebuild* → `git pull --ff-only && pnpm build`. *Carry on* → the engine, and in dev mode SKILL.md itself, stay at this version. `diverged` is a merge/rebase decision, not a pull. |
+| `ahead-<N>` · `current` · `skipped-*` | | Continue silently — being ahead is not drift. |
+
+**Halt and ask are different things and neither is a block.** A halt says the numbers would be
+wrong and there is exactly one right remedy, so take it and re-run — nothing is being refused,
+it is a rebuild. An ask says the tool is *usable either way*: a version behind measures just as
+correctly as the tip, so "carry on" is a legitimate answer and stays available. The only thing
+ruled out is settling it silently — **neither auto-syncing under the user, nor printing a line
+into a scrollback nobody reads and continuing.** That second one is the failure this replaced:
+a warning at exit 0 is a printed line, which is exactly what the ask exists to stop being.
+
+Why the first two halt rather than ask: a stale build or a stale server both produce a delta of
+`+0/−0` — "my fix did nothing" — which is *indistinguishable from a fix that genuinely did
+nothing*, so the loop converges on a lie and reports success. There is no version of that worth
+offering as a choice.
+
+When both fire, the exit code is `1` and **both are printed**: a pull usually fixes the build
+too, so the user meets one decision instead of solving a halt and being asked a question after it.
 
 `REFDIFF_SKIP_FRESHNESS=1` skips every network fetch (the two upstream checks report
-`skipped-opt-out`; the build and server checks are local and still run). `REFDIFF_DIR` names the
+`skipped-opt-out`, so nothing asks; the build and server checks are local and still run). `REFDIFF_DIR` names the
 checkout explicitly. `bash preflight-selftest.sh` falsifies every row against synthetic offender
 trees — run it after touching either script.
 
 ## Vendoring the skill into a consumer (non-dev installs)
 
 `sync-skill.sh` copies the skill into a repo (or into `~/.claude/skills/`) and stamps it, and
-**re-running it IS the update** — it is the "sync now" branch of the ask above.
+**re-running it IS the update** — it is the "sync" branch of the `action=ask` above. Run it only
+after the user picks that branch.
 
 ```bash
 # from a checkout: vendor into a repo → <repo>/.claude/skills/refdiff/ + .skill-version
