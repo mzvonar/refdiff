@@ -1,8 +1,8 @@
-import type { Box, ElementNode, Finding } from "./types.js"
+import type { Box, ElementNode, Finding, IgnorePolicy } from "./types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { applyPolicy, explainFindings, mergePolicies } from "./policy.js"
+import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 
 const finding = (id: string, partial: Partial<Finding>): Finding => ({
   id,
@@ -578,5 +578,49 @@ describe("accepted deviations", () => {
       { accepted: [{ type: "spacing", reason: "x" }] },
     )
     expect(merged.accepted).toHaveLength(2)
+  })
+})
+
+describe("runWidePolicy", () => {
+  // The defect this function exists to prevent, as a test: the run-wide policy
+  // is merged LAST, so a key it writes overrides every pair's own declaration.
+  // Both refdiff-compare-* pairs ran for two days with dataSlots: false in their
+  // reports while the manifest declared { patterns: ["Run \d+ vs \d+"] } for
+  // them, because the CLI wrote an explicit `false` when nobody passed a flag.
+  it("omits dataSlots when no flag was passed, so a pair's own declaration survives", () => {
+    const runWide = runWidePolicy({})
+    expect("dataSlots" in runWide).toBe(false)
+
+    const pair: IgnorePolicy = { dataSlots: { patterns: ["Run \\d+ vs \\d+"] } }
+    const merged = mergePolicies(pair, {}, runWide)
+    expect(merged.dataSlots).toEqual({ patterns: ["Run \\d+ vs \\d+"] })
+  })
+
+  // …and the flag still wins when it IS passed, which is the whole point of a
+  // run-wide override. Off-by-default is unchanged: dataSlotRule reads
+  // `undefined` as off, so nothing needed a `false` to mean it.
+  it("still overrides the pair when a flag IS passed, in both forms", () => {
+    const pair: IgnorePolicy = { dataSlots: { patterns: ["pair-shape"] } }
+    expect(mergePolicies(pair, {}, runWidePolicy({ dataSlots: true })).dataSlots).toBe(true)
+    expect(
+      mergePolicies(pair, {}, runWidePolicy({ dataSlotText: ["run-shape"] })).dataSlots,
+    ).toEqual({ patterns: ["run-shape"] })
+  })
+
+  it("carries scope and textPatterns only when given", () => {
+    expect(runWidePolicy({})).toEqual({})
+    expect(runWidePolicy({ scope: ".x", textPatterns: ["^a$"] })).toEqual({
+      scope: ".x",
+      textPatterns: ["^a$"],
+    })
+    // an empty list is not an opinion either
+    expect(runWidePolicy({ textPatterns: [], dataSlotText: [] })).toEqual({})
+  })
+
+  it("copies its inputs, so a caller's array cannot mutate the policy later", () => {
+    const patterns = ["a"]
+    const p = runWidePolicy({ dataSlotText: patterns })
+    patterns.push("b")
+    expect(p.dataSlots).toEqual({ patterns: ["a"] })
   })
 })

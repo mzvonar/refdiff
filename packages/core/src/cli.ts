@@ -49,7 +49,7 @@ import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks 
 import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
 import { hiddenMovement } from "./policy-audit.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
-import { applyPolicy, explainFindings, mergePolicies } from "./policy.js"
+import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
 import { alignmentNote, alignStructural } from "./structural/align.js"
@@ -120,7 +120,7 @@ against the story cell the selector template renders from the variant's
 properties ('[data-rowkey="fill:{variant|tone}:…"][data-col="{State}"]'):
   --manifest <file>       run every pair of the manifest
   --design-dir <dir>      directory the manifest's design.file names live in
-  --pair <id[,id…]>       run only these manifest ids
+  --pair <id[,id…]>       run only these manifest ids (repeatable)
 
 Live app (both modes):
   --app-url <origin>      origin for relative live routes (default $REFDIFF_APP_URL)
@@ -866,7 +866,12 @@ async function compare(argv: string[]): Promise<void> {
   const { values } = parseArgs({
     args: argv,
     options: {
-      pair: { type: "string" },
+      // `multiple` so a REPEATED flag accumulates instead of the last one
+      // silently winning. Node's parseArgs keeps only the last occurrence of a
+      // non-multiple option, so `--pair a --pair b` used to run b alone — and a
+      // run that measured half of what you asked for looks completely healthy in
+      // the log. Both forms now work: repeat the flag, comma-separate, or mix.
+      pair: { type: "string", multiple: true },
       manifest: { type: "string" },
       "design-dir": { type: "string" },
       "design-file": { type: "string" },
@@ -955,11 +960,16 @@ async function compare(argv: string[]): Promise<void> {
   }
   // Default OFF: every text difference is reported. Which strings are data is a
   // per-pair judgement, and guessing it centrally hides copy regressions.
-  const policy: IgnorePolicy = {
-    dataSlots: dataSlotText.length > 0 ? { patterns: dataSlotText } : values["data-slots"] === true,
+  //
+  // `runWidePolicy` OMITS a key nobody asked for, which is load-bearing rather
+  // than tidy — this policy is merged last, so a key written here overrides every
+  // pair's own. See its doc comment for the defect that shape caused.
+  const policy: IgnorePolicy = runWidePolicy({
+    dataSlotText,
+    ...(values["data-slots"] === true ? { dataSlots: true } : {}),
     ...(values.scope !== undefined ? { scope: values.scope } : {}),
     ...(values["ignore-text"]?.length ? { textPatterns: values["ignore-text"] } : {}),
-  }
+  })
   for (const p of dataSlotText) {
     try {
       new RegExp(p, "u")
@@ -1025,7 +1035,7 @@ async function compare(argv: string[]): Promise<void> {
     }
     const all = await loadManifest(values.manifest)
     const only = values.pair
-      ?.split(",")
+      ?.flatMap((v) => v.split(","))
       .map((s) => s.trim())
       .filter(Boolean)
     specs = only ? all.filter((p) => only.includes(p.id)) : all
@@ -1077,7 +1087,11 @@ async function compare(argv: string[]): Promise<void> {
       }
       implId = storyId
     }
-    specs = [{ id: values.pair ?? `${designId}--${implId}`, design, impl }]
+    // Outside manifest mode `--pair` NAMES the one pair, so several is a
+    // contradiction rather than a selection — say so instead of picking one.
+    if (values.pair && values.pair.length > 1)
+      fail("--pair names the single pair's identity here; pass it once (a manifest run selects many with --pair a,b)")
+    specs = [{ id: values.pair?.[0] ?? `${designId}--${implId}`, design, impl }]
   }
 
   const outRoot = values.out

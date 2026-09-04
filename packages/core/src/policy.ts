@@ -409,6 +409,42 @@ export function explainFindings(
 }
 
 /** Merge policies; later ones win on `scope`/`dataSlots`, lists concatenate. */
+/**
+ * The run-wide policy the CLI's own flags describe — and the reason it is a
+ * function rather than an object literal at the call site.
+ *
+ * `mergePolicies` is last-wins on `scope` and `dataSlots`, and the run-wide
+ * policy is merged LAST, so any key present here OVERRIDES every pair's own
+ * declaration. Writing `dataSlots: false` when nobody passed a flag therefore
+ * silently disabled the key for the whole manifest: measured 2026-09-04, both
+ * `refdiff-compare-*` pairs recorded `dataSlots: false` in their reports while
+ * the manifest had declared `{ patterns: ["Run \\d+ vs \\d+"] }` for them since
+ * 2026-09-02. The rule had never once been in force, and nothing said so —
+ * a declared rule with no effect reports itself nowhere, which is why this is a
+ * function with a test rather than a default nobody re-reads.
+ *
+ * Default OFF is unchanged and needs no `false`: `dataSlotRule` treats
+ * `undefined` as off. The distinction is between "off" and "off, and no pair may
+ * say otherwise".
+ */
+export function runWidePolicy(flags: {
+  dataSlotText?: readonly string[]
+  dataSlots?: boolean
+  scope?: string
+  textPatterns?: readonly string[]
+}): IgnorePolicy {
+  const patterns = flags.dataSlotText ?? []
+  return {
+    ...(patterns.length > 0
+      ? { dataSlots: { patterns: [...patterns] } }
+      : flags.dataSlots === true
+        ? { dataSlots: true }
+        : {}),
+    ...(flags.scope !== undefined ? { scope: flags.scope } : {}),
+    ...(flags.textPatterns?.length ? { textPatterns: [...flags.textPatterns] } : {}),
+  }
+}
+
 export function mergePolicies(...policies: readonly (IgnorePolicy | undefined)[]): IgnorePolicy {
   const out: IgnorePolicy = {}
   for (const p of policies) {
