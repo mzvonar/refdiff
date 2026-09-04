@@ -40,12 +40,17 @@ export {
 } from "./accepted.js"
 export {
   parseManifest,
+  readGallery,
+  readSectionPath,
+  readSections,
+  sectionSegments,
   type DesignSpec,
   type ImplSpec,
   type LiveSpec,
   type ManifestError,
   type ManifestParse,
   type PairSpec,
+  type SectionMeta,
 } from "./manifest.js"
 export { pickLargestChild, MIN_SCOPE_AREA, type ScopeCandidate } from "./adapters/scope.js"
 
@@ -114,6 +119,7 @@ export {
   parseVariantName,
   variantAxes,
   variantProperties,
+  type GalleryConfig,
   type VariantAxes,
   type VariantAxesSource,
   type VariantConfig,

@@ -8,9 +8,15 @@
  * where `variants: { selector, maps?, only?, omit? }` expands a COMPONENT_SET.
  * App entries: `{ source: "storybook", storyId, overlay?, selector?, viewport? }` or
  * `{ source: "live", route | url, role?, viewport?, selector?, waitFor? }`.
+ *
+ * An entry may also declare where it BELONGS and how its cells lay out:
+ * `section: "Core components/Buttons"` (a flat path, never a nested tree) and
+ * `gallery: { columns?, rows?, order?, labels? }` for a variant set. The
+ * module's optional second export `sections` carries order and labels for
+ * those paths — see `readSections`.
  */
 
-import type { VariantConfig } from "./adapters/figma-variants.js"
+import type { GalleryConfig, VariantConfig } from "./adapters/figma-variants.js"
 import type {
   DcHtmlSource,
   FigmaSource,
@@ -57,16 +63,46 @@ export interface PairSpec {
   design: DesignSpec
   impl: ImplSpec
   ignore?: IgnorePolicy
+  /**
+   * Where this entry belongs in the library's hierarchy — a normalized
+   * section path (`"Core components/Buttons"`). Absent means unplaced, which
+   * is not an error: hierarchy is opt-in per entry.
+   */
+  section?: string
+  /** Grid layout for a variant SET's cells. Only ever set on a set entry. */
+  gallery?: GalleryConfig
 }
 
 export type ManifestError =
   | { kind: "not-an-array"; detail: string }
   | { kind: "invalid-entry"; index: number; detail: string }
+  /** The module's `sections` export, which is not indexed by entry. */
+  | { kind: "invalid-sections"; detail: string }
 
 export interface ManifestParse {
   pairs: PairSpec[]
   /** Entries this tool can't run, with the reason. */
   skipped: { id: string; reason: string }[]
+  /**
+   * The declared section metadata, in DECLARATION ORDER — that order IS the
+   * order, which is why there is no `order` field to fall out of sync with
+   * it. `[]` when the manifest declares none.
+   */
+  sections: SectionMeta[]
+}
+
+/**
+ * One node of the library hierarchy: its path, and optionally the label to
+ * draw instead of the path's last segment.
+ *
+ * A path with NO entries is valid and deliberate — a pure grouping node, the
+ * `Foundations` row in the comps: hierarchy only, nothing measured. So this
+ * list is never cross-checked against the entries; an undeclared path is
+ * equally valid and simply carries no label.
+ */
+export interface SectionMeta {
+  path: string
+  label?: string
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -242,6 +278,139 @@ export function readVariants(v: unknown): Result<VariantConfig | undefined, stri
   return ok(out)
 }
 
+/**
+ * A section path: `"/"`-separated segments, every segment trimmed.
+ *
+ * Normalization is not cosmetic here. The comps draw a path as `Actions /
+ * Button`, so a hand-written manifest naturally carries the spaces — and
+ * without trimming, `"Actions/Button"` and `"Actions / Button"` are two
+ * distinct groups that RENDER IDENTICALLY. That is a silent split: the reader
+ * sees two rows with the same name and no way to tell why. Trimming makes
+ * them one node.
+ *
+ * An empty segment is rejected rather than dropped, because every way of
+ * producing one is a typo with a visible consequence — a blank row (`"A//B"`,
+ * `"/A"`, `"A/"`) or a node with no name at all (`""`, `"   "`).
+ */
+export function readSectionPath(v: unknown): Result<string, string> {
+  if (typeof v !== "string") return err(`section must be a string path like "Core components/Buttons"`)
+  const segments = v.split("/").map((seg) => seg.trim())
+  if (segments.some((seg) => seg === "")) {
+    return err(
+      `section "${v}" has an empty segment — write "A" or "A/B", never "", "/A", "A/" or "A//B"`,
+    )
+  }
+  return ok(segments.join("/"))
+}
+
+/** The segments of a normalized path, for a consumer building the tree. */
+export const sectionSegments = (path: string): string[] => path.split("/")
+
+/**
+ * The module's optional `sections` export: order and labels for the paths the
+ * entries name, plus any pure grouping node.
+ *
+ * Two shapes per row, like `textPatterns`: a bare path string when all it
+ * contributes is its position, or `{ path, label? }` when it renames the node.
+ * ARRAY POSITION IS THE ORDER — there is no `order` field, so nothing can
+ * disagree with it.
+ *
+ * A malformed row FAILS the manifest rather than being dropped. Dropping is
+ * safe for an `ignore` rule (the run then reports what the rule would have
+ * excused — loud), and it is the opposite here: a dropped row silently loses a
+ * label or a position and the library still draws, looking finished.
+ */
+export function readSections(v: unknown): Result<SectionMeta[], string> {
+  if (v === undefined) return ok([])
+  if (!Array.isArray(v)) {
+    return err(`sections must be an array of "path" or { path, label? }, got ${typeof v}`)
+  }
+  const out: SectionMeta[] = []
+  const seen = new Map<string, number>()
+  for (const [i, raw] of v.entries()) {
+    const source = typeof raw === "string" ? { path: raw } : raw
+    if (!isRecord(source)) return err(`sections[${i}] must be a path string or { path, label? }`)
+    const unknown = Object.keys(source).filter((k) => k !== "path" && k !== "label")
+    if (unknown.length > 0) return err(`sections[${i}]: unknown key ${unknown.join(", ")} (path, label)`)
+    const path = readSectionPath(source["path"])
+    if (!path.ok) return err(`sections[${i}]: ${path.error}`)
+    if (source["label"] !== undefined && typeof source["label"] !== "string") {
+      return err(`sections[${i}] ("${path.value}"): label must be a string`)
+    }
+    const first = seen.get(path.value)
+    if (first !== undefined) {
+      return err(
+        `sections[${i}]: "${path.value}" is already declared at sections[${first}] — ` +
+          "one node cannot hold two labels or two positions",
+      )
+    }
+    seen.set(path.value, i)
+    out.push({
+      path: path.value,
+      ...(typeof source["label"] === "string" ? { label: source["label"] } : {}),
+    })
+  }
+  return ok(out)
+}
+
+const GALLERY_KEYS = ["columns", "rows", "order", "labels"] as const
+
+/**
+ * `gallery: { columns?, rows?, order?, labels? }` — which variant property is
+ * which axis of the grid, plus pinned option order and human labels.
+ *
+ * Malformed is an ERROR, never a drop, and an UNKNOWN KEY is an error too.
+ * Both follow from what a dropped field does here: the grid still renders, on
+ * a different axis or in a different order, and nothing says so. `gallery: {
+ * colums: "State" }` would otherwise validate as "declares nothing" and
+ * silently lay the sheet out however the consumer defaults — which is why an
+ * EMPTY block is refused as well. Rejecting it is what turns every misspelled
+ * key into a message naming the field.
+ *
+ * What this cannot check is `columns` / `order` naming a property or option the
+ * SET actually defines: there is no Figma node here. See `GalleryConfig`.
+ */
+export function readGallery(v: unknown): Result<GalleryConfig | undefined, string> {
+  if (v === undefined) return ok(undefined)
+  if (!isRecord(v)) return err("gallery must be an object { columns?, rows?, order?, labels? }")
+  const unknown = Object.keys(v).filter((k) => !(GALLERY_KEYS as readonly string[]).includes(k))
+  if (unknown.length > 0) {
+    return err(`gallery: unknown key ${unknown.join(", ")} (${GALLERY_KEYS.join(", ")})`)
+  }
+  const out: GalleryConfig = {}
+  for (const axis of ["columns", "rows"] as const) {
+    if (v[axis] === undefined) continue
+    if (typeof v[axis] !== "string" || v[axis] === "") {
+      return err(`gallery.${axis} must be the name of a variant property`)
+    }
+    out[axis] = v[axis] as string
+  }
+  if (out.columns !== undefined && out.columns === out.rows) {
+    return err(`gallery: "${out.columns}" cannot be both columns and rows`)
+  }
+  if (v["order"] !== undefined) {
+    if (!isRecord(v["order"])) return err("gallery.order must be { property: [options] }")
+    for (const [prop, options] of Object.entries(v["order"])) {
+      if (!Array.isArray(options) || options.length === 0 || options.some((o) => typeof o !== "string")) {
+        return err(`gallery.order.${prop} must be a non-empty array of option names`)
+      }
+      const dupe = options.find((o, i) => options.indexOf(o) !== i)
+      if (dupe !== undefined) return err(`gallery.order.${prop} lists "${String(dupe)}" twice`)
+    }
+    out.order = v["order"] as Record<string, string[]>
+  }
+  if (v["labels"] !== undefined) {
+    if (!isRecord(v["labels"]) || !Object.values(v["labels"]).every(isStringMap)) {
+      return err("gallery.labels must be { property: { option: label } }")
+    }
+    out.labels = v["labels"] as Record<string, Record<string, string>>
+  }
+  if (Object.keys(out).length === 0) {
+    return err(`gallery declares nothing — give it one of ${GALLERY_KEYS.join(", ")}, or drop the block`)
+  }
+  return ok(out)
+}
+
 function readDesign(
   design: unknown,
   scope: string | undefined,
@@ -312,12 +481,24 @@ function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec
 
 /**
  * Validate a loaded manifest value (the module's `manifest` or default
- * export). Unsupported app sources are listed as skipped rather than dropped.
+ * export), and its optional `sections` export. Unsupported app sources are
+ * listed as skipped rather than dropped.
+ *
+ * `sections` is a SECOND argument rather than a second function because the
+ * two are one document: a section path an entry names and a label the
+ * `sections` export gives it are the same declaration seen from two ends, and
+ * a caller that could validate one without the other would eventually
+ * validate only one.
  */
-export function parseManifest(raw: unknown): Result<ManifestParse, ManifestError> {
+export function parseManifest(
+  raw: unknown,
+  sectionsRaw?: unknown,
+): Result<ManifestParse, ManifestError> {
   if (!Array.isArray(raw)) {
     return err({ kind: "not-an-array", detail: `expected an array, got ${typeof raw}` })
   }
+  const sections = readSections(sectionsRaw)
+  if (!sections.ok) return err({ kind: "invalid-sections", detail: sections.error })
   const pairs: PairSpec[] = []
   const skipped: ManifestParse["skipped"] = []
   for (const [index, entry] of raw.entries()) {
@@ -348,13 +529,36 @@ export function parseManifest(raw: unknown): Result<ManifestParse, ManifestError
     const i = readImpl(app, viewport)
     if (!i.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${i.error}` })
 
+    let section: string | undefined
+    if (entry["section"] !== undefined) {
+      const p = readSectionPath(entry["section"])
+      if (!p.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${p.error}` })
+      section = p.value
+    }
+    const gallery = readGallery(entry["gallery"])
+    if (!gallery.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${gallery.error}` })
+    // A gallery IS a variant sheet: every field of it names a variant property,
+    // so on an entry with no set there is nothing for it to describe and it can
+    // only ever be a mistake — a `gallery` moved to the wrong entry, or one left
+    // behind when `variants` was removed. Refused here, where the message can
+    // name the entry, rather than ignored into an artifact nobody reads.
+    if (gallery.value !== undefined && !(d.value.kind === "figma" && d.value.variants !== undefined)) {
+      return err({
+        kind: "invalid-entry",
+        index,
+        detail: `${id}: gallery needs design.variants — it lays out a component SET's cells`,
+      })
+    }
+
     pairs.push({
       id,
       ...(typeof entry["title"] === "string" ? { title: entry["title"] } : {}),
       design: d.value,
       impl: i.value,
       ...(ignore ? { ignore } : {}),
+      ...(section !== undefined ? { section } : {}),
+      ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),
     })
   }
-  return ok({ pairs, skipped })
+  return ok({ pairs, skipped, sections: sections.value })
 }

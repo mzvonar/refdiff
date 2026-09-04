@@ -117,6 +117,42 @@ export function variantProperties(set: FigmaNode): Record<string, string[]> {
   return variantAxes(set).properties;
 }
 
+/**
+ * How a set's cells are laid out as a GRID, declared per manifest entry
+ * (`gallery`) and validated by `readGallery` in manifest.ts.
+ *
+ * Every field names a VARIANT PROPERTY of the set, so this type lives beside
+ * the axes it talks about rather than with the manifest that carries it — the
+ * same split as `VariantConfig`.
+ *
+ * It is a DECLARATION, not a resolved layout. Nothing here can be checked
+ * against the set at manifest-parse time: the parser has no Figma node, so a
+ * `columns` naming a property the set does not define, or an `order` listing
+ * an option that does not exist, is shape-valid and still cannot apply.
+ * **Resolving these names against `VariantAxes.properties` — and deciding what
+ * a name that misses means — belongs to the consumer that has the axes in
+ * hand**, which is the only place the question can be answered. The set index
+ * carries the declaration verbatim so that consumer gets it unaltered.
+ */
+export interface GalleryConfig {
+  /** The property whose options become the grid's COLUMNS. */
+  columns?: string;
+  /** The property whose options become the grid's ROWS. */
+  rows?: string;
+  /**
+   * Pinned option order per property, overriding the axes' own.
+   *
+   * This exists because the axes' order is only the designer's on the
+   * `definitions` branch — see `variantAxes`. On the `child-names` fallback it
+   * is traversal order, and a grid labelled in traversal order while claiming
+   * the designer's is exactly the state that type warns about. Pinning is how
+   * a repo states the order it means without waiting for Figma to define it.
+   */
+  order?: Record<string, string[]>;
+  /** Human labels per property: `{ variant: { "Focus on text": "Focus" } }`. */
+  labels?: Record<string, Record<string, string>>;
+}
+
 const slugify = (props: Record<string, string>): string =>
   Object.entries(props)
     .map(([k, v]) => `${k}-${v}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))

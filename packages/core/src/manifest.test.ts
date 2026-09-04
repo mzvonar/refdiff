@@ -184,3 +184,191 @@ describe("readAccepted", () => {
     expect(readAccepted({ type: "pixel-region", changeKind: 3, reason: "r" })).toBeUndefined();
   });
 });
+
+describe("readSectionPath — the hierarchy declaration (chunk 4)", () => {
+  it("trims every segment, so a path written with spaces is the SAME node", async () => {
+    const { readSectionPath } = await import("./manifest.js");
+    // The comps draw a path as "Actions / Button", so a hand-written manifest
+    // carries the spaces. Untrimmed, these would be two groups rendering with
+    // one name — a split nobody can see.
+    expect(readSectionPath("Actions / Button")).toEqual({ ok: true, value: "Actions/Button" });
+    expect(readSectionPath("Actions/Button")).toEqual({ ok: true, value: "Actions/Button" });
+    expect(readSectionPath("Foundations")).toEqual({ ok: true, value: "Foundations" });
+  });
+
+  it("refuses every shape that produces a nameless node", async () => {
+    const { readSectionPath } = await import("./manifest.js");
+    for (const bad of ["", "   ", "/A", "A/", "A//B", "A / / B"]) {
+      expect(readSectionPath(bad).ok, bad).toBe(false);
+    }
+    expect(readSectionPath(3).ok).toBe(false);
+    expect(readSectionPath(undefined).ok).toBe(false);
+  });
+
+  it("splits a normalized path back into its segments", async () => {
+    const { sectionSegments } = await import("./manifest.js");
+    expect(sectionSegments("Core components/Buttons")).toEqual(["Core components", "Buttons"]);
+    expect(sectionSegments("Foundations")).toEqual(["Foundations"]);
+  });
+});
+
+describe("readSections — order and label metadata", () => {
+  it("takes a bare path or { path, label }, and DECLARATION ORDER is the order", async () => {
+    const { readSections } = await import("./manifest.js");
+    const parsed = readSections([
+      "Foundations",
+      { path: "Core components / Buttons", label: "Buttons" },
+      { path: "Core patterns" },
+    ]);
+    expect(parsed).toEqual({
+      ok: true,
+      value: [
+        { path: "Foundations" },
+        { path: "Core components/Buttons", label: "Buttons" },
+        { path: "Core patterns" },
+      ],
+    });
+    expect(readSections(undefined)).toEqual({ ok: true, value: [] });
+  });
+
+  it("keeps a path NO entry uses — a pure grouping node is the point, not an error", async () => {
+    // The comps' `Foundations` row: hierarchy only, nothing measured. Nothing
+    // here is cross-checked against the entries in either direction.
+    const { parseManifest } = await import("./manifest.js");
+    const parsed = parseManifest([{ ...entry, section: "Core components/Buttons" }], ["Foundations"]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.sections).toEqual([{ path: "Foundations" }]);
+    expect(parsed.value.pairs[0]?.section).toBe("Core components/Buttons");
+  });
+
+  it("refuses a duplicate path, naming where it was first declared", async () => {
+    const { readSections } = await import("./manifest.js");
+    // Normalized, so the two spellings collide — which is exactly the pair a
+    // reader could never tell apart on screen.
+    const dupe = readSections(["Actions/Button", { path: "Actions / Button", label: "Button" }]);
+    expect(dupe.ok).toBe(false);
+    if (dupe.ok) return;
+    expect(dupe.error).toContain("sections[0]");
+  });
+
+  it("fails the manifest rather than dropping a malformed row", async () => {
+    // A dropped row loses a label or a position in silence and the library
+    // still draws, looking finished. The opposite call from an `ignore` rule,
+    // where dropping makes the run report MORE.
+    const { parseManifest, readSections } = await import("./manifest.js");
+    expect(readSections({}).ok).toBe(false);
+    expect(readSections([{ label: "no path" }]).ok).toBe(false);
+    expect(readSections([{ path: "A", label: 3 }]).ok).toBe(false);
+    expect(readSections([{ path: "A", labl: "typo" }]).ok).toBe(false);
+    expect(parseManifest([entry], [{ path: "A/" }])).toMatchObject({
+      ok: false,
+      error: { kind: "invalid-sections" },
+    });
+  });
+});
+
+describe("readGallery — how a set's cells lay out", () => {
+  const setEntry = {
+    id: "ds-button-fill",
+    design: {
+      kind: "figma",
+      fileKey: "M0hn",
+      nodeId: "8226-4244",
+      variants: { selector: '[data-col="{State}"]' },
+    },
+    app: { source: "storybook", storyId: "ds-button--fill" },
+  };
+
+  it("reads the four fields onto a set entry", async () => {
+    const { parseManifest } = await import("./manifest.js");
+    const parsed = parseManifest([
+      {
+        ...setEntry,
+        section: "Actions / Button",
+        gallery: {
+          columns: "State",
+          rows: "variant",
+          order: { State: ["Default", "Hover", "Focus on text"] },
+          labels: { State: { "Focus on text": "Focus" } },
+        },
+      },
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs[0]?.section).toBe("Actions/Button");
+    expect(parsed.value.pairs[0]?.gallery).toEqual({
+      columns: "State",
+      rows: "variant",
+      order: { State: ["Default", "Hover", "Focus on text"] },
+      labels: { State: { "Focus on text": "Focus" } },
+    });
+  });
+
+  it("refuses an unknown key and an empty block — which is what catches a TYPO", async () => {
+    // `{ colums: "State" }` has no valid key at all. Dropped, it would read as
+    // "declares nothing" and the sheet would lay out on whatever the consumer
+    // defaults to, looking fine. This is the single check that turns every
+    // misspelling into a message naming the field.
+    const { readGallery } = await import("./manifest.js");
+    const typo = readGallery({ colums: "State" });
+    expect(typo.ok).toBe(false);
+    if (typo.ok) return;
+    expect(typo.error).toContain("colums");
+    expect(readGallery({}).ok).toBe(false);
+    expect(readGallery({ columns: "State", labls: {} }).ok).toBe(false);
+    expect(readGallery(undefined)).toEqual({ ok: true, value: undefined });
+    expect(readGallery("State").ok).toBe(false);
+  });
+
+  it("refuses one property as both axes, and a malformed order or labels", async () => {
+    const { readGallery } = await import("./manifest.js");
+    expect(readGallery({ columns: "State", rows: "State" }).ok).toBe(false);
+    expect(readGallery({ columns: "" }).ok).toBe(false);
+    expect(readGallery({ columns: 3 }).ok).toBe(false);
+    expect(readGallery({ order: { State: [] } }).ok).toBe(false);
+    expect(readGallery({ order: { State: "Default" } }).ok).toBe(false);
+    expect(readGallery({ order: { State: ["Default", 3] } }).ok).toBe(false);
+    // A pinned option listed twice renders a column twice or is quietly deduped.
+    const dupe = readGallery({ order: { State: ["Default", "Hover", "Default"] } });
+    expect(dupe.ok).toBe(false);
+    if (dupe.ok) return;
+    expect(dupe.error).toContain("Default");
+    expect(readGallery({ labels: { State: { Default: 3 } } }).ok).toBe(false);
+    // One axis alone is a complete declaration.
+    expect(readGallery({ columns: "State" })).toEqual({ ok: true, value: { columns: "State" } });
+  });
+
+  it("refuses a gallery on an entry with no component set", async () => {
+    // Every gallery field names a VARIANT PROPERTY, so on a one-cell pair
+    // there is nothing for it to describe — a block moved to the wrong entry,
+    // or left behind when `variants` went.
+    const { parseManifest } = await import("./manifest.js");
+    const dcHtml = parseManifest([{ ...entry, gallery: { columns: "State" } }]);
+    expect(dcHtml).toMatchObject({ ok: false, error: { kind: "invalid-entry", index: 0 } });
+    if (dcHtml.ok) return;
+    expect(dcHtml.error).toMatchObject({ detail: expect.stringContaining("design.variants") });
+    const noVariants = parseManifest([
+      {
+        id: "x",
+        design: { kind: "figma", fileKey: "M0hn", nodeId: "1-2" },
+        app: { source: "storybook", storyId: "s" },
+        gallery: { columns: "State" },
+      },
+    ]);
+    expect(noVariants.ok).toBe(false);
+  });
+
+  it("carries an entry's section and gallery nowhere near the ignore policy", async () => {
+    // Regression shape from `contentsOf`: core, policy and manifest were all
+    // correct and five pairs of six did not move, because the parser dropped
+    // the field. Every new manifest field needs a row asserting it ARRIVES.
+    const { parseManifest } = await import("./manifest.js");
+    const parsed = parseManifest([entry]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs[0]?.section).toBeUndefined();
+    expect(parsed.value.pairs[0]?.gallery).toBeUndefined();
+    expect(parsed.value.sections).toEqual([]);
+  });
+});

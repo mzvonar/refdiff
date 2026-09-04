@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import type { FigmaNode, FigmaNodesResponse } from "../adapters/figma-api.js";
-import type { VariantConfig } from "../adapters/figma-variants.js";
+import type { GalleryConfig, VariantConfig } from "../adapters/figma-variants.js";
 
 import { expandVariants, variantAxes } from "../adapters/figma-variants.js";
 import { buildSetIndex, setIndexFileName } from "./set-index.js";
@@ -50,7 +50,7 @@ const indexOf = (
   entryId: string,
   set: FigmaNode,
   config: VariantConfig,
-  over: { title?: string; designRef?: string } = {},
+  over: { title?: string; designRef?: string; gallery?: GalleryConfig } = {},
 ) => {
   const expansion = expandVariants(set, config);
   if (!expansion.ok) throw new Error(`fixture did not expand: ${JSON.stringify(expansion.error)}`);
@@ -59,6 +59,7 @@ const indexOf = (
     ...(over.title !== undefined ? { title: over.title } : {}),
     designRef: over.designRef ?? "M0hnCQJIUho3tcW6PcnHWH#8226:4244@2394716977561734647",
     axes: variantAxes(set),
+    ...(over.gallery !== undefined ? { gallery: over.gallery } : {}),
     expansion: expansion.value,
     now: NOW,
   });
@@ -169,5 +170,28 @@ describe("setIndexFileName", () => {
     expect(setIndexFileName("ds-button-fill")).toBe("ds-button-fill.set.json");
     expect(setIndexFileName("ds-alert").endsWith(".set.json")).toBe(true);
     expect(setIndexFileName("ds-alert")).not.toContain("/");
+  });
+});
+
+describe("buildSetIndex — the gallery declaration (chunk 4)", () => {
+  it("carries the manifest's gallery VERBATIM, including a property this set has no axis for", () => {
+    // Deliberate: `columns: "Nonsense"` is shape-valid (the manifest parser has
+    // no Figma node) and this artifact must not quietly repair or drop it. The
+    // consumer holding `axes` is the only place the miss can be seen, and it
+    // can only see what arrived.
+    const gallery: GalleryConfig = {
+      columns: "Nonsense",
+      order: { State: ["Default", "Hover"] },
+      labels: { State: { Default: "Rest" } },
+    };
+    const index = indexOf("ds-button-fill", buttonFill, BUTTON_FILL, { gallery });
+    expect(index.gallery).toEqual(gallery);
+    expect(Object.keys(index.axes.properties)).not.toContain("Nonsense");
+  });
+
+  it("omits the key entirely for an entry that declares none", () => {
+    const index = indexOf("ds-button-fill", buttonFill, BUTTON_FILL);
+    expect(index.gallery).toBeUndefined();
+    expect("gallery" in index).toBe(false);
   });
 });

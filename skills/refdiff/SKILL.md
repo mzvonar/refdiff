@@ -403,7 +403,9 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   ORDER** — `definitions` is the designer's own order, `child-names` is the
   fallback's traversal order, and on real sets the two disagree. It is a FILE
   at the root, so every run-dir walker ignores it, and a subset re-run
-  rewrites only the entries it names.
+  rewrites only the entries it names. It also carries the entry's `gallery`
+  declaration when it has one — which axis is columns, pinned option order,
+  human labels ("Declaring the library's shape").
 - **The annotator's Library folds a set into ONE row.** It groups run dirs by
   the entry their pair id names — every variant pair is `<entryId>--<slug>`,
   so `ds-button-fill--state-hover_variant-default` sits under
@@ -582,6 +584,7 @@ data strings).
 ```js
 {
   id: "docs-owner-desktop",
+  section: "Core patterns/Documents",                     // where it belongs — see "Declaring the library's shape"
   design: { file: "documents.dc.html", frame: "8a" },
   app: { source: "live", role: "owner", route: "/…/docs", viewport: { width: 1280, height: 900 } },
   ignore: {
@@ -663,6 +666,73 @@ and a harness that guesses it goes quiet about copy regressions. Read the
 5. **Only then** the real drift, and only then write policy for what is left.
 
 Doing 5 before 1–4 means fixing artefacts, and the delta will not stick.
+
+## Declaring the library's shape — `section`, `sections`, `gallery`
+
+Three OPTIONAL declarations. They change no measurement: a run with them and a
+run without them produce identical reports. What they change is how a reader
+navigates a manifest that has grown past a screen, and how a variant set's
+cells are arranged when one is drawn as a grid.
+
+```js
+// The order and the labels of the hierarchy. Array POSITION is the order —
+// there is no `order` field, so nothing can disagree with it. A path here that
+// no entry uses is a PURE GROUPING NODE, deliberate and valid: hierarchy only,
+// nothing measured.
+export const sections = [
+  "Foundations",                                          // no entries — a grouping node
+  { path: "Core components / Buttons", label: "Buttons" },
+  "Core patterns",
+]
+
+export const manifest = [
+  {
+    id: "ds-button-fill",
+    section: "Core components / Buttons",                 // a flat path, never a nested tree
+    design: { kind: "figma", fileKey: "…", nodeId: "…", variants: { selector: "…" } },
+    app: { source: "storybook", storyId: "ds-button--fill" },
+    // Only on a component SET — every field names a variant PROPERTY.
+    gallery: {
+      columns: "State",                                   // which axis is columns
+      rows: "variant",
+      order: { State: ["Default", "Hover", "Focus on text"] },   // pinned option order
+      labels: { State: { "Focus on text": "Focus" } },           // human labels
+    },
+  },
+]
+```
+
+- **Paths are flat strings, `/`-separated, and every segment is TRIMMED.** So
+  `"Actions / Button"` and `"Actions/Button"` are the same node. Without the
+  trim they would be two groups rendering under one name — a split with no
+  visible cause. An empty segment is refused rather than repaired (`""`,
+  `"/A"`, `"A/"`, `"A//B"`), because each one is a typo whose only symptom is a
+  blank row.
+- **A malformed declaration FAILS the manifest.** This is the opposite call
+  from an `ignore` rule, where a malformed rule is dropped and the run then
+  reports everything the rule would have excused — loud. Here a dropped field
+  loses a label, a position or an axis in silence and the library still draws,
+  looking finished. An **unknown key in `gallery` is an error too**, and so is
+  an EMPTY `gallery: {}` — that pair of checks is what turns `{ colums:
+  "State" }` into a message naming the field instead of a sheet laid out on
+  whatever the consumer defaults to.
+- **`gallery` needs `design.variants`.** Every field of it names a variant
+  property, so on a one-cell pair there is nothing for it to describe; it is
+  refused, naming the entry.
+- **`gallery` is a declaration, not a resolved layout — and nothing validates
+  it against the SET.** The manifest parser has no Figma node, so a `columns`
+  naming a property the set does not define, or an `order` listing an option no
+  cell carries, is shape-valid. It travels VERBATIM into
+  `<out-root>/<entryId>.set.json` (`gallery`), beside the `axes` it refers to,
+  and the run prints it back — `axes from definitions, gallery columns=State
+  rows=variant` — which is where a mismatch can be seen at all. `order` earns
+  its keep on the `child-names` branch specifically: there the axes' own order
+  is traversal order, not the designer's (§1b).
+- **`section` is validated and reported, not yet persisted.** `compare` prints
+  one line for a manifest that declares any (`hierarchy: 3 sections declared,
+  1/2 entries placed`) and nothing for one that does not. The run root does not
+  carry the section tree yet, so no surface groups by it — the annotator's
+  Library still groups by the entry a pair id names (§1b).
 
 ## Reading the measurements (the ported "what to compare" checklist)
 

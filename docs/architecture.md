@@ -173,7 +173,10 @@ What the model receives — every item evidence-backed (research §4):
   `buildSetIndex`): for a component set, what it CONTAINS as opposed to what
   a run measured — `axes { source, properties }`, every pair's `slug` / run
   `dir` / `props`, and every skipped cell with its reason and props. The one
-  artifact that can express ABSENCE, which no run root can.
+  artifact that can express ABSENCE, which no run root can. It also carries
+  the entry's `gallery` declaration verbatim when it has one, so a consumer
+  arranging the cells as a grid finds the axes and the arrangement in one
+  file.
 - **Set-of-marks overlay**: one annotated image with numbered marks
   matching finding ids.
 - **Per-finding native-resolution crop pairs**, presented as separate
@@ -1290,7 +1293,7 @@ fall through to the area rule, as do unlabelled artboards.
   `ds-chip` 5 / 63 out of 105 declared combinations, with 2 run dirs). The
   skip list was printed and persisted NOWHERE, so it vanished the moment a
   run log was piped through `tail`. Pure `package/set-index.ts`
-  `buildSetIndex({ entryId, title?, designRef, axes, expansion, now? })` →
+  `buildSetIndex({ entryId, title?, designRef, axes, gallery?, expansion, now? })` →
   `<out-root>/<entryId>.set.json`; `variantAxes(set)` now returns
   `{ source, properties }` because option ORDER is the designer's on the
   `definitions` branch only and traversal order on the child-names fallback —
@@ -1309,6 +1312,51 @@ fall through to the area rule, as do unlabelled artboards.
   runs where the question is live. The write is a typed error that never sets
   `anyError`: a set is expensive, and losing 41 measured pairs to a failed
   4 KB provenance write would be the costliest possible failure.
+- **Manifest hierarchy and grid declarations — built 2026-09-04, chunk 4 of
+  the gallery plan.** The manifest gains three optional declarations, none of
+  which changes a measurement: `section: "Core components/Buttons"` per entry,
+  a second named export `sections` for the order and labels of those paths, and
+  `gallery: { columns?, rows?, order?, labels? }` per SET entry. The split is
+  the plan's: **mechanism in the tool** (deriving axes, rendering a grid — it
+  is generic to every Figma `COMPONENT_SET`, and N repos hand-rolling it gives
+  N divergent review UIs), **declaration in the manifest**. Decisions worth
+  the ink:
+  - **Flat path strings, not a nested tree.** Entries stay independently
+    editable, diffs stay small, and a derived tree cannot go structurally
+    invalid. A path with NO entries is valid and is the point — a pure
+    grouping node, the comps' `Foundations` row: hierarchy only, nothing
+    measured. So the two lists are never cross-checked in either direction.
+  - **Segments are TRIMMED, and an empty segment is refused.** The comps draw
+    a path as `Actions / Button`, so a hand-written manifest carries the
+    spaces; untrimmed, `"Actions / Button"` and `"Actions/Button"` are two
+    groups that render under one name — a split with no visible cause. Every
+    way of producing an empty segment (`""`, `"/A"`, `"A/"`, `"A//B"`) is a
+    typo whose only symptom is a blank row, so it fails the manifest.
+  - **Array position IS the order.** No `order` field on `sections`, so
+    nothing can disagree with the declaration order.
+  - **Malformed FAILS the manifest — the opposite call from an `ignore`
+    rule.** A dropped `ignore` rule makes the run report everything it would
+    have excused (loud); a dropped hierarchy field loses a label, a position
+    or an axis in silence while the library still draws, looking finished. For
+    `gallery` that extends to an **unknown key** and to an **empty block**:
+    that pair of checks is the only thing standing between `{ colums: "State"
+    }` and a sheet laid out on whatever the consumer defaults to. `gallery` on
+    an entry with no `design.variants` is refused for the same reason — every
+    field of it names a variant property, so there is nothing for it to
+    describe.
+  - **`gallery` is carried, never resolved.** The parser has no Figma node, so
+    a `columns` naming a property the set does not define is shape-valid; it
+    travels verbatim into the set index beside the `axes` it refers to, and the
+    consumer holding those axes owns what a miss means. `order` earns its keep
+    on the `child-names` branch, where the axes' own order is traversal order
+    rather than the designer's.
+  - **`section` is validated and reported, not persisted.** `compare` prints
+    `hierarchy: N sections declared, M/K entries placed` for a manifest that
+    declares any and nothing for one that does not. A root-level artifact for
+    the tree has to cover unplaced entries and pure grouping nodes as well as
+    set entries, and it carries the subset-re-run merge hazard the set index
+    solved structurally — so its shape is decided with the surface that
+    consumes it (the Library rebuild), not ahead of it.
 - **Finding identity is by content when the element has text — decided
   2026-08-27 (S11).** `Finding.text` (design side wins; spacing `"a → b"`)
   is set by every check. `delta.ts` `identityKey`: position / presence /

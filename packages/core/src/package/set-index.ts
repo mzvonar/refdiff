@@ -26,7 +26,7 @@
  * reports stay the truth, this says which cells were ever supposed to exist.
  */
 
-import type { VariantAxes, VariantExpansion } from "../adapters/figma-variants.js";
+import type { GalleryConfig, VariantAxes, VariantExpansion } from "../adapters/figma-variants.js";
 
 import { parseVariantName } from "../adapters/figma-variants.js";
 
@@ -73,6 +73,21 @@ export interface SetIndex {
    */
   createdAt: string;
   axes: VariantAxes;
+  /**
+   * The manifest entry's `gallery` declaration, VERBATIM — which property is
+   * columns, which is rows, pinned option order, human labels.
+   *
+   * It rides here because this is the artifact a grid is built from: axes,
+   * pairs and skips are all in this file, and the declaration that says how to
+   * arrange them would otherwise be the one input a consumer had to go back to
+   * the manifest for. Absent when the entry declares none.
+   *
+   * Unresolved on purpose. `columns` may name a property `axes.properties`
+   * does not have, and `order` an option no cell carries — the manifest parser
+   * has no Figma node, so it can only check the SHAPE. The consumer holding
+   * the axes resolves the names and owns what a miss means.
+   */
+  gallery?: GalleryConfig;
   /** The cells that became pairs, in the set's own child order. */
   pairs: SetIndexPair[];
   /** The cells that did not, each with why. Never empty for a reason. */
@@ -84,6 +99,7 @@ export interface SetIndexInput {
   title?: string;
   designRef: string;
   axes: VariantAxes;
+  gallery?: GalleryConfig;
   expansion: VariantExpansion;
   /** Injectable clock, so the shaping stays pure and the tests stay fixed. */
   now?: string;
@@ -105,6 +121,7 @@ export function buildSetIndex(input: SetIndexInput): SetIndex {
     setName: expansion.setName,
     createdAt: input.now ?? new Date().toISOString(),
     axes,
+    ...(input.gallery !== undefined ? { gallery: input.gallery } : {}),
     pairs: expansion.pairs.map((p) => ({
       slug: p.slug,
       dir: `${entryId}--${p.slug}`,

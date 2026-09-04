@@ -747,12 +747,25 @@ async function expandFigmaSet(
     ...(spec.title !== undefined ? { title: spec.title } : {}),
     designRef: `${design.fileKey}#${design.nodeId}${version ? `@${version}` : ""}`,
     axes: variantAxes(set),
+    ...(spec.gallery !== undefined ? { gallery: spec.gallery } : {}),
     expansion: expanded.value,
   })
   const wrote = await writeSetIndex(outRoot, index)
+  // The gallery clause names the declared axes rather than saying "declared":
+  // a `columns` naming a property this set does not define is shape-valid (the
+  // manifest parser has no node), and reading it back beside `axes from …` is
+  // where a reader can see the mismatch at all until a consumer resolves it.
+  const galleryAxes = [
+    index.gallery?.columns !== undefined ? `columns=${index.gallery.columns}` : "",
+    index.gallery?.rows !== undefined ? `rows=${index.gallery.rows}` : "",
+  ].filter(Boolean)
+  const galleryNote =
+    index.gallery === undefined
+      ? ""
+      : `, gallery ${galleryAxes.join(" ") || "labels/order only"}`
   console.log(
     wrote.ok
-      ? `  set index: ${wrote.value} (${index.pairs.length} pairs, ${index.skipped.length} skipped, axes from ${index.axes.source})`
+      ? `  set index: ${wrote.value} (${index.pairs.length} pairs, ${index.skipped.length} skipped, axes from ${index.axes.source}${galleryNote})`
       : `  set index NOT written for ${wrote.error.entryId}: ${wrote.error.detail}`,
   )
   if (expanded.value.pairs.length === 0) return ok({ specs: [], prefetched: new Map() })
@@ -831,9 +844,21 @@ async function writeSetIndex(
 
 async function loadManifest(file: string): Promise<PairSpec[]> {
   const mod: Record<string, unknown> = await import(pathToFileURL(resolve(file)).href)
-  const parsed = parseManifest(mod["manifest"] ?? mod["default"])
+  const parsed = parseManifest(mod["manifest"] ?? mod["default"], mod["sections"])
   if (!parsed.ok) fail(`invalid manifest ${file}: ${JSON.stringify(parsed.error)}`)
   for (const s of parsed.value.skipped) console.log(`skipping ${s.id}: ${s.reason}`)
+  // Only for a manifest that opted in, so nothing changes for one that has not
+  // — and printed at all because a declaration with no output is
+  // indistinguishable from a key the parser never read. This line is what says
+  // the hierarchy arrived. `sections` itself is not persisted into the out root
+  // yet: the library surface that draws it is the consumer that decides the
+  // artifact's shape (docs/plan-gallery-groups.md, chunk 5 prerequisite 5).
+  const placed = parsed.value.pairs.filter((p) => p.section !== undefined)
+  if (parsed.value.sections.length > 0 || placed.length > 0) {
+    console.log(
+      `hierarchy: ${parsed.value.sections.length} sections declared, ${placed.length}/${parsed.value.pairs.length} entries placed`,
+    )
+  }
   return parsed.value.pairs
 }
 
