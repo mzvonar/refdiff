@@ -2,8 +2,13 @@
 
 **Workstream-scoped handoff, canonical and current.** Repo `~/development/refdiff` (Mato's
 Mac: `~/Development/refdiff`), branch **`main`**, pnpm 10 workspace, TypeScript/ESM,
-Node ≥22. Rewritten at the end of the 2026-09-04 session and amended the same day when
-chunk 4 shipped, so nothing in it is inherited from an earlier revision.
+Node ≥22. Rewritten at the end of the 2026-09-04 session, then amended twice the same day —
+when chunk 4 shipped, and when the consuming repo's bindings debt (§0) was paid — so nothing
+in it is inherited from an earlier revision.
+
+**Chunk 3 is the next chunk and §"What REMAINS" step 1 is written for a fresh context**: it
+carries the blocking question, the comps' frames, the seam, the data, the decisions already
+taken and the one open question. Read the plan's § "Chunk 3" second.
 
 **This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical repo
 handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair). This
@@ -119,45 +124,122 @@ comp needs a settled-or-not answer from Mato first; chunk 5 is the Library rebui
 
 ## What REMAINS (in order)
 
-### 0. A DEBT THIS REPO CANNOT PAY — `population-registry`'s bindings are now stale
+### 0. CROSS-REPO — the bindings debt is PAID; three follow-ups remain THERE
 
-Chunk 4 changed the manifest shape, so
-**`population-registry`'s `frontend/ds/tooling/visual/refdiff.bindings.md` is out of date**
-and this repo cannot edit it (CLAUDE.md § "Keep the skill repo-agnostic": changing something
-a consuming repo's bindings assert means those bindings are now wrong too — say so in the
-handoff even when you cannot edit that repo). Two separate things are wrong with it:
+**Done 2026-09-04, same day, from a session in `population-registry`.**
+`frontend/ds/tooling/visual/refdiff.bindings.md` was rewritten (161 → 279 lines) and now
+carries the command behind every count: **14 manifest entries · 12 distinct Figma nodes ·
+194 run dirs · 194/0/194 · 1071 findings · 64 cause groups**, plus a "manifest shape" row
+documenting `section` / `sections` / `gallery` as available and deliberately unused there.
+Five corrections landed (`3 entries` → 14; `11 entries, 152 pairs` → 14/194; "three
+reconciliation items" → five; checkbox `6 of 30` → 45; the three `dialog` starters moved out
+of the not-paired table because they ARE paired now). **That file is still UNTRACKED in
+`population-registry` and was not committed** — the tree there is mid-work on
+`feat/ds-token-press-3-re-export`.
 
-1. **The manifest shape it asserts is incomplete.** It does not mention `section`,
-   `sections` or `gallery`. Nothing BREAKS — all three are optional and the DS manifest
-   declares none, so its runs are unaffected — but a reader deriving the manifest shape from
-   those bindings will not know the fields exist, which is exactly the stale-assertion
-   failure `CLAUDE.md` names.
-2. **Its inventory is stale on its own terms, in TWO places** — and both predate chunk 4,
-   so this is a pre-existing debt the chunk merely makes worth paying now. Measured this
-   session, each number naming the command that produced it:
-   - the file's own header table calls the manifest **"3 entries"** (`refdiff.bindings.md:12`)
-     and its inventory paragraph **"11 entries, 152 pairs"** (`:45`, and it says
-     "measured at the last full run, not inherited");
-   - `refdiff.manifest.mjs` has **14** entries (`grep -c '^  {'` and `grep -c 'id: "'`
-     agree), and the DS out root served on port 7380 returned **194 pairs across 14 groups**
-     from `/api/pairs`: `ds-checkbox` 45, `ds-button-fill` 41, `ds-button-stroke` 24,
-     `ds-button-ghost` 24, `ds-alert` 23, `ds-button-icon` 11, `ds-select-field` 6,
-     `ds-text-field` 6, `ds-date-field` 5, `ds-dialog-header` 4, `ds-chip` 2,
-     `ds-dialog-starter-{lg,md,sm}` 1 each.
+**Nothing here blocks on it.** Three follow-ups stay on the population-registry side, and
+two of them want the same run:
 
-**Fix it from the population-registry side**, in a session working in that repo — it is a
-docs edit there, not code. It is also the natural moment to run the **DS coverage census**
-below, since both want the same numbers.
+1. **A full `refdiff compare` over the DS manifest** — that out root predates chunk 2, so it
+   holds **0** `<entryId>.set.json`. Every coverage figure there is hand-counted for exactly
+   that reason, and the Figma-variants column does not decompose into the run-dir column:
+   `ds-checkbox` shows 45 run dirs against 54 recorded variants while the entry pins one of
+   five properties, which no arithmetic over those two numbers explains. A run makes
+   declared / paired / skipped an artifact and closes the question.
+2. **Regenerate `figma-inventory.md`** (needs a live Figma sweep). Its `already paired | 10`
+   predates the `ds-dialog-starter-*` entries; the reconciliation is verified exactly —
+   10 nodes marked `**man**` + chip (unstarred, item 1) + `36940:4414` (marked `—`, added
+   after the 2026-09-01 sweep in response to item 3) = the manifest's 12.
+3. **`menu/gallery` is unpaired and was MISSING from the not-paired table entirely** —
+   `24008:27391` (`*Dropdown/items`), `storiesReady: true`, story `ds-menu--gallery`, in
+   neither the manifest nor any row. An omission, not a decision; it is the
+   pair-per-comp-gap class, which reports itself nowhere. Probe the node and the story's
+   tagging before assuming it belongs in the untagged row.
 
 ### 1. CHUNK 3 — the gallery view ← DO FIRST
 
-Plan § "Chunk 3". Both Gallery comps are on disk already (waived in `pair-coverage.test.ts`
-until a surface exists). **Confirm with Mato that the Gallery comp has settled before
-converging on it** — he is still designing. The seam is `packages/annotator/src/view-math.ts`:
-add the pure `cellOrigin` composition and a `GalleryLayout` (cell → `{ pairDir, rect, row,
-col }`) built from the set index; the pair view is the one-cell case at the origin. Chunk 2's
-index supplies the axes, the pairs and the skipped cells; `absent` is the axes cross-product
-minus pairs minus skipped (measured: 9 for Alert, 30 for Button/Fill).
+Plan § "Chunk 3". **ASK MATO FIRST: has the Gallery comp settled?** He was still designing
+on 2026-09-04. A comp that moves under a converging loop turns every re-run's delta into
+noise about the comp, and the loop's whole premise is that a number means a fix. This is the
+one blocking question — everything below is ready.
+
+**The comps are on disk and already waived**, so `pair-coverage` is green and will go red the
+moment the surface exists without a pair:
+
+| comp | frame (`data-screen-label`) | `$preview` | pair needs |
+| --- | --- | --- | --- |
+| `design/refdiff/RefDiff Gallery.dc.html` | `Gallery — Button variant sheet` | 1400×860 | full-bleed, no `scope` |
+| `design/refdiff/RefDiff Gallery Mobile.dc.html` | `RefDiff gallery mobile` | 460×950 | a 390×844 phone in a showcase ⇒ **`scope: ".cc-theme-dark"`**, NOT the responsive-narrow-viewport shape the Library pairs use |
+
+Both waivers live in `packages/annotator/test/pair-coverage.test.ts` `UNPAIRED_BY_DESIGN`
+with their reasons — **delete them in the same change that registers the pairs**, or the
+suite reports a waiver that outlived its comp.
+
+**Prerequisite already met:** `icon-subset.mjs --check` exits 0, and the 2026-09-04 run
+(97 → 101 glyphs) absorbed the Gallery comps' four. Do NOT re-run it for chunk 3; chunk 5's
+Library comps are the ones still missing glyphs (`chevron_right`, `account_tree`, `folder`,
+`filter_alt`, `unfold_more`).
+
+**Follow §0 of the refdiff skill, in that order** — this is a surface that does not exist
+yet, not a drifted one: stub the route so it renders SOMETHING deterministic, THEN register
+the pair, THEN run it and expect tens of findings (that list IS the specification), THEN
+converge on the delta. Registering before stubbing gives a capture error instead of a report;
+stubbing without registering gives no measurement at all.
+
+**The seam is `packages/annotator/src/view-math.ts`** — pure, import-free, 480 lines,
+already the whole world/screen story (`View { z, tx, ty }`, `screen = world · z + t`, and
+`fitView` / `focusView` / `zoomAt` / `panBy` / `screenToWorld` on top of it). Add:
+
+- a pure `cellOrigin` composition, and
+- a `GalleryLayout`: cell → `{ pairDir, rect, row, col }`, built from the set index.
+
+A gallery is `pairWorld + cellOrigin`; **the existing pair view is the degenerate one-cell
+case at the origin**, which is what keeps one renderer for both. Unit-test both, beside the
+module, as every pure module here is.
+
+**Where the data comes from, and the one gap:** chunk 2's `<out-root>/<entryId>.set.json`
+supplies `axes { source, properties }`, every pair (`slug`, `dir`, `props`) and every
+skipped cell (`reason`, `props`). `absent` = the axes cross-product minus pairs minus
+skipped (measured: **9** for Alert, **30** for Button/Fill). **Chunk 4 left `gallery`
+DECLARED and UNRESOLVED, and resolving it is chunk 3's job** — `SetIndex.gallery` carries
+`columns` / `rows` / `order` / `labels` verbatim, `columns` may name a property
+`axes.properties` does not have, `order` an option no cell carries, and **nothing anywhere
+decides what a name that misses means** (fall back to the axes' own order, or fail the
+sheet). Decide it deliberately and put it beside the resolver.
+
+**Decisions already taken — do not re-litigate, they are in the plan with their reasons:**
+
+- **Composed, never re-compared.** One alignment fit across 41 cells plus the container-level
+  `pixel-region/frame` noise (firing 194/194 on the DS) would swallow every real finding. The
+  unit stays one variant component ↔ one story cell.
+- **Frame-level findings render as a CELL BADGE, never a box.** `pixel-region/frame`'s box IS
+  the whole frame, so translated as boxes it paints every cell solid and makes
+  highlight/dim/strobe useless at sheet scale.
+- **Per-cell staleness is mandatory, not a nicety.** Subset re-runs mix vintages — the DS root
+  right now spans 06:29 to 10:04 with ordinals r2…r10. `createdAt` is in the payload and
+  `run` is too since 2026-09-04. **Read a span PER GROUP**; there is no global newest.
+- **Wipe / onion / blink are PER CELL at the same relative position, one global control.** A
+  single sweep across the sheet sits at a different phase in every cell and tells you nothing
+  about a variant set.
+- **Three cell states**: `measured` (verdict + severity badge), `skipped` (greyed, reason on
+  hover/selection), `absent` (in `axes.properties` but in neither `pairs` nor `skipped` — a
+  hole nobody declared). The comp draws exactly these three, plus recurring-cause chips.
+- **Notes are authored from either view and stored against the PAIR**, in that pair's world
+  coordinates, so they appear on the pair view too and `annotations.md` keeps working
+  untouched. Composite coordinates would drift the moment a cell resizes.
+- **`summary.json`'s `groups` is 64 CAUSE groups, each with its `pairs[]`** — a free "light up
+  every cell with this cause" affordance, probably the most useful thing on a 41-cell sheet.
+  Do not recompute it, and do not confuse the key with hierarchy (that is `sections`).
+
+**One open question, chunk 3's to answer:** a note that belongs to no single cell ("this whole
+warning row is too dark") has no owning pair. Plan's recommendation stands — allow it with a
+set-level file beside the set index, because forcing the note onto an arbitrary cell is a lie
+about where the problem is.
+
+**Verify:** the gallery measured against its comp through `design/refdiff.manifest.mjs`, plus
+unit tests on `GalleryLayout` and the finding-projection function. **Docs:** a whole new
+review surface — `SKILL.md`'s annotator section AND its "read the human's notes" flow both
+change, plus `docs/architecture.md`.
 
 ### 2. CHUNK 5 — the Library rebuilt to the comp
 
