@@ -385,7 +385,15 @@ body { display:flex; flex-direction:column; }
 .delta-strip .dsep { width:1px; height:16px; background:var(--line); flex-shrink:0; }
 .delta-strip .regmsg { font-weight:700; color:var(--critical); white-space:nowrap; }
 .delta-strip .regsub { font-size:11.5px; color:var(--txt2); white-space:nowrap; }
-.delta-strip .review { margin-left:auto; padding:4px 12px; border-radius:7px; font-size:11.5px; font-weight:600; cursor:pointer;
+/* line-height 15px is the comps' own "normal" at 11.5px, measured in BOTH of them (Comparison
+   Tool at 1360 and Mobile Toolbar at 390 render this button 25 tall = 15 + 4+4 padding + 1+1
+   border). The app's global 1.4 makes the line box 16.1 and the button 26.09, and on the PHONE
+   that 1.09px is the whole difference between the two strips: the phone strip wraps, so this
+   button IS the second row's height -- strip 66.09 against the comp's 65, pushing the canvas,
+   the Show pill and the align pill 1.09px down and reporting as two pixel-region findings on
+   the toolbar pair. Desktop cannot move: its strip is pinned by min-height calc(38px + 1px)
+   and the shorter button centres where the comp's does. */
+.delta-strip .review { margin-left:auto; padding:4px 12px; border-radius:7px; font-size:11.5px; line-height:15px; font-weight:600; cursor:pointer;
   background:var(--critical); border:1px solid var(--critical); color:#fff; white-space:nowrap; flex-shrink:0; }
 .delta-strip .review.on { background:transparent; border-color:var(--line); color:var(--txt2); }
 .delta-strip .dismiss { margin-left:auto; width:24px; height:24px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--txt2); background:transparent; flex-shrink:0; }
@@ -731,7 +739,12 @@ body.single .align-wrap { bottom:58px; }
   display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .gpill.critical .gnum { color:var(--critical); } .gpill.major .gnum { color:var(--major); } .gpill.minor .gnum { color:var(--minor); }
 .gpill .glab { font-size:11px; font-weight:600; color:var(--txt); }
-.gpill .gsw { display:flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:var(--acc); color:#fff; font-size:10.5px; font-weight:700; cursor:pointer; }
+/* line-height 14px is the comp's "normal" at 10.5px: its btnStyle declares padding 3px 9px and
+   fontSize 10.5 and nothing else, and renders 20 tall. The app's global 1.4 gives a 14.7px line box
+   and a 20.69px button -- the same class as .delta-strip .review above, and it surfaced the moment
+   the label got its own span and this div started emitting as a surface (design 98x20 against the
+   app's 98x20.69, radius 10 against 10.34 because both are 999px clamped to half the height). */
+.gpill .gsw { display:flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; background:var(--acc); color:#fff; font-size:10.5px; line-height:14px; font-weight:700; cursor:pointer; }
 .gpill .gsw .msi { font-size:13px; }
 body:not(.single) .gpill .gsw { display:none; }
 .vmarks .gpill.outside { opacity:.3; }
@@ -928,9 +941,15 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   body.layout-toolbar .view-panel .vp-row:first-child, body.layout-toolbar .view-panel .vp-label { display:none; }
   /* The comp's pill holds the buttons DIRECTLY (223x29 = button 21 + 3px padding + 1px border
      each side, gap 2). The app nests a .seg inside the panel, whose own 2px padding and 1px
-     border add exactly the 6px this measured over in BOTH dimensions (229x35). Flatten it.
-     Note refdiff cannot see any of this: the pill is a container, not a leaf. */
-  body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; gap:2px; }
+     border add exactly the 6px this measured over in BOTH dimensions (229x35). Flatten it --
+     RADIUS INCLUDED. The .seg default radius:8px survived the first flatten and kept the
+     element a SURFACE on its own: extract.ts's paintsDecoration is
+     background OR border OR radius > 0, so a container painting nothing but an invisible
+     radius still emits, and the flattened .seg reported as an extra 215x21 surface at (12,123)
+     -- the pill's content box -- that the comp does not draw. (The sentence this comment used
+     to carry, "refdiff cannot see any of this: the pill is a container, not a leaf", was true
+     only until the surface channel landed; the pill itself is extracted too.) */
+  body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; border-radius:0; gap:2px; }
   body.layout-toolbar .view-panel .seg.seg-p button { padding:3px 9px; }
   /* The comp's header is back / segment / theme only — no pair title (the minimal layout
      shows one). It is also why the auto-centred segment sat 18px right: tb-left carried an
@@ -942,7 +961,14 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
      tb-left 55 + button padding 9 (segment 219 wide, not 229) centres the segment at 97 --
      the comp's edge, putting Off at 109 and Diff at 285. Both numbers are measured. */
   body.layout-toolbar .tb-left { flex:0 0 auto; }
-  body.layout-toolbar #seg-variant button { padding:5px 9px; }
+  /* 9px HORIZONTAL is that measured padding. 3px vertical + line-height 15 is the comp's
+     segment HEIGHT: its segment renders 219x27 where .seg button's 5px/16px made the app's
+     219x32, and that 5px surplus was also the whole of the gap finding below it (impl 7px to
+     the strip, design 9.5px). Both of this layout's segments use the same button metrics in
+     the comp, and .seg-p's are already 3px 9px / 15px. The label does not move: the text ink
+     sits at y=15 before and after -- the 5px comes off the container, which then centres in
+     the 45px header at 8.5..35.5, the comp's own. */
+  body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }
   /* The align pill keeps the minimal layout's top:8px: an earlier pass lifted it by -28px to
      reach the comp's hub y=125, but that was compensating for the 35px full-width strip row
      this layout should never have had. With the Show control floating, .work starts where the
@@ -1607,10 +1633,24 @@ function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : 
 function setViewOf(side, v) { if (side === 'design' && !state.lock) state.viewD = v; else state.view = v; }
 function setView(v) { state.view = v; state.viewD = v; }
 
+// The page's drop shadow. The comps' artboard PART carries box-shadow 0 4px 30px rgba(0,0,0,0.35)
+// on its own root (parts/Artboard Design.dc.html, parts/Artboard Impl.dc.html), so the comps' canvas
+// shows the page floating; the app draws a PNG of that page, and a screenshot cannot contain the
+// shadow its own element casts. Measured on the toolbar pair: below the page the comp reads
+// rgb(28,28,31) fading to the canvas rgb(35,36,39) over ~20px while the app was flat -- 6444 diff
+// pixels in one band, 81% of everything the pixel channel saw outside the artboard.
+// The numbers are WORLD units and the img is scaled by z/dpr, not z (its natural px are dpr× the
+// world), so they are multiplied by dpr to land on screen at the comp's size. Only the two page
+// images take it: the ghost is the design SUPERIMPOSED and the mask is a diff overlay, and a shadow
+// on either would darken the pane it is drawn over.
+function pageShadow(dpr) { return '0 ' + 4 * dpr + 'px ' + 30 * dpr + 'px rgba(0,0,0,0.35)'; }
+
 function applyView() {
   const v = state.view, vd = viewOf('design');
   imgs.design.style.transform = designImageTransform(vd, projection(), state.dprD);
+  imgs.design.style.boxShadow = pageShadow(state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI);
+  imgs.impl.style.boxShadow = pageShadow(state.dprI);
   // The ghost is the design drawn with the FULL alignment — per-axis stretch
   // included. The design PANE refuses that distortion on purpose (you cannot
   // judge type against a stretched reference); superimposing needs the opposite
@@ -2049,7 +2089,16 @@ function ghostPill(box, f, only, cls) {
   const sw = document.createElement('span');
   sw.className = 'gsw'; sw.dataset.ghostSide = only; sw.title = 'show the ' + only + ' pane, where the element is';
   sw.innerHTML = '<span class="msi" aria-hidden="true">swap_horiz</span>';
-  sw.append('View ' + only);
+  // The label goes in its OWN span, which is markup the app does not otherwise need: the comp
+  // interpolates {{g.btnLabel}} and the dc runtime wraps every interpolated value in a span, so on
+  // the design side the TEXT is a leaf with no paint of its own and the button div is the surface
+  // that carries the pill. Appending a bare text node here made .gsw a container WITH own text, so
+  // it emitted as the text leaf and brought the pill's paint with it -- "View design" measured
+  // 63x14 on both sides while the impl carried background rgb(91, 141, 239) and radius 10.34
+  // against the design's none. That is the leaf-shape class, and matching the shape is the fix.
+  const swlab = document.createElement('span');
+  swlab.textContent = 'View ' + only;
+  sw.append(swlab);
   d.append(num, lab, sw);
   return d;
 }

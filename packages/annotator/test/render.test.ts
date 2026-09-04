@@ -172,6 +172,25 @@ describe("renderReport", () => {
     expect(html).toContain(".delta-strip .review + .dismiss { margin-left:0; }")
   })
 
+  it("floats the page: the two page images take the comps' artboard shadow, the ghost and the mask do not", () => {
+    // parts/Artboard *.dc.html carry box-shadow 0 4px 30px rgba(0,0,0,0.35) on their root, and a
+    // PNG of that page cannot contain the shadow its own element casts. WORLD units × dpr because
+    // the img is scaled by z/dpr, not z.
+    expect(html).toContain("function pageShadow(dpr) { return '0 ' + 4 * dpr + 'px ' + 30 * dpr + 'px rgba(0,0,0,0.35)'; }")
+    expect(html).toContain("imgs.design.style.boxShadow = pageShadow(state.dprD);")
+    expect(html).toContain("imgs.impl.style.boxShadow = pageShadow(state.dprI);")
+    expect(html).not.toContain("imgs.ghost.style.boxShadow")
+    expect(html).not.toContain("imgs.mask.style.boxShadow")
+  })
+
+  it("gives the strip's Review button the comps' own line-height, because on the phone it IS the second row", () => {
+    // Both comps render this button 25 tall (15 + 4+4 padding + 1+1 border) from line-height
+    // normal at 11.5px; the app's global 1.4 made it 26.09. Desktop absorbs that in the strip's
+    // min-height, the wrapping phone strip does not -- it measured 66.09 against the comp's 65
+    // and pushed the canvas, the Show pill and the align pill 1.09px down.
+    expect(html).toMatch(/^\.delta-strip \.review \{[^}]*font-size:11\.5px; line-height:15px;/m)
+  })
+
   it("puts the overlay segment in the topbar: Off / Wipe / Onion / Blink / Diff, with the opacity pill and a wipe handle", () => {
     expect(html).toContain('id="seg-variant"')
     for (const [mode, label] of [["none", "Off"], ["swipe", "Wipe"], ["onion", "Onion"], ["blink", "Blink"], ["difference", "Diff"]]) {
@@ -292,7 +311,17 @@ describe("renderReport", () => {
     // flag baked in at render time would go stale on the Split / Full toggle.
     expect(html).toContain("body:not(.single) .gpill .gsw { display:none; }")
     expect(html).toContain("sw.className = 'gsw'; sw.dataset.ghostSide = only;")
-    expect(html).toContain("sw.append('View ' + only);")
+    // The label is its OWN span, matching the comp's markup shape: the dc runtime wraps every
+    // interpolated value, so the design's TEXT leaf carries no paint and the button div is the
+    // surface. A bare text node made .gsw the text leaf and dragged the pill's background and
+    // radius onto it -- the leaf-shape class, measured on the ghost pair as radius 10.34 vs 0.
+    // Same class as the strip's Review button: the comp's btnStyle declares padding + font-size and
+    // nothing else, so its "normal" line box makes the button 20 tall where the app's global 1.4
+    // made it 20.69. Measured once the label span made this div emit as a surface at all.
+    expect(html).toMatch(/^\.gpill \.gsw \{[^}]*font-size:10\.5px; line-height:14px;/m)
+    expect(html).toContain("swlab.textContent = 'View ' + only;")
+    expect(html).toContain("sw.append(swlab);")
+    expect(html).not.toContain("sw.append('View ' + only);")
     expect(html).toContain("closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }")
     // Selecting a row still never swaps the pane by itself (rejected 2026-09-02).
     expect(html).not.toContain("setSide(onlySide)")
@@ -669,7 +698,10 @@ describe("renderReport", () => {
     expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*top:8px; left:8px/)
     expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*width:max-content/)
     expect(mobile).toMatch(/body\.layout-toolbar \.view-panel \{[^}]*border-radius:10px/)
-    expect(mobile).toContain("body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; gap:2px; }")
+    // border-radius:0 is load-bearing, not tidiness: a container that paints ONLY a radius is
+    // still a surface to the extractor, so the flattened .seg kept reporting as an extra
+    // 215x21 element at the pill's content box (12,123) that the comp does not draw.
+    expect(mobile).toContain("body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; border-radius:0; gap:2px; }")
     expect(html).toContain("if (toolbarOn() && !state.viewOpen) setViewOpen(true);")
     // The -28px align lift is gone: it compensated for the 35px row this layout never had.
     expect(mobile).not.toMatch(/body\.layout-toolbar \.align-wrap \{[^}]*top:-28px/)
@@ -677,7 +709,10 @@ describe("renderReport", () => {
     // tb-left must HUG: minimal's flex:1 1 0 left it 99px against the comp's 55 and pushed the
     // auto-centred segment 18px right. With 0 0 auto + 9px button padding it centres at 97.
     expect(mobile).toContain("body.layout-toolbar .tb-left { flex:0 0 auto; }")
-    expect(mobile).toContain("body.layout-toolbar #seg-variant button { padding:5px 9px; }")
+    // 9px horizontal centres the segment at 97; 3px vertical + line-height 15 is its HEIGHT --
+    // the comp's segment is 219x27 and .seg button's 5px/16px made it 32, which also read as a
+    // 7px gap to the strip below where the design has 9.5px.
+    expect(mobile).toContain("body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }")
     // THE TOOL STRIP STAYS AT THE BOTTOM. The comp draws it at y=807; an early stub read the
     // "top floating toolbar" as this strip, moved it to top:8px and measured y=127 against the
     // comp's y=807. The floating toolbar is the Show ROW, not the tools.
