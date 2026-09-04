@@ -459,9 +459,9 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 /* A SHEET's rail: sections of causes, in the Gallery comp's order. */
 .csec { display:flex; align-items:center; gap:8px; padding:10px 12px 6px; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--txt2); background:var(--bg0); border-bottom:1px solid var(--line); }
 .csec-n { font-family:var(--font-mono); font-weight:500; letter-spacing:0; }
-.crow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
-.crow:hover { background:var(--bg2); }
-.crow.lit { background:rgba(91,141,239,.10); box-shadow:inset 2px 0 0 var(--acc); }
+.causerow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+.causerow:hover { background:var(--bg2); }
+.causerow.lit { background:rgba(91,141,239,.10); box-shadow:inset 2px 0 0 var(--acc); }
 .chead { display:flex; align-items:center; gap:8px; }
 .cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .cdot.critical { background:var(--critical); } .cdot.major { background:var(--major); } .cdot.minor { background:var(--minor); }
@@ -1909,7 +1909,7 @@ function triageActionsHtml(f) {
 // is what tells you whether to fix a token or a variant.
 function causeRowHtml(c, oneOff) {
   const lit = state.cause === c.key;
-  let h = '<div class="crow' + (lit ? ' lit' : '') + '" data-cause="' + esc(c.key) + '" title="' +
+  let h = '<div class="causerow' + (lit ? ' lit' : '') + '" data-cause="' + esc(c.key) + '" title="' +
     esc(c.type + (c.role ? ' \u00b7 ' + c.role : '') + ' \u00b7 ' + c.severity + ' \u2014 click to light up every cell with this cause') + '">';
   h += '<div class="chead"><span class="cdot ' + c.severity + '"></span><span class="ctitle">' + esc(c.sample || c.type) + '</span>' +
     '<span class="ccount' + (oneOff ? ' one' : '') + '">' + esc(cellCountLabel(c.cells.length)) + '</span></div>';
@@ -2747,7 +2747,13 @@ function wire() {
     // A cause row lights every cell that carries it — the affordance the plan
     // called the most useful thing on a 41-cell sheet. Clicking the lit one
     // clears it, so the gesture is its own undo.
-    const crow = t.closest('.crow');
+    // causerow, NOT crow: the Library card's own rows use the class crow
+    // (index-view.ts draws 'crow name-row', 'crow cmeta', 'crow foot'), and one
+    // stylesheet serves both views — so the shared name put this rail's padding,
+    // border and pointer cursor on every Library card row, and made
+    // closest('.crow') match them. Found by a probe that clicked the first such
+    // row on the page and got an invisible Library one.
+    const crow = t.closest('.causerow');
     if (crow) {
       state.cause = state.cause === crow.dataset.cause ? null : crow.dataset.cause;
       renderRail(); renderMarks();

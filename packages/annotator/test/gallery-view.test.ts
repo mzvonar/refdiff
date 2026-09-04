@@ -9,6 +9,7 @@ import {
   galleryCells,
   isFrameLevel,
   markStale,
+  pruneToOccupied,
   resolveGallery,
   runSpan,
 } from "../src/gallery-view.js"
@@ -343,5 +344,93 @@ describe("causeGroups", () => {
   it("labels the count in the comp's words", () => {
     expect(cellCountLabel(36)).toBe("36 cells")
     expect(cellCountLabel(1)).toBe("1 cell")
+  })
+})
+
+describe("pruneToOccupied", () => {
+  const sparse = (): GSetIndex => ({
+    entryId: "s",
+    setName: "*S",
+    createdAt: "2026-09-04T10:00:00.000Z",
+    // 3 x 3 = 9 combinations; the set has 3 children, all in one row
+    axes: axes({ tone: ["Primary", "Secondary", "Danger"], State: ["Default", "Hover", "Focus"] }),
+    pairs: [
+      { slug: "a", dir: "s--a", props: { tone: "Primary", State: "Default" } },
+      { slug: "b", dir: "s--b", props: { tone: "Primary", State: "Hover" } },
+    ],
+    skipped: [
+      { nodeId: "1", name: "x", reason: "only: …", props: { tone: "Primary", State: "Focus" } },
+    ],
+    gallery: { columns: "State" },
+  })
+
+  // The correction: a real Figma set is SPARSE, so the cross-product is not the
+  // expectation. Measured on the DS, ds-select-field defines 196 combinations
+  // and has 64 children — 132 "absent" cells nobody ever drew.
+  it("drops rows the set never populates", () => {
+    const set = sparse()
+    const full = ok(resolveGallery(set.axes, set.gallery))
+    expect(full.rowTuples).toHaveLength(3)
+    const pruned = pruneToOccupied(set, full)
+    expect(pruned.rowTuples).toEqual([["Primary"]])
+    expect(pruned.columns.options).toEqual(["Default", "Hover", "Focus"])
+
+    // …and the census follows: 9 cells with 6 absent becomes 3 with none.
+    expect(census(galleryCells(set, full, []))).toMatchObject({ total: 9, absent: 6 })
+    expect(census(galleryCells(set, pruned, []))).toMatchObject({ total: 3, absent: 0 })
+  })
+
+  it("drops columns too, and keeps the axes' order in what survives", () => {
+    const set = sparse()
+    set.pairs = [{ slug: "a", dir: "s--a", props: { tone: "Danger", State: "Focus" } }]
+    set.skipped = []
+    const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
+    expect(pruned.columns.options).toEqual(["Focus"])
+    expect(pruned.rowTuples).toEqual([["Danger"]])
+  })
+
+  // The check that this does not simply hide absence: where the cross-product
+  // WAS the expectation, pruning barely moves it (ds-alert went 9 -> 1).
+  it("leaves a genuine hole inside an occupied row alone", () => {
+    const set = sparse()
+    set.pairs = [
+      { slug: "a", dir: "s--a", props: { tone: "Primary", State: "Default" } },
+      // Primary/Hover is a real HOLE: its row and its column are both occupied
+      { slug: "c", dir: "s--c", props: { tone: "Secondary", State: "Hover" } },
+    ]
+    set.skipped = []
+    const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
+    expect(pruned.columns.options).toEqual(["Default", "Hover"])
+    expect(pruned.rowTuples).toEqual([["Primary"], ["Secondary"]])
+    const c = census(galleryCells(set, pruned, []))
+    expect(c).toMatchObject({ total: 4, absent: 2 })
+  })
+
+  it("drops a row AXIS whose every option went, so it stops taking gutter", () => {
+    const set: GSetIndex = {
+      ...sparse(),
+      axes: axes({ tone: ["Primary", "Danger"], size: ["sm", "lg"], State: ["Default", "Hover"] }),
+      pairs: [{ slug: "a", dir: "s--a", props: { tone: "Primary", size: "sm", State: "Default" } }],
+      skipped: [],
+      gallery: { columns: "State", rows: "tone" },
+    }
+    const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
+    expect(pruned.rows.map((r) => r.property)).toEqual(["tone", "size"])
+    expect(pruned.rows.map((r) => r.options)).toEqual([["Primary"], ["sm"]])
+    expect(pruned.rowTuples).toEqual([["Primary", "sm"]])
+  })
+
+  it("is a no-op on an empty set rather than pruning everything away", () => {
+    const set = { ...sparse(), pairs: [], skipped: [] }
+    const full = ok(resolveGallery(set.axes, set.gallery))
+    expect(pruneToOccupied(set, full)).toEqual(full)
+  })
+
+  it("carries the resolver's warnings through", () => {
+    const set = sparse()
+    set.axes = axes({ tone: ["Primary"], State: ["Default"] }, "child-names")
+    const full = ok(resolveGallery(set.axes, set.gallery))
+    expect(full.warnings.length).toBeGreaterThan(0)
+    expect(pruneToOccupied(set, full).warnings).toEqual(full.warnings)
   })
 })

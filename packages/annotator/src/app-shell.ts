@@ -286,10 +286,14 @@ async function openGallery(entryId) {
   const r = resolveGallery(index.axes, index.gallery);
   if (!r.ok) { sheetFailure(entryId, r.error); return; }
 
-  const cells = galleryCells(index, r.value, pairs);
+  // Prune before laying out: a real Figma set is SPARSE, so the axes'
+  // cross-product is not the expectation and the rows it never populates bury
+  // the real holes. See pruneToOccupied for the measurement.
+  const resolved = pruneToOccupied(index, r.value);
+  const cells = galleryCells(index, resolved, pairs);
   const layout = galleryLayout({
-    rows: r.value.rowTuples.length,
-    columns: r.value.columns.options.length,
+    rows: resolved.rowTuples.length,
+    columns: resolved.columns.options.length,
     cells: cells.map((c) => ({
       key: c.key, row: c.row, col: c.col, pairDir: c.pairDir,
       size: c.summary && c.summary.frame ? c.summary.frame : undefined,
@@ -310,11 +314,11 @@ async function openGallery(entryId) {
     } catch (e) { /* the slot stands; the cell simply shows nothing */ }
   }));
 
-  openReport(sheetReport(index, r.value, rich, layout), null, {
+  openReport(sheetReport(index, resolved, rich, layout), null, {
     indexHref: '#/',
     base: '',
     readOnly: serverReadOnly,
-  }, { entryId: entryId, cells: rich, layout: layout, resolved: r.value, index: index });
+  }, { entryId: entryId, cells: rich, layout: layout, resolved: resolved, index: index });
 }
 
 // The sheet AS a report, so every part of the comparison tool that reads

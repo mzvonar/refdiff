@@ -208,6 +208,84 @@ export function resolveGallery(axes: GAxes, gallery?: GConfig): GResolveResult {
   return { ok: true, value: { columns, rows, rowTuples, warnings } }
 }
 
+/**
+ * Drop rows and columns the SET never populates — and this is a correction, not
+ * a convenience.
+ *
+ * `absent` was defined as the axes' cross-product minus pairs minus skipped: "a
+ * hole nobody declared". That definition came from the Gallery comp's demo set,
+ * where the cross-product happens to be about the size of the set. **A real
+ * Figma variant set is SPARSE.** `ds-select-field` defines 7x2x7x2 = 196
+ * combinations and has 64 children; `ds-text-field` 168 and 57. So the
+ * cross-product is not the expectation, and treating it as one generated 132 and
+ * 111 "absent" cells that are simply combinations nobody ever drew. The sheet
+ * read as almost entirely empty, which is how the defect was reported.
+ *
+ * A hole is a gap in an OCCUPIED row or column. A row with nothing in it at all
+ * is not a hole in the design — it is a corner of a hypercube the designer never
+ * visited, and drawing it buries the real holes. Measured over the DS's fourteen
+ * sets, pruning takes absent from 132 -> 6, 111 -> 6, 132 -> 0, 72 -> 0, and
+ * leaves the cases where the cross-product WAS the expectation almost untouched
+ * (ds-alert 9 -> 1), which is the check that this does not simply hide absence.
+ *
+ * What it deliberately does NOT touch: `skipped`. On this DS most cells are
+ * skipped because the manifest's `only:` filter measures 6 of 57 variants on
+ * purpose, and every one carries its reason. That is the coverage story the set
+ * index exists to tell, and it stays on the sheet.
+ */
+export function pruneToOccupied(set: GSetIndex, resolved: GResolved): GResolved {
+  const present = [...set.pairs.map((p) => p.props), ...set.skipped.map((s) => s.props)]
+  if (present.length === 0) return resolved
+
+  const colProp = resolved.columns.property
+  const usedCols = new Set(present.map((c) => c[colProp]))
+  const rowKey = (c: Record<string, string>): string =>
+    resolved.rows.map((a) => c[a.property] ?? "").join("\u0000")
+  const usedRows = new Set(present.map(rowKey))
+
+  const columns: GAxis = {
+    property: colProp,
+    options: [],
+    labels: [],
+  }
+  resolved.columns.options.forEach((o, i) => {
+    if (!usedCols.has(o)) return
+    columns.options.push(o)
+    columns.labels.push(resolved.columns.labels[i] ?? o)
+  })
+
+  const rowTuples = resolved.rowTuples.filter(
+    (t) => usedRows.has(t.join("\u0000")),
+  )
+  // An axis whose options no longer appear in any kept row is dropped entirely,
+  // so its label stops taking gutter width for a value nothing carries.
+  const rows = resolved.rows
+    .map((axis, i) => {
+      const used = new Set(rowTuples.map((t) => t[i]))
+      const kept = axis.options.filter((o) => used.has(o))
+      return {
+        property: axis.property,
+        options: kept,
+        labels: kept.map((o) => axis.labels[axis.options.indexOf(o)] ?? o),
+      }
+    })
+    .filter((a) => a.options.length > 0)
+
+  // Re-project the tuples onto the surviving axes, in their order.
+  const keptIdx = resolved.rows
+    .map((a, i) => ({ a, i }))
+    .filter(({ a }) => rows.some((r) => r.property === a.property))
+    .map(({ i }) => i)
+  const tuples = rowTuples.map((t) => keptIdx.map((i) => t[i]!))
+
+  return {
+    columns,
+    rows,
+    rowTuples: tuples,
+    warnings: resolved.warnings,
+  }
+}
+
 /* --------------------------------------------------------- the cells ---- */
 
 /**
