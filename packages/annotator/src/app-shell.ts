@@ -21,6 +21,8 @@ export interface AppShellOptions {
   annotationsSource: string
   /** Compiled source of index-view.js (an ESM module with no imports). */
   indexViewSource: string
+  /** Compiled source of gallery-view.js (an ESM module with no imports). */
+  galleryViewSource: string
   /** Compiled source of triage.js (an ESM module with no imports). */
   triageSource: string
   /** Compiled source of focus.js (an ESM module with no imports). */
@@ -47,6 +49,7 @@ export function renderAppShell(options: AppShellOptions): string {
     options.viewMathSource,
     options.annotationsSource,
     options.indexViewSource,
+    options.galleryViewSource,
     options.triageSource,
     options.focusSource,
     options.railSource,
@@ -87,6 +90,15 @@ ${VIEWPORT_META}
     <p class="lib-empty" id="index-empty" hidden></p>
   </div>
 </section>
+<section id="view-gallery">
+  <header class="lib-top">
+    <a class="back" href="#/" title="Back to the Library"><span class="msi" aria-hidden="true">arrow_back</span></a>
+    <span class="brand-name" id="gal-name"></span>
+    <span class="spacer"></span>
+    <span class="gal-count" id="gal-count"></span>
+  </header>
+  <div class="gal-body" id="gal-body"></div>
+</section>
 <section id="view-report">
 ${REPORT_BODY}
 </section>
@@ -94,6 +106,7 @@ ${REPORT_BODY}
 ${options.viewMathSource}
 ${options.annotationsSource}
 ${options.indexViewSource}
+${options.galleryViewSource}
 ${options.triageSource}
 ${options.focusSource}
 ${options.railSource}
@@ -114,6 +127,7 @@ ${APP_BOOT}
 const APP_BOOT = String.raw`
 let pairs = [];
 let currentPair = null;
+let currentSet = null;
 // From /api/pairs: a --read-only server refuses every PUT, and the report's rail says so up front.
 let serverReadOnly = false;
 const MOBILE_BREAKPOINT = 640;
@@ -237,6 +251,58 @@ async function loadPairs() {
   renderIndexView();
 }
 
+// A run dir is one path segment under the out root, so it can never contain a
+// slash — which is what makes the set/ prefix unambiguous rather than a
+// namespace a pair could collide with.
+const routeSet = () => {
+  const hash = location.hash.replace(/^#\/?/, '');
+  return hash.startsWith('set/') ? decodeURIComponent(hash.slice(4)) : null;
+};
+
+// The sheet needs BOTH halves: the set index says which cells were ever
+// supposed to exist, /api/pairs says what a run measured. A deep link arrives
+// with neither loaded.
+async function openGallery(entryId) {
+  currentSet = entryId;
+  const name = $('gal-name');
+  const count = $('gal-count');
+  const body = $('gal-body');
+  name.textContent = entryId;
+  count.textContent = '';
+  body.innerHTML = '';
+  if (!pairs.length) await loadPairs();
+  let index;
+  try {
+    const res = await fetch(encodeURIComponent(entryId) + '.set.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    index = await res.json();
+  } catch (e) {
+    // No set index is not an error state to dress up: the entry either is not a
+    // component set, or its root predates the index (every DS root does). Say
+    // which command writes it rather than showing an empty grid.
+    body.innerHTML = galleryError(entryId, 'no ' + entryId + '.set.json in this run root: ' + e.message);
+    return;
+  }
+  document.title = 'refdiff — ' + (index.setName || entryId);
+  name.textContent = index.title || index.setName || entryId;
+  const r = resolveGallery(index.axes, index.gallery);
+  if (!r.ok) { body.innerHTML = galleryError(entryId, r.error); return; }
+  const cells = galleryCells(index, r.value, pairs);
+  const layout = galleryLayout({
+    rows: r.value.rowTuples.length,
+    columns: r.value.columns.options.length,
+    cells: cells.map((c) => ({
+      key: c.key, row: c.row, col: c.col,
+      pairDir: c.pairDir,
+      size: c.summary && c.summary.frame ? c.summary.frame : undefined,
+    })),
+  });
+  count.textContent = sheetSummary(census(cells), runSpan(cells));
+  body.innerHTML = warningList(r.value.warnings) + sheetMarkup({
+    set: index, resolved: r.value, cells: cells, layout: layout, gutter: GALLERY_GUTTER,
+  });
+}
+
 async function openPair(dir) {
   const base = dir + '/';
   try {
@@ -261,9 +327,17 @@ async function openPair(dir) {
 }
 
 function route() {
-  const dir = routePair();
-  document.body.classList.toggle('route-index', !dir);
+  const setId = routeSet();
+  const dir = setId ? null : routePair();
+  document.body.classList.toggle('route-index', !dir && !setId);
+  document.body.classList.toggle('route-gallery', !!setId);
   document.body.classList.toggle('route-report', !!dir);
+  if (setId) {
+    currentPair = null;
+    if (setId !== currentSet) void openGallery(setId);
+    return;
+  }
+  currentSet = null;
   if (!dir) {
     currentPair = null;
     document.title = 'refdiff';
@@ -287,6 +361,14 @@ document.addEventListener('click', (e) => {
   const back = e.target.closest && e.target.closest('header .back');
   if (back && back.getAttribute('href') === '#/') { e.preventDefault(); location.hash = ''; }
 });
+// A measured cell opens its own pair. The sheet is a way INTO the pairs, not a
+// replacement for them: the per-cell view is where a finding's box means
+// something, so the cell is a link and the gallery keeps no report state.
+document.addEventListener('click', (e) => {
+  const tile = e.target.closest && e.target.closest('.gcell[data-pair]');
+  if (!tile) return;
+  location.hash = '#/' + encodeURIComponent(tile.dataset.pair);
+});
 // A group row expands its set. aria-expanded is the state the header rendered,
 // so the toggle reads the DOM rather than recomputing the default here — one
 // place decides it (openGroups) and this only records the reader's choice.
@@ -308,6 +390,13 @@ void loadPairs().then(route);
  */
 const INDEX_CSS = `
 body.route-index #view-report, body.route-report #view-index { display:none; }
+/* The third route. Listed explicitly rather than folded into the two rules
+   above: a :not() chain over three states is where the next route silently
+   shows two sections at once. */
+body.route-index #view-gallery, body.route-report #view-gallery { display:none; }
+body.route-gallery #view-index, body.route-gallery #view-report { display:none; }
+body.route-gallery { display:flex; flex-direction:column; }
+#view-gallery { display:flex; flex-direction:column; flex:1; min-height:0; line-height:normal; }
 body.route-report { display:flex; flex-direction:column; }
 #view-report { display:flex; flex-direction:column; flex:1; min-height:0; }
 body.route-index { display:block; height:auto; min-height:100%; overflow:auto; }
@@ -463,4 +552,29 @@ body.lib-mobile .errbox { padding:32px 16px; }
 .err-copy { background:var(--bg2); border:1px solid var(--line); color:var(--txt); height:calc(36px + 2px); }
 .err-copy:hover { border-color:var(--acc); }
 .err-auto { font-size:11.5px; color:var(--txt2); margin-top:2px; }
+
+/* ---- the variant sheet (chunk 3) ---------------------------------------- */
+.gal-count { color:var(--txt2); font-size:12px; }
+.gal-body { flex:1; min-height:0; overflow:auto; padding:16px; }
+.gsheet { position:relative; }
+.gcol, .grow { position:absolute; color:var(--txt2); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; display:flex; align-items:center; }
+.gcol { justify-content:center; }
+.grow { padding-right:10px; justify-content:flex-end; text-align:right; text-transform:none; letter-spacing:0; font-weight:500; }
+.gcell { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:6px; background:var(--bg1); display:flex; align-items:center; justify-content:center; gap:6px; font-size:11px; color:var(--txt2); }
+.gcell.k-skipped, .gcell.k-pending { background:var(--bg0); border-style:dashed; }
+.gcell.k-absent { background:transparent; border-style:dotted; opacity:.5; }
+.gcell.sev-critical { border-color:#e5484d; }
+.gcell.sev-major { border-color:#f5a623; }
+.gcell.sev-minor { border-color:#8f7ee7; }
+.gcell.stale { border-top:2px dashed var(--txt2); }
+.gbadge { font-variant-numeric:tabular-nums; font-weight:600; color:var(--txt); }
+.gbadge.ok { color:#46a758; font-weight:400; }
+.gstale { font-family:var(--font-mono); font-size:10px; color:var(--txt2); }
+.gnote { font-size:10px; }
+.gerror { margin:24px; padding:16px 18px; border:1px solid #e5484d; border-radius:8px; background:var(--bg1); max-width:70ch; }
+.gerr-t { margin:0 0 8px; font-weight:600; color:var(--txt); }
+.gerr-m { margin:0 0 8px; color:var(--txt); }
+.gerr-h { margin:0; color:var(--txt2); font-size:12px; }
+.gwarn { margin:0 0 14px; padding:10px 14px 10px 30px; border:1px solid #f5a623; border-radius:8px; background:var(--bg1); color:var(--txt2); font-size:12px; max-width:90ch; }
+.gwarn li + li { margin-top:6px; }
 `

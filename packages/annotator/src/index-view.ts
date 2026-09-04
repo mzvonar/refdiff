@@ -40,6 +40,26 @@ export interface PairSummary {
    * ordinal over a result that was never counted.
    */
   run?: number
+  /**
+   * The pair's captured frame, in impl CSS px: the MAX of the design and impl
+   * sides on each axis.
+   *
+   * A variant sheet needs it and nothing else can supply it. Cells differ
+   * wildly — a button 76x40, a checkbox row 120x20, an alert ~1300x72 — so a
+   * grid whose tracks are sized from the widest and tallest cell must know each
+   * cell's size, and until now that lived only inside each pair's own
+   * findings.json. A 41-cell sheet fetching 41 reports to lay itself out is a
+   * layout that cannot be drawn before every capture has been read.
+   *
+   * The per-side MAX is taken here, where both are known: a cell whose impl is
+   * wider than its design has to show both, so one number per axis is all a
+   * track needs and carrying two would invite a consumer to pick one.
+   *
+   * Optional for the same reason `run` is: an unreadable or older report has
+   * none, and a sheet floors a size-less cell at its minimum rather than
+   * collapsing the track.
+   */
+  frame?: { w: number; h: number }
   designSource: string
   implSource: string
   /** What the impl side captured — the route or the story — shown in mono. */

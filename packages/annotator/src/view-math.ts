@@ -478,3 +478,188 @@ export function focusView(box: VBox, pane: Size, inset: Insets = NO_INSETS): Vie
 export function screenToWorld(view: View, px: number, py: number): { x: number; y: number } {
   return { x: (px - view.tx) / view.z, y: (py - view.ty) / view.z }
 }
+
+/* ------------------------------------------------- the variant sheet ----- */
+
+/**
+ * A GALLERY is one variant set drawn as a grid of pair views.
+ *
+ * The whole point of this section is that it adds no second geometry. A pair
+ * view maps `Finding.implBox` — impl CSS px — straight into the world above;
+ * a gallery maps the same boxes into the same world after ONE translation per
+ * cell. So `cellOrigin` is the entire difference between the two surfaces, and
+ * the pair view is the degenerate case: one cell, no gutter, origin (0, 0).
+ * That identity is asserted in the tests, because it is the thing that keeps
+ * one renderer honest for both — the moment a sheet needs its own projection,
+ * findings and notes stop being expressible in pair coordinates and every
+ * `annotations.md` written so far becomes unreadable.
+ *
+ * Cells differ wildly in size (a button 76×40, a checkbox row 120×20, an alert
+ * ~1300×72), so a uniform cell would either crop the alert or pad the button
+ * into a speck. Column width and row height are therefore the MAX over that
+ * column and that row — of both sides, since a cell whose impl is wider than
+ * its design must show both.
+ */
+export interface GalleryCellInput {
+  /** Stable identity — the cell's option values, not its position. */
+  key: string
+  row: number
+  col: number
+  /**
+   * The run dir, when this cell became a pair. Absent is meaningful: a skipped
+   * or never-declared cell occupies its place in the grid and has nothing to
+   * draw, which is precisely what the sheet exists to show.
+   */
+  pairDir?: string
+  /**
+   * The cell's content size — the max of its design and impl frames, in impl
+   * CSS px. Absent for a cell that was never measured; `minCell` then sizes it,
+   * because a zero-width column would collapse its own header.
+   */
+  size?: Size
+}
+
+export interface GalleryCell extends GalleryCellInput {
+  /** The cell's box in SHEET world space, padding included. */
+  rect: VBox
+}
+
+/** One column header or row label, with the span it heads. */
+export interface GalleryTick {
+  index: number
+  /** Offset along the axis, in sheet world px. */
+  at: number
+  extent: number
+}
+
+export interface GalleryLayout {
+  cells: GalleryCell[]
+  columns: GalleryTick[]
+  rows: GalleryTick[]
+  /** Column widths and row heights as solved, in grid order. */
+  colWidths: number[]
+  rowHeights: number[]
+  /** The sheet's whole box, gutters included — what `fitView` is given. */
+  world: VBox
+}
+
+export interface GalleryLayoutInput {
+  cells: readonly GalleryCellInput[]
+  /** Grid extent, declared rather than inferred — see `galleryLayout`. */
+  rows: number
+  columns: number
+  /** Size for a cell with nothing measured in it. */
+  minCell?: Size
+  /** Air inside each cell, around its content. */
+  pad?: number
+  /** Width of the row-label column and height of the column-header row. */
+  gutter?: Size
+}
+
+export const GALLERY_MIN_CELL: Size = { w: 96, h: 48 }
+export const GALLERY_PAD = 12
+export const GALLERY_GUTTER: Size = { w: 118, h: 30 }
+
+/**
+ * Where a cell's own coordinate space begins, in sheet world px.
+ *
+ * This is the composition the whole surface rests on: a finding at
+ * `implBox = { x, y }` in the pair view is at `implBox + cellOrigin(row, col)`
+ * on the sheet, and a note authored on the sheet subtracts the same offset to
+ * be stored in the pair's own coordinates. Nothing else translates.
+ *
+ * Takes the SOLVED widths so it cannot disagree with `galleryLayout` about
+ * where a cell starts — passing the inputs again and re-solving is how two
+ * copies of a layout drift apart.
+ */
+export function cellOrigin(
+  colWidths: readonly number[],
+  rowHeights: readonly number[],
+  row: number,
+  col: number,
+  pad = GALLERY_PAD,
+  gutter: Size = GALLERY_GUTTER,
+): { x: number; y: number } {
+  let x = gutter.w
+  for (let c = 0; c < col; c++) x += colWidths[c] ?? 0
+  let y = gutter.h
+  for (let r = 0; r < row; r++) y += rowHeights[r] ?? 0
+  return { x: x + pad, y: y + pad }
+}
+
+/**
+ * Solve a sheet: per-column widths, per-row heights, every cell's rect, and
+ * the world box that holds the lot.
+ *
+ * `rows` / `columns` are DECLARED, not inferred from the cells, and that is
+ * load-bearing: the axes decide the grid's extent, and a set whose last column
+ * skipped every one of its cells still has that column. Inferring the extent
+ * from the cells present would silently drop it — the absence the set index
+ * exists to make visible would become invisible again in the one surface built
+ * to show it.
+ *
+ * Out-of-range cells are dropped rather than growing the grid, for the same
+ * reason: the axes are the authority on shape, so a cell outside them is a
+ * resolver bug and quietly widening the sheet would hide it.
+ */
+export function galleryLayout(input: GalleryLayoutInput): GalleryLayout {
+  const pad = input.pad ?? GALLERY_PAD
+  const gutter = input.gutter ?? GALLERY_GUTTER
+  const min = input.minCell ?? GALLERY_MIN_CELL
+  const nCols = Math.max(0, input.columns)
+  const nRows = Math.max(0, input.rows)
+
+  const inGrid = input.cells.filter(
+    (c) => c.row >= 0 && c.row < nRows && c.col >= 0 && c.col < nCols,
+  )
+
+  const colWidths = new Array<number>(nCols).fill(min.w + 2 * pad)
+  const rowHeights = new Array<number>(nRows).fill(min.h + 2 * pad)
+  for (const c of inGrid) {
+    const w = Math.max(c.size?.w ?? 0, min.w) + 2 * pad
+    const h = Math.max(c.size?.h ?? 0, min.h) + 2 * pad
+    colWidths[c.col] = Math.max(colWidths[c.col]!, w)
+    rowHeights[c.row] = Math.max(rowHeights[c.row]!, h)
+  }
+
+  const columns: GalleryTick[] = []
+  let x = gutter.w
+  for (let i = 0; i < nCols; i++) {
+    columns.push({ index: i, at: x, extent: colWidths[i]! })
+    x += colWidths[i]!
+  }
+  const rows: GalleryTick[] = []
+  let y = gutter.h
+  for (let i = 0; i < nRows; i++) {
+    rows.push({ index: i, at: y, extent: rowHeights[i]! })
+    y += rowHeights[i]!
+  }
+
+  const cells = inGrid.map((c) => {
+    const o = cellOrigin(colWidths, rowHeights, c.row, c.col, pad, gutter)
+    return {
+      ...c,
+      rect: {
+        x: o.x,
+        y: o.y,
+        w: colWidths[c.col]! - 2 * pad,
+        h: rowHeights[c.row]! - 2 * pad,
+      },
+    }
+  })
+
+  return { cells, columns, rows, colWidths, rowHeights, world: { x: 0, y: 0, w: x, h: y } }
+}
+
+/**
+ * Project a pair-space box onto the sheet — the one operation findings and
+ * notes need, in both directions (`unprojectCellBox` is its inverse).
+ */
+export function projectCellBox(box: VBox, cell: GalleryCell): VBox {
+  return { x: box.x + cell.rect.x, y: box.y + cell.rect.y, w: box.w, h: box.h }
+}
+
+/** Sheet-space box → the pair's own coordinates, for storing a note. */
+export function unprojectCellBox(box: VBox, cell: GalleryCell): VBox {
+  return { x: box.x - cell.rect.x, y: box.y - cell.rect.y, w: box.w, h: box.h }
+}

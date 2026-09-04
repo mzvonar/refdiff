@@ -29,7 +29,15 @@ import {
   pinchOf,
   pinchView,
   zoomAt,
+  GALLERY_GUTTER,
+  GALLERY_MIN_CELL,
+  GALLERY_PAD,
+  cellOrigin,
+  galleryLayout,
+  projectCellBox,
+  unprojectCellBox,
 } from "../src/view-math.js"
+import type { GalleryLayoutInput } from "../src/view-math.js"
 
 // The doc-detail run: design 756×955 css @2x, impl 760×740 @2x,
 // alignment ×0.943/0.935 @ (3.5, 5.8).
@@ -478,5 +486,131 @@ describe("view operations", () => {
       ]),
     ).toEqual({ x: -5, y: 0, w: 30, h: 10 })
     expect(unionBoxes([])).toEqual({ x: 0, y: 0, w: 0, h: 0 })
+  })
+})
+
+describe("the variant sheet", () => {
+  const sizes = { w: 100, h: 40 }
+  const grid = (rows: number, columns: number, over: Partial<GalleryLayoutInput> = {}) =>
+    galleryLayout({
+      rows,
+      columns,
+      cells: Array.from({ length: rows * columns }, (_, i) => ({
+        key: `r${Math.floor(i / columns)}c${i % columns}`,
+        row: Math.floor(i / columns),
+        col: i % columns,
+        pairDir: `e--r${Math.floor(i / columns)}c${i % columns}`,
+        size: sizes,
+      })),
+      ...over,
+    })
+
+  // THE identity the whole surface rests on: strip the gutter and the padding
+  // from a 1x1 sheet and the cell sits at the world origin, so a pair view IS a
+  // one-cell gallery and one renderer can serve both. If this ever fails, a
+  // finding's box means something different on the two surfaces.
+  it("the pair view is the one-cell case at the origin", () => {
+    const one = galleryLayout({
+      rows: 1,
+      columns: 1,
+      cells: [{ key: "only", row: 0, col: 0, pairDir: "d", size: { w: 680, h: 740 } }],
+      pad: 0,
+      gutter: { w: 0, h: 0 },
+    })
+    expect(cellOrigin(one.colWidths, one.rowHeights, 0, 0, 0, { w: 0, h: 0 })).toEqual({ x: 0, y: 0 })
+    expect(one.cells[0]!.rect).toEqual({ x: 0, y: 0, w: 680, h: 740 })
+    expect(one.world).toEqual({ x: 0, y: 0, w: 680, h: 740 })
+    // …and a box in pair space is the same box on the sheet.
+    const box = { x: 36, y: 586, w: 280, h: 48 }
+    expect(projectCellBox(box, one.cells[0]!)).toEqual(box)
+  })
+
+  it("sizes each column and row by its widest and tallest cell, both sides counted", () => {
+    const l = galleryLayout({
+      rows: 2,
+      columns: 2,
+      pad: 10,
+      gutter: { w: 50, h: 20 },
+      minCell: { w: 10, h: 10 },
+      cells: [
+        // an alert-shaped cell sets its ROW's height and its COLUMN's width
+        { key: "a", row: 0, col: 0, size: { w: 1300, h: 72 } },
+        { key: "b", row: 0, col: 1, size: { w: 76, h: 40 } },
+        { key: "c", row: 1, col: 0, size: { w: 120, h: 20 } },
+        { key: "d", row: 1, col: 1, size: { w: 76, h: 200 } },
+      ],
+    })
+    expect(l.colWidths).toEqual([1320, 96])
+    expect(l.rowHeights).toEqual([92, 220])
+    // The row-0 button is in a 1300-wide column: its rect takes the column, so
+    // the cell is a slot in the grid rather than a shrink-wrap of its content.
+    expect(l.cells[1]!.rect).toEqual({ x: 50 + 1320 + 10, y: 20 + 10, w: 76, h: 72 })
+    expect(l.world).toEqual({ x: 0, y: 0, w: 50 + 1320 + 96, h: 20 + 92 + 220 })
+  })
+
+  it("cellOrigin is the cumulative sum of the SOLVED tracks, gutter and pad included", () => {
+    const l = grid(3, 4)
+    for (const c of l.cells) {
+      const o = cellOrigin(l.colWidths, l.rowHeights, c.row, c.col)
+      expect({ x: c.rect.x, y: c.rect.y }).toEqual(o)
+    }
+    // ticks agree with the origins, minus the pad
+    for (const c of l.cells) {
+      expect(l.columns[c.col]!.at).toBe(c.rect.x - GALLERY_PAD)
+      expect(l.rows[c.row]!.at).toBe(c.rect.y - GALLERY_PAD)
+    }
+  })
+
+  // A skipped or never-declared cell has no content to measure. It must still
+  // occupy its slot — that is the whole reason the sheet exists — so minCell
+  // floors the track rather than letting the column collapse under its header.
+  it("keeps a track for a column whose every cell was never measured", () => {
+    const l = galleryLayout({
+      rows: 1,
+      columns: 3,
+      cells: [
+        { key: "m", row: 0, col: 0, pairDir: "e--m", size: { w: 200, h: 40 } },
+        // col 1: skipped, no size, no dir
+        { key: "s", row: 0, col: 1 },
+        // col 2: declared by neither side — not even a cell input
+      ],
+    })
+    expect(l.columns).toHaveLength(3)
+    expect(l.colWidths[1]).toBe(GALLERY_MIN_CELL.w + 2 * GALLERY_PAD)
+    expect(l.colWidths[2]).toBe(GALLERY_MIN_CELL.w + 2 * GALLERY_PAD)
+    expect(l.cells.map((c) => c.pairDir)).toEqual(["e--m", undefined])
+  })
+
+  // The axes are the authority on the grid's extent, so a resolver that emits a
+  // cell outside them has a bug. Widening the sheet to fit it would hide that.
+  it("drops a cell outside the declared grid rather than growing it", () => {
+    const l = galleryLayout({
+      rows: 1,
+      columns: 1,
+      cells: [
+        { key: "in", row: 0, col: 0, size: sizes },
+        { key: "off-col", row: 0, col: 1, size: sizes },
+        { key: "off-row", row: 1, col: 0, size: sizes },
+        { key: "negative", row: -1, col: 0, size: sizes },
+      ],
+    })
+    expect(l.cells.map((c) => c.key)).toEqual(["in"])
+    expect(l.columns).toHaveLength(1)
+    expect(l.rows).toHaveLength(1)
+  })
+
+  it("projects a finding into a cell and back again", () => {
+    const l = grid(2, 2)
+    const cell = l.cells[3]!
+    const box = { x: 8, y: 12, w: 40, h: 16 }
+    const on = projectCellBox(box, cell)
+    expect(on).toEqual({ x: cell.rect.x + 8, y: cell.rect.y + 12, w: 40, h: 16 })
+    expect(unprojectCellBox(on, cell)).toEqual(box)
+  })
+
+  it("an empty set still solves, to an empty sheet", () => {
+    const l = galleryLayout({ rows: 0, columns: 0, cells: [] })
+    expect(l.cells).toEqual([])
+    expect(l.world).toEqual({ x: 0, y: 0, w: GALLERY_GUTTER.w, h: GALLERY_GUTTER.h })
   })
 })

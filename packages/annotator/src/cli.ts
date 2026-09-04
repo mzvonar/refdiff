@@ -623,6 +623,12 @@ async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | Br
       createdAt: report.createdAt,
       // Omitted rather than defaulted when the report has none — see PairSummary.run.
       ...(report.run !== undefined ? { run: report.run } : {}),
+      // See PairSummary.frame: the per-axis max of the two sides, taken here
+      // because this is where both are in hand.
+      frame: {
+        w: Math.max(report.design.width, report.impl.width),
+        h: Math.max(report.design.height, report.impl.height),
+      },
       designSource: report.design.source,
       implSource: report.impl.source,
       implRef: report.impl.ref,
@@ -810,6 +816,7 @@ interface EmbeddedSources {
   viewMath: string
   annotations: string
   indexView: string
+  galleryView: string
   triage: string
   focus: string
   rail: string
@@ -817,15 +824,16 @@ interface EmbeddedSources {
 
 /** The import-free modules the page embeds verbatim. */
 async function readEmbeddedSources(): Promise<EmbeddedSources> {
-  const [viewMath, annotations, indexView, triage, focus, rail] = await Promise.all([
+  const [viewMath, annotations, indexView, galleryView, triage, focus, rail] = await Promise.all([
     readFile(new URL("./view-math.js", import.meta.url), "utf8"),
     readFile(new URL("./annotations.js", import.meta.url), "utf8"),
     readFile(new URL("./index-view.js", import.meta.url), "utf8"),
+    readFile(new URL("./gallery-view.js", import.meta.url), "utf8"),
     readFile(new URL("./triage.js", import.meta.url), "utf8"),
     readFile(new URL("./focus.js", import.meta.url), "utf8"),
     readFile(new URL("./rail.js", import.meta.url), "utf8"),
   ])
-  return { viewMath, annotations, indexView, triage, focus, rail }
+  return { viewMath, annotations, indexView, galleryView, triage, focus, rail }
 }
 
 function shellSources(sources: EmbeddedSources) {
@@ -833,6 +841,7 @@ function shellSources(sources: EmbeddedSources) {
     viewMathSource: sources.viewMath,
     annotationsSource: sources.annotations,
     indexViewSource: sources.indexView,
+    galleryViewSource: sources.galleryView,
     triageSource: sources.triage,
     focusSource: sources.focus,
     railSource: sources.rail,

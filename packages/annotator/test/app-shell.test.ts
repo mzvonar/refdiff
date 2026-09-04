@@ -6,6 +6,7 @@ const sources = {
   viewMathSource: "export const IDENTITY_ALIGNMENT = { scale: 1, offsetX: 0, offsetY: 0 };",
   annotationsSource: "export const STATUSES = ['open', 'implemented', 'done'];",
   indexViewSource: "export const CONFIDENCE_GATE = 0.5;",
+  galleryViewSource: "export const FRAME_COVERAGE = 0.9;",
   triageSource: "export const TRIAGE_STATES = ['fix', 'ignore', 'snooze'];",
   focusSource: "export const FOCUS_HANDLES = ['nw', 'ne', 'se', 'sw', 'move'];",
   railSource: "export const SUPPRESSED_LABEL = (n) => n + ' suppressed by policy rules';",
@@ -20,6 +21,7 @@ describe("renderAppShell", () => {
     expect(html).not.toContain('id="report-data"')
     expect(html).not.toContain('id="annotations-data"')
     expect(html).toContain('id="view-index"')
+    expect(html).toContain('id="view-gallery"')
     expect(html).toContain('id="view-report"')
     expect(html).toContain("fetch('api/pairs')")
   })
@@ -130,5 +132,31 @@ describe("renderAppShell", () => {
 
   it("carries the served root for the error state without letting it become markup", () => {
     expect(renderAppShell({ ...sources, root: '/a<b"' })).toContain('data-root="/a&lt;b&quot;"')
+  })
+})
+
+describe("the gallery route", () => {
+  const html = renderAppShell({ ...sources, root: "/root/ds/out" })
+
+  // Three routes, three explicit rules. A :not() chain over three states is
+  // where the next route silently shows two sections at once.
+  it("hides the sheet on the other two routes, and both of them on the sheet", () => {
+    expect(html).toContain("body.route-index #view-gallery, body.route-report #view-gallery { display:none; }")
+    expect(html).toContain("body.route-gallery #view-index, body.route-gallery #view-report { display:none; }")
+  })
+
+  // A run dir is one path segment under the out root and can never hold a
+  // slash, which is what makes the prefix a namespace no pair can collide with.
+  it("routes #/set/<entryId> by a prefix a run dir cannot produce", () => {
+    expect(html).toContain("hash.startsWith('set/')")
+    expect(html).toContain("'.set.json'")
+  })
+
+  it("embeds the gallery module beside the others", () => {
+    expect(html).toContain("export const FRAME_COVERAGE = 0.9;")
+  })
+
+  it("makes a measured cell a link into its own pair", () => {
+    expect(html).toContain(".gcell[data-pair]")
   })
 })
