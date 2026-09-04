@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  CONFIDENCE_GATE,
+  DEFAULT_FILTER,
+  SOURCE_CHIPS,
+  STATE_CHIPS,
   autoRetryMessage,
   cellsShown,
   classifyListError,
-  CONFIDENCE_GATE,
   countMessage,
-  DEFAULT_FILTER,
   entryIdOf,
   errorBox,
   errorCopyText,
@@ -14,6 +16,7 @@ import {
   filterEntries,
   groupEntries,
   groupHeader,
+  groupSheetLink,
   groupWhen,
   isBroken,
   isFilterActive,
@@ -25,8 +28,6 @@ import {
   pairCards,
   relativeWhen,
   sortEntries,
-  SOURCE_CHIPS,
-  STATE_CHIPS,
   type BrokenPair,
   type LibraryGroup,
   type ListError,
@@ -709,5 +710,60 @@ describe("the list-load error box (plan, section C)", () => {
 
   it("escapes what it quotes — the error text and the root are not trusted markup", () => {
     expect(errorBox(err({ tech: "<b>x</b>", root: "<i>" }))).not.toMatch(/<b>x<\/b>|<i>/)
+  })
+})
+
+describe("groupSheetLink", () => {
+  const group = (id: string): LibraryGroup => ({
+    id,
+    set: true,
+    total: 3,
+    cells: [],
+    roll: { critical: 0, major: 0, minor: 0, regressed: 0, broken: 0, pass: 0 },
+  })
+
+  // The defect it fixes: chunk 3 shipped the sheet and nothing linked to it, so
+  // the surface was reachable only by typing a URL — which on a phone is not
+  // reachable at all. An unlinked feature reads as an unbuilt one.
+  it("routes to the entry's sheet, encoded", () => {
+    expect(groupSheetLink(group("ds-button-fill"))).toContain('href="#/set/ds-button-fill"')
+    expect(groupSheetLink(group("a/b c"))).toContain('href="#/set/a%2Fb%20c"')
+  })
+
+  it("names the entry for a screen reader, not just the glyph", () => {
+    const html = groupSheetLink(group("ds-chip"))
+    expect(html).toContain('aria-label="Open ds-chip as a variant sheet"')
+    expect(html).toContain('aria-hidden="true"')
+  })
+
+  it("escapes the id in the human-readable attributes", () => {
+    const html = groupSheetLink(group('x"><script>'))
+    expect(html).not.toContain("<script>")
+    expect(html).toContain("&quot;")
+  })
+
+  // A link INSIDE .ghead would both follow itself and toggle the group, because
+  // the group's click handler resolves closest('.ghead'). As a sibling it does not.
+  it("is a sibling of the header button, never a child of it", () => {
+    const html = libraryList([group("ds-alert")], () => "#", "desktop", Date.now(), new Set())
+    expect(html).toContain('<div class="ghead-row">')
+    const row = html.slice(html.indexOf('class="ghead-row"'))
+    const head = row.indexOf('class="ghead"')
+    const link = row.indexOf('class="gsheet-link"')
+    expect(head).toBeGreaterThan(-1)
+    expect(link).toBeGreaterThan(head)
+    // the button is closed before the link opens
+    expect(row.slice(head, link)).toContain("</button>")
+  })
+
+  it("every foldable group in a rendered list gets exactly one", () => {
+    const html = libraryList(
+      [group("a"), group("b"), group("c")],
+      () => "#",
+      "desktop",
+      Date.now(),
+      new Set(),
+    )
+    expect(html.match(/class="gsheet-link"/g)).toHaveLength(3)
   })
 })

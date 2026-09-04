@@ -655,6 +655,39 @@ export function pairCards(
  * A collapsed group renders NO cells: not hidden ones, none at all. On a
  * 194-cell root that is 194 lazy images the browser never has to make.
  */
+/**
+ * The way INTO a set's sheet, and the only one there is.
+ *
+ * Chunk 3 shipped the sheet at `#/set/<entryId>` and nothing linked to it, so the
+ * surface was reachable only by typing a URL — which on a phone is not reachable
+ * at all. An unlinked feature is indistinguishable from an unbuilt one, and it
+ * was reported as "click any set group" by the very session that skipped the
+ * link.
+ *
+ * A SIBLING of the `.ghead` button, never a child: nesting an anchor inside a
+ * button is invalid, and the group's click handler resolves `closest('.ghead')`,
+ * so a link inside the header would toggle the group as well as follow itself.
+ * As a sibling it bubbles past `.ghead` and only changes the hash.
+ *
+ * Every group that gets a header is a SET (`libraryList` renders one only for a
+ * foldable group), so the link is always meaningful. It is offered even when the
+ * root holds no `<entryId>.set.json` — the route answers that with a named error
+ * naming the command that writes one, which is a better answer than hiding the
+ * affordance and leaving the reader to wonder whether a sheet exists.
+ */
+export function groupSheetLink(g: LibraryGroup): string {
+  const id = escapeHtml(g.id)
+  return (
+    '<a class="gsheet-link" href="#/set/' +
+    encodeURIComponent(g.id) +
+    '" title="Open ' +
+    id +
+    ' as a variant sheet" aria-label="Open ' +
+    id +
+    ' as a variant sheet"><span class="msi" aria-hidden="true">grid_view</span><span class="gsheet-label">Sheet</span></a>'
+  )
+}
+
 export function libraryList(
   groups: LibraryGroup[],
   href: (pair: PairSummary) => string,
@@ -674,8 +707,10 @@ export function libraryList(
       (isOpen ? " open" : "") +
       '" data-group="' +
       escapeHtml(g.id) +
-      '">' +
+      '"><div class="ghead-row">' +
       groupHeader(g, isOpen, now) +
+      groupSheetLink(g) +
+      "</div>" +
       (isOpen ? '<div class="gcells">' + pairCards(g.cells, href, layout, now) + "</div>" : "") +
       "</section>"
   }

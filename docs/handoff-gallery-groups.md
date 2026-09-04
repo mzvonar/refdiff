@@ -271,11 +271,25 @@ here, never the comp's source.
 `x 0.67 / y 0.06` — 311 comp leaf elements against the app's 87. Its own phone frame, not a
 narrow-viewport render of the desktop comp.
 
-**Still open, and small:** the Library's group row does not yet LINK to the sheet (the
-plan's "a group in the Library opens the gallery"). Deliberately not done here — it changes
-the Library's markup, which moves those two pairs again, and chunk 5 rebuilds that surface
-to a comp that draws the affordance properly. Do it in chunk 5, or accept a third
-re-baseline.
+**CLOSED — the Library's group row now links to the sheet** (`groupSheetLink`, the plan's
+"a group in the Library opens the gallery"). It had been deferred here on the grounds that
+it moves the two Library pairs again; that was the wrong trade, because **an unlinked
+surface is indistinguishable from an unbuilt one** — the sheet was reachable only by typing
+a URL, which on a phone is not reachable at all, and the session that skipped the link then
+reported it as "click any set group". The third re-baseline cost nothing: both pairs still
+PASS and the new elements were absorbed by the already-declared "Library comp predates
+groups" cause (desktop 17 explained where it was 14, mobile 18 where it was 16, unexplained
+still 1 and 0, confidence unchanged at 0.89 / 1.00). No new policy.
+
+The link is a SIBLING of the `.ghead` button, never a child: an anchor inside a button is
+invalid, and the group toggle resolves `closest('.ghead')`, so a nested link would follow
+itself AND expand the group. On a phone the label is hidden and the glyph stays — measured
+43×87, no page-level horizontal scroll.
+
+**Still open on mobile:** the SHEET itself has no mobile treatment. It renders and scrolls
+inside its own container at 390px, but there is no fit, no zoom and no phone layout —
+`RefDiff Gallery Mobile.dc.html` is the design for that and it is unbuilt (426 findings,
+confidence 0.00). Part of chunk 3's remaining convergence, not a separate chunk.
 
 ### 2. CHUNK 5 — the Library rebuilt to the comp
 

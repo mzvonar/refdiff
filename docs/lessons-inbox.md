@@ -5,6 +5,28 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-04 — an unlinked surface is indistinguishable from an unbuilt one
+
+- **Context:** chunk 3 shipped the variant sheet at `#/set/<entryId>` and deliberately did NOT link
+  to it from the Library, on the grounds that touching the Library's markup would move its two
+  measured pairs a third time. The handoff recorded that as "still open, and small".
+- **Lesson:** the deferral was the wrong trade and the way it failed is the point. **The same
+  session then told the user to "click any set group"** — a control that did not exist, because the
+  session that skipped building it was the one writing the instructions. The user's reply was "I
+  don't see it. How can I open a gallery on mobile?", and on a phone the answer was genuinely
+  nothing: the only way in was typing a URL. **A feature reachable only by URL is not shipped, and
+  it is worse than unshipped, because it reports itself as working.** The cost of the thing I was
+  protecting turned out to be zero: both Library pairs still PASS and the new elements were absorbed
+  by the already-declared cause (17 explained where it was 14; unexplained unchanged at 1 and 0).
+- **The mechanical half, worth keeping:** the link is a SIBLING of the `.ghead` button, never a
+  child. An anchor inside a button is invalid HTML, and the group toggle resolves
+  `closest('.ghead')`, so a nested link would follow itself AND expand the group.
+- **Candidate home:** CLAUDE.md's verification neighbourhood — the general rule is that **"the code
+  is in" and "a user can reach it" are different facts**, which is the same shape as the skill's
+  "a green pair proves the STATE matches the comp; it says nothing about whether a user can REACH
+  that state". That note already exists in `SKILL.md` § "Environment pre-flight" and this is its
+  second firing, so it is a promote-on-recurrence candidate.
+
 ## 2026-09-04 — two comps that render the same furniture are not the same surface
 
 - **Context:** chunk 3's Gallery comp turned out to be the comparison tool's chrome with a sheet in

@@ -430,8 +430,8 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   top-level card. Expanding a group lists that entry's cards unchanged; a
   search or a filter chip expands every group it left a match in, and the head
   row keeps counting comparisons, never groups.
-- **A set also has a SHEET: `#/set/<entryId>` draws its whole cross-product as a
-  grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
+- **A set also has a SHEET, reached by the `Sheet` button on its Library group row
+  (or `#/set/<entryId>` directly), drawing its whole cross-product as a grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
   one surface that can show what was never measured — every cell is `measured`
   (verdict + severity badge), `skipped` (greyed, its reason on hover), `absent`
   (in the axes but declared by neither side) or `pending` (expanded as a pair,

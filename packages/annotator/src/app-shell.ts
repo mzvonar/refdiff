@@ -452,6 +452,20 @@ a.card:hover { border-color:var(--acc); }
 .gregressed .msi { font-size:14px; }
 .gwhen { margin-left:auto; font-size:11px; color:var(--txt2); white-space:nowrap; }
 .gcells { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }
+/* The header row: the toggle button, and beside it the way into the sheet. The
+   link is a SIBLING of .ghead (an anchor inside a button is invalid, and the
+   group toggle resolves closest('.ghead')), so the row is what puts them level. */
+.ghead-row { display:flex; align-items:stretch; gap:8px; min-width:0; }
+.ghead-row .ghead { flex:1; min-width:0; }
+.gsheet-link { display:flex; align-items:center; gap:7px; flex-shrink:0; padding:0 14px; border:1px solid var(--line); border-radius:10px;
+  background:var(--bg1); color:var(--txt2); text-decoration:none; font-size:11.5px; font-weight:600; white-space:nowrap; }
+.gsheet-link:hover { border-color:var(--acc); color:var(--txt); }
+.gsheet-link .msi { font-size:17px; }
+/* On a phone the label goes and the glyph stays: the row is already carrying a
+   name, a count and a badge set, and a 390px viewport has no room for a word
+   that the icon and the aria-label both already say. */
+body.lib-mobile .gsheet-link { padding:0 12px; }
+body.lib-mobile .gsheet-label { display:none; }
 body.lib-mobile .grp { gap:8px; }
 body.lib-mobile .gcells { display:flex; flex-direction:column; gap:8px; }
 .thumb { height:calc(132px + 1px); background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:center;
