@@ -93,6 +93,33 @@ describe("renderAppShell", () => {
     expect(html).toContain("mobile ? 'mobile' : 'desktop'")
   })
 
+  it("draws the Library as GROUPS, and still counts comparisons rather than groups", () => {
+    expect(html).toContain("const groups = groupEntries(pairs, lib.filter);")
+    expect(html).toContain("const shown = cellsShown(groups);")
+    expect(html).toContain("countMessage(shown, pairs.length)")
+    expect(html).toContain("openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed })")
+    expect(html).toContain("cards.innerHTML = libraryList(groups,")
+    // The empty state is still about cells: a filter that matches nothing
+    // leaves no groups either, and "N of M comparisons" is what the head says.
+    expect(html).toContain("empty.hidden = !(shown === 0 && pairs.length > 0);")
+  })
+
+  it("makes a group row a control: the reader's own expand/collapse survives a re-render", () => {
+    expect(html).toContain("opened: new Set(), closed: new Set()")
+    expect(html).toContain("e.target.closest('.ghead')")
+    expect(html).toContain("head.getAttribute('aria-expanded') === 'true'")
+    expect(html).toContain("lib.opened.delete(id); lib.closed.add(id);")
+    expect(html).toContain("lib.closed.delete(id); lib.opened.add(id);")
+  })
+
+  it("styles the group row so a set spans the whole card grid and its cells keep the grid", () => {
+    expect(html).toContain(".grp { grid-column:1/-1;")
+    expect(html).toContain(".gcells { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }")
+    // One glyph for both states — chevron_right is not in the icon subset.
+    expect(html).toContain(".grp:not(.open) .ghead .caret { transform:rotate(-90deg); }")
+    expect(html).toContain("body.lib-mobile .gcells { display:flex; flex-direction:column; gap:8px; }")
+  })
+
   it("gives the index its own theme toggle, driven by the report client's shared handler", () => {
     expect(html).toContain('class="theme-toggle" id="index-theme-toggle"')
     expect(html).toContain("e.target.closest('.theme-toggle')")

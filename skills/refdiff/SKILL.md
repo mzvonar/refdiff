@@ -389,6 +389,17 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   human` with those numbers attached, not a fix you commit.
 - Sets share one out root; `summary.md` there always covers every run dir
   under it (all sets), the console shows the set just run.
+- **The annotator's Library folds a set into ONE row.** It groups run dirs by
+  the entry their pair id names — every variant pair is `<entryId>--<slug>`,
+  so `ds-button-fill--state-hover_variant-default` sits under
+  `ds-button-fill` — collapsed, showing that entry's comparison count, the
+  roll-up of its cells' severities, how many of them have a REGRESSION (a fix
+  come undone), how many are unreadable, and an `oldest → newest` span when
+  its cells came from different runs, which is how a subset re-run's mixed
+  vintages stop being invisible. A pair id with no `--` stays a single
+  top-level card. Expanding a group lists that entry's cards unchanged; a
+  search or a filter chip expands every group it left a match in, and the head
+  row keeps counting comparisons, never groups.
 
 ### 2. Classify every finding — this is the whole skill
 

@@ -275,8 +275,15 @@ picks the layout, the icon is excused by content in the manifest); the head
 row `Library · N of M
 comparisons`; a filter row — search over name + route, source chips Both /
 Figma / Claude Design, state chips Any / Failing / Critical / Diverging / Low
-confidence / Has comments; then the grid (`auto-fill, minmax(250px, 1fr)`) or,
-under 640px or with the toggle, the row list. A **card** is the run's own
+confidence / Has comments; then the grid (`auto-fill, minmax(262px, 1fr)`)
+or, under 640px, the row list. The grid's items are GROUPED by the entry each
+pair id names (`<entryId>--<slug>`, so 194 DS cells list as 14 collapsed
+`.grp` sections spanning the grid, each with its own roll-up, regressed and
+unreadable counts, and a `createdAt` span when its cells came from different
+runs); a pair id with no `--` is a lone card, and a set of one is drawn as its
+card too. `openGroups` holds the decision: collapsed by default with no
+cell-count threshold, everything surviving an active filter expanded, an
+explicit toggle over both. A **card** is the run's own
 `impl.png` as its thumbnail band (decision D6 — the comp's grey plate is the
 designer's stand-in; a run without a PNG gets the plate), the verdict pill
 top-left (`Pass` / `Fail`, the deterministic gate — a percentage was

@@ -121,7 +121,12 @@ const RETRY_SECS = 30;
 // Library state. The filter survives opening a pair and coming back; the
 // layout follows the width alone (the comp's computer/smartphone button is
 // its DESIGN-PREVIEW switch, not a product control — the app has none).
-const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null };
+// lib.opened / lib.closed are what the reader expanded and collapsed BY HAND;
+// openGroups() reads them over the default (all collapsed, everything that
+// survives an active filter expanded), so a hand toggle survives a re-render
+// and a filter change without either overriding the other. (No backticks in
+// here: this whole boot script is a template literal and one would close it.)
+const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null, opened: new Set(), closed: new Set() };
 
 const routePair = () => {
   const hash = location.hash.replace(/^#\/?/, '');
@@ -162,13 +167,15 @@ function renderIndexView() {
   err.hidden = true;
   err.innerHTML = '';
   $('lib-filters').hidden = false;
-  const shown = filterEntries(pairs, lib.filter);
-  $('lib-count').textContent = countMessage(shown.length, pairs.length);
+  const groups = groupEntries(pairs, lib.filter);
+  const shown = cellsShown(groups);
+  $('lib-count').textContent = countMessage(shown, pairs.length);
   const cards = $('cards');
   cards.className = 'cards' + (mobile ? ' list' : '') + (mobile && !lib.narrow ? ' capped' : '');
-  cards.innerHTML = pairCards(shown, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop');
+  const open = openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed });
+  cards.innerHTML = libraryList(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open);
   const empty = $('index-empty');
-  empty.hidden = !(shown.length === 0 && pairs.length > 0);
+  empty.hidden = !(shown === 0 && pairs.length > 0);
   empty.textContent = empty.hidden ? '' : 'Nothing matches your search or filter.';
 }
 
@@ -280,6 +287,17 @@ document.addEventListener('click', (e) => {
   const back = e.target.closest && e.target.closest('header .back');
   if (back && back.getAttribute('href') === '#/') { e.preventDefault(); location.hash = ''; }
 });
+// A group row expands its set. aria-expanded is the state the header rendered,
+// so the toggle reads the DOM rather than recomputing the default here — one
+// place decides it (openGroups) and this only records the reader's choice.
+document.addEventListener('click', (e) => {
+  const head = e.target.closest && e.target.closest('.ghead');
+  if (!head) return;
+  const id = head.dataset.group;
+  if (head.getAttribute('aria-expanded') === 'true') { lib.opened.delete(id); lib.closed.add(id); }
+  else { lib.closed.delete(id); lib.opened.add(id); }
+  renderIndexView();
+});
 void loadPairs().then(route);
 `
 
@@ -330,6 +348,23 @@ body.lib-mobile .fchip { padding:5px 10px; font-size:11.5px; }
 .card { display:flex; flex-direction:column; background:var(--bg1); border:1px solid var(--line); border-radius:12px; overflow:hidden;
   color:var(--txt); text-decoration:none; cursor:pointer; }
 a.card:hover { border-color:var(--acc); }
+/* ---- groups: one section per variant set, spanning the whole card grid */
+.grp { grid-column:1/-1; display:flex; flex-direction:column; gap:14px; min-width:0; }
+.ghead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; text-align:left; cursor:pointer; font:inherit;
+  color:var(--txt); background:var(--bg1); border:1px solid var(--line); border-radius:10px; padding:9px 12px; }
+.ghead:hover { border-color:var(--acc); }
+/* ONE glyph, rotated when collapsed: chevron_right is not in the icon subset (icon-names.ts). */
+.ghead .caret { font-size:18px; color:var(--txt2); flex-shrink:0; transition:transform .12s; }
+.grp:not(.open) .ghead .caret { transform:rotate(-90deg); }
+.gname { font-size:13.5px; font-weight:700; letter-spacing:-.01em; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gcount { font-size:11.5px; color:var(--txt2); white-space:nowrap; }
+.ghead .badges { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.gregressed { display:flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:var(--critical); white-space:nowrap; }
+.gregressed .msi { font-size:14px; }
+.gwhen { margin-left:auto; font-size:11px; color:var(--txt2); white-space:nowrap; }
+.gcells { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }
+body.lib-mobile .grp { gap:8px; }
+body.lib-mobile .gcells { display:flex; flex-direction:column; gap:8px; }
 .thumb { height:calc(132px + 1px); background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:center;
   position:relative; overflow:hidden; }
 .thumb .shot { display:block; width:100%; height:100%; object-fit:cover; object-position:top; }

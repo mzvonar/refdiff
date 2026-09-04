@@ -2,16 +2,25 @@ import { describe, expect, it } from "vitest"
 
 import {
   autoRetryMessage,
+  cellsShown,
   classifyListError,
   CONFIDENCE_GATE,
   countMessage,
   DEFAULT_FILTER,
+  entryIdOf,
   errorBox,
   errorCopyText,
   escapeHtml,
   filterEntries,
+  groupEntries,
+  groupHeader,
+  groupWhen,
   isBroken,
+  isFilterActive,
+  isFoldable,
+  libraryList,
   matchesFilter,
+  openGroups,
   pairCard,
   pairCards,
   relativeWhen,
@@ -19,6 +28,7 @@ import {
   SOURCE_CHIPS,
   STATE_CHIPS,
   type BrokenPair,
+  type LibraryGroup,
   type ListError,
   type PairSummary,
 } from "../src/index-view.js"
@@ -321,6 +331,333 @@ describe("the filter row", () => {
 
   it("treats a first run as not diverging — there is nothing to diverge from", () => {
     expect(matchesFilter(pair({ delta: undefined }), { ...DEFAULT_FILTER, state: "diverging" })).toBe(false)
+  })
+})
+
+/* ---------------------------------------------------- the derived groups -- */
+
+// The shape a real variant set has on disk: `${entryId}--${slug}`. The counts
+// are the DS root's five biggest entries, measured 2026-09-04 — 157 of its 194
+// pairs live in five of its fourteen groups, which is the case this exists for.
+const cell = (dir: string, over: Partial<PairSummary> = {}): PairSummary =>
+  pair({ dir, pair: dir, ...over })
+
+describe("entryIdOf — the split that makes the tree free", () => {
+  it("takes the FIRST `--` only, so a slug may carry more of them", () => {
+    expect(entryIdOf("ds-button-fill--state-default_variant-default")).toBe("ds-button-fill")
+    expect(entryIdOf("a--b--c")).toBe("a")
+    // Malformed but grouped under the prefix it does name, rather than vanishing.
+    expect(entryIdOf("a--")).toBe("a")
+  })
+
+  it("calls a pair id with no `--` a lone item — the annotator's own eight are that shape", () => {
+    expect(entryIdOf("refdiff-library-desktop")).toBeNull()
+    expect(entryIdOf("onboarding-document-step")).toBeNull()
+    expect(entryIdOf("")).toBeNull()
+  })
+
+  it("calls an id that STARTS with `--` a lone item too: there is no entry to name", () => {
+    expect(entryIdOf("--orphan")).toBeNull()
+    expect(entryIdOf("--")).toBeNull()
+  })
+})
+
+describe("groupEntries", () => {
+  const ds = [
+    cell("ds-button-fill--state-default_variant-default"),
+    cell("ds-button-fill--state-hover_variant-default"),
+    cell("ds-button-fill--state-focus_variant-default"),
+    cell("ds-alert--color-error_aligned-left_type-text"),
+    cell("ds-alert--color-info_aligned-left_type-text"),
+    cell("ds-chip--size-md"),
+  ]
+
+  it("folds a flat list into one group per entry, keeping every cell", () => {
+    const groups = groupEntries(ds)
+    expect(groups.map((g) => [g.id, g.cells.length, g.total])).toEqual([
+      ["ds-button-fill", 3, 3],
+      ["ds-alert", 2, 2],
+      ["ds-chip", 1, 1],
+    ])
+    expect(cellsShown(groups)).toBe(ds.length)
+  })
+
+  it("orders groups by their FIRST cell, so a sorted list puts the newest run's set first", () => {
+    const at = (msAgo: number) => new Date(NOW - msAgo).toISOString()
+    const sorted = sortEntries([
+      cell("ds-alert--a", { createdAt: at(3 * 3_600_000) }),
+      cell("ds-checkbox--a", { createdAt: at(30 * 60_000) }),
+      cell("ds-alert--b", { createdAt: at(3 * 3_600_000 + 1000) }),
+      cell("ds-checkbox--b", { createdAt: at(31 * 60_000) }),
+    ])
+    expect(groupEntries(sorted).map((g) => g.id)).toEqual(["ds-checkbox", "ds-alert"])
+    // Cells keep the order they arrived in — newest first, within the group too.
+    expect(groupEntries(sorted)[0]?.cells.map((c) => c.dir)).toEqual(["ds-checkbox--a", "ds-checkbox--b"])
+  })
+
+  it("lists a lone item as its own group, and such a group can never hold anything else", () => {
+    const groups = groupEntries([cell("ds-alert--a"), pair(), broken])
+    expect(groups.map((g) => [g.id, g.set, g.total])).toEqual([
+      ["ds-alert", true, 1],
+      ["onboarding-document-step", false, 1],
+      ["onboarding-liveness-step", false, 1],
+    ])
+    // The invariant the renderer leans on: not a set ⇒ exactly one cell.
+    for (const g of groups) expect(g.set || g.total === 1).toBe(true)
+  })
+
+  it("groups an unreadable run by its dir like any other — it is never dropped", () => {
+    const groups = groupEntries([cell("ds-alert--a"), { ...broken, dir: "ds-alert--b" }])
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.cells.map((c) => c.dir)).toEqual(["ds-alert--a", "ds-alert--b"])
+    expect(groups[0]?.roll.broken).toBe(1)
+  })
+
+  it("rolls up the severities of the cells it shows, and counts the cells whose fix came undone", () => {
+    const groups = groupEntries([
+      cell("ds-alert--a", { critical: 1, major: 2, minor: 3, delta: { introduced: 1, resolved: 0, regressions: 1 } }),
+      cell("ds-alert--b", { critical: 0, major: 1, minor: 0, delta: { introduced: 4, resolved: 9, regressions: 2 } }),
+      cell("ds-alert--c", { critical: 0, major: 0, minor: 0, delta: undefined }),
+    ])
+    expect(groups[0]?.roll).toEqual({ critical: 1, major: 3, minor: 3, regressed: 2, broken: 0 })
+  })
+
+  it("counts a regression, not a divergence: a diverging cell with no undone fix is not regressed", () => {
+    // The `Diverging` chip's introduced > resolved — visible on the card's own
+    // trend already. `regressed` is delta.regressions, which no card can show.
+    const groups = groupEntries([cell("ds-alert--a", { delta: { introduced: 9, resolved: 0, regressions: 0 } })])
+    expect(groups[0]?.roll.regressed).toBe(0)
+  })
+
+  it("applies the filter INSIDE a group, remembers what the group held, and drops a group with no match", () => {
+    const entries = [
+      cell("ds-alert--a", { pass: false, critical: 2 }),
+      cell("ds-alert--b", { pass: true, critical: 0, major: 0, minor: 0, findings: 0 }),
+      cell("ds-chip--a", { pass: true, critical: 0, major: 0, minor: 0, findings: 0 }),
+    ]
+    const groups = groupEntries(entries, { ...DEFAULT_FILTER, state: "fail" })
+    expect(groups.map((g) => [g.id, g.cells.length, g.total])).toEqual([["ds-alert", 1, 2]])
+    // The head row still counts comparisons, not groups.
+    expect(countMessage(cellsShown(groups), entries.length)).toBe("1 of 3 comparisons")
+    // Nothing matches anywhere: no groups at all, which is the empty state.
+    expect(groupEntries(entries, { ...DEFAULT_FILTER, query: "nothing" })).toEqual([])
+  })
+
+  it("rolls up only what it shows, so a header's numbers reconcile with the cards under it", () => {
+    const groups = groupEntries(
+      [
+        cell("ds-alert--a", { critical: 5, major: 0, minor: 0 }),
+        cell("ds-alert--b", { critical: 0, major: 0, minor: 0, findings: 0, pass: true }),
+      ],
+      { ...DEFAULT_FILTER, state: "fail" },
+    )
+    expect(groups[0]?.roll.critical).toBe(5)
+    expect(groups[0]?.cells).toHaveLength(1)
+  })
+})
+
+describe("the collapse decision (plan, open question 3: always collapsed)", () => {
+  const groups = groupEntries([
+    cell("ds-checkbox--a"),
+    cell("ds-checkbox--b"),
+    cell("ds-chip--only"),
+    pair(),
+  ])
+  const ids = (s: Set<string>) => [...s].sort()
+
+  it("folds a set of more than one cell, and never a set of one or a lone item", () => {
+    expect(groups.map((g) => [g.id, isFoldable(g)])).toEqual([
+      ["ds-checkbox", true],
+      ["ds-chip", false],
+      ["onboarding-document-step", false],
+    ])
+  })
+
+  it("starts every foldable group COLLAPSED — no cell-count threshold", () => {
+    expect(ids(openGroups(groups, DEFAULT_FILTER))).toEqual([])
+  })
+
+  it("expands everything that survives an ACTIVE filter — the reader has already narrowed", () => {
+    expect(isFilterActive(DEFAULT_FILTER)).toBe(false)
+    expect(isFilterActive({ ...DEFAULT_FILTER, query: "  " })).toBe(false)
+    for (const f of [{ query: "hover" }, { source: "figma" }, { state: "fail" as const }]) {
+      expect(isFilterActive({ ...DEFAULT_FILTER, ...f })).toBe(true)
+      expect(ids(openGroups(groups, { ...DEFAULT_FILTER, ...f }))).toEqual(["ds-checkbox"])
+    }
+  })
+
+  it("lets an explicit toggle win in both directions, over either default", () => {
+    const opened = { opened: new Set(["ds-checkbox"]), closed: new Set<string>() }
+    expect(ids(openGroups(groups, DEFAULT_FILTER, opened))).toEqual(["ds-checkbox"])
+    const closed = { opened: new Set<string>(), closed: new Set(["ds-checkbox"]) }
+    expect(ids(openGroups(groups, { ...DEFAULT_FILTER, query: "a" }, closed))).toEqual([])
+  })
+
+  it("never offers a group of one to be toggled, whatever the reader clicked before", () => {
+    const t = { opened: new Set(["ds-chip", "onboarding-document-step"]), closed: new Set<string>() }
+    expect(ids(openGroups(groups, DEFAULT_FILTER, t))).toEqual([])
+  })
+
+  it("keeps a group foldable when the filter leaves ONE match inside it", () => {
+    // Otherwise the header naming the set a match came from would vanish
+    // exactly when the reader is searching for it — `total` is why it does not.
+    const one = groupEntries(
+      [cell("ds-checkbox--a", { notes: 1 }), cell("ds-checkbox--b", { notes: 0 })],
+      { ...DEFAULT_FILTER, state: "comments" },
+    )
+    expect(one[0]?.cells).toHaveLength(1)
+    expect(isFoldable(one[0] as LibraryGroup)).toBe(true)
+    expect(ids(openGroups(one, { ...DEFAULT_FILTER, state: "comments" }))).toEqual(["ds-checkbox"])
+  })
+})
+
+describe("groupWhen — the vintage span, in the cards' own words", () => {
+  const at = (msAgo: number) => new Date(NOW - msAgo).toISOString()
+
+  it("says one thing when a whole set ran in one go", () => {
+    // Measured: one `compare` spreads its stamps over ~a minute (66s across
+    // ds-checkbox's 45 cells), which is one bucket once an hour has passed.
+    expect(groupWhen([cell("a--1", { createdAt: at(3 * 3_600_000) }), cell("a--2", { createdAt: at(3 * 3_600_000 + 66_000) })], NOW)).toBe("3 h ago")
+  })
+
+  it("shows oldest → newest when a subset re-run mixed vintages", () => {
+    expect(groupWhen([cell("a--1", { createdAt: at(4 * 3_600_000) }), cell("a--2", { createdAt: at(30_000) })], NOW)).toBe("4 h ago → just now")
+  })
+
+  it("shows the span a fresh set really has while its cells straddle a minute", () => {
+    // Deliberate, and it decays: the two cells WERE measured a minute apart,
+    // and an hour later both read "1 h ago" and the span goes away by itself.
+    // The alternative — a tolerance that calls a minute "one run" — needs a
+    // number that a slower set breaks, and it fails toward hiding a mix.
+    expect(groupWhen([cell("a--1", { createdAt: at(12 * 60_000) }), cell("a--2", { createdAt: at(11 * 60_000) })], NOW)).toBe("12 min ago → 11 min ago")
+    expect(groupWhen([cell("a--1", { createdAt: at(72 * 60_000) }), cell("a--2", { createdAt: at(71 * 60_000) })], NOW)).toBe("1 h ago")
+  })
+
+  it("ignores a stamp that cannot be read, and says nothing when none can", () => {
+    expect(groupWhen([cell("a--1", { createdAt: "?" }), cell("a--2", { createdAt: at(30_000) })], NOW)).toBe("just now")
+    expect(groupWhen([cell("a--1", { createdAt: "?" })], NOW)).toBe("")
+    expect(groupWhen([], NOW)).toBe("")
+    expect(groupWhen([broken], NOW)).toBe("")
+  })
+})
+
+describe("groupHeader", () => {
+  const g = (cells: PairSummary[], f = DEFAULT_FILTER) => groupEntries(cells, f)[0] as LibraryGroup
+
+  it("names the entry, counts its comparisons, and rolls up their severities", () => {
+    const ago = (ms: number) => new Date(NOW - ms).toISOString()
+    const html = groupHeader(
+      g([
+        cell("ds-button-fill--a", { critical: 1, major: 2, minor: 0, createdAt: ago(3 * 3_600_000) }),
+        cell("ds-button-fill--b", { critical: 0, major: 1, minor: 4, createdAt: ago(3 * 3_600_000 + 66_000) }),
+      ]),
+      false,
+      NOW,
+    )
+    expect(html).toContain('<span class="gname">ds-button-fill</span>')
+    expect(html).toContain('<span class="gcount">2 comparisons</span>')
+    expect(html).toContain('<span class="badge critical"><i class="dot"></i>Critical 1</span>')
+    expect(html).toContain('<span class="badge major"><i class="dot"></i>Major 3</span>')
+    expect(html).toContain('<span class="badge minor"><i class="dot"></i>Minor 4</span>')
+    expect(html).toContain('<span class="gwhen">3 h ago</span>')
+    expect(html).not.toContain("regressed")
+    expect(html).not.toContain("unreadable")
+  })
+
+  it("is the control that expands the group, and carries the state as aria-expanded", () => {
+    const cells = [cell("ds-alert--a"), cell("ds-alert--b")]
+    expect(groupHeader(g(cells), false, NOW)).toMatch(/^<button type="button" class="ghead" data-group="ds-alert" aria-expanded="false">/)
+    expect(groupHeader(g(cells), true, NOW)).toContain('aria-expanded="true"')
+    // One glyph for both states: the caret is rotated by CSS, because
+    // chevron_right is not in the icon subset (icon-names.ts).
+    expect(groupHeader(g(cells), true, NOW)).toContain('<span class="msi caret" aria-hidden="true">expand_more</span>')
+  })
+
+  it("says how many of the set the filter left", () => {
+    const html = groupHeader(
+      g([cell("ds-checkbox--a", { notes: 2 }), cell("ds-checkbox--b", { notes: 0 }), cell("ds-checkbox--c", { notes: 0 })], {
+        ...DEFAULT_FILTER,
+        state: "comments",
+      }),
+      false,
+      NOW,
+    )
+    expect(html).toContain('<span class="gcount">1 of 3 comparisons</span>')
+  })
+
+  it("surfaces a fix come undone, and a run nobody could read", () => {
+    const groups = groupEntries([
+      cell("ds-alert--a", { delta: { introduced: 2, resolved: 0, regressions: 1 } }),
+      { ...broken, dir: "ds-alert--b" },
+    ])
+    const html = groupHeader(groups[0] as LibraryGroup, false, NOW)
+    expect(html).toContain('trending_up</span>1 regressed</span>')
+    expect(html).toContain('warning</span>1 unreadable</span>')
+  })
+
+  it("says No findings for a clean set, as a card does", () => {
+    const html = groupHeader(
+      g([
+        cell("ds-chip--a", { critical: 0, major: 0, minor: 0, findings: 0, pass: true }),
+        cell("ds-chip--b", { critical: 0, major: 0, minor: 0, findings: 0, pass: true }),
+      ]),
+      false,
+      NOW,
+    )
+    expect(html).toContain('<span class="badge none">No findings</span>')
+  })
+
+  it("escapes the entry id — it comes from a directory on disk", () => {
+    const html = groupHeader(g([cell('a"<b>--1'), cell('a"<b>--2')]), false, NOW)
+    expect(html).not.toContain("<b>")
+    expect(html).toContain('data-group="a&quot;&lt;b&gt;"')
+  })
+})
+
+describe("libraryList", () => {
+  const href = (p: PairSummary) => "#/" + p.dir
+  const cells = [cell("ds-alert--a"), cell("ds-alert--b"), cell("ds-alert--c")]
+
+  it("renders a root of LONE ITEMS byte for byte the way the flat list did", () => {
+    // The annotator measures itself against the Library comp while serving the
+    // demo root, whose twelve pair ids carry no `--`. That pair moving would
+    // mean this change touched the ungrouped case; this is the assertion that
+    // says it did not, and it is the one the +0/−0 self-measurement mirrors.
+    const flat = [pair(), broken, pair({ dir: "button", pair: "Button" }), pair({ dir: "stepper", pair: "Stepper" })]
+    for (const layout of ["desktop", "mobile"] as const) {
+      expect(libraryList(groupEntries(flat), href, layout, NOW)).toBe(pairCards(flat, href, layout, NOW))
+    }
+  })
+
+  it("wraps a set in a foldable section and draws NO cells while it is collapsed", () => {
+    const html = libraryList(groupEntries(cells), href, "desktop", NOW)
+    expect(html).toMatch(/^<section class="grp" data-group="ds-alert">/)
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).not.toContain("gcells")
+    // Not hidden cards — none at all: on a 194-cell root that is 194 images
+    // the browser never has to fetch.
+    expect(html).not.toContain('class="card"')
+    expect(html).not.toContain("<img")
+  })
+
+  it("draws the set's cards inside the group when it is open, unchanged from the flat list", () => {
+    const groups = groupEntries(cells)
+    const html = libraryList(groups, href, "desktop", NOW, new Set(["ds-alert"]))
+    expect(html).toContain('<section class="grp open" data-group="ds-alert">')
+    expect(html).toContain('aria-expanded="true"')
+    expect(html).toContain('<div class="gcells">' + pairCards(cells, href, "desktop", NOW) + "</div>")
+  })
+
+  it("mixes groups and lone items in one list, in the order the groups came", () => {
+    const html = libraryList(groupEntries([...cells, pair({ dir: "stepper", pair: "Stepper" })]), href, "desktop", NOW)
+    expect(html.indexOf('data-group="ds-alert"')).toBeLessThan(html.indexOf('data-pair="stepper"'))
+    expect(html).toContain('<a class="card" data-pair="stepper"')
+  })
+
+  it("passes the layout through to the cards inside a group", () => {
+    const html = libraryList(groupEntries(cells), href, "mobile", NOW, new Set(["ds-alert"]))
+    expect(html).toContain('<img class="tile"')
+    expect(html).not.toContain('class="shot"')
   })
 })
 

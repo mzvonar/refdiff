@@ -1,7 +1,8 @@
 /**
- * The Library: one card per run dir, built from the summaries the server
- * hands out at `/api/pairs`, laid out the way the RefDiff Library comp draws
- * it (a thumbnail card grid on desktop, a row list under 640px).
+ * The Library: one card per run dir, GROUPED by the entry its pair id names,
+ * built from the summaries the server hands out at `/api/pairs` and laid out
+ * the way the RefDiff Library comp draws it (a thumbnail card grid on desktop,
+ * a row list under 640px).
  *
  * Pure and import-free on purpose — like view-math.ts and annotations.ts it is
  * compiled and embedded verbatim into the served page, so the same tested
@@ -182,12 +183,13 @@ function sourceChip(source: string): string {
   )
 }
 
-function severityBadges(p: PairSummary): string {
+/** Takes the counts, not the pair: a group's roll-up prints the same badges. */
+function severityBadges(c: { critical: number; major: number; minor: number }): string {
   const out: string[] = []
   for (const [sev, n, label] of [
-    ["critical", p.critical, "Critical"],
-    ["major", p.major, "Major"],
-    ["minor", p.minor, "Minor"],
+    ["critical", c.critical, "Critical"],
+    ["major", c.major, "Major"],
+    ["minor", c.minor, "Minor"],
   ] as const) {
     if (n > 0) out.push('<span class="badge ' + sev + '"><i class="dot"></i>' + label + " " + n + "</span>")
   }
@@ -263,6 +265,248 @@ export function sortEntries(entries: PairEntry[]): PairEntry[] {
     .map((e, i) => ({ e, i, t: time(e) }))
     .sort((a, b) => b.t - a.t || a.i - b.i)
     .map((x) => x.e)
+}
+
+/* ------------------------------------------------------------- groups -- */
+
+/**
+ * The entry a pair id belongs to, or null when it belongs to none.
+ *
+ * Every variant pair `compare` writes is `${entryId}--${slug}`
+ * (`ds-button-fill--state-default_variant-default`), so the first level of the
+ * tree is already in the data — no new artifact, no core change. Split on the
+ * FIRST `--` only: a slug may carry more of them (`a--b--c` is entry `a`), and
+ * an id with none at all is a LONE ITEM — the annotator's own
+ * `refdiff-library-desktop` and the demo root's twelve are exactly that shape
+ * and must keep listing as bare cards. An id that starts with `--` names no
+ * entry, so it is a lone item too.
+ */
+export function entryIdOf(dir: string): string | null {
+  const i = dir.indexOf("--")
+  return i > 0 ? dir.slice(0, i) : null
+}
+
+/** What a group header adds up over the cells it is showing. */
+export interface GroupRollup {
+  critical: number
+  major: number
+  minor: number
+  /**
+   * Cells whose delta carries a REGRESSION — a finding an earlier run had
+   * resolved and this one found again. Deliberately not the `Diverging`
+   * chip's `introduced > resolved`: that one a reader can see on every card's
+   * trend already, a fix coming undone they cannot.
+   */
+  regressed: number
+  /** Cells whose findings.json could not be read — counted, never hidden. */
+  broken: number
+}
+
+/**
+ * One entry's cells, or a lone top-level item.
+ *
+ * `set === false` means no member's pair id carried a `--`, and then `total`
+ * is always 1: a dir name is unique under the root, so a lone item cannot
+ * share its group with anything.
+ */
+export interface LibraryGroup {
+  /** The entry id (`ds-button-fill`), or the lone item's own dir. */
+  id: string
+  /** True when at least one member's pair id named this group as its entry. */
+  set: boolean
+  /** The cells the filter kept, in the order they arrived. */
+  cells: PairEntry[]
+  /**
+   * Cells BEFORE the filter. The header's count reads off it, and a group of
+   * one draws as its card either way — so a search that leaves one match
+   * inside a 45-cell set still names the set the match is in.
+   */
+  total: number
+  /** Over `cells`, so the header's numbers reconcile with the cards under it. */
+  roll: GroupRollup
+}
+
+function rollUp(cells: PairEntry[]): GroupRollup {
+  const roll: GroupRollup = { critical: 0, major: 0, minor: 0, regressed: 0, broken: 0 }
+  for (const c of cells) {
+    if (isBroken(c)) {
+      roll.broken++
+      continue
+    }
+    roll.critical += c.critical
+    roll.major += c.major
+    roll.minor += c.minor
+    if (c.delta && c.delta.regressions > 0) roll.regressed++
+  }
+  return roll
+}
+
+/**
+ * The Library's one derived level: 194 flat rows become 14 groups with no new
+ * data. Groups come out in the order their FIRST cell arrived, so a sorted
+ * list (`sortEntries`, newest run first) puts the group that finished most
+ * recently first — the same decision the flat list already made.
+ *
+ * The filter applies INSIDE a group and a group with nothing left disappears;
+ * `total` remembers what it held, so its count can read `3 of 41 comparisons`.
+ */
+export function groupEntries(
+  entries: PairEntry[],
+  f: LibraryFilter = DEFAULT_FILTER,
+): LibraryGroup[] {
+  const order: string[] = []
+  const byId = new Map<string, { set: boolean; cells: PairEntry[]; total: number }>()
+  for (const e of entries) {
+    const entryId = entryIdOf(e.dir)
+    const id = entryId ?? e.dir
+    let g = byId.get(id)
+    if (!g) {
+      g = { set: false, cells: [], total: 0 }
+      byId.set(id, g)
+      order.push(id)
+    }
+    if (entryId !== null) g.set = true
+    g.total++
+    if (matchesFilter(e, f)) g.cells.push(e)
+  }
+  const out: LibraryGroup[] = []
+  for (const id of order) {
+    const g = byId.get(id)
+    if (!g || g.cells.length === 0) continue
+    out.push({ id, set: g.set, cells: g.cells, total: g.total, roll: rollUp(g.cells) })
+  }
+  return out
+}
+
+/** The head row keeps counting COMPARISONS, not groups. */
+export function cellsShown(groups: LibraryGroup[]): number {
+  return groups.reduce((n, g) => n + g.cells.length, 0)
+}
+
+/**
+ * A group draws a header only when it has more than one cell to fold away. A
+ * set of one would put a card's thumbnail, route, trend and comment count
+ * behind a click and save no room at all, and its entry id is already the
+ * first half of that card's own name.
+ */
+export const isFoldable = (g: LibraryGroup): boolean => g.set && g.total > 1
+
+/** Anything but the defaults — the reader has already narrowed the list. */
+export function isFilterActive(f: LibraryFilter): boolean {
+  return (
+    f.query.trim() !== "" || f.source !== DEFAULT_FILTER.source || f.state !== DEFAULT_FILTER.state
+  )
+}
+
+/** What the reader has expanded and collapsed by hand, over the default. */
+export interface GroupToggles {
+  opened: ReadonlySet<string>
+  closed: ReadonlySet<string>
+}
+
+const NO_TOGGLES: GroupToggles = { opened: new Set(), closed: new Set() }
+
+/**
+ * Which groups are drawn expanded. **Always collapsed** (plan, open question
+ * 3), with no cell-count threshold: a variant set is ONE design artefact and
+ * the Library's job is to pick one of them, so 14 headers is the overview and
+ * one click is the set — the click chunk 3 turns into the gallery. A
+ * threshold would answer "why is this one open and that one shut?" with a
+ * tuned number no reader can predict.
+ *
+ * Two rules bend it, and both are structural rather than tuned: a group of
+ * one is its card (`isFoldable`), and an ACTIVE FILTER expands everything
+ * that survived it — the reader has already narrowed, so hiding the matches
+ * behind a click would be hostile. An explicit toggle wins over both.
+ */
+export function openGroups(
+  groups: LibraryGroup[],
+  f: LibraryFilter,
+  t: GroupToggles = NO_TOGGLES,
+): Set<string> {
+  const base = isFilterActive(f)
+  const out = new Set<string>()
+  for (const g of groups) {
+    if (!isFoldable(g)) continue
+    const open = t.opened.has(g.id) ? true : t.closed.has(g.id) ? false : base
+    if (open) out.add(g.id)
+  }
+  return out
+}
+
+/**
+ * When a group's cells ran, in the words its cards use — a span
+ * `oldest → newest` when those words DIFFER, which is exactly when a reader
+ * comparing two of its cells would read two different times.
+ *
+ * Why not a tolerance in minutes: `createdAt` is stamped per PAIR, so a
+ * single `compare` over a big set already spreads (measured on a 194-pair DS
+ * root, 2026-09-04: 66s across `ds-checkbox`'s 45 cells, 59s across
+ * `ds-button-fill`'s 41), while a subset re-run mixes vintages HOURS apart
+ * (06:29 against 10:04 in that same root). No fixed tolerance separates those
+ * two without a magic number that a slower set breaks — `relativeWhen`'s own
+ * buckets do it for free, and they decay: a one-minute spread reads as two
+ * words for the first hour and as one word after it. It errs toward SHOWING a
+ * span, because the failure this exists to prevent is a sheet that mixes
+ * vintages silently.
+ *
+ * Empty when no cell has a time that parses, rather than `NaN`.
+ */
+export function groupWhen(cells: PairEntry[], now: number): string {
+  let oldest = Infinity
+  let newest = -Infinity
+  for (const c of cells) {
+    const t = c.createdAt ? Date.parse(c.createdAt) : NaN
+    if (Number.isNaN(t)) continue
+    if (t < oldest) oldest = t
+    if (t > newest) newest = t
+  }
+  if (newest === -Infinity) return ""
+  const from = relativeWhen(new Date(oldest).toISOString(), now)
+  const to = relativeWhen(new Date(newest).toISOString(), now)
+  return from === to ? to : from + " → " + to
+}
+
+/**
+ * The group row: the entry id, how many comparisons it holds, the roll-up of
+ * their severities, a regressed and an unreadable count when there are any,
+ * and when they ran. A button, because it is the control that expands the
+ * group — `aria-expanded` carries the state, and the caret is ROTATED by CSS
+ * rather than swapped for a second glyph (the icon face is a subset of
+ * `icon-names.ts`, and `chevron_right` is not in it).
+ */
+export function groupHeader(g: LibraryGroup, open: boolean, now: number = Date.now()): string {
+  const id = escapeHtml(g.id)
+  const count =
+    g.cells.length === g.total
+      ? g.total + " comparisons"
+      : countMessage(g.cells.length, g.total)
+  const when = groupWhen(g.cells, now)
+  return (
+    '<button type="button" class="ghead" data-group="' +
+    id +
+    '" aria-expanded="' +
+    (open ? "true" : "false") +
+    '"><span class="msi caret" aria-hidden="true">expand_more</span><span class="gname">' +
+    id +
+    '</span><span class="gcount">' +
+    count +
+    '</span><span class="badges">' +
+    severityBadges(g.roll) +
+    "</span>" +
+    (g.roll.regressed > 0
+      ? '<span class="gregressed"><span class="msi" aria-hidden="true">trending_up</span>' +
+        g.roll.regressed +
+        " regressed</span>"
+      : "") +
+    (g.roll.broken > 0
+      ? '<span class="warn"><span class="msi" aria-hidden="true">warning</span>' +
+        g.roll.broken +
+        " unreadable</span>"
+      : "") +
+    (when ? '<span class="gwhen">' + escapeHtml(when) + "</span>" : "") +
+    "</button>"
+  )
 }
 
 /* -------------------------------------------------------------- cards -- */
@@ -363,6 +607,42 @@ export function pairCards(
   now: number = Date.now(),
 ): string {
   return pairs.map((p) => pairCard(p, isBroken(p) ? "" : href(p), layout, now)).join("")
+}
+/**
+ * The Library's list: a foldable section per variant set, everything else the
+ * bare cards it always was. A root whose pair ids carry no `--` renders byte
+ * for byte what `pairCards` renders — which is what keeps the annotator's own
+ * self-measurement (twelve lone items in the demo root) a real assertion
+ * about this change rather than one nobody can see.
+ *
+ * A collapsed group renders NO cells: not hidden ones, none at all. On a
+ * 194-cell root that is 194 lazy images the browser never has to make.
+ */
+export function libraryList(
+  groups: LibraryGroup[],
+  href: (pair: PairSummary) => string,
+  layout: LibraryLayout = "desktop",
+  now: number = Date.now(),
+  open: ReadonlySet<string> = new Set(),
+): string {
+  let out = ""
+  for (const g of groups) {
+    if (!isFoldable(g)) {
+      out += pairCards(g.cells, href, layout, now)
+      continue
+    }
+    const isOpen = open.has(g.id)
+    out +=
+      '<section class="grp' +
+      (isOpen ? " open" : "") +
+      '" data-group="' +
+      escapeHtml(g.id) +
+      '">' +
+      groupHeader(g, isOpen, now) +
+      (isOpen ? '<div class="gcells">' + pairCards(g.cells, href, layout, now) + "</div>" : "") +
+      "</section>"
+  }
+  return out
 }
 
 /* -------------------------------------------------------- error states -- */
