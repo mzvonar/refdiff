@@ -6,6 +6,44 @@ Capture trigger + routing rules live in the `/lessons` skill. **Newest entries g
 
 <!-- LESSONS-LOG -->
 
+## 2026-09-04 — persist a durable fact WHERE it becomes computable, not on the success path
+
+- **Context:** chunk 2's set index. `expandFigmaSet` reads the Figma set, expands it (pure),
+  then fetches variables and renders every variant image before returning. My first wiring
+  built the index right after the expansion — the point where every field it needs exists —
+  and returned it for the caller to write.
+- **Lesson:** that loses it on precisely the runs that need it. The `/variables` and
+  `/images` calls in between can fail (rate limit, cooldown, dead token) and return a typed
+  error for the WHOLE entry, so an index returned below them never reaches disk — and "what
+  is this set supposed to contain?" is exactly the question a reader has when a set failed
+  to render. The fix is placement, not error handling: write it at the line where it becomes
+  computable, and let the fallible work happen after. **Generally: when a function computes a
+  durable fact early and then does more fallible work, the fact's write belongs at the
+  computation, not at the return.** Confirmed live rather than argued — a run whose every
+  capture failed (exit 2) still wrote both indexes. Same family as "a failed capture writes
+  no findings.json, so the stale one survives": both are an absent write leaving a reader
+  with the wrong picture.
+- **Candidate home:** `CLAUDE.md` design principles, next to "one bad pair must never kill a
+  run" — it is the same principle applied to provenance rather than to results.
+
+## 2026-09-04 — a fabricated literal that LOOKS measured is worse than an obviously missing one
+
+- **Context:** writing `set-index.test.ts` against a recorded Figma fixture, I asserted the
+  skipped variant's `nodeId: "12:263"`. The real value is `19285:51581`. I had the fixture on
+  disk and a probe already written; I typed a plausible-looking id from the neighbouring
+  test instead of reading it.
+- **Lesson:** this is a different defect from an expectation that turns out wrong (which
+  happened twice in the same session, on relative-time bucket boundaries — those are the
+  falsification round doing its job). A wrong expectation about BEHAVIOUR is discovered by
+  the test. A fabricated DATUM is discovered by the test too, but only if it happens to be
+  asserted — and had I written `expect(skipped[0].nodeId).toBeTruthy()` it would have passed
+  forever while documenting nothing. The rule: **any literal that identifies external data —
+  a node id, a file key, a hash, a commit — is copied from a probe's output, never typed from
+  memory or pattern-matched off a sibling.** The tell is that it looks like the right SHAPE.
+- **Candidate home:** `CLAUDE.md` → Tests, beside "a test for a bug fix must fail without the
+  fix" · the same rule as `population-registry`'s "a recorded count names the command that
+  produced it", generalised from counts to identifiers.
+
 ## 2026-09-04 — a backtick in `app-shell.ts`'s APP_BOOT or INDEX_CSS closes the template
 
 - **Context:** chunk 1 of the Library groups. Wrote two ordinary repo-style comments —

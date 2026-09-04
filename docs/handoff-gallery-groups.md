@@ -1,4 +1,4 @@
-# refdiff — Handoff: Library groups + gallery, CHUNK 2 (2026-09-04)
+# refdiff — Handoff: Library groups + gallery, CHUNK 0/3 (2026-09-04)
 
 **Workstream-scoped handoff.** Repo `~/development/refdiff` (Mato's Mac:
 `~/Development/refdiff`), branch **`main`**, pnpm 10 workspace, TypeScript/ESM, Node ≥22.
@@ -10,13 +10,15 @@ This file covers only the Library-groups / gallery workstream, whose plan is
 
 ## State of play
 
-**Chunk 1 is SHIPPED and committed** (2026-09-04, on `main`). **Chunk 2 — core persists
-the set index — is next**, and it is the last piece before the gallery has data to draw.
-Chunk 0 (comps) is still the design gate and blocks chunk 3 only.
+**Chunks 1 and 2 are SHIPPED and committed** (2026-09-04, on `main`). The gallery now has
+both halves of what it needs: the Library groups by entry, and core persists a per-set
+index carrying the axes, the pairs and the SKIPPED cells. **What remains is CHUNK 0 — the
+two comps — and it is a design gate, not code.** Chunk 3 (the gallery view) cannot be
+verified without them: a new surface with no comp cannot be measured, which is the loop
+rule. Chunk 4 (manifest hierarchy) is independent of the comps and could go first if you
+would rather not wait.
 
-Committed in one commit on `main`: the grouped Library (`index-view.ts` pure +
-`app-shell.ts` adapter/CSS), 35 new tests, `SKILL.md` and `docs/architecture.md`, the plan
-and this file, and 3 lessons-inbox entries. **Nothing pushed** — Mato has not asked.
+**Nothing pushed** — Mato has not asked.
 
 ## What's DONE
 
@@ -41,15 +43,43 @@ and this file, and 3 lessons-inbox entries. **Nothing pushed** — Mato has not 
   instruction in `CLAUDE.md`. Chunk 1 added three; one is load-bearing for chunk 3 (the
   vintage-bucket rule) and one for any future self-measurement (the fixture that cannot
   contain the new case).
+- **CHUNK 2 — core persists the set index.** `packages/core/src/package/set-index.ts`
+  (pure `buildSetIndex` + `setIndexFileName`, beside `summary.ts`), `variantAxes(set) →
+  { source, properties }` in `adapters/figma-variants.ts`, and the write inside
+  `expandFigmaSet`. **`<out-root>/<entryId>.set.json`** — a flat FILE (open question 2,
+  answered on evidence: both run-dir walkers filter `isDirectory()`, so a `sets/`
+  directory would be counted by `summary` and drawn as a broken card in the Library),
+  one file per entry (which makes no-truncation structural), written at the expansion
+  (so it survives a failed `/images` call and a run that captures nothing). Core tests
+  335 → 346. Verified hermetically against the two recorded real COMPONENT_SET fixtures,
+  then live end-to-end: every index reproduced its console `N variant pairs, M skipped`
+  line, an unselected entry's file stayed byte-identical across a re-run, and a run
+  whose every capture failed (exit 2) still wrote both indexes.
+- **The artifact earned itself on first use.** `ds-chip` expands to **5 pairs and 63
+  skipped** out of **105 declared** combinations — and shows 2 run dirs in the Library.
+  `ds-dialog-header` is 4 and 4 out of 16. Nothing had ever persisted those numbers.
+  **A full 14-entry pass is one `--pair` list away and would be the programme's first
+  real coverage census** — worth doing with Storybook up, so the captures succeed and
+  the run refreshes the reports at the same time.
 - **The DS side is measured and quiet** — `population-registry` at 194 pairs / 1071
-  findings; that repo's own state is its business, not this chunk's.
+  findings; that repo's own state is its business, not this chunk's. Its COVERAGE, on the
+  other hand, is now measurable — see the census note above.
 
 ## What REMAINS (in order)
 
-### 1. CHUNK 2 — core persists the set index ← DO FIRST
+### 1. CHUNK 0 — the two comps ← DESIGN GATE, blocks chunk 3
 
-Plan § "Chunk 2". `axes` (+ which branch produced them), per-pair `props`, and `skipped[]`
-with reasons. Enabler, no UI. Must survive subset re-runs (merge, never replace).
+Plan § "Design asks". A Library-with-groups comp (extending `RefDiff Library.dc.html` —
+chunk 1 shipped seven sub-decisions the comp can overrule, all listed in the plan's chunk 1
+table) and a new `RefDiff Gallery.dc.html`. The brief is written; it needs Mato and the
+Claude Design canvas, not a session here.
+
+### 2. CHUNK 4 — manifest hierarchy — the one that needs NEITHER comp nor data
+
+Plan § "Chunk 4". Independent of chunk 0, so it can go while the comps are drawn. Heaviest
+docs obligation of the four, and it **invalidates `population-registry`'s
+`frontend/ds/tooling/visual/refdiff.bindings.md`** (which asserts the manifest shape and
+"11 entries, 152 pairs"): say so in that chunk's handoff.
 
 ### Later / future reference
 - **Chunk 0** — comps from Claude Design (Library-with-groups + `RefDiff Gallery.dc.html`).
@@ -61,9 +91,13 @@ with reasons. Enabler, no UI. Must survive subset re-runs (merge, never replace)
   "11 entries, 152 pairs"). Say so in that chunk's handoff.
 
 ### Needs research / open questions
-Two left, both Mato's calls, and **question 2 is chunk 2's first decision**:
+**One left**, and it is chunk 3's, not a blocker for anything shipped:
 1. Set-level notes (a note owned by no single cell): allow with a set-level file, or forbid?
-2. Set index location: `<root>/<entryId>.set.json` vs `<root>/sets/<id>.json`.
+   Plan's recommendation stands — allow it, because forcing the note onto an arbitrary cell
+   is a lie about where the problem is.
+2. ~~Set index location~~ — **ANSWERED 2026-09-04: the flat `<root>/<entryId>.set.json`**,
+   decided on measured walker behaviour rather than taste. Reasoning and the verification
+   are in the plan's chunk 2 table.
 3. ~~Chunk 1's collapse threshold~~ — **ANSWERED 2026-09-04: always collapsed, no
    threshold**, with two structural carve-outs (a group of one is its card; an active
    filter expands what survived it) and an explicit toggle winning over both. Full
@@ -74,7 +108,7 @@ Two left, both Mato's calls, and **question 2 is chunk 2's first decision**:
 ```bash
 cd ~/development/refdiff
 pnpm build                      # or: pnpm dev  (tsc --watch; the CLIs exec dist/)
-pnpm -r test                    # 573 tests after chunk 1 (335 core + 238 annotator)
+pnpm -r test                    # 584 tests after chunk 2 (346 core + 238 annotator)
 pnpm --filter @refdiff/annotator test
 
 # the annotator's own self-measurement (dogfooding — this is how UI work is verified)

@@ -1,8 +1,8 @@
 # Plan — Library groups + the gallery (variant-sheet) view
 
 Started 2026-09-04, from a design discussion with Mato while running the DS
-(`population-registry`) at 194 pairs. **Chunk 1 is SHIPPED (2026-09-04); chunk 2
-is next. Chunk 0 remains a design gate, and it blocks chunk 3 only.**
+(`population-registry`) at 194 pairs. **Chunks 1 and 2 are SHIPPED (2026-09-04).
+Chunk 0 (comps) is the remaining gate and it blocks chunk 3 only.**
 
 Sibling plans: `docs/plan-annotator-redesign.md` (the redesign this builds on),
 `docs/plan-next.md` (history). Working agreement: `CLAUDE.md` — note the HARD
@@ -18,18 +18,26 @@ RULE, every chunk below names the `SKILL.md` update it carries.
 | the five biggest entries | `ds-checkbox` 45, `ds-button-fill` 41, `ds-button-stroke` 24, `ds-button-ghost` 24, `ds-alert` 23 — **157 of 194 pairs in five entries** |
 | the Library shows | 194 flat rows, unordered by anything a human thinks in |
 
-Two distinct failures, and the second is the expensive one:
+Two distinct failures, and the second is the expensive one. **Both are
+addressed as of 2026-09-04** — read this section as the problem statement it was
+written as, not as the present state: chunk 1 shipped the navigation half and
+chunk 2 the coverage half.
 
 1. **Navigation.** A variant sheet is one design artefact; the Library shows it
-   as 41 sibling rows with no notion of the set they came from.
+   as 41 sibling rows with no notion of the set they came from. *(Chunk 1: 194
+   rows now list as 14 groups.)*
 2. **Coverage is invisible.** A flat list can only show what WAS measured. It
    structurally cannot show absence, and absence is what has actually misled
    us: `ds-button-stroke` expands to 24 pairs and **36 skipped**, `ds-button-fill`
    41 pairs and 1 skipped (`no tone mapping for variant=label`), and whole
    families in that repo's bindings are unpaired (`icon/*` ×12,
    `alert/instruction`, `alertdialog`, `tag`, `thumbnail/*`, `button/stroke-white`).
-   **The skip list is console-only — it is persisted nowhere**, which is why it
-   vanished when a session piped the run log through `tail`.
+   **The skip list WAS console-only — persisted nowhere**, which is why it
+   vanished when a session piped the run log through `tail`. *(Chunk 2: it is
+   `<out-root>/<entryId>.set.json` now, written before the captures. The
+   sentence is kept in the past tense on purpose — it is the motivation, and a
+   present-tense claim here would be a stale assertion in the one document a
+   later chunk reads first.)*
 
 ## Decisions taken (2026-09-04, with Mato)
 
@@ -199,7 +207,58 @@ and read the delta rather than assuming 0.
 **Docs:** `SKILL.md` gets a sentence in the annotator section that the Library
 groups by entry. No manifest change, so no `docs/architecture.md` change.
 
-## Chunk 2 — core persists the set index (enabler, no UI)
+## Chunk 2 — core persists the set index — **SHIPPED 2026-09-04**
+
+**What landed.** Pure `packages/core/src/package/set-index.ts` (`buildSetIndex`,
+`setIndexFileName`, the `SetIndex` types) beside `summary.ts`, the other
+run-root artifact builder; `variantAxes(set) → { source, properties }` in
+`adapters/figma-variants.ts` with `variantProperties` kept as a one-line
+wrapper (2 non-test callers, public API unchanged); and the write in `cli.ts`
+inside `expandFigmaSet`. 11 new tests (core 335 → 346).
+
+**Three placement decisions, each with its consequence measured:**
+
+| decision | why, and what was checked |
+| --- | --- |
+| a **FILE** at the root, `<entryId>.set.json` (open question 2) | both run-dir walkers filter on `isDirectory()` (`readRunDirs`, and the annotator's own scan), so a file is invisible to them with nothing to remember. Verified behaviourally on a root holding one real run dir plus an index file: `refdiff summary` reported `1 pairs` and `/api/pairs` returned 1 pair, 0 broken cards. A `sets/` DIRECTORY would have been read as a run dir by both — counted in summaries and drawn as a **broken card** in the Library. |
+| **one file per entry** | makes "a subset re-run must not truncate the index" structural instead of a merge rule somebody has to remember: `--pair` filters MANIFEST ENTRY ids *before* expansion (`cli.ts:936`), so a selected entry is always re-expanded whole and an unselected one's file is never opened. Verified live: after re-running `--pair ds-dialog-header`, `ds-chip.set.json` was **byte-identical** (same md5) and dialog-header's was rewritten complete. |
+| written **at the expansion**, not on the success path | the `/variables` and `/images` calls that follow can fail (rate limit, cooldown, dead token) and return a typed error for the whole entry. An index built above them and returned below would be lost on exactly the runs where "what is this set supposed to contain?" is the live question. Verified live: a run whose every capture failed (**exit 2**) still wrote both indexes. |
+
+Also: the write is a typed error that deliberately does NOT set `anyError` — a
+set is expensive and losing 41 measured pairs to a failed 4 KB provenance write
+would be the costliest possible failure — and an entry whose EVERY variant
+skipped still gets a full index, which is the case where the run root ends up
+with not one directory.
+
+**Two fields beyond the shape specified below**, each named in its own doc
+comment: `setName` (the designer's name for the set — `entryId` is ours and
+`designRef` is opaque, so nothing else in the file says what a reader would
+recognise in Figma) and `createdAt` (when the EXPANSION was observed, which is
+the only way a consumer cross-referencing run dirs can tell a fresh index from
+one describing axes that have since moved — the mixed-vintage failure this
+workstream keeps meeting).
+
+**Verified hermetically against the two recorded real COMPONENT_SETs** already
+in `packages/core/test/fixtures/figma/`, so no Figma call is needed to test any
+of it: `*Button/Fill` (42 children → **41 pairs + 1 skipped**, the skip reason
+`no tone mapping for variant=label` — the live figures quoted in this plan) and
+`*Alert` (23 children, **32 declared** combinations, so nine cells exist in the
+axes and in neither list). `variantAxes`' two branches DISAGREE on real data —
+Button/Fill's `State` is `Default,Hover,Active,Disabled,Loading,Focus` from the
+definitions and `Default,Loading,Hover,Focus,Active,Disabled` from traversal —
+which is the ordering caveat below, now a test rather than a warning.
+
+**And the artifact immediately earned itself.** The live run over two of the
+DS's smallest entries reported what nothing had ever persisted:
+
+| entry | pairs | skipped | variants in Figma | declared combinations |
+| --- | --- | --- | --- | --- |
+| `ds-chip` | **5** | **63** | 68 | 105 |
+| `ds-dialog-header` | **4** | **4** | 8 | 16 |
+
+`ds-chip` has two run dirs in the Library. Twelve more entries are unmeasured
+in this respect; a full pass is a `--pair` list away and is the first real
+coverage census the programme can have.
 
 The one genuinely new data. Write it per set, alongside the run dirs.
 
@@ -300,9 +359,14 @@ repo cannot edit them.
    too dark") has no owning pair. Store it in a set-level file next to the set
    index, or forbid it and require a cell? Recommend: allow it, set-level file,
    because forcing it onto an arbitrary cell is a lie about where the problem is.
-2. **Set index location** — `<root>/<entryId>.set.json` or `<root>/sets/<id>.json`.
-   The second keeps the root's run-dir listing clean; the first is one fewer
-   directory to special-case in every reader that walks the root.
+2. **Set index location** — **ANSWERED 2026-09-04: `<root>/<entryId>.set.json`,
+   the flat file.** Not a preference — both run-dir walkers filter on
+   `isDirectory()`, so a file is invisible to them with no exclusion to
+   maintain, while a `sets/` directory would be read as a run dir by
+   `refdiff summary` AND by the annotator (which would draw it as a broken
+   card) until each of them special-cased it. Verified behaviourally; see the
+   table under "Chunk 2". The per-entry granularity is load-bearing too: it is
+   what makes the no-truncation requirement structural.
 3. **Collapse threshold** for chunk 1 — **ANSWERED 2026-09-04: always
    collapsed, with no cell-count threshold.** A variant set is one design
    artefact and the Library's job is to pick one of them, so 14 headers is the
