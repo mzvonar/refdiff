@@ -459,11 +459,30 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 - **A set also has a SHEET, reached by the `Open sheet` button in its Library
   row's last column (or `#/set/<entryId>` directly), drawing its whole
   cross-product as a grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
-  one surface that can show what was never measured — every cell is `measured`
-  (verdict + severity badge), `skipped` (greyed, its reason on hover), `absent`
-  (in the axes but declared by neither side) or `pending` (expanded as a pair,
-  but the root holds no readable report for it — declared and NOT measured, which
-  is a different fact from absent). A measured cell links to its own pair, because
+  one surface that can show what was never measured. **It draws only what the
+  DESIGN defines**, and there are four such states:
+  `measured` (verdict + severity badge); **`unmapped`** — the design declares the
+  variant and the story has no cell for it, drawn "Missing in impl" and the ONLY
+  state that says anything about the implementation; **`filtered`** — the design
+  declares it and the manifest's `only` / `omit` chose not to measure it, drawn
+  "Out of scope"; and `pending` — expanded as a pair, but the root holds no
+  readable report for it, which is declared-and-not-measured rather than absent.
+  Those two used to be one `skipped` state labelled "Skipped · no impl cell",
+  which is a false statement about the ones nobody looked for — measured across
+  the DS's fourteen sets, 191 of 281 were `filtered`. Core carries the
+  distinction as a value (`SetIndexSkipped.kind`) so a consumer never parses the
+  reason prose; a set index written before that field falls back to the
+  `only:` / `omit:` prefix.
+  **A combination the design never declared draws NOTHING** — no tile, no
+  dotted outline, no note. It is the axes' cross-product minus everything
+  declared, a corner of a hypercube the designer never visited, and the sheet
+  drew 58 of them across those fourteen sets, which reads as a sheet full of
+  holes. The count survives in the summary's tail
+  (`23 of 91 combinations undeclared`) because the sparsity is a fact about the
+  SET; it is simply not a cell. **`precedence`: `only` / `omit` are tested
+  before the story selector, so a variant that is both out of scope and unmapped
+  reports as `filtered` — "we did not look" is the honest answer when we did
+  not.** A measured cell links to its own pair, because
   the sheet is a way INTO the pairs rather than a replacement: a finding's box
   means something in the pair view. Staleness is read PER SET (`run` is the
   per-pair ordinal — there is no global newest), and the entry's `gallery`

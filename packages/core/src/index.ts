@@ -120,6 +120,7 @@ export {
   parseVariantName,
   variantAxes,
   variantProperties,
+  type SkipKind,
   type GalleryConfig,
   type VariantAxes,
   type VariantAxesSource,

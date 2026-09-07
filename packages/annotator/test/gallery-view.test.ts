@@ -5,6 +5,7 @@ import {
   causeGroups,
   cellCountLabel,
   cellSeverity,
+  cellTile,
   census,
   galleryCells,
   isFrameLevel,
@@ -12,6 +13,7 @@ import {
   pruneToOccupied,
   resolveGallery,
   runSpan,
+  skipKind,
 } from "../src/gallery-view.js"
 import type { GAxes, GCell, GPairSummary, GSetIndex } from "../src/gallery-view.js"
 
@@ -160,17 +162,86 @@ describe("galleryCells", () => {
   const cellsOf = (s: GSetIndex, pairs: GPairSummary[]) =>
     galleryCells(s, ok(resolveGallery(s.axes, s.gallery)), pairs)
 
-  // Total over the AXES: the cross-product is the authority, so the hole nobody
-  // declared is emitted rather than omitted.
-  it("is total over the cross-product — every cell gets one of the four kinds", () => {
+  // Total over the AXES in the MODEL — the hole nobody declared is still emitted
+  // rather than omitted, so it can be counted. It is no longer DRAWN: see
+  // cellTile, and `defined` below, which is what the sheet's headline reports.
+  it("is total over the cross-product, and splits a skip by what it means", () => {
     const cells = cellsOf(set(), summaries)
     expect(cells).toHaveLength(4)
-    expect(census(cells)).toEqual({ measured: 2, skipped: 1, absent: 1, pending: 0, total: 4 })
+    expect(census(cells)).toEqual({
+      measured: 2,
+      unmapped: 1,
+      filtered: 0,
+      absent: 1,
+      pending: 0,
+      // What the DESIGN defines — everything but absent, and what is drawn.
+      defined: 3,
+      total: 4,
+    })
     const absent = cells.find((c) => c.kind === "absent")!
     expect(absent.props).toEqual({ tone: "Danger", State: "Default" })
     expect(absent.pairDir).toBeUndefined()
-    const skipped = cells.find((c) => c.kind === "skipped")!
-    expect(skipped.reason).toContain("no hover story")
+    const unmapped = cells.find((c) => c.kind === "unmapped")!
+    expect(unmapped.reason).toContain("no hover story")
+  })
+
+  // The two skip kinds mean opposite things, so they must not draw the same:
+  // `unmapped` is the impl's own coverage gap, `filtered` a scope decision.
+  it("calls an `only` / `omit` narrowing FILTERED, never missing in impl", () => {
+    const filtered = set({
+      skipped: [
+        {
+          nodeId: "1:2",
+          name: "tone=Danger, State=Hover",
+          reason: "only: Theme ∉ [Light]",
+          kind: "filtered",
+          props: { tone: "Danger", State: "Hover" },
+        },
+      ],
+    })
+    const c = census(cellsOf(filtered, summaries))
+    expect([c.filtered, c.unmapped]).toEqual([1, 0])
+  })
+
+  // An index written before core carried `kind` has none, and re-expanding a
+  // whole root needs Figma plus a running Storybook — so the prefix is read
+  // instead. Measured on the DS: every one of the 281 reasons either starts
+  // `only:` / `omit:` or names a missing story cell, so this separates them
+  // exactly. The PREFIX and not the tail, because the tail varies.
+  it("falls back to the reason PREFIX when the index carries no kind", () => {
+    const noKind = (reason: string): GSetIndex =>
+      set({
+        skipped: [
+          { nodeId: "1:2", name: "tone=Danger, State=Hover", reason, props: { tone: "Danger", State: "Hover" } },
+        ],
+      })
+    expect(skipKind({ reason: "only: Theme ∉ [Light]" })).toBe("filtered")
+    expect(skipKind({ reason: 'omit: {"variant":"danger"}' })).toBe("filtered")
+    expect(skipKind({ reason: "no cell mapping for Filled=Filled (no such story cell)" })).toBe("unmapped")
+    // the real reason families, straight off the DS root
+    expect(skipKind({ reason: "no state mapping for State=Active (no such story cell)" })).toBe("unmapped")
+    expect(skipKind({ reason: "no tone mapping for variant=label (no such story cell)" })).toBe("unmapped")
+    expect(census(cellsOf(noKind("only: Size ∉ [lg]"), summaries)).filtered).toBe(1)
+    expect(census(cellsOf(noKind("no such story cell"), summaries)).unmapped).toBe(1)
+    // an explicit kind WINS over the prefix — core is the authority once it speaks
+    expect(skipKind({ reason: "only: Size ∉ [lg]", kind: "unmapped" })).toBe("unmapped")
+    // and an unrecognised value falls back rather than being trusted blindly
+    expect(skipKind({ reason: "only: Size ∉ [lg]", kind: "nonsense" })).toBe("filtered")
+  })
+
+  // "use only what is in figma": a combination the design never declared is not
+  // a cell, so it gets no tile at all — not a dotted one. 58 of those across the
+  // DS's fourteen sets is what "too many holes" was.
+  it("draws NO tile for an absent cell, and one for every kind the design defines", () => {
+    const cells = cellsOf(set(), summaries)
+    const rect = { x: 0, y: 0, w: 100, h: 50 }
+    const absent = cells.find((c) => c.kind === "absent")!
+    expect(cellTile(absent, rect)).toBe("")
+    for (const c of cells.filter((x) => x.kind !== "absent")) {
+      expect(cellTile(c, rect)).toContain('class="gcell')
+    }
+    // and the note only claims the impl lacks a cell where that is true
+    expect(cellTile(cells.find((c) => c.kind === "unmapped")!, rect)).toContain("Missing in impl")
   })
 
   // A cell declared as a pair whose run dir is missing was expanded and EXPECTED.
@@ -182,6 +253,8 @@ describe("galleryCells", () => {
     expect(pending.reason).toContain("btn--b")
     expect(census(cells).absent).toBe(1)
     expect(census(cells).pending).toBe(1)
+    // absent is NOT one of the design's cells; pending is.
+    expect(census(cells).defined).toBe(3)
   })
 
   it("places each cell at its resolved row and column", () => {

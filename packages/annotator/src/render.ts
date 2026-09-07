@@ -713,10 +713,16 @@ body.single .align-wrap { bottom:58px; }
 body.is-sheet .shot { display:none; }
 .cellshot { position:absolute; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
 /* The cell's slot, drawn under its screenshot so a cell with nothing to show is
-   still a place on the sheet rather than a hole. */
+   still a place on the sheet rather than a hole. Only for cells the DESIGN
+   defines: k-absent has no rule any more because no absent slot is created —
+   see the early continue in renderCellShots. (No backticks in here: this whole
+   block is a template literal.) */
 .cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:4px; }
-.cellslot.k-skipped, .cellslot.k-pending { border-style:dashed; background:rgba(128,132,140,.06); }
-.cellslot.k-absent { border-style:dotted; opacity:.45; }
+/* Dashed = declared but not compared. UNMAPPED is the impl's own gap, FILTERED
+   is a scope decision, PENDING a capture that produced no report. */
+.cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-style:dashed; background:rgba(128,132,140,.06); }
+/* The impl's own coverage gap is the one worth seeing across a sheet. */
+.cellslot.k-unmapped { border-color:#f5a623; }
 .cellslot { display:flex; align-items:center; justify-content:center; }
 .cellnote { font-size:9px; line-height:1.25; text-align:center; color:var(--txt2); text-transform:uppercase; letter-spacing:.06em; padding:0 3px; }
 /* The axes. Both panes draw them, as the comp does. */
@@ -3092,6 +3098,11 @@ function renderCellShots() {
 
   // ---- the cells --------------------------------------------------------
   for (const cell of sheet.cells) {
+    // An ABSENT cell draws nothing on either pane. It is the axes' cross-product
+    // minus everything the design declares, so it is not a cell at all — and 58
+    // dotted slots across the DS's fourteen sets is what "too many holes" meant.
+    // The sheet shows only what the design defines (2026-09-07).
+    if (cell.kind === 'absent') continue;
     const count = cell.report ? (cell.report.findings || []).length : 0;
     for (const side of ['design', 'impl']) {
       const slot = document.createElement('div');

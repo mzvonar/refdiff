@@ -46,11 +46,28 @@ export interface VariantPair {
   slug: string;
 }
 
+/**
+ * WHY a declared variant was not measured, and the two answers mean opposite
+ * things — which is the whole reason this is a field and not prose.
+ *
+ * `filtered`  the manifest narrowed the set on purpose (`only` / `omit`). The
+ *             design defines the variant and we CHOSE not to measure it.
+ * `unmapped`  the story has no cell for it (`renderSelector` could not resolve
+ *             one). The design defines the variant and the IMPLEMENTATION does
+ *             not have it.
+ *
+ * Measured on the DS's fourteen sets: 191 `filtered` against 90 `unmapped`. The
+ * sheet used to draw all 281 with the note "Skipped · no impl cell", which is
+ * a false statement about the 191 — they were never looked for. Only `unmapped`
+ * is a coverage gap in the implementation; `filtered` is a scope decision.
+ */
+export type SkipKind = "filtered" | "unmapped";
+
 export interface VariantExpansion {
   setId: string;
   setName: string;
   pairs: VariantPair[];
-  skipped: { nodeId: string; name: string; reason: string }[];
+  skipped: { nodeId: string; name: string; reason: string; kind: SkipKind }[];
 }
 
 export type VariantExpandError =
@@ -221,17 +238,19 @@ export function expandVariants(set: FigmaNode, config: VariantConfig): Result<Va
     const props = parseVariantName(v.name);
     const filtered = Object.entries(config.only ?? {}).find(([k, allowed]) => !allowed.includes(props[k] ?? ""));
     if (filtered) {
-      skipped.push({ nodeId: v.id, name: v.name, reason: `only: ${filtered[0]} ∉ [${filtered[1].join(", ")}]` });
+      skipped.push({ nodeId: v.id, name: v.name, reason: `only: ${filtered[0]} ∉ [${filtered[1].join(", ")}]`, kind: "filtered" });
       continue;
     }
     const omitted = (config.omit ?? []).find((partial) => matchesPartial(props, partial));
     if (omitted) {
-      skipped.push({ nodeId: v.id, name: v.name, reason: `omit: ${JSON.stringify(omitted)}` });
+      skipped.push({ nodeId: v.id, name: v.name, reason: `omit: ${JSON.stringify(omitted)}`, kind: "filtered" });
       continue;
     }
     const selector = renderSelector(config.selector, props, maps);
     if (!selector.ok) {
-      skipped.push({ nodeId: v.id, name: v.name, reason: selector.error });
+      // The only kind that says something about the IMPLEMENTATION: the design
+      // declares this variant and the story has no cell to compare it against.
+      skipped.push({ nodeId: v.id, name: v.name, reason: selector.error, kind: "unmapped" });
       continue;
     }
     pairs.push({ nodeId: v.id, name: v.name, props, selector: selector.value, slug: slugify(props) });

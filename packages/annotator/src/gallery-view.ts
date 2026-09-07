@@ -40,7 +40,39 @@ export interface GSetIndex {
   axes: GAxes
   gallery?: GConfig
   pairs: { slug: string; dir: string; props: Record<string, string> }[]
-  skipped: { nodeId: string; name: string; reason: string; props: Record<string, string> }[]
+  skipped: {
+    nodeId: string
+    name: string
+    reason: string
+    /** `filtered` | `unmapped`, from core. Absent on an index written before it. */
+    kind?: string
+    props: Record<string, string>
+  }[]
+}
+
+/**
+ * WHY a declared variant was not measured — and the two answers mean opposite
+ * things, which is why the sheet must not draw them the same.
+ *
+ * `filtered`  the manifest narrowed the set on purpose (`only` / `omit`). The
+ *             design defines it and nobody looked.
+ * `unmapped`  the story has no cell for it. The design defines it and the
+ *             IMPLEMENTATION does not have it — a real coverage gap, and the
+ *             only kind the sheet marks as missing.
+ *
+ * Prefers core's structured `kind`. The fallback reads the `only:` / `omit:`
+ * PREFIX, because an index written before the field existed has no kind and
+ * re-expanding a root needs Figma plus a running Storybook — measured across
+ * the DS's fourteen sets, every one of the 281 skip reasons starts with either
+ * `only: ` / `omit: ` (191) or names a missing story cell (90), so the prefix
+ * separates them exactly. It reads the START of the string on purpose: the
+ * prose tail varies ("no cell mapping for …", "no state mapping for …", "no
+ * tone mapping for …") and the prefix does not. Delete the fallback once every
+ * root has been re-expanded.
+ */
+export function skipKind(entry: { reason: string; kind?: string }): "filtered" | "unmapped" {
+  if (entry.kind === "filtered" || entry.kind === "unmapped") return entry.kind
+  return /^\s*(only|omit):/.test(entry.reason) ? "filtered" : "unmapped"
 }
 
 /* --------------------------------------------- resolving the declaration -- */
@@ -299,7 +331,23 @@ export function pruneToOccupied(set: GSetIndex, resolved: GResolved): GResolved 
  * of the wrong kind is the exact defect this workstream exists to remove. It
  * renders like `skipped` — greyed, with its reason — and reads as its own thing.
  */
-export type GCellKind = "measured" | "skipped" | "absent" | "pending"
+/**
+ * `skipped` became TWO kinds (repo owner, 2026-09-07: "use only what is in
+ * figma, and only mark what's missing in impl that figma defines"):
+ *
+ *   `unmapped`  the design defines it, the impl has no cell — MARKED missing
+ *   `filtered`  the design defines it, the manifest chose not to measure it
+ *
+ * They used to share one kind and one note, "Skipped · no impl cell", which is
+ * a false statement about the 191 of 281 that were never looked for.
+ *
+ * `absent` survives in the MODEL and is no longer DRAWN. It is the axes'
+ * cross-product minus what the design declares — a corner of a hypercube the
+ * designer never visited — and the sheet drew 58 dotted slots for it across the
+ * DS's fourteen sets, which is what "too many holes" was. The count stays,
+ * because the sparsity is a fact about the set worth reporting; the tile goes.
+ */
+export type GCellKind = "measured" | "unmapped" | "filtered" | "absent" | "pending"
 
 export interface GCell {
   /** `prop=opt` pairs joined — stable across runs, independent of position. */
@@ -309,7 +357,7 @@ export interface GCell {
   col: number
   kind: GCellKind
   pairDir?: string
-  /** Why a `skipped` cell was skipped, or what a `pending` one is waiting on. */
+  /** Why an `unmapped` / `filtered` cell was not measured, or what a `pending` one waits on. */
   reason?: string
   /** Present for `measured`: the run summary the sheet badges. */
   summary?: GPairSummary
@@ -393,7 +441,7 @@ export function galleryCells(
         return
       }
       if (skip) {
-        cells.push({ key, props, row, col, kind: "skipped", reason: skip.reason })
+        cells.push({ key, props, row, col, kind: skipKind(skip), reason: skip.reason })
         return
       }
       cells.push({ key, props, row, col, kind: "absent" })
@@ -429,20 +477,34 @@ export function runSpan(cells: readonly GCell[]): { min: number; max: number } |
 
 export interface GCensus {
   measured: number
-  skipped: number
+  /** The design defines it, the impl has no cell — the coverage gap. */
+  unmapped: number
+  /** The design defines it, the manifest chose not to measure it. */
+  filtered: number
+  /** In the axes' cross-product, declared by neither side. NOT drawn. */
   absent: number
   pending: number
+  /**
+   * Cells the DESIGN defines — everything but `absent`. This is what the sheet
+   * draws and what its headline counts; `absent` is reported separately because
+   * it is a property of the axes, not a cell anybody declared.
+   */
+  defined: number
+  /** Every slot in the resolved grid, `defined` + `absent`. */
   total: number
 }
 
 /** What the sheet CONTAINS — the numbers a run root structurally cannot show. */
 export function census(cells: readonly GCell[]): GCensus {
   const of = (k: GCellKind) => cells.filter((c) => c.kind === k).length
+  const absent = of("absent")
   return {
     measured: of("measured"),
-    skipped: of("skipped"),
-    absent: of("absent"),
+    unmapped: of("unmapped"),
+    filtered: of("filtered"),
+    absent,
     pending: of("pending"),
+    defined: cells.length - absent,
     total: cells.length,
   }
 }
@@ -492,13 +554,21 @@ const gEscape = (s: string): string =>
   )
 
 /** The sheet's own summary line: what it contains, and over how many runs. */
+/**
+ * The headline counts what the DESIGN defines, not the grid. `absent` is a
+ * property of the axes — the cross-product minus everything declared — so
+ * leading with it said "555 cells" about a set with 497, and the sheet drew 58
+ * dotted holes to match. It keeps a tail mention because sparsity is worth
+ * knowing; it is no longer a cell.
+ */
 export function sheetSummary(c: GCensus, span: { min: number; max: number } | null): string {
   const parts = [`${c.measured} measured`]
-  if (c.skipped) parts.push(`${c.skipped} skipped`)
-  if (c.absent) parts.push(`${c.absent} absent`)
+  if (c.unmapped) parts.push(`${c.unmapped} missing in impl`)
+  if (c.filtered) parts.push(`${c.filtered} out of scope`)
   if (c.pending) parts.push(`${c.pending} not measured`)
   const runs = !span ? "" : span.min === span.max ? ` · run ${span.max}` : ` · runs ${span.min}→${span.max}`
-  return `${c.total} cells · ${parts.join(" · ")}${runs}`
+  const sparse = c.absent ? ` · ${c.absent} of ${c.total} combinations undeclared` : ""
+  return `${c.defined} cells · ${parts.join(" · ")}${runs}${sparse}`
 }
 
 /**
@@ -511,13 +581,26 @@ export function sheetSummary(c: GCensus, span: { min: number; max: number } | nu
  */
 export const CELL_NOTE: Record<GCellKind, string> = {
   measured: "",
-  skipped: "Skipped · no impl cell",
-  absent: "Absent",
+  // The only note that claims anything about the implementation, and now the
+  // only kind entitled to: the design declares this variant and the story has
+  // no cell for it. It used to be said of all 281 skipped cells, 191 of which
+  // were simply out of scope.
+  unmapped: "Missing in impl",
+  filtered: "Out of scope",
+  // Never rendered — an absent cell draws no tile at all. Kept so the record
+  // is exhaustive over GCellKind rather than silently partial.
+  absent: "",
   pending: "Declared, not measured",
 }
 
-/** One cell, positioned by the solved layout it is given. */
+/**
+ * One cell, positioned by the solved layout it is given — and NOTHING for an
+ * absent one. A combination the design never declared is not a cell, so it gets
+ * no tile, no border and no note; the grid slot is simply empty. That is the
+ * whole of "use only what is in figma" on this surface.
+ */
 export function cellTile(cell: GCell, rect: { x: number; y: number; w: number; h: number }): string {
+  if (cell.kind === "absent") return ""
   const sev = cellSeverity(cell)
   const cls = ["gcell", `k-${cell.kind}`, sev ? `sev-${sev}` : "", cell.stale ? "stale" : ""]
     .filter(Boolean)

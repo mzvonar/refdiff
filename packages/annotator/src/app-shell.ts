@@ -848,8 +848,13 @@ body.lib-mobile .errbox { padding:32px 16px; }
 .gcol { justify-content:center; }
 .grow { padding-right:10px; justify-content:flex-end; text-align:right; text-transform:none; letter-spacing:0; font-weight:500; }
 .gcell { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:6px; background:var(--bg1); display:flex; align-items:center; justify-content:center; gap:6px; font-size:11px; color:var(--txt2); }
-.gcell.k-skipped, .gcell.k-pending { background:var(--bg0); border-style:dashed; }
-.gcell.k-absent { background:transparent; border-style:dotted; opacity:.5; }
+/* Dashed = declared but not compared. UNMAPPED is the impl's own gap (the design
+   defines the variant, the story has no cell), FILTERED a scope decision from the
+   manifest's only/omit narrowing, PENDING a capture that produced no report. There
+   is no k-absent rule: an absent cell draws no tile at all, so no slot exists to
+   style. (No backticks in this comment — INDEX_CSS is a template literal.) */
+.gcell.k-unmapped, .gcell.k-filtered, .gcell.k-pending { background:var(--bg0); border-style:dashed; }
+.gcell.k-unmapped { border-color:#f5a623; }
 .gcell.sev-critical { border-color:#e5484d; }
 .gcell.sev-major { border-color:#f5a623; }
 .gcell.sev-minor { border-color:#8f7ee7; }

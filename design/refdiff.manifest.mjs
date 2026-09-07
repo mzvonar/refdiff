@@ -372,7 +372,63 @@ const TOOLBAR_IGNORE = {
 // the first run's findings ARE this surface's specification (the skill's §0), and
 // a policy written before the measurement excuses findings nobody has read. Every
 // entry added here from now on carries the measurement that justified it.
-const GALLERY_IGNORE = {}
+// The Gallery comps draw a cell state the PRODUCT no longer has.
+//
+// Repo owner, 2026-09-07: "use only what is in figma, and only mark what's
+// missing in impl that figma defines". So the sheet stopped drawing `absent`
+// cells — the axes' cross-product minus everything the design declares, which
+// was 58 dotted slots across the DS's fourteen sets and is what "too many
+// holes" meant. `RefDiff Gallery.dc.html` still draws 24 of them, labelled
+// ABSENT, and `RefDiff Gallery Mobile.dc.html` likewise.
+//
+// This is the skill's rule 4: measure the siblings before changing a shared
+// rule, and where the COMP is the outlier, record the decision rather than
+// edit the comp. Declared, not accepted — the findings keep their severity,
+// stay in the list, and the run prints the cause's count every time, so the
+// day the comp is redrawn this rule stops matching and `refdiff summary` says
+// it matched nothing.
+//
+// A `textPatterns` rule and NOT an `explain` one, which is the opposite of the
+// first attempt here and worth recording, because the reason is in how the
+// matcher works rather than in taste.
+//
+// `explain` takes `region` or `within: { role }`. `within` builds its regions
+// from the IMPL side's element boxes, and every finding box has to fall inside
+// one — so a comp-side ABSENT tile, whose impl counterpart is exactly what was
+// removed, can never match. Measured: the rule sat in the policy and explained
+// 0 of 37. A `region` big enough to hold them (design x 154..1008, y 500..730
+// on this comp) would cover the whole grid and swallow every real grid finding
+// of those eight types, which is the over-broad rule the skill warns about.
+//
+// The string is the precise scope instead: all 37 findings carry the comp's own
+// ABSENT label, anchored so it cannot catch a longer sentence, and the PRODUCT
+// draws no such string any more (verified in the impl elements — it draws
+// MISSING IN IMPL). So this rule can only ever match the comp's absent tiles.
+// It hides their geometry and colour too, which is right here: those are the
+// matcher mispairing a removed tile against a surviving cell, not parity.
+// Suppressed findings travel in findings.json under `suppressed` with the rule
+// that hit them, so the count stays auditable every run — measured on the
+// desktop pair: 118 suppressed, and EVERY one of them has the text `ABSENT` or
+// `ABSENT → `, nothing else. That check is the point; a text rule that reached
+// past its string would be invisible otherwise.
+//
+// EXPECTED, DO NOT "FIX": this run prints
+//   ⚠ 33 suppressed finding(s) moved ≥8px — a rule is hiding geometry
+// and here that is correct rather than a warning to act on. The usual remedy
+// (`dataSlots`, which keeps geometry compared) is wrong for this case: the
+// element is not a value that churned, it is GONE from the product, so its
+// position is the matcher pairing a removed comp tile against a surviving app
+// cell. There is no geometry left to compare.
+//
+// THE REAL FIX IS A DESIGN ASK, and it is not this file's to make: redraw both
+// Gallery comps without the absent cells, and with the note vocabulary the
+// product now uses (`Missing in impl` / `Out of scope`, where the comp says
+// `SKIPPED · NO IMPL CELL` for both). Until then the desktop pair sits at 641
+// findings against a 627 baseline, the +14 being the same mispairing on the
+// skipped notes. Delete this rule when the comps land.
+const GALLERY_IGNORE = {
+  textPatterns: ["^ABSENT$"],
+}
 
 const desktop = { width: 1360, height: 820 }
 const mobile = { width: 390, height: 844 }
@@ -597,7 +653,13 @@ export const manifest = [
     id: "refdiff-gallery-mobile",
     title: "RefDiff \u00b7 Gallery (mobile)",
     design: { file: "RefDiff Gallery Mobile.dc.html", frame: "RefDiff gallery mobile", scope: ".cc-theme-dark" },
-    app: { source: "live", route: "/#/set/ds-button", viewport: mobile, waitFor: "#cells-impl .cellslot, #view-gallery .gerror" },
+    // `waitFor` names the DESIGN pane's slots as well, and that is a fix rather
+    // than a widening: at 390px the comparison tool shows ONE pane, so
+    // `#cells-impl .cellslot` is never VISIBLE and this pair failed
+    // `selector-not-found` — measured, and proven pre-existing by re-running it
+    // against a build with the absent-cell change reverted (same failure).
+    // Either pane's slots prove the sheet drew, which is all this waits for.
+    app: { source: "live", route: "/#/set/ds-button", viewport: mobile, waitFor: "#cells-design .cellslot, #cells-impl .cellslot, #view-gallery .gerror" },
     ignore: GALLERY_IGNORE,
   },
   {

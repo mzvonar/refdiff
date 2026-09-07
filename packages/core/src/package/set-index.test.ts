@@ -101,6 +101,9 @@ describe("buildSetIndex", () => {
       nodeId: "19285:51581",
       name: "State=Focus, iconPlacement=left, variant=label",
       reason: "no tone mapping for variant=label (no such story cell)",
+      // Carried through so a consumer never has to parse the reason PROSE to
+      // learn whether the impl lacks a cell or the manifest narrowed the set.
+      kind: "unmapped",
       // Parsed back out of the name: without these a skipped cell can be
       // listed but never placed in a column and a row.
       props: { State: "Focus", iconPlacement: "left", variant: "label" },

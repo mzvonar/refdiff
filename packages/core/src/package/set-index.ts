@@ -26,7 +26,7 @@
  * reports stay the truth, this says which cells were ever supposed to exist.
  */
 
-import type { GalleryConfig, VariantAxes, VariantExpansion } from "../adapters/figma-variants.js";
+import type { GalleryConfig, SkipKind, VariantAxes, VariantExpansion } from "../adapters/figma-variants.js";
 
 import { parseVariantName } from "../adapters/figma-variants.js";
 
@@ -43,6 +43,18 @@ export interface SetIndexSkipped {
   /** The variant's Figma name ("State=Default, iconPlacement=none, variant=default"). */
   name: string;
   reason: string;
+  /**
+   * WHY, as a value rather than as prose — `filtered` (the manifest narrowed
+   * the set with `only` / `omit`) or `unmapped` (the story has no cell for it).
+   * Only the second says anything about the implementation, and a consumer that
+   * has to tell them apart by reading `reason` is parsing a sentence.
+   *
+   * Optional because an index written before this field existed has none, and
+   * re-expanding a whole root needs Figma and a running Storybook. A consumer
+   * falls back to the `only:` / `omit:` prefix on `reason` — see the annotator's
+   * `skipKind`. Not optional in what core WRITES from here on.
+   */
+  kind?: SkipKind;
   /**
    * Parsed back out of `name`. New here, and not cosmetic: a reason string
    * alone cannot place a cell in a grid, so without this a skipped cell can
@@ -131,6 +143,7 @@ export function buildSetIndex(input: SetIndexInput): SetIndex {
       nodeId: s.nodeId,
       name: s.name,
       reason: s.reason,
+      kind: s.kind,
       props: parseVariantName(s.name),
     })),
   };

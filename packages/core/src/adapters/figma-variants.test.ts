@@ -110,6 +110,10 @@ describe("expandVariants", () => {
         nodeId: expect.any(String),
         name: "State=Focus, iconPlacement=left, variant=label",
         reason: "no tone mapping for variant=label (no such story cell)",
+        // `unmapped`, not `filtered`: the design declares this variant and the
+        // STORY has no cell for it. That is the impl's coverage gap, and the
+        // only kind the sheet marks as missing.
+        kind: "unmapped",
       },
     ]);
     expect(
@@ -134,6 +138,34 @@ describe("expandVariants", () => {
     ]);
     expect(r.value.skipped.filter((s) => s.reason.startsWith("only:"))).toHaveLength(35);
     expect(r.value.skipped.filter((s) => s.reason.startsWith("omit:"))).toHaveLength(2);
+
+    // The KIND, on the same real set. `only` and `omit` are both scope
+    // decisions — the design defines those variants and nobody looked — so both
+    // are `filtered`; only a missing story cell is `unmapped`, and that is the
+    // one thing here that says anything about the implementation. Measured
+    // across the DS's fourteen sets: 191 filtered against 90 unmapped, all 281
+    // of which the sheet used to label "Skipped · no impl cell".
+    const byKind = (k: string) => r.value.skipped.filter((s) => s.kind === k);
+    expect(byKind("filtered")).toHaveLength(37);
+    // PRECEDENCE, and it is deliberate: `only` and `omit` are tested BEFORE the
+    // selector is resolved, so a variant that is both out of scope and unmapped
+    // is reported as `filtered`. The Focus/left/label variant — the one
+    // `unmapped` case in this set, asserted in the test above — has State=Focus
+    // and so is filtered out here before its missing story cell is ever looked
+    // for. That is the right way round: "we did not look" is the honest answer
+    // when we did not, and claiming the impl lacks a cell we never asked for
+    // would be the same over-claim this whole split exists to remove.
+    expect(byKind("unmapped")).toHaveLength(0);
+    // The kinds PARTITION the list: no skip is left without one, which is what
+    // lets a consumer stop reading the reason prose.
+    expect(byKind("filtered").length + byKind("unmapped").length).toBe(r.value.skipped.length);
+    expect(r.value.skipped.every((s) => s.kind !== undefined)).toBe(true);
+    // Every `only:` / `omit:` reason is filtered and no other reason is — the
+    // exact correspondence the annotator's prefix FALLBACK relies on for set
+    // indexes written before `kind` existed.
+    expect(
+      r.value.skipped.every((s) => /^(only|omit):/.test(s.reason) === (s.kind === "filtered")),
+    ).toBe(true);
   });
 
   it("resolves composite placeholders for positional (untagged) story cells", () => {
