@@ -490,12 +490,26 @@ function rollUp(cells: PairEntry[]): GroupRollup {
 
 /**
  * The Library's one derived level: 194 flat rows become 14 groups with no new
- * data. Groups come out in the order their FIRST cell arrived, so a sorted
- * list (`sortEntries`, newest run first) puts the group that finished most
- * recently first — the same decision the flat list already made.
+ * data.
+ *
+ * **Groups come out ALPHABETICALLY, ascending** (repo owner, 2026-09-07). They
+ * used to come out in the order their first cell arrived, which — with
+ * `sortEntries` feeding this newest-run-first — meant the group that finished
+ * most recently led the list. That read well for a flat list of runs and badly
+ * for a library: the Library's job is to let a reader FIND a component set, and
+ * a list whose order changes every time a subset re-runs cannot be scanned. The
+ * row that just finished is still findable by the `Measured` column, which is
+ * what that column is for.
+ *
+ * `sortEntries` still decides the order of the CELLS inside a group, where
+ * newest-first is right — those are runs of one thing, not things.
+ *
+ * Comparison is `localeCompare` pinned to `en` with numeric collation, so
+ * `ds-button-2` precedes `ds-button-10`, plus a codepoint tiebreak so two ids
+ * differing only in case have a deterministic order rather than the engine's.
  *
  * The filter applies INSIDE a group and a group with nothing left disappears;
- * `total` remembers what it held, so its count can read `3 of 41 comparisons`.
+ * `total` remembers what it held, so its count can read `3 of 41`.
  */
 export function groupEntries(
   entries: PairEntry[],
@@ -535,8 +549,51 @@ export function groupEntries(
       span: groupRunSpan(g.all),
     })
   }
+  out.sort((a, b) => byGroupName(a.id, b.id))
   return out
 }
+
+/** Alphabetical, numeric-aware, and deterministic on a case-only difference. */
+const byGroupName = (a: string, b: string): number =>
+  a.localeCompare(b, "en", { numeric: true, sensitivity: "base" }) ||
+  (a < b ? -1 : a > b ? 1 : 0)
+
+/**
+ * The leading `-`-delimited segment EVERY group shares, or `""` when they do
+ * not all share one — the prefix a row's name can drop because it carries no
+ * information (repo owner: "it's all ds").
+ *
+ * **Only when every group shares it, and that is what makes it safe.** Removing
+ * one common prefix from a set of unique ids is a bijection, so the labels stay
+ * unique and no two rows can end up with the same name. A hardcoded `ds-` strip
+ * would not be safe: the demo root holds a flat `button` dir AND a `ds-button`
+ * set — deliberately, per `fixtures/make-demo-root.ts` — and stripping there
+ * would draw two rows called `button`. That root is heterogeneous, so this
+ * returns `""` for it and nothing is stripped.
+ *
+ * **One segment, never more.** The longest shared run would strip `ds-button-`
+ * from a root of `ds-button-fill` / `ds-button-ghost` / `ds-button-icon` and
+ * leave `fill` / `ghost` / `icon`, which loses the component the reader is
+ * looking for. One segment removes the vendor tag and stops.
+ *
+ * Computed over the WHOLE root, never over the filtered groups: a label that
+ * changed as the reader narrowed would be a different name for the same row.
+ * A root with fewer than two groups has no redundancy to remove and keeps its
+ * full ids.
+ */
+export function commonIdPrefix(ids: readonly string[]): string {
+  if (ids.length < 2) return ""
+  const head = ids[0]?.split("-")[0]
+  if (head === undefined || head === "" || head === ids[0]) return ""
+  const prefix = head + "-"
+  return ids.every((id) => id.startsWith(prefix) && id.length > prefix.length) ? prefix : ""
+}
+
+/** What a row calls itself: its id, less a prefix every row shares. */
+export const groupLabel = (id: string, prefix: string): string =>
+  prefix !== "" && id.startsWith(prefix) && id.length > prefix.length
+    ? id.slice(prefix.length)
+    : id
 
 /** The head row keeps counting COMPARISONS, not groups. */
 export function cellsShown(groups: LibraryGroup[]): number {
@@ -1021,8 +1078,17 @@ export function groupRow(
   open: boolean,
   layout: LibraryLayout,
   now: number,
+  /**
+   * What the row is CALLED — `g.id` less a prefix every row shares
+   * (`commonIdPrefix`). Display only: `data-group`, the `#/set/` route and the
+   * set-index fetch all key on the real id, and a label is not unique across
+   * roots. Defaults to the id, which is the pre-2026-09-07 behaviour, so a
+   * caller that forgets it degrades to the full name rather than to a blank.
+   */
+  label: string = g.id,
 ): string {
   const id = escapeHtml(g.id)
+  const name = escapeHtml(label)
   const expandable = isFoldable(g)
   // "1 cells" read as a bug on every lone-item row of the demo root (ten of
   // them in run 2's extra-element list), and a lone item is the common case on
@@ -1049,9 +1115,9 @@ export function groupRow(
     ? '<a class="lsheet" href="#/set/' +
       encodeURIComponent(g.id) +
       '" title="Open ' +
-      id +
+      name +
       ' as a variant sheet" aria-label="Open ' +
-      id +
+      name +
       ' as a variant sheet"><span class="msi" aria-hidden="true">grid_view</span>' +
       '<span class="lsheet-label">Open sheet</span></a>'
     : ""
@@ -1082,7 +1148,7 @@ export function groupRow(
       '<div class="lrcol"><div class="lrline">' +
       groupThumb() +
       '<span class="lname">' +
-      id +
+      name +
       '</span><span class="lcount mono">' +
       cellsLabel +
       '</span></div><div class="lrline wrap">' +
@@ -1100,7 +1166,7 @@ export function groupRow(
     caret +
     groupThumb() +
     '<div class="lnames"><span class="lname">' +
-    id +
+    name +
     '</span></div></div><div class="lsrc">' +
     src +
     '</div><div class="lcount mono">' +
@@ -1135,11 +1201,17 @@ export function libraryTable(
   open: ReadonlySet<string> = new Set(),
   more: ReadonlySet<string> = new Set(),
   names: ReadonlyMap<string, string> = new Map(),
+  /**
+   * The shared id prefix rows may drop, from `commonIdPrefix` over the WHOLE
+   * root rather than over `groups` — these are already filtered, and a label
+   * that moved as the reader narrowed would rename the row under them.
+   */
+  prefix: string = "",
 ): string {
   let out = ""
   for (const g of groups) {
     const isOpen = open.has(g.id) && isFoldable(g)
-    let body = groupRow(g, isOpen, layout, now)
+    let body = groupRow(g, isOpen, layout, now, groupLabel(g.id, prefix))
     if (isOpen) {
       const cap = more.has(g.id) ? g.cells.length : ROW_CAP
       const shown = g.cells.slice(0, cap)

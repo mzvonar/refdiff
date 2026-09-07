@@ -15,8 +15,10 @@ import {
   escapeHtml,
   filterEntries,
   cellRow,
+  commonIdPrefix,
   filterExplainer,
   groupEntries,
+  groupLabel,
   groupRow,
   groupRunSpan,
   groupWhen,
@@ -401,14 +403,19 @@ describe("groupEntries", () => {
   it("folds a flat list into one group per entry, keeping every cell", () => {
     const groups = groupEntries(ds)
     expect(groups.map((g) => [g.id, g.cells.length, g.total])).toEqual([
-      ["ds-button-fill", 3, 3],
       ["ds-alert", 2, 2],
+      ["ds-button-fill", 3, 3],
       ["ds-chip", 1, 1],
     ])
     expect(cellsShown(groups)).toBe(ds.length)
   })
 
-  it("orders groups by their FIRST cell, so a sorted list puts the newest run's set first", () => {
+  // The order the LIBRARY lists in is alphabetical (repo owner, 2026-09-07): the
+  // Library's job is to let a reader find a set, and an order that moved every
+  // time a subset re-ran could not be scanned. What just finished is still
+  // findable by the Measured column. Cells INSIDE a group keep newest-first,
+  // because those are runs of one thing rather than things.
+  it("orders groups alphabetically, and never by which cell arrived first", () => {
     const at = (msAgo: number) => new Date(NOW - msAgo).toISOString()
     const sorted = sortEntries([
       cell("ds-alert--a", { createdAt: at(3 * 3_600_000) }),
@@ -416,9 +423,22 @@ describe("groupEntries", () => {
       cell("ds-alert--b", { createdAt: at(3 * 3_600_000 + 1000) }),
       cell("ds-checkbox--b", { createdAt: at(31 * 60_000) }),
     ])
-    expect(groupEntries(sorted).map((g) => g.id)).toEqual(["ds-checkbox", "ds-alert"])
+    // ds-checkbox holds the newest run, so the retired ordering put it FIRST.
+    expect(sorted[0]?.dir).toBe("ds-checkbox--a")
+    expect(groupEntries(sorted).map((g) => g.id)).toEqual(["ds-alert", "ds-checkbox"])
     // Cells keep the order they arrived in — newest first, within the group too.
-    expect(groupEntries(sorted)[0]?.cells.map((c) => c.dir)).toEqual(["ds-checkbox--a", "ds-checkbox--b"])
+    expect(groupEntries(sorted)[1]?.cells.map((c) => c.dir)).toEqual(["ds-checkbox--a", "ds-checkbox--b"])
+  })
+
+  it("sorts numerically inside a name, and deterministically on a case-only difference", () => {
+    const ids = (cells: PairSummary[]) => groupEntries(cells).map((g) => g.id)
+    expect(ids([cell("ds-b-10--a"), cell("ds-b-2--a"), cell("ds-b-1--a")])).toEqual([
+      "ds-b-1",
+      "ds-b-2",
+      "ds-b-10",
+    ])
+    // Not the engine's choice: `sensitivity: "base"` ties, the codepoint breaks it.
+    expect(ids([cell("ds-B--a"), cell("ds-b--a")])).toEqual(["ds-B", "ds-b"])
   })
 
   it("lists a lone item as its own group, and such a group can never hold anything else", () => {
@@ -566,6 +586,100 @@ describe("groupWhen — the vintage span, in the cards' own words", () => {
     expect(groupWhen([cell("a--1", { createdAt: "?" })], NOW)).toBe("")
     expect(groupWhen([], NOW)).toBe("")
     expect(groupWhen([broken], NOW)).toBe("")
+  })
+})
+
+describe("commonIdPrefix / groupLabel — dropping a prefix that says nothing", () => {
+  // The real DS root: every entry is ds-*, so `ds-` carries no information.
+  const DS = [
+    "ds-alert", "ds-button-fill", "ds-button-ghost", "ds-button-icon", "ds-button-stroke",
+    "ds-checkbox", "ds-chip", "ds-date-field", "ds-dialog-header", "ds-dialog-starter-lg",
+    "ds-dialog-starter-md", "ds-dialog-starter-sm", "ds-select-field", "ds-text-field",
+  ]
+  // The real demo root: heterogeneous, and it holds BOTH `button` and `ds-button`.
+  const DEMO = [
+    "button", "confirm-modal", "ds-button", "error-empty-states", "login",
+    "onboarding-document-step", "result-detail", "selection-card", "stepper",
+  ]
+
+  it("finds the segment every id shares", () => {
+    expect(commonIdPrefix(DS)).toBe("ds-")
+    expect(DS.map((id) => groupLabel(id, "ds-"))).toContain("button-fill")
+    expect(DS.map((id) => groupLabel(id, "ds-"))).toContain("text-field")
+  })
+
+  // The whole reason the rule is "only when EVERY id shares it". A hardcoded
+  // `ds-` strip on this root would draw TWO rows called `button`, which is the
+  // collision fixtures/make-demo-root.ts deliberately avoided by naming the set
+  // `ds-button` and not `button`.
+  it("strips NOTHING from a root that does not all share one", () => {
+    expect(commonIdPrefix(DEMO)).toBe("")
+    expect(groupLabel("ds-button", "")).toBe("ds-button")
+    // and so the two never collapse onto one name
+    const labels = DEMO.map((id) => groupLabel(id, commonIdPrefix(DEMO)))
+    expect(new Set(labels).size).toBe(DEMO.length)
+  })
+
+  // Removing one common prefix from unique ids is a bijection, so labels stay
+  // unique BY CONSTRUCTION — asserted on the root where it actually applies.
+  it("keeps labels unique wherever it does strip", () => {
+    const labels = DS.map((id) => groupLabel(id, commonIdPrefix(DS)))
+    expect(new Set(labels).size).toBe(DS.length)
+    expect(labels.every((l) => l !== "")).toBe(true)
+  })
+
+  // The longest shared RUN would leave `fill` / `ghost` / `icon` here and lose
+  // the component the reader is looking for. One segment, then stop.
+  it("takes ONE segment, never the longest shared run", () => {
+    const buttons = ["ds-button-fill", "ds-button-ghost", "ds-button-icon"]
+    expect(commonIdPrefix(buttons)).toBe("ds-")
+    expect(buttons.map((id) => groupLabel(id, "ds-"))).toEqual([
+      "button-fill",
+      "button-ghost",
+      "button-icon",
+    ])
+  })
+
+  it("leaves a root with nothing to gain alone", () => {
+    expect(commonIdPrefix([])).toBe("")
+    expect(commonIdPrefix(["ds-button"])).toBe("")
+    // an id that IS the prefix would be labelled blank, so it disqualifies it
+    expect(commonIdPrefix(["ds-", "ds-button"])).toBe("")
+    // no segment at all
+    expect(commonIdPrefix(["alert", "button"])).toBe("")
+  })
+
+  it("is display-only — the route, the toggle key and the fetch keep the real id", () => {
+    const g = grp("ds-button-fill")
+    const html = groupRow(g, false, "desktop", NOW, groupLabel("ds-button-fill", "ds-"))
+    expect(html).toContain('<span class="lname">button-fill</span>')
+    // the id survives everywhere it is load-bearing
+    expect(html).toContain('data-group="ds-button-fill"')
+    expect(html).toContain('href="#/set/ds-button-fill"')
+    // and a screen reader hears what a sighted reader sees
+    expect(html).toContain('aria-label="Open button-fill as a variant sheet"')
+  })
+
+  it("defaults to the full id when no label is passed", () => {
+    expect(groupRow(grp("ds-button-fill"), false, "desktop", NOW)).toContain(
+      '<span class="lname">ds-button-fill</span>',
+    )
+  })
+
+  it("applies the prefix to every row of a table", () => {
+    const html = libraryTable(
+      [grp("ds-alert"), grp("ds-checkbox")],
+      (p) => "#/" + p.dir,
+      "desktop",
+      NOW,
+      new Set(),
+      new Set(),
+      new Map(),
+      "ds-",
+    )
+    expect(html).toContain('<span class="lname">alert</span>')
+    expect(html).toContain('<span class="lname">checkbox</span>')
+    expect(html).not.toContain(">ds-alert<")
   })
 })
 

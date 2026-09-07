@@ -101,7 +101,12 @@ describe("renderAppShell", () => {
     expect(html).toContain("countMessage(shown, pairs.length, groups.length, totalGroups)")
     // The denominator is derived the way groupEntries derives groups, so the
     // two can never disagree about what a group is.
-    expect(html).toContain("new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir)).size")
+    expect(html).toContain("const allGroupIds = [...new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir))];")
+    expect(html).toContain("const totalGroups = allGroupIds.length;")
+    // The prefix is derived from the ROOT, not from the filtered groups — a
+    // label computed from those would rename a row as the reader narrowed.
+    expect(html).toContain("const idPrefix = commonIdPrefix(allGroupIds);")
+    expect(html).toContain("lib.names, idPrefix);")
     expect(html).toContain("openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed })")
     expect(html).toContain("cards.innerHTML = libraryTable(groups,")
     expect(html).not.toContain("libraryList(")

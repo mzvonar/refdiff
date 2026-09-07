@@ -419,11 +419,23 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   rewrites only the entries it names. It also carries the entry's `gallery`
   declaration when it has one — which axis is columns, pinned option order,
   human labels ("Declaring the library's shape").
-- **The annotator's Library is a TABLE, one row per set.** Six columns —
+- **The annotator's Library is a TABLE, one row per set, sorted
+  ALPHABETICALLY.** Six columns —
   `Component set · Source · Cells · Findings roll-up · Measured · ⌄` — grouping
   run dirs by the entry their pair id names: every variant pair is
   `<entryId>--<slug>`, so `ds-button-fill--state-hover_variant-default` sits
-  under `ds-button-fill`. A row is collapsed and shows that entry's cell count,
+  under `ds-button-fill`. Rows are alphabetical ascending (numeric-aware, so
+  `-2` precedes `-10`); the row that just finished is found by the `Measured`
+  column, not by position, because an order that moved on every subset re-run
+  could not be scanned. Cells INSIDE a group stay newest-run-first — those are
+  runs of one thing rather than things.
+  **A row drops a prefix every row shares**: on a root whose every entry is
+  `ds-*` the rows read `alert`, `button-fill`, `text-field`. One `-`-delimited
+  segment, and only when EVERY group has it — that is what keeps it safe, since
+  removing one common prefix from unique ids cannot collide, while a hardcoded
+  strip can (a root holding both `button` and `ds-button` would draw two rows
+  called `button`). It is display only: the `#/set/<entryId>` route, the
+  `data-group` key and the `<entryId>.set.json` fetch all use the real id. A row is collapsed and shows that entry's cell count,
   the roll-up of its cells' severities as a dot and a count (or a green
   `Clean`), how many cells carry a REGRESSION (a fix come undone), how many are
   unreadable, and — in the Measured column — `r<min> → r<max>` over that group's

@@ -421,9 +421,15 @@ root-level run identity to print.
 **The residual, for whoever picks the loop back up.** Confidence reached the 0.5 gate exactly
 on run 3, so the pixel channel now runs (3.30% unexplained frame remainder); run 6 re-measured
 **549 findings at 0.50, `+0 / −0`** after the `disabled` work, so that is the settled baseline.
-The desktop pair's next lever is ROW ORDER, not CSS and not more fixture rows — see (c). With
-280 of 297 missing elements below the first group row, and the app drawing the right things in
-a different order, styling moves nothing. **The mobile half at 0.77 is the healthier of the
+The desktop pair's next lever WAS row order — and row order has since changed, which settles
+part of it. The Library now sorts ALPHABETICALLY (repo owner, 2026-09-07) and drops a shared
+id prefix. Measured: desktop **549 → 552 findings, confidence 0.50 → 0.56**; mobile
+**487 → 503, 0.77 → 0.85** (x 1.00). So alignment got BETTER on both and neither converged,
+which is the expected result: the comp's own order is its fixture's DECLARATION order
+(`button`, `checkbox`, `textfield`, `radio`, `select`, `switch`, `foundations`, …) — neither
+alphabetical nor by recency nor by size. Nothing the app can derive from a run root
+reproduces it; only chunk 4's `sections`, once prerequisite 5 persists the tree, could. **So
+the remaining row-order gap is (c) plus prerequisite 5, not a sort the app can choose.** **The mobile half at 0.77 is the healthier of the
 two and has had exactly one run — it has never been iterated at all, and it is the cheapest
 place to spend the next iteration.**
 
@@ -565,6 +571,20 @@ refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
 
 ## Key facts / decisions
 
+- **The Library sorts ALPHABETICALLY, and drops a prefix every row shares.** Both are the
+  repo owner's calls (2026-09-07). The sort replaced "the order the first cell arrived",
+  which with `sortEntries` feeding it meant newest-run-first — good for a list of runs, bad
+  for a library a reader scans; the `Measured` column is how the recent one is found now.
+  The prefix rule is `commonIdPrefix`: ONE `-`-delimited segment, stripped only when EVERY
+  group shares it. That condition is what makes it safe rather than convenient — removing one
+  common prefix from unique ids cannot produce a collision, whereas a hardcoded `ds-` strip
+  would draw TWO rows called `button` on the demo root, which holds both `button` and
+  `ds-button` deliberately. The demo root is heterogeneous, so nothing is stripped there and
+  the measured pairs only ever exercise the SORT; the strip is covered by unit tests and by a
+  DS-root probe (14 rows reading `alert` … `text-field`, alphabetical, unique).
+  **Display only** — `#/set/<entryId>`, `data-group` and the set-index fetch keep the real id,
+  verified by a probe whose click selector is `.lrow[data-group="ds-button-fill"]` and whose
+  expanded rows still carry the real props (`Active · left · success`).
 - **A pair can be DISABLED, and the reason is mandatory.** `disabled: "<why>"` on a manifest
   entry keeps the declaration and the comp's linkage while running nothing; `disabled: true`
   is REFUSED, naming the entry, because a pair silently not running is the failure that

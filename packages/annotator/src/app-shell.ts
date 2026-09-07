@@ -236,9 +236,14 @@ function renderIndexView() {
   $('lib-filters').hidden = false;
   const groups = groupEntries(pairs, lib.filter);
   const shown = cellsShown(groups);
-  // Groups BEFORE the filter, for the head-row denominator. Derived the same way
-  // groupEntries derives them, so the two can never disagree about what a group is.
-  const totalGroups = new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir)).size;
+  // Every group id in the ROOT, derived the way groupEntries derives them so the
+  // two can never disagree about what a group is. Two consumers: the head-row
+  // denominator, and the shared-prefix label. The prefix is computed here rather
+  // than inside libraryTable because libraryTable only sees the FILTERED groups
+  // — a label derived from those would rename a row as the reader narrowed.
+  const allGroupIds = [...new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir))];
+  const totalGroups = allGroupIds.length;
+  const idPrefix = commonIdPrefix(allGroupIds);
   $('lib-count').textContent = countMessage(shown, pairs.length, groups.length, totalGroups);
   const fx = $('lib-fx');
   fx.innerHTML = filterExplainer(lib.filter);
@@ -246,7 +251,7 @@ function renderIndexView() {
   if (clear) clear.addEventListener('click', clearFilters);
   const cards = $('cards');
   const open = openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed });
-  cards.innerHTML = libraryTable(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names);
+  cards.innerHTML = libraryTable(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names, idPrefix);
   void loadSetNames(groups, open);
   const empty = $('index-empty');
   empty.hidden = !(shown === 0 && pairs.length > 0);
