@@ -174,8 +174,11 @@ describe("galleryCells", () => {
       filtered: 0,
       absent: 1,
       pending: 0,
-      // What the DESIGN defines — everything but absent, and what is drawn.
+      // What the DESIGN defines — everything but absent.
       defined: 3,
+      // What the sheet DRAWS: measured + unmapped + pending. Neither absent
+      // nor filtered is drawn.
+      drawn: 3,
       total: 4,
     })
     const absent = cells.find((c) => c.kind === "absent")!
@@ -440,17 +443,25 @@ describe("pruneToOccupied", () => {
   // The correction: a real Figma set is SPARSE, so the cross-product is not the
   // expectation. Measured on the DS, ds-select-field defines 196 combinations
   // and has 64 children — 132 "absent" cells nobody ever drew.
-  it("drops rows the set never populates", () => {
+  //
+  // AND a single-valued axis is dropped into `pinned` (2026-09-07): `tone` is
+  // Primary in every surviving cell, so a row per tone would repeat it. The
+  // value comes back once, in the sheet's title.
+  it("drops rows the set never populates, and pins an axis that says nothing", () => {
     const set = sparse()
     const full = ok(resolveGallery(set.axes, set.gallery))
     expect(full.rowTuples).toHaveLength(3)
     const pruned = pruneToOccupied(set, full)
-    expect(pruned.rowTuples).toEqual([["Primary"]])
-    expect(pruned.columns.options).toEqual(["Default", "Hover", "Focus"])
+    expect(pruned.rows).toEqual([])
+    expect(pruned.rowTuples).toEqual([[]])
+    expect(pruned.pinned).toEqual([{ property: "tone", option: "Primary" }])
+    // `Focus` is a FILTERED cell (`only: …`), and those no longer hold a column
+    // open — the repo owner does not want out-of-scope cells on the sheet.
+    expect(pruned.columns.options).toEqual(["Default", "Hover"])
 
-    // …and the census follows: 9 cells with 6 absent becomes 3 with none.
+    // …and the census follows: 9 cells with 6 absent becomes 2 with none.
     expect(census(galleryCells(set, full, []))).toMatchObject({ total: 9, absent: 6 })
-    expect(census(galleryCells(set, pruned, []))).toMatchObject({ total: 3, absent: 0 })
+    expect(census(galleryCells(set, pruned, []))).toMatchObject({ total: 2, absent: 0 })
   })
 
   it("drops columns too, and keeps the axes' order in what survives", () => {
@@ -459,7 +470,58 @@ describe("pruneToOccupied", () => {
     set.skipped = []
     const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
     expect(pruned.columns.options).toEqual(["Focus"])
-    expect(pruned.rowTuples).toEqual([["Danger"]])
+    // One cell, so BOTH properties say nothing and both are pinned — the shape
+    // the three `ds-dialog-starter-*` entries really have. The column axis is
+    // kept even so: something has to be the columns.
+    expect(pruned.rows).toEqual([])
+    expect(pruned.rowTuples).toEqual([[]])
+    expect(pruned.pinned).toEqual([
+      { property: "tone", option: "Danger" },
+      { property: "State", option: "Focus" },
+    ])
+  })
+
+  // The half of the ask that is about ROWS: a row whose every cell is out of
+  // scope is a row the reader never asked to see. Measured on the DS,
+  // `ds-button-stroke` is narrowed to Theme=Dark / variant=light / Size=md, and
+  // 36 of its 60 declared cells were holding six such rows open — 6x10 with 36
+  // "Out of scope" tiles becomes 6x4 with none.
+  it("drops a row whose every cell is out of scope, and keeps one with a coverage gap", () => {
+    const base = (): GSetIndex => ({
+      ...sparse(),
+      axes: axes({ tone: ["Primary", "Danger"], State: ["Default", "Hover"] }),
+      pairs: [{ slug: "a", dir: "s--a", props: { tone: "Primary", State: "Default" } }],
+      skipped: [],
+      gallery: { columns: "State" },
+    })
+    // Danger's whole row is `filtered` -> the row goes, and tone is pinned.
+    const filtered = base()
+    filtered.skipped = [
+      { nodeId: "1", name: "x", reason: "only: tone ∉ [Primary]", kind: "filtered", props: { tone: "Danger", State: "Default" } },
+      { nodeId: "2", name: "y", reason: "only: tone ∉ [Primary]", kind: "filtered", props: { tone: "Danger", State: "Hover" } },
+    ]
+    const p1 = pruneToOccupied(filtered, ok(resolveGallery(filtered.axes, filtered.gallery)))
+    expect(p1.rowTuples).toEqual([[]])
+    expect(p1.columns.options).toEqual(["Default"])
+    // One surviving cell, so the COLUMN axis says nothing either and is pinned
+    // alongside the row axis — kept as the columns, reported as context.
+    expect(p1.pinned).toEqual([
+      { property: "tone", option: "Primary" },
+      { property: "State", option: "Default" },
+    ])
+
+    // The same rows, but UNMAPPED — the design declares them and the impl has
+    // no cell. Those are the coverage gap the sheet exists to show, so the row
+    // and the axis both survive.
+    const unmapped = base()
+    unmapped.skipped = [
+      { nodeId: "1", name: "x", reason: "no cell mapping (no such story cell)", kind: "unmapped", props: { tone: "Danger", State: "Default" } },
+      { nodeId: "2", name: "y", reason: "no cell mapping (no such story cell)", kind: "unmapped", props: { tone: "Danger", State: "Hover" } },
+    ]
+    const p2 = pruneToOccupied(unmapped, ok(resolveGallery(unmapped.axes, unmapped.gallery)))
+    expect(p2.rowTuples).toEqual([["Primary"], ["Danger"]])
+    expect(p2.pinned).toBeUndefined()
+    expect(p2.columns.options).toEqual(["Default", "Hover"])
   })
 
   // The check that this does not simply hide absence: where the cross-product
@@ -475,6 +537,8 @@ describe("pruneToOccupied", () => {
     const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
     expect(pruned.columns.options).toEqual(["Default", "Hover"])
     expect(pruned.rowTuples).toEqual([["Primary"], ["Secondary"]])
+    // Two axes with two values each — neither says nothing, so nothing is pinned.
+    expect(pruned.pinned).toBeUndefined()
     const c = census(galleryCells(set, pruned, []))
     expect(c).toMatchObject({ total: 4, absent: 2 })
   })
@@ -488,9 +552,16 @@ describe("pruneToOccupied", () => {
       gallery: { columns: "State", rows: "tone" },
     }
     const pruned = pruneToOccupied(set, ok(resolveGallery(set.axes, set.gallery)))
-    expect(pruned.rows.map((r) => r.property)).toEqual(["tone", "size"])
-    expect(pruned.rows.map((r) => r.options)).toEqual([["Primary"], ["sm"]])
-    expect(pruned.rowTuples).toEqual([["Primary", "sm"]])
+    // One cell, so `tone` and `size` are BOTH single-valued: they used to
+    // survive as one-option axes taking a gutter each and repeating their value
+    // on the only row. Now they pin, in the axes' own order.
+    expect(pruned.rows).toEqual([])
+    expect(pruned.rowTuples).toEqual([[]])
+    expect(pruned.pinned).toEqual([
+      { property: "tone", option: "Primary" },
+      { property: "size", option: "sm" },
+      { property: "State", option: "Default" },
+    ])
   })
 
   it("is a no-op on an empty set rather than pruning everything away", () => {

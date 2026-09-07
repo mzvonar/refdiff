@@ -97,6 +97,19 @@ export interface GResolved {
   rowTuples: string[][]
   /** Non-fatal: the declaration asked for something the set does not have. */
   warnings: string[]
+  /**
+   * Properties that are NOT axes because they carry no information here: every
+   * cell the sheet draws has the same value, so a row or column per option
+   * would repeat it. The sheet states them ONCE instead. Set by
+   * `pruneToOccupied`; `resolveGallery` cannot know it, having no cells.
+   */
+  pinned?: GPinned[]
+}
+
+/** A property with ONE value across every cell the sheet draws. */
+export interface GPinned {
+  property: string
+  option: string
 }
 
 export type GResolveResult =
@@ -266,7 +279,23 @@ export function resolveGallery(axes: GAxes, gallery?: GConfig): GResolveResult {
  * index exists to tell, and it stays on the sheet.
  */
 export function pruneToOccupied(set: GSetIndex, resolved: GResolved): GResolved {
-  const present = [...set.pairs.map((p) => p.props), ...set.skipped.map((s) => s.props)]
+  // What the sheet DRAWS decides what survives, and `filtered` is not drawn.
+  //
+  // This used to be every declared variant, skipped ones included, and that is
+  // what put six all-`Out of scope` rows on `ds-button-stroke`: the manifest
+  // narrows it to `Theme=Dark, variant=light, Size=md`, so 36 of its 60
+  // declared cells are out of scope and were taking up rows nobody asked to
+  // see. Repo owner, 2026-09-07: "i don't want to see these out of scope cells,
+  // i want to only see the ones that i can actually see in figma. so i want you
+  // to hide rows and columns that a human cant see in figma, so not all props
+  // needs to be visible".
+  //
+  // `unmapped` DOES keep a row alive — the design declares it and the impl
+  // lacks it, which is the coverage gap the sheet exists to show.
+  const present = [
+    ...set.pairs.map((p) => p.props),
+    ...set.skipped.filter((sk) => skipKind(sk) === "unmapped").map((sk) => sk.props),
+  ]
   if (present.length === 0) return resolved
 
   const colProp = resolved.columns.property
@@ -310,12 +339,52 @@ export function pruneToOccupied(set: GSetIndex, resolved: GResolved): GResolved 
     .map(({ i }) => i)
   const tuples = rowTuples.map((t) => keptIdx.map((i) => t[i]!))
 
+  // A property with ONE value across the survivors is not an axis. It would
+  // draw a row or column per option and repeat the same value in each, which is
+  // exactly the "not all props needs to be visible" half of the ask: measured
+  // on the DS, dropping them takes `ds-select-field` from 7x10 to 7x1 and
+  // `ds-button-stroke` from 6x10 to 6x4, both to 100% fill. The values are not
+  // lost — they come back as `pinned` and the sheet states them once.
+  const pinned: GPinned[] = []
+  const keptRows: GAxis[] = []
+  const keptIdx2: number[] = []
+  rows.forEach((axis, i) => {
+    if (axis.options.length === 1) {
+      pinned.push({ property: axis.property, option: axis.options[0] as string })
+      return
+    }
+    keptRows.push(axis)
+    keptIdx2.push(i)
+  })
+  const finalTuples = uniqueTuples(tuples.map((t) => keptIdx2.map((i) => t[i] as string)))
+  // The COLUMN axis is never dropped, even single-valued: something has to be
+  // the columns, and a sheet of one column is the honest shape for a set with
+  // one cell (the three `ds-dialog-starter-*` entries are exactly that). It is
+  // reported as pinned as well when it says nothing, so the reader still sees
+  // the value.
+  if (columns.options.length === 1)
+    pinned.push({ property: columns.property, option: columns.options[0] as string })
+
   return {
     columns,
-    rows,
-    rowTuples: tuples,
+    rows: keptRows,
+    rowTuples: finalTuples.length > 0 ? finalTuples : [[]],
     warnings: resolved.warnings,
+    ...(pinned.length > 0 ? { pinned } : {}),
   }
+}
+
+/** Distinct tuples, order preserved — a row set collapses once an axis goes. */
+function uniqueTuples(tuples: readonly string[][]): string[][] {
+  const seen = new Set<string>()
+  const out: string[][] = []
+  for (const t of tuples) {
+    const k = t.join("\u0000")
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push([...t])
+  }
+  return out
 }
 
 /* --------------------------------------------------------- the cells ---- */
@@ -410,8 +479,23 @@ export function galleryCells(
 ): GCell[] {
   const order = [resolved.columns.property, ...resolved.rows.map((r) => r.property)]
   const byDir = new Map(pairs.map((p) => [p.dir, p]))
-  const pairByKey = new Map(set.pairs.map((p) => [propsKey(p.props, order), p]))
-  const skipByKey = new Map(set.skipped.map((s) => [propsKey(s.props, order), s]))
+  // A sheet with PINNED properties is a SLICE of the set, and only variants in
+  // that slice belong on it. Without this the reduced key is ambiguous: drop
+  // `hasLabel` / `Type` / `hasDescription` as axes and `ds-select-field`'s key
+  // becomes `State=Active` alone, which 58 of its skipped variants share — the
+  // Map then keeps whichever came LAST and the cell was drawn `filtered` when
+  // `pruneToOccupied` had classified the very same combination `unmapped`. One
+  // entry, two answers, and the coverage gap disappeared. Measured: it cost
+  // select-field, text-field and date-field one cell each.
+  const pinned = resolved.pinned ?? []
+  const inSlice = (props: Record<string, string>): boolean =>
+    pinned.every((pin) => props[pin.property] === pin.option)
+  const pairByKey = new Map(
+    set.pairs.filter((p) => inSlice(p.props)).map((p) => [propsKey(p.props, order), p]),
+  )
+  const skipByKey = new Map(
+    set.skipped.filter((sk) => inSlice(sk.props)).map((sk) => [propsKey(sk.props, order), sk]),
+  )
 
   const cells: GCell[] = []
   resolved.rowTuples.forEach((tuple, row) => {
@@ -485,11 +569,15 @@ export interface GCensus {
   absent: number
   pending: number
   /**
-   * Cells the DESIGN defines — everything but `absent`. This is what the sheet
-   * draws and what its headline counts; `absent` is reported separately because
-   * it is a property of the axes, not a cell anybody declared.
+   * Cells the DESIGN defines — everything but `absent`.
    */
   defined: number
+  /**
+   * Cells the sheet DRAWS: `measured` + `unmapped` + `pending`. Neither
+   * `absent` (nobody declared it) nor `filtered` (declared, deliberately out
+   * of scope) is drawn, so this and not `defined` is what the headline counts.
+   */
+  drawn: number
   /** Every slot in the resolved grid, `defined` + `absent`. */
   total: number
 }
@@ -505,6 +593,7 @@ export function census(cells: readonly GCell[]): GCensus {
     absent,
     pending: of("pending"),
     defined: cells.length - absent,
+    drawn: of("measured") + of("unmapped") + of("pending"),
     total: cells.length,
   }
 }
@@ -564,11 +653,29 @@ const gEscape = (s: string): string =>
 export function sheetSummary(c: GCensus, span: { min: number; max: number } | null): string {
   const parts = [`${c.measured} measured`]
   if (c.unmapped) parts.push(`${c.unmapped} missing in impl`)
-  if (c.filtered) parts.push(`${c.filtered} out of scope`)
   if (c.pending) parts.push(`${c.pending} not measured`)
   const runs = !span ? "" : span.min === span.max ? ` · run ${span.max}` : ` · runs ${span.min}→${span.max}`
-  const sparse = c.absent ? ` · ${c.absent} of ${c.total} combinations undeclared` : ""
-  return `${c.defined} cells · ${parts.join(" · ")}${runs}${sparse}`
+  // Out of scope and undeclared are FACTS ABOUT THE SET, in the tail, because
+  // neither is a cell on this sheet any more. Kept because "24 cells" over a
+  // 60-variant set is only honest if the other 36 are accounted for somewhere.
+  const tail: string[] = []
+  if (c.filtered) tail.push(`${c.filtered} out of scope`)
+  if (c.absent) tail.push(`${c.absent} of ${c.total} combinations undeclared`)
+  return `${c.drawn} cells · ${parts.join(" · ")}${runs}${tail.length ? " · " + tail.join(" · ") : ""}`
+}
+
+/**
+ * The properties every drawn cell shares, stated once — "Theme=Dark ·
+ * variant=light · Size=md" for a `ds-button-stroke` narrowed to those.
+ *
+ * This is the other half of dropping a single-valued axis: the value is not
+ * noise, it is context, and a reader looking at 24 stroke buttons needs to know
+ * they are all the dark light-variant md ones. It just does not need saying in
+ * every row label.
+ */
+export function pinnedLine(pinned: readonly GPinned[] = []): string {
+  if (pinned.length === 0) return ""
+  return pinned.map((p) => `${p.property}=${p.option}`).join(" · ")
 }
 
 /**
@@ -600,7 +707,7 @@ export const CELL_NOTE: Record<GCellKind, string> = {
  * whole of "use only what is in figma" on this surface.
  */
 export function cellTile(cell: GCell, rect: { x: number; y: number; w: number; h: number }): string {
-  if (cell.kind === "absent") return ""
+  if (cell.kind === "absent" || cell.kind === "filtered") return ""
   const sev = cellSeverity(cell)
   const cls = ["gcell", `k-${cell.kind}`, sev ? `sev-${sev}` : "", cell.stale ? "stale" : ""]
     .filter(Boolean)

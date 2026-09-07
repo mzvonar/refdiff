@@ -401,11 +401,19 @@ function sheetReport(index, resolved, cells, layout) {
     : 0;
   const findings = sheetFindings(cells);
   const c = census(cells);
+  const pinned = pinnedLine(resolved.pinned);
   const span = runSpan(cells);
   const frame = { width: Math.round(layout.world.w), height: Math.round(layout.world.h), dpr: 1 };
   const worst = findings.some((f) => f.severity === 'critical' || f.severity === 'major');
   return {
-    pair: (index.title || index.setName || index.entryId) + ' — ' + sheetSummary(c, span),
+    // The pinned properties go in the TITLE, ahead of the counts: a reader
+    // looking at 24 stroke buttons has to know they are all the Theme=Dark,
+    // variant=light, md ones. Dropping those axes is what stopped the sheet
+    // drawing a row per option for a value that never varies; stating them
+    // here is the other half of that, or the context is simply lost.
+    pair: (index.title || index.setName || index.entryId)
+      + (pinned ? ' [' + pinned + ']' : '')
+      + ' — ' + sheetSummary(c, span),
     createdAt: index.createdAt,
     design: Object.assign({ source: 'set', ref: index.setName + ' (' + c.total + ' cells)' }, frame),
     impl: Object.assign({ source: 'set', ref: index.entryId + ' (' + c.measured + ' measured)' }, frame),

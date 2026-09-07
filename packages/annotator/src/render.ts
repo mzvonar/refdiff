@@ -3098,11 +3098,15 @@ function renderCellShots() {
 
   // ---- the cells --------------------------------------------------------
   for (const cell of sheet.cells) {
-    // An ABSENT cell draws nothing on either pane. It is the axes' cross-product
-    // minus everything the design declares, so it is not a cell at all — and 58
-    // dotted slots across the DS's fourteen sets is what "too many holes" meant.
-    // The sheet shows only what the design defines (2026-09-07).
-    if (cell.kind === 'absent') continue;
+    // ABSENT and FILTERED cells draw nothing on either pane. Absent is the axes'
+    // cross-product minus everything the design declares — not a cell at all,
+    // and 58 dotted slots across the DS's fourteen sets. Filtered is declared
+    // but deliberately out of scope, and 191 of those were taking up whole rows
+    // the reader never asked to see. pruneToOccupied drops the rows and
+    // columns they were holding open (pruneToOccupied), so on most sets there is nothing left
+    // here to skip. (No backticks in this comment: the whole block
+    // is a template literal and one would close it.)
+    if (cell.kind === 'absent' || cell.kind === 'filtered') continue;
     const count = cell.report ? (cell.report.findings || []).length : 0;
     for (const side of ['design', 'impl']) {
       const slot = document.createElement('div');
