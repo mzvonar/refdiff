@@ -1,19 +1,19 @@
-# refdiff — Handoff: Library groups + gallery, CHUNK 3 part-shipped (2026-09-04)
+# refdiff — Handoff: Library groups + gallery, CHUNK 5 next (2026-09-07)
 
 **Workstream-scoped handoff, canonical and current.** Repo `~/development/refdiff` (Mato's
 Mac: `~/Development/refdiff`), branch **`main`**, pnpm 10 workspace, TypeScript/ESM,
-Node ≥22. Rewritten at the end of the 2026-09-04 session, then amended twice the same day —
-when chunk 4 shipped, and when the consuming repo's bindings debt (§0) was paid — so nothing
-in it is inherited from an earlier revision.
+Node ≥22. Refreshed 2026-09-07 for a fresh context; every count in it was re-measured at
+HEAD `a79e5a6` rather than carried over.
 
-**Chunk 3's SEAM, RESOLVER and DATA PATH are shipped, and the one open question is
-ANSWERED: the sheet lives INSIDE the comparison tool's chrome.** The Gallery comp is that
-tool with a variant sheet in its panes, measured at 777 findings — not the standalone page
-the plan assumed. **Mato refuted the cheaper option (scope the pair to the grid) on
-2026-09-04**: the gallery's findings rail has a Recurring-causes section the tool's rail
-does not, so scoping would have shipped a rail nothing measured. §"What REMAINS" step 1
-carries the diff that settled it. Read the plan's § "Chunk 3" second — its CAUTION block is
-the same measurement.
+**CHUNK 3 IS SHIPPED — the sheet renders inside the comparison tool's own chrome. CHUNK 5
+is next and it is now the ACTIVE complaint.** Mato looked at the Library on the DS root on
+2026-09-07 and reported three fidelity gaps against `RefDiff Library Groups.dc.html`: the
+Sheet button sits apart where the comp draws one coherent row, the expanded sub-items are
+chunk 1's old CARDS where the comp draws per-cell sub-rows, and more besides. **Every one is
+chunk 5's spec verbatim** — and the reason is measured, not arguable: that comp is NOT ON
+DISK and both Library pairs measure against `RefDiff Library.dc.html`, which predates
+grouping entirely. The grouped Library has never been compared to its own design. §"What
+REMAINS" step 1 is chunk 5; the plan's § "Chunk 5" is the full specification.
 
 **This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical repo
 handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair). This
@@ -22,8 +22,8 @@ file covers only the Library-groups / gallery workstream, whose plan is
 
 ## State of play
 
-**Chunks 1, 2 and 4 are SHIPPED; chunk 3 is PART-shipped. Twelve commits on `main`, nothing
-pushed** (Mato has not asked). `4b57f12` was the workstream's base.
+**Chunks 1, 2, 3 and 4 are SHIPPED. TWENTY-ONE commits on `main`, nothing pushed** (Mato
+has not asked). `4b57f12` was the workstream's base; HEAD is `a79e5a6`.
 
 | sha | what |
 | --- | --- |
@@ -38,11 +38,20 @@ pushed** (Mato has not asked). `4b57f12` was the workstream's base.
 | `3c7f4fe` | feat(annotator): carry the per-pair run ordinal into /api/pairs |
 | `8b61940` | docs: chunk 4 shipped, the bindings debt named, three lessons |
 | `679de13` | docs: point the handoff at chunk 3, mark the bindings debt paid |
-| *(this session)* | feat: the variant sheet's seam, resolver and data path — chunk 3 |
+| `4e2a76c` | fix(core): --pair accumulates, and a pair's dataSlots is no longer clobbered |
+| `ddfea04` | feat(annotator): the variant sheet — cellOrigin, the layout, the resolver |
+| `765eb59` | test(fixture): the demo root emits a variant set; Library pairs re-baseline |
+| `48d2e23` | docs: chunk 3 part-shipped — the Gallery comp is a REBUILD, seven lessons |
+| `8aa7ccb` | docs: the gallery chrome is NOT the tool's — option 2 refuted |
+| `b6277c8` | feat(annotator): the Library group row opens its sheet |
+| `e82f9e0` | feat(annotator): the sheet opens IN the comparison tool, not beside it |
+| `34a7b4c` | feat(annotator): the sheet's rail groups by cause, not by finding |
+| `18eccd1` | feat(annotator): the sheet's design pane, its axes, cells centred like the comp |
+| `a79e5a6` | fix(annotator): a variant set is SPARSE — the cross-product is not the expectation |
 
-**641 tests green** (364 core + 277 annotator), typecheck and build clean, `icon-subset.mjs
---check` in sync, `pair-coverage` green both directions with **ZERO waivers** (both Gallery
-waivers deleted in the change that registered their pairs), **nine** manifest pairs.
+**666 tests green** (364 core + 302 annotator), typecheck and build clean, `icon-subset.mjs
+--check` in sync at **101 glyphs**, `pair-coverage` green both directions with **ZERO
+waivers**, **nine** manifest pairs. Re-measured at HEAD 2026-09-07, not inherited.
 
 
 **Mato confirmed the Gallery comp SETTLED on 2026-09-04** (both comps byte-identical to the
@@ -51,8 +60,44 @@ open fork below, and chunk 5, the Library rebuild.
 
 ## What's DONE
 
-- **CHUNK 3 — the sheet's seam, resolver and data path** (this session). The plan's
-  § "Chunk 3" IMPORTANT block is the finding and this is the inventory.
+- **CHUNK 3 — SHIPPED: the sheet renders inside the comparison tool.** The plan's
+  § "Chunk 3" CAUTION block is the finding that shaped it; this is the inventory. Residual
+  convergence is § "What REMAINS" step 2.
+  - **It is a REPORT, not a page.** `openReport` takes the sheet as a FOURTH argument —
+    passed in rather than assigned around the call, so a pair opened after a sheet cannot
+    inherit its cells. The topbar, Split/Full, Off/Wipe/Onion/Blink/Diff, the layer toggles,
+    pan/zoom/fit/pinch, the annotation layer, the focus region and the rail all come free,
+    because they were already expressed in ONE world space and a sheet is that space with a
+    per-cell offset. `#view-gallery` (the first attempt's standalone page) survives only as
+    the un-layoutable fallback.
+  - **Cells live in a zero-size world-space container** (`.cellshots`, deliberately the
+    same shape as `.vmarks`), so N images cost what one did: no per-image transform, ONE
+    container transform in `applyView`, and existing pan/zoom moves them by construction.
+  - **Findings project** with `projectCellBox`, ids NAMESPACED by cell (every report
+    numbers from f1; 41 cells would collide), and a FRAME-LEVEL finding is left out of the
+    boxes — `pixel-region/frame` fires on 194/194 DS pairs and its box IS the frame, so
+    translated it paints its cell solid.
+  - **The rail groups by CAUSE** (`causeGroups`, keyed `type|role|severity|expected|actual`
+    — finer than `summary.json`'s groups on purpose: those carry no values and a sheet must
+    tell two colour drifts apart). Clicking a cause lights every cell carrying it. Measured:
+    1111 of 1163 impl-only elements were in the rail; it took them out.
+  - **The design pane draws per-cell images through each cell's OWN alignment**
+    (`report.design.width` already carries the run's scale, so the world size is that width
+    verbatim and no natural size is needed). Consequence stated in code: the align-mode pill
+    is a per-PAIR control and does not reach a sheet.
+  - **Content is CENTRED in its track** as the comp centres it; `GalleryCell` carries
+    `track` (the slot) beside `rect` (the content box). The minimum cell IS the comp's cell
+    — 152 + 2×12 = 176 across, 72 + 24 = 96 down.
+  - **A variant set is SPARSE** (`pruneToOccupied`, `a79e5a6`): the axes' cross-product is
+    NOT the expectation. `ds-select-field` defines 196 combinations and has 64 children, so
+    132 cells were reported as holes nobody drew. Absent went 132→6, 111→6, 132→0, 72→0,
+    and `ds-alert` 9→1 — the case where the cross-product WAS the expectation, which is the
+    check that this does not merely hide absence.
+  - **Two core defects found and fixed** (`4e2a76c`): `--pair` repeated kept only the LAST
+    id (`parseArgs`, non-`multiple`) so a run measured half of what you asked while looking
+    healthy; and a pair's `ignore.dataSlots` had NEVER applied in any manifest — the CLI
+    wrote an explicit `false` when no flag was passed and the run-wide policy merges LAST.
+    `runWidePolicy` now omits a key nobody passed.
   - **`view-math.ts`**: `cellOrigin`, `galleryLayout`, `projectCellBox` /
     `unprojectCellBox`. Tracks are the max over the column and the row of BOTH sides; the
     extent is DECLARED by the axes, so a column whose every cell skipped keeps its track.
@@ -191,12 +236,18 @@ of the not-paired table because they ARE paired now). **That file is still UNTRA
 **Nothing here blocks on it.** Three follow-ups stay on the population-registry side, and
 two of them want the same run:
 
-1. **A full `refdiff compare` over the DS manifest** — that out root predates chunk 2, so it
-   holds **0** `<entryId>.set.json`. Every coverage figure there is hand-counted for exactly
-   that reason, and the Figma-variants column does not decompose into the run-dir column:
-   `ds-checkbox` shows 45 run dirs against 54 recorded variants while the entry pins one of
-   five properties, which no arithmetic over those two numbers explains. A run makes
-   declared / paired / skipped an artifact and closes the question.
+1. ~~**A full `refdiff compare` over the DS manifest**~~ — **DONE 2026-09-04.** Storybook
+   on :6008 (restarted first — it predated the working-tree edits), `.figma-token` symlink
+   at the repo root picked up automatically. All **14 `<entryId>.set.json`** exist. The
+   re-run reproduced the previous baseline exactly — **1071 findings, `delta +0 / −0`** — so
+   refdiff's changes since 2026-09-02 moved no DS number. Census: **216 declared · 194
+   measured · 22 NOT measured · 281 skipped · 653 absent**, and the 22 are 19
+   `ds-button-icon` + 3 `ds-chip`, every one a **`figma-low-quality` DESIGN capture
+   failure** — which finally explains the discrepancy the bindings could not
+   (`ds-chip` "5 pairs, 2 run dirs"). **Galleries are declared** on the nine set entries
+   whose story tags its own grid `data-col="{State}"`. Both `refdiff.manifest.mjs` and
+   `refdiff.bindings.md` in `population-registry` are **edited and UNCOMMITTED** — that
+   repo's rule is every commit is user-confirmed.
 2. **Regenerate `figma-inventory.md`** (needs a live Figma sweep). Its `already paired | 10`
    predates the `ds-dialog-starter-*` entries; the reconciliation is verified exactly —
    10 nodes marked `**man**` + chip (unstarred, item 1) + `36940:4414` (marked `—`, added
@@ -207,98 +258,115 @@ two of them want the same run:
    pair-per-comp-gap class, which reports itself nowhere. Probe the node and the story's
    tagging before assuming it belongs in the untagged row.
 
-### 1. CHUNK 3 — DECIDED: the sheet lives INSIDE the tool. Converge on the 777.
+### 1. CHUNK 5 — the Library rebuilt to the comp ← DO FIRST
 
-The seam, the resolver and the data path are shipped (see What's DONE). **The one open
-question was answered by Mato on 2026-09-04 and the answer reversed the recommendation this
-file used to carry.**
+**Plan § "Chunk 5" is the specification** — read it before writing anything; it is derived
+from the comp, not from taste, with the grid template, the column set and the row anatomy
+all quoted off the comp.
 
-**The finding, measured.** The stubbed route ran against `RefDiff Gallery.dc.html` and
-returned **777 findings (391 critical, 323 major, 63 minor) at confidence 0.00**, 586 of
-them `missing-element`. The comp is **the comparison tool's chrome with a variant sheet in
-its panes**, not the standalone page the plan assumed — the same "REBUILD, not a delta"
-chunk 0 found for the Library comp, which nobody had checked for this one. A frame name
-tells you a comp's SUBJECT, never its surface.
+**Why now: Mato reported it as a bug on 2026-09-07.** Three observations, and each maps
+onto the spec exactly:
 
-**Why the recommendation flipped, and it is the reusable part.** This file used to recommend
-scoping the pair to the grid and leaving the chrome to the comparison tool, "already paired
-and converged against its own comp". **Mato pointed out the chrome is not the same — the
-gallery's findings rail has a Recurring-causes section the tool's rail has not.** Diffing
-the two comps' rendered text confirmed it and then some:
-
-| | Gallery comp | Comparison Tool comp |
+| what he saw | what the comp draws | plan says |
 | --- | --- | --- |
-| distinct chrome strings | 39 | 36 |
-| shared | **21** | |
-| gallery-ONLY | **18** | |
+| "the sheet button is separated; in design it's one coherent row" | `Open sheet` is one of the group row's SIX columns | chunk 5's group-row anatomy |
+| "the subitems are the old cards, not the subrows" | expanded rows are CELLS: verdict dot, 34×24 thumbnail, the cell's variant props as its name (`Primary · md · Default`), badges, run pill, `Compare ›` | "What goes: `groupHeader` and `libraryList`" |
+| "etc" | six-column table, uppercase header row, 44×34 mini variant-sheet thumbnail, section path line, 10-row cap + `Show N more`, renamed chips, new `countMessage` shape | the whole section |
 
-`Recurring causes` and `Other findings` are in the Gallery comp and **nowhere** in the
-Comparison Tool comp: the sheet's rail groups by CAUSE, the tool's rail lists findings with
-instance aggregates (`×15` / `×6`, see `COMPARE_IGNORE`). The other gallery-only strings
-agree — the cell-state legend (`Absent`, `Skipped · no impl cell`, `Regression`, `reg`),
-pane labels `DESIGN` / `IMPLEMENTATION` against the tool comp's `Design` / `Impl`, the
-comment affordances (`New comment`, `Open`, `history`, `open_in_full`), and the breadcrumb
-`Actions / Button · 60 variants`.
+**The measured reason it drifted, and it is the important part: the grouped Library has
+never been compared to its own design.** Verified 2026-09-07 — `RefDiff Library
+Groups.dc.html` is NOT in `design/refdiff/` (the dir holds Comparison Tool, Gallery, Gallery
+Mobile, Library, Mobile), and BOTH Library pairs name
+`design: { file: "RefDiff Library.dc.html", frame: "Library" }` — the comp that predates
+grouping entirely, which is why they carry the declared cause "Library comp predates
+groups". Chunk 1 grouped the existing card grid and nothing ever told it that was wrong.
+**This is the pair-per-comp gap in its purest form: a surface with no pair reports its drift
+nowhere.**
 
-**Scoping would therefore have shipped a whole rail with NO pair measuring it** — the
-pair-per-comp-gap class, the defect this workstream exists to remove, and the one that
-reports itself nowhere. The premise had been inferred from the comp looking like the tool
-and never diffed. **Two comps that render the same furniture are not the same surface until
-the TEXT is diffed:** `grep -oiE` over both, set difference, count. One command.
+**TWO PREREQUISITES, in this order, and neither is optional:**
 
-**So: option 1.** Render the sheet as the report view's content — the existing chrome
-(`REPORT_BODY` + `CLIENT` in `render.ts`, 2,945 lines) rather than the standalone
-`#view-gallery` section the stub added. The 21 shared strings are a real shared shell and
-should be reused; the rail is chunk 3's SCOPE, not chrome to be excused. A large share of
-the 777 findings is that rail — work, not noise. **No design ask is needed any more**: the
-`data-vc-scope` request only existed to serve the refuted option.
+1. **Fetch both Library Groups comps to disk and register their pairs.** They are
+   deliberately absent: they came back from `get_file` below the persist-to-disk threshold,
+   and a reference comp must NEVER be hand-transcribed — a typo becomes a false finding in
+   every future measurement of its pair. Fetch with DesignSync from project
+   `5a1a95c3-beee-457a-815b-ef6f6bf3e06a` (paths `RefDiff Library Groups.dc.html` and
+   `RefDiff Library Groups Mobile.dc.html`), decoding `payload["content"]` from the
+   persisted tool-result file rather than copying it through the transcript. Frames are
+   `Library — grouped` (1240×860, full-bleed) and `Library — grouped (mobile)` (460×910) —
+   the mobile one is its own 390×844 phone frame inside a showcase canvas, so its pair needs
+   **`scope: ".cc-theme-dark"`**, NOT the responsive-at-a-narrow-viewport shape today's two
+   Library pairs use.
+2. **Re-run `icon-subset.mjs`.** The comps need `chevron_right`, `account_tree`, `folder`,
+   `filter_alt` and `unfold_more`; the subset is at **101 glyphs** and has none of them. The
+   2026-09-04 run picked up only the Gallery's four **because these two files were not on
+   disk** — so `--check` being green today proves nothing about them. A glyph the subset
+   lacks renders as its literal NAME and poisons every measurement of the pair.
 
-**A dependency this surfaced: chunk 4's `section` now has a UI consumer.** The breadcrumb
-`Actions / Button · 60 variants` is the hierarchy rendered. This workstream records
-`section` as "validated and REPORTED, not persisted — its shape is chunk 5's decision"
-(What's DONE, and the plan's chunk 4). The sheet needs it, so **that decision is chunk 3's
-dependency too** — decide the persisted shape before building the breadcrumb, or the
-breadcrumb hard-codes what the artifact should carry.
+**Then §0 of the skill, as always:** the first `refdiff-library-groups-desktop` run IS the
+specification. Expect a large report and let the delta drive; do not hand-derive the table
+from the comp's source.
 
-**What is already in place for the converge.** Both gallery pairs are registered
-(`refdiff-gallery-desktop` 1400×860 full-bleed, no scope; `refdiff-gallery-mobile` 390×844
-with `scope: ".cc-theme-dark"`), `GALLERY_IGNORE` is deliberately EMPTY — the first run's
-findings are the specification and a policy written before the measurement excuses findings
-nobody has read — and both `UNPAIRED_BY_DESIGN` waivers are gone. The delta drives from
-here, never the comp's source.
+**What survives, and it is most of the value: the whole PURE layer.** `entryIdOf`,
+`groupEntries`, `cellsShown`, `isFoldable`, `isFilterActive`, `openGroups`, `groupWhen` and
+the roll-up keep their contracts — the comp confirms every semantic they encode. What goes:
+`groupHeader` and `libraryList` (the two renderers) plus the `.grp` / `.gcells` CSS. Two
+filter arms change MEANING with the renamed chips — `matchesFilter` gains a `stale` arm and
+its `diverging` arm goes.
 
-**The mobile pair, for reference:** 426 findings (161/214/51), confidence 0.00 with
-`x 0.67 / y 0.06` — 311 comp leaf elements against the app's 87. Its own phone frame, not a
-narrow-viewport render of the desktop comp.
+**`groupSheetLink` is superseded.** It ships today as a SIBLING of the `.ghead` button
+inside `.ghead-row`, which was right for a card grid (an anchor inside a button is invalid,
+and the group toggle resolves `closest('.ghead')`, so a nested link would follow itself AND
+expand the group). The comp's table makes `Open sheet` a column instead, so the sibling
+trick goes with the renderers — but keep the HTML constraint in mind when the new row is
+built.
 
-**CLOSED — the Library's group row now links to the sheet** (`groupSheetLink`, the plan's
-"a group in the Library opens the gallery"). It had been deferred here on the grounds that
-it moves the two Library pairs again; that was the wrong trade, because **an unlinked
-surface is indistinguishable from an unbuilt one** — the sheet was reachable only by typing
-a URL, which on a phone is not reachable at all, and the session that skipped the link then
-reported it as "click any set group". The third re-baseline cost nothing: both pairs still
-PASS and the new elements were absorbed by the already-declared "Library comp predates
-groups" cause (desktop 17 explained where it was 14, mobile 18 where it was 16, unexplained
-still 1 and 0, confidence unchanged at 0.89 / 1.00). No new policy.
+**Expect to re-baseline the two existing Library pairs a fourth time**, and expect their
+declared causes to become unnecessary: once `refdiff-library-groups-*` exists, "Library comp
+predates groups" is measuring the wrong comp. Decide whether the OLD Library pairs survive
+at all — the plan does not say, and it is the one genuine open question here.
 
-The link is a SIBLING of the `.ghead` button, never a child: an anchor inside a button is
-invalid, and the group toggle resolves `closest('.ghead')`, so a nested link would follow
-itself AND expand the group. On a phone the label is hidden and the glyph stays — measured
-43×87, no page-level horizontal scroll.
+### 2. CHUNK 3's residual convergence — the sheet against its comp
 
-**Still open on mobile:** the SHEET itself has no mobile treatment. It renders and scrolls
-inside its own container at 390px, but there is no fit, no zoom and no phone layout —
-`RefDiff Gallery Mobile.dc.html` is the design for that and it is unbuilt (426 findings,
-confidence 0.00). Part of chunk 3's remaining convergence, not a separate chunk.
+Shipped and working; not converged. Five measured iterations, stopped on the loop's own
+bound:
 
-### 2. CHUNK 5 — the Library rebuilt to the comp
+| iteration | change | findings | conf |
+| --- | --- | --- | --- |
+| baseline | the standalone stub | 777 | **0.00** |
+| 1 | cells in the panes | 1842 | 0.61 |
+| 2 | rail groups by cause | 697 | 0.40 |
+| 3 | design pane + axes | 730 | 0.40 |
+| 4 | the comp's cell metric | 678 | 0.40 |
+| 5 | content centred in its track | **627** | 0.40 |
 
-Plan § "Chunk 5", fully specified from the comp. Its six prerequisites are ordered there;
-two are traps worth repeating: the demo root must learn to emit a variant SET
-(`<entryId>--<slug>` dirs) or the comp cannot be measured against the app at all, and that
-fixture change **moves the two old Library pairs' numbers**, so it re-baselines them in the
-same change; and `icon-subset.mjs` must run again for `chevron_right`, `account_tree`,
-`folder`, `filter_alt`, `unfold_more`.
+Criticals went 245 → 97; impl-only elements 1163 → 92; the app draws 499 leaves against the
+comp's 648.
+
+**The structural finding, which decides where to work next.** Confidence sat at 0.40
+(x 0.71 / y 0.40) through all five, and two geometry hypotheses failed to move it. The
+anchor diagnostic (§1a: intersect the unique texts in `elements.json`) explains why:
+**46 anchors, and NOT ONE comes from the grid.** They are all chrome and rail — `DESIGN`,
+`IMPLEMENTATION`, `Off`/`Onion`/`Blink`/`Diff`, and from the causes rail `36 cells`,
+`15 cells`, `Oswald 500`, `Montserrat 700`, `#4F46E5`, `0 16px`, which match the comp's rows
+exactly and are the strongest confirmation that rail is right. **A cross-product's labels
+REPEAT by construction** (Primary heads three rows, `sm` heads four) and only text unique on
+both sides can anchor, so **a sheet's grid can never supply anchors**. A gallery pair's
+confidence is decided entirely by its chrome and rail, and y 0.40 is their VERTICAL metrics.
+That is the next lever, and it is fine-tuning rather than structure.
+
+**One cheap win the same diagnostic found, and it is on the FIXTURE not the app:** the
+one-off causes ship with empty expected/actual (`fixtures/make-demo-root.ts`,
+`{ ...cell.oneoff, expected: {}, actual: {} }`) while the comp shows `1px → 2px`,
+`0.45 → 0.38`, `6px → 4px`. Six anchors left on the table by fixture data.
+
+**Also open on mobile:** the sheet has no mobile treatment. It renders and scrolls inside
+its own container at 390px with no page-level horizontal scroll, but there is no fit, no
+zoom and no phone layout. `RefDiff Gallery Mobile.dc.html` IS that design and it is unbuilt
+(426 findings, confidence 0.00, `x 0.67 / y 0.06` — 311 comp leaves against the app's 87).
+
+**And `#view-gallery` survives only as the un-layoutable fallback** (a root with no set
+index, or a `gallery` naming a property the set lacks). Worth deleting once the sheet is
+trusted; its CSS and section are dead weight otherwise.
 
 ### One quick win left, independent of the design
 
@@ -314,8 +382,9 @@ All four comps exist (Library Groups + Gallery, each with a mobile half). Frames
 and which need `scope: ".cc-theme-dark"` are tabulated in the plan's chunk 0 section. **The
 two Library Groups comps are deliberately NOT on disk**: they came back from `get_file`
 below the persist-to-disk threshold, and a reference comp must never be hand-transcribed —
-a typo becomes a false finding in every future measurement of its pair. Fetch them when
-chunk 5 starts, decoding from the persisted tool result.
+a typo becomes a false finding in every future measurement of its pair. **Chunk 5 starts by
+fetching them — see § "What REMAINS" step 1, prerequisite 1, which carries the project id,
+the paths, the frames and the `scope` the mobile pair needs.**
 
 ### Needs research / open questions
 1. **Set-level notes** (a note owned by no single cell): allow with a set-level file, or
@@ -332,7 +401,7 @@ chunk 5 starts, decoding from the persisted tool result.
 ```bash
 cd ~/development/refdiff
 pnpm build                      # or: pnpm dev  (tsc --watch; the CLIs exec dist/)
-pnpm -r test                    # 641 tests (364 core + 277 annotator)
+pnpm -r test                    # 666 tests (364 core + 302 annotator)
 pnpm typecheck
 
 # FIRST, before the first compare of a session — halts on a stale build/server
@@ -367,9 +436,13 @@ refdiff compare --manifest /tmp/probe.manifest.mjs --pair nope --out /tmp/probe-
 node packages/annotator/scripts/icon-subset.mjs --check   # exit 1 = out of date
 node packages/annotator/scripts/icon-subset.mjs           # writes face + icon-names.ts
 
-# look at the Library against a real 194-pair root
+# look at the Library and the SHEETS against the real 194-pair DS root. --host 0.0.0.0 to
+# reach it off the box (this VM is 10.11.63.63). The DS root now HAS its 14 set indexes, so
+# every group's Sheet button works: e.g. #/set/ds-button-fill (41 measured / 1 skipped /
+# 6 absent), #/set/ds-checkbox (45/27/0), #/set/ds-text-field (6/51/6 — mostly skipped
+# because the DS manifest's `only:` filter measures 6 of 57 variants ON PURPOSE).
 refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
-  --serve --read-only --port 7380
+  --serve --read-only --host 0.0.0.0 --port 7380
 ```
 
 ## Key facts / decisions
@@ -455,8 +528,27 @@ refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
   refdiff **capture error** (`{"kind":"selector-not-found"}`) on whichever pair runs, which
   reads like a wrong selector. `gallery-view.ts` has `gEscape` for that reason, and
   `packages/annotator/test/embedded-modules.test.ts` guards the class.
+- **Do NOT stop one annotator with a `kill` matched on `annotator/dist/cli.js`.** That
+  pattern matches EVERY instance, so restarting the fixture server on 7379 silently killed
+  the DS server on 7380 — four times in one session, and it was reported as running each
+  time because nobody re-checked. Match the PORT:
+  `ps -eo pid,args | grep -F "port 7380" | grep -F annotator/dist/cli.js | grep -v grep`.
+- **A CSS CLASS NAME can collide across the two views, and no guard sees it.** The sheet's
+  cause rows shipped as `.crow`, which is the LIBRARY CARD's row class (`index-view.ts`
+  draws `crow name-row`, `crow cmeta`, `crow foot`); one stylesheet serves both views, so
+  the rail's padding, border and pointer cursor landed on every Library card row and
+  `closest('.crow')` matched them. Renamed `.causerow`. The declaration guard reads JS
+  names only — **when adding a class, grep the other renderers for it.** Found by a probe
+  that clicked the first such row and got an invisible Library one.
 - **A BACKTICK inside `app-shell.ts`'s `APP_BOOT` or `INDEX_CSS` closes the template
-  literal** and the rest of the file parses as TypeScript — five `TS1005` errors pointing at
+  literal** — and the same is true of `render.ts`'s `CLIENT` / `EMBEDDED_BOOT`. It fired
+  FOUR times on 2026-09-04, always by writing an identifier in a comment the way this repo
+  writes identifiers everywhere else. A scanner for it was written and REMOVED (see
+  `packages/annotator/test/embedded-modules.test.ts`): finding a block's body needs to know
+  which backtick is its terminator, which is the question itself, and parity fails because
+  the common case is TWO backticks in one comment. **Typecheck catches every instance; only
+  the message is bad. On a burst of `TS1005` in either file, do not read the reported line —
+  count the backticks in the named block first.** and the rest of the file parses as TypeScript — five `TS1005` errors pointing at
   your comment, not at the backtick. No backticked identifiers in comments in there.
 - **DesignSync CAN write to the design project** (`5a1a95c3-beee-457a-815b-ef6f6bf3e06a`,
   `PROJECT_TYPE_PROJECT`, `canEdit: true`) even though `list_projects` returns nothing — it
