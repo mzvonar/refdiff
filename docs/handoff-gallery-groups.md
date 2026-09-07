@@ -12,10 +12,14 @@ per-cell sub-rows, and the rest of the six-column anatomy came with them. Four m
 iterations: **762 -> 572 -> 549 -> 548 findings, confidence 0.30 -> 0.50** on
 `refdiff-library-groups-desktop`; the mobile half's first run is **487 / 0.77**.
 
-**THREE THINGS ARE OPEN AND ALL THREE ARE MATO'S CALL, not defects** — § "What REMAINS"
-step 1. The one he already flagged (do the old Library pairs survive?) now has numbers: they
-went from 18 / 16 findings at confidence 0.88 / 1.00 to **489 / 335 at 0.14 / 0.67**, because
-they measure the grouped table against a comp that draws the card grid it replaced.
+**Mato answered all four of chunk 5's questions on 2026-09-07** (§ "What REMAINS" step 1).
+The old Library pairs are **DISABLED, not deleted** — a new manifest key, `disabled: "<why>"`
+(`b874e4a`), because they had gone from 18 / 16 findings at confidence 0.88 / 1.00 to
+**489 / 335 at 0.14 / 0.67** against the card-grid comp the table replaced. Groups stay
+**all-collapsed** with the deviation to be declared. `pairCard` and friends stay unwired for
+now. **One answer needs re-asking**, because the measurement that framed the question was
+wrong: § "What REMAINS" (c) carries the correction — the Measured span the fixture was
+supposed to unlock is already implemented and drawn, and the real cause is ROW ORDER.
 
 **This does NOT supersede `docs/handoff-2026-09-04.md`** — that one is the canonical repo
 handoff for the annotator-redesign workstream (session 21, the mobile-toolbar pair). This
@@ -24,10 +28,10 @@ file covers only the Library-groups / gallery workstream, whose plan is
 
 ## State of play
 
-**Chunks 1, 2, 3 and 4 are SHIPPED; chunk 5 is PART-SHIPPED. TWENTY-FIVE commits on `main`,
+**Chunks 1, 2, 3 and 4 are SHIPPED; chunk 5 is PART-SHIPPED. TWENTY-SEVEN commits on `main`,
 nothing pushed** (Mato has not asked). `4b57f12` was the workstream's base; the last CODE
-commit is **`90d0aba`**, and HEAD is the docs commit carrying this file — which is why the
-table below stops at `90d0aba` and cannot name its own sha.
+commit is **`b874e4a`**, and HEAD is the docs commit carrying this file — which is why the
+table below stops at `b874e4a` and cannot name its own sha.
 
 | sha | what |
 | --- | --- |
@@ -55,10 +59,13 @@ table below stops at `90d0aba` and cannot name its own sha.
 | `cf27d95` | docs: point the handoff at chunk 5, the Library rebuild |
 | `1b62208` | chore(design): the Library Groups comps on disk, icon subset 101 → 112 — chunk 5 prereqs |
 | `90d0aba` | feat(annotator): the Library rebuilt as the comp's six-column table — chunk 5 |
+| `4ee22b8` | docs: chunk 5 part-shipped — the table, four measured iterations, three open questions |
+| `b874e4a` | feat(core): a manifest pair can be DISABLED — declared, deliberately not measured |
 
-**685 tests green** (364 core + 321 annotator), typecheck and build clean, `icon-subset.mjs
---check` in sync at **112 glyphs**, `pair-coverage` green both directions with **ZERO
-waivers**, **eleven** manifest pairs. Re-measured at HEAD `90d0aba`, not inherited.
+**695 tests green** (372 core + 323 annotator), typecheck and build clean, `icon-subset.mjs
+--check` in sync at **112 glyphs**, `pair-coverage` green in all four directions with **ZERO
+waivers** and **one** `unmeasured` comp (`RefDiff Library.dc.html`, both its pairs disabled),
+**eleven** manifest pairs of which **nine are enabled**. Measured at HEAD, not inherited.
 
 
 **Mato confirmed the Gallery comp SETTLED on 2026-09-04** (both comps byte-identical to the
@@ -323,16 +330,17 @@ None of these is a defect and none blocks the other work. All three were reached
 measurement, and each one changes what "converged" means for this pair, so guessing at them
 would waste the loop's remaining iterations.
 
-**(a) Do the two OLD Library pairs retire?** — the one Mato already flagged, now with
-numbers. `refdiff-library-desktop` went **18 → 489 findings, confidence 0.88 → 0.14**;
-`refdiff-library-mobile` **16 → 335, 1.00 → 0.67**. 299 and 146 of those sit under the
-declared cause "Library comp predates groups". The desktop one is below the 0.5 gate, so per
-the skill's §1a its position / size / missing-element findings are mostly artefacts — it is
-not a usable gate any more. They were kept on 2026-09-04 because they were the only comp
-matching the app, and chunk 5 ended that. Retiring them means dropping both pairs and
-waiving `RefDiff Library.dc.html` in `pair-coverage.test.ts` with the reason (or deleting the
-comp). **Recommendation: retire.** A pair whose comp draws a surface the app no longer has
-measures nothing and trains a reader to read its number as weather.
+**(a) Do the two OLD Library pairs retire?** — **ANSWERED 2026-09-07: DISABLED, not deleted.**
+Mato's answer was a better option than the three offered, and it is now a manifest feature:
+`disabled: "<why>"` (`b874e4a`). The pairs and the comp stay declared, nothing runs them, and
+re-enabling is deleting one key. The reason is REQUIRED and `disabled: true` is refused,
+because a pair silently not running is the worst failure this tool has. `compare` prints
+`skipping <id>: disabled — <reason>` on every run, and `pairCoverage` gained an `unmeasured`
+bucket asserted EXACTLY against `DISABLED_COMPS` — a disabled pair satisfies "the design is
+declared" while failing "the pair is measured", and keeping those apart is the whole reason
+that guard exists.
+The numbers behind it: `refdiff-library-desktop` went **18 → 489 findings, confidence
+0.88 → 0.14**; `refdiff-library-mobile` **16 → 335, 1.00 → 0.67**.
 
 **(b) Do groups open by default?** The comp opens TWO (`button` and `foundations`); chunk 1
 chose always-collapsed, and the plan's open question 3 answered it that way with reasoning
@@ -342,19 +350,50 @@ otherwise, so that trigger has fired.** This is the largest single remaining cau
 content of an expanded group plus the sets the fixture does not have (`Compare` ×10,
 `chevron_right` ×21, `Primary · sm · Active`, `REGRESSION`, per-cell `r45`/`history`). A
 principled version of the comp's behaviour would be "the first group is open", not "the one
-called button" — predictable, and not the tuned number the plan objected to. **Proposing, not
-proceeding**, per the repo's own rule that a settled decision may be amended by a measurement
-but the agent stops at the proposal.
+called button" — predictable, and not the tuned number the plan objected to.
+**ANSWERED 2026-09-07: keep all-collapsed, and DECLARE the deviation.** Chunk 1's answer
+stands. The declaration itself is NOT yet written, and deliberately so — see the correction
+under (c): the collapse findings and the fixture-shape findings sit in the same region of the
+comp and cannot be separated by any region or text rule against today's fixture, so declaring
+one now would mis-attribute the other's findings. The skill is explicit that an `explain`
+rule's `types` is "the safety: name only what the cause can physically produce", and a region
+rule does not lapse. The declaration lands WITH (c).
 
-**(c) Does `fixtures/make-demo-root.ts` grow to the comp's shape?** The comp draws **14
-groups, 194 cells, mixed vintages, a hierarchy-only node and 13 sheet buttons**; the demo
-root has **1 set (`ds-button`, 41 measured) + 12 lone items, all one run**. That is DATA, not
-drift — skill rule 3 — and it is why the Measured column's whole span shape
-(`r45 → r47`, `arrow_right_alt`, `8 stale`, the `history` pill) is reported missing: no group
-in the fixture mixes runs, so the app correctly draws the single-`r<n>` shape instead. Growing
-the fixture is the only way those become measurable, and it MOVES the two old Library pairs
-again (shared fixture), which is why it is entangled with (a). Chunk 3's prerequisite 4 has
-the precedent.
+**(c) Does `fixtures/make-demo-root.ts` grow to the comp's shape?** Mato said yes, to the
+comp's FULL shape. **NOT DONE, and the question needs re-answering, because the measurement
+that framed it was wrong. This paragraph corrects a false claim an earlier revision of this
+very file made.**
+
+The false claim was: *"no group in the fixture mixes runs, so the app correctly draws the
+single-`r<n>` shape instead"*, offered as the reason the Measured column's span shape reports
+missing. **It is not true.** The fixture has carried mixed vintages since chunk 3
+(`SET_STALE`, `SET_OLD = 45`, `SET_NEWEST = 47`) and the app DRAWS the span correctly —
+measured in run 6's `elements.json`: `history`, `r45`, `arrow_right_alt`, `r47` and
+`yesterday · 3 stale` are all present on the impl side, at **y=841**. The comp draws its span
+at **y=201**. The whole difference is ROW ORDER: the comp's first row is `Button`, a set,
+while the app sorts newest-run-first (`sortEntries`) and puts `ds-button` twelve rows down
+behind the lone items. `3 stale` against the comp's `8 stale` is honest fixture data, and the
+app's 3 matches its own `SET_STALE`.
+
+Two consequences, and together they shrink what growing the fixture buys:
+
+1. **The biggest item cited for growing it was already built.** The span shape needs no
+   fixture change at all — it needs the ROWS to line up.
+2. **The lone items can never leave.** `onboarding-document-step` and its eleven siblings are
+   the run dirs the `refdiff-compare-*` pairs capture through `COMPARE_ROUTE`; deleting them
+   breaks four other pairs. The comp draws no lone items, so **~12 rows will mismatch
+   whatever the fixture does** — which is the same shape as the declared cause the old pairs
+   already carried ("root holds 53 pairs, the comp's demo 12").
+
+So the useful version of (c) is not "13 sets" but **"can the app's row ORDER be made to match
+the comp's, and are the lone items declared or hidden"** — and that is a design question about
+the Library, not a fixture chore. The fixture generator is also written around ONE set
+(`SET_ENTRY`, `SET_TONES`, `setCells`, `setIndexJson`, all exported and depended on by tests),
+so generalising it to thirteen is a chunk in itself; the plan sized prerequisite 4 that way
+too. **Proposed and stopped here**, per the repo's rule that a settled decision may be
+amended by a measurement that was not available when it was made, and that the agent proposes
+rather than proceeds. Cost of the growth is not the blocker — the fixture is 464 KB and a
+variant dir is a 2.4 KB `findings.json` with no PNG, so 194 cells is ~470 KB.
 
 **What is deliberately left RED, and should stay that way for now:** the section `path` line
 (`Actions / Button`) and the hierarchy-only row with its `folder` children. Chunk 4 shipped
@@ -366,11 +405,13 @@ opposite case and is a genuine design ask: run ordinals are per pair, so the app
 root-level run identity to print.
 
 **The residual, for whoever picks the loop back up.** Confidence reached the 0.5 gate exactly
-on run 3, so the pixel channel now runs (3.30% unexplained frame remainder). The desktop
-pair's next lever is (b) and (c), not more CSS: with 280 of 297 missing elements below the
-first group row, no amount of row styling moves the number until the app draws expanded rows
-and the fixture has sets to draw. The mobile half at 0.77 is the healthier of the two and has
-had exactly one run — it has never been iterated at all.
+on run 3, so the pixel channel now runs (3.30% unexplained frame remainder); run 6 re-measured
+**549 findings at 0.50, `+0 / −0`** after the `disabled` work, so that is the settled baseline.
+The desktop pair's next lever is ROW ORDER, not CSS and not more fixture rows — see (c). With
+280 of 297 missing elements below the first group row, and the app drawing the right things in
+a different order, styling moves nothing. **The mobile half at 0.77 is the healthier of the
+two and has had exactly one run — it has never been iterated at all, and it is the cheapest
+place to spend the next iteration.**
 
 ### 2. CHUNK 3's residual convergence — the sheet against its comp
 
@@ -510,6 +551,14 @@ refdiff-annotator ~/development/ds/repos/population-registry/out/refdiff \
 
 ## Key facts / decisions
 
+- **A pair can be DISABLED, and the reason is mandatory.** `disabled: "<why>"` on a manifest
+  entry keeps the declaration and the comp's linkage while running nothing; `disabled: true`
+  is REFUSED, naming the entry, because a pair silently not running is the failure that
+  reports itself nowhere. It diverts into `ManifestParse.skipped`, so `compare` prints
+  `skipping <id>: disabled — <reason>` every run, and naming only disabled ids in `--pair`
+  exits 2. `pairCoverage`'s `unmeasured` bucket is where such a comp shows up — asserted
+  exactly against `DISABLED_COMPS` in `pair-coverage.test.ts`, so disabling or re-enabling is
+  a deliberate edit. Re-enabling is deleting one key.
 - **The gallery is composed, never re-compared.** A whole-sheet compare would put one
   alignment fit across 41 cells and the `pixel-region/frame` noise (firing 194/194 on the DS
   today) would swallow every real finding. The unit stays one variant component ↔ one story

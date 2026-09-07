@@ -610,6 +610,45 @@ the measurement that proved it: the delta), **accepted** (each with its
 reason), **needs a human** (each with its measurement and the question).
 Never describe a screenshot; quote `expected` / `actual`.
 
+## Turning a pair OFF — `disabled`
+
+`disabled: "<why>"` keeps a pair in the manifest and runs nothing. The case it
+exists for: a comp is superseded by a rebuild, so its pair now measures the new
+surface against the old design and reports hundreds of findings that mean
+nothing. Deleting the pair loses the declaration and the comp's linkage;
+leaving it enabled trains everyone to read its number as weather.
+
+```js
+{
+  id: "refdiff-library-desktop",
+  disabled: "RefDiff Library.dc.html draws the card grid chunk 5 replaced — 489 findings at confidence 0.14",
+  design: { file: "RefDiff Library.dc.html", frame: "Library" },
+  app: { source: "live", route: "/", viewport: { width: 1180, height: 800 } },
+}
+```
+
+**The reason is REQUIRED and `disabled: true` is refused**, naming the entry: a
+pair that silently does not run is the one failure that reports itself nowhere,
+so the single thing a disabled pair must carry is why. Re-enabling is deleting
+one key.
+
+- It lands in `ManifestParse.skipped`, so `compare` prints
+  `skipping <id>: disabled — <reason>` on **every** run. Naming only disabled
+  ids in `--pair` exits 2 with "no runnable pairs selected", after those lines.
+- **Its run dir is left exactly as it was.** Nothing is deleted, so the
+  annotator still lists the last result it had — a disabled pair's card is a
+  frozen measurement, not a missing one.
+- It is read BEFORE the design and impl specs are validated, so a disabled pair
+  whose spec has rotted does not fail the whole manifest. The cost: a typo
+  inside a disabled entry waits until it is re-enabled.
+- **A coverage guard must treat it as a third state.** A disabled pair satisfies
+  "the design is declared" while failing "the pair is measured", and keeping
+  those two facts apart is what such a guard is for — counting it as paired puts
+  a silent hole in the check written to close one. This repo's
+  `pairCoverage` reports it under `unmeasured`, asserted EXACTLY against a
+  `DISABLED_COMPS` list rather than with `contains`, because an empty list is
+  indistinguishable from a clean tree.
+
 ## Configuring a pair — the `ignore` block
 
 Every pair in a manifest may carry an `ignore` block. It is the durable place

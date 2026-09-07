@@ -5,6 +5,27 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-07 — I wrote a CAUSE into a handoff without measuring it, and it framed a decision
+
+- **Context:** chunk 5's handoff explained a missing Measured-column span as *"no group in the
+  fixture mixes runs, so the app correctly draws the single-`r<n>` shape instead"*. That sentence
+  was reasoning, not measurement, and it was **false**: the fixture has carried `SET_STALE` /
+  `SET_OLD = 45` / `SET_NEWEST = 47` since chunk 3, and the app draws the span correctly. One query
+  against the run's own `elements.json` showed `history`, `r45`, `arrow_right_alt`, `r47` and
+  `yesterday · 3 stale` all present on the impl side — at y=841 where the comp draws them at y=201.
+  The real cause is ROW ORDER: the comp's first row is a set, the app sorts newest-run-first.
+- **Lesson:** the rule "every claim is a number from `findings.json`" is obeyed for FINDINGS and then
+  quietly abandoned for CAUSES. A finding says *what* differs and is always measured; the *why* is
+  written from the model's head, reads with the same authority in a handoff, and nothing checks it.
+  **The check is cheap and specific: a missing-element claim of the form "the app does not draw X" is
+  falsified by grepping the impl side of `elements.json` for X.** It costs one query and it is the
+  difference between "unimplemented" and "implemented, in the wrong place" — which are opposite
+  instructions to the next reader. Worse here: the false cause was used to frame an owner decision,
+  which was answered on it, and the answer then had to be re-opened.
+- **Candidate home:** `SKILL.md` § 2 (classify every finding) — before recording a cause for a
+  `missing-element`, confirm the element is absent from the impl side rather than displaced. Pairs
+  with the existing anchor-diagnostic habit.
+
 ## 2026-09-07 — a generated file inside the scanned directory makes every false positive permanent
 
 - **Context:** `icon-subset.mjs` derives the glyph list by intersecting every quoted lowercase token
