@@ -5,6 +5,30 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-07 — dropping a dimension shortens a KEY, and a shortened key collides silently
+
+- **Context:** the variant sheet stopped drawing axes whose value never varies (a set narrowed to
+  `Theme=Dark, variant=light, Size=md` should not spend three axes saying so). The cell lookup keys
+  on the remaining props — and `ds-select-field`'s key became `State=Active` ALONE, which 58 of its
+  skipped variants share. `new Map(entries)` keeps the LAST, so a cell the pruner had classified
+  `unmapped` (the impl lacks it — a real coverage gap) was drawn `filtered` (out of scope). One
+  entry, two answers, and the gap vanished from the sheet.
+- **Lesson:** whenever a projection DROPS a dimension, every key derived from the remaining
+  dimensions gets weaker, and a `Map`/`Set` built on it silently collapses rows that were distinct
+  a moment earlier. The fix is not a better key, it is recognising that the projection defines a
+  SLICE: the lookups must be filtered to the pinned values, so only members of the slice can be
+  found at all. **Same family as the repo's existing "a set-valued assertion is blind to a new
+  member whose element key collides" rule — the mirror image: there a NEW member collided with an
+  existing one, here dropping a field made existing members collide with each other.**
+- **How it surfaced, which is the transferable part:** a projection was computed BEFORE the change
+  ("this should give 100% fill on 8 of 14 sets"), and the run afterwards said 86% on three of them.
+  Neither number was wrong to compute and neither test failed — the discrepancy between a
+  prediction and a measurement is what exposed it. **Predict the number before a mechanical change,
+  then diff prediction against result; a match is cheap and a mismatch is a bug you would not have
+  looked for.**
+- **Candidate home:** CLAUDE.md's set-valued-assertion rule, as its mirror; and `SKILL.md` §1b,
+  which now says a sheet with pinned properties is a slice.
+
 ## 2026-09-07 — a `waitFor` inside a conditionally-visible pane reports as an UNBUILT SURFACE
 
 - **Context:** `refdiff-gallery-mobile` waited on `#cells-impl .cellslot`. At 390px the

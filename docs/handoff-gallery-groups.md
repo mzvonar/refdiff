@@ -106,6 +106,27 @@ open fork below, and chunk 5, the Library rebuild.
   - **`refdiff-gallery-mobile` was broken and is fixed** — see § "What REMAINS" step 2's
     correction. It had been failing `selector-not-found` and its last numbers were being
     quoted as the surface's state.
+  - **AND A SECOND ROUND, same day (`b050cab`), because the first was not enough.** The owner
+    looked at `#/set/ds-button-stroke` and still saw holes: six rows of real comps and the
+    rest `Out of scope`. Removing `absent` had not touched them — an out-of-scope cell was
+    still holding its row open. So `filtered` draws no tile either, `pruneToOccupied` prunes
+    against what the sheet DRAWS rather than what the set declares, and **a property with one
+    value across the survivors stops being an axis** and is stated once in the title instead.
+    `ds-button-stroke` goes **6×10 with 36 out-of-scope tiles → 6×4, 24 cells, no gaps**,
+    titled `DS · Button / Stroke [variant=light · Size=md · Theme=Dark]`. Nine of fourteen
+    sets end at 100% fill; tiles drawn go **555 → 306** over the workstream, and 306 = 194
+    measured + 90 missing-in-impl + 22 pending.
+  - **The remaining gaps are honest sparsity, not layout.** `ds-chip` 75% (7×13),
+    `ds-dialog-header` 50% (it declares 8 of 16 combinations), `ds-button-fill` 88%,
+    `ds-alert` 96%. Those are combinations Figma does not draw, inside rows and columns it
+    does — no axis choice removes them, and `ds-dialog-header` was checked against every
+    property as the column axis.
+  - **A bug the MEASUREMENT caught and no test did.** Dropping the pinned axes shortens the
+    props key, so `ds-select-field`'s became `State=Active` alone — shared by 58 skipped
+    variants, and `new Map` keeps the last. A cell the pruner called `unmapped` was drawn
+    `filtered`, silently losing a coverage gap. `galleryCells` now filters both lookups to
+    the pinned SLICE. It surfaced because a projection was computed BEFORE the change (100%
+    on eight sets) and the run said 86% on three of them.
 
 - **CHUNK 5 — PART-SHIPPED: the Library is the comp's six-column table** (`1b62208`,
   `90d0aba`). Plan § "Chunk 5" carries the per-run table; this is the inventory.

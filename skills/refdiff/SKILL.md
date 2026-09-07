@@ -473,13 +473,28 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   distinction as a value (`SetIndexSkipped.kind`) so a consumer never parses the
   reason prose; a set index written before that field falls back to the
   `only:` / `omit:` prefix.
-  **A combination the design never declared draws NOTHING** — no tile, no
-  dotted outline, no note. It is the axes' cross-product minus everything
-  declared, a corner of a hypercube the designer never visited, and the sheet
-  drew 58 of them across those fourteen sets, which reads as a sheet full of
-  holes. The count survives in the summary's tail
-  (`23 of 91 combinations undeclared`) because the sparsity is a fact about the
-  SET; it is simply not a cell. **`precedence`: `only` / `omit` are tested
+  **The sheet draws only what a human can see in Figma, in scope.** Two kinds
+  of cell get no tile at all — no dotted outline, no note. `absent`, the axes'
+  cross-product minus everything declared, a corner of a hypercube the designer
+  never visited (58 of them across those fourteen sets). And `filtered`, which
+  the manifest narrowed away: declared in Figma, but not what this sheet is
+  about. Both counts survive in the summary's tail (`36 out of scope · 23 of 91
+  combinations undeclared`) because they are facts about the SET; they are
+  simply not cells.
+  **A row or column whose every cell is undrawn goes with them, and a property
+  with ONE value across the survivors stops being an axis** — it would draw a
+  row per option repeating the same value. Those values are not lost: the sheet
+  states them once, in its title (`DS · Button / Stroke [variant=light ·
+  Size=md · Theme=Dark]`). Measured: `ds-button-stroke` 6×10 with 36 "Out of
+  scope" tiles → **6×4, 24 cells, no gaps**; `ds-select-field` 7×10 → 7×1. Nine
+  of the fourteen sets end at 100% fill.
+  **A sheet with pinned properties is a SLICE, and its cell lookups must be
+  filtered to it.** Dropping an axis shortens the props key, so
+  `State=Active` alone can be shared by dozens of variants and a keyed lookup
+  keeps whichever came last — which silently redrew a coverage gap as
+  out-of-scope. The gaps that remain after all this are honest sparsity:
+  `ds-dialog-header` declares 8 of its 16 combinations and no layout choice
+  changes that. **`precedence`: `only` / `omit` are tested
   before the story selector, so a variant that is both out of scope and unmapped
   reports as `filtered` — "we did not look" is the honest answer when we did
   not.** A measured cell links to its own pair, because
