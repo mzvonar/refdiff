@@ -14,20 +14,25 @@ import {
   errorCopyText,
   escapeHtml,
   filterEntries,
+  cellRow,
+  filterExplainer,
   groupEntries,
-  groupHeader,
-  groupSheetLink,
+  groupRow,
+  groupRunSpan,
   groupWhen,
   isBroken,
   isFilterActive,
   isFoldable,
-  libraryList,
+  libraryTable,
   matchesFilter,
+  moreRow,
   openGroups,
   pairCard,
   pairCards,
   relativeWhen,
   sortEntries,
+  staleCells,
+  ROW_CAP,
   type BrokenPair,
   type LibraryGroup,
   type ListError,
@@ -220,7 +225,7 @@ describe("a pair whose findings.json could not be read", () => {
   it("keeps its place among the cards and counts toward the total", () => {
     const html = pairCards([pair(), broken, pair({ dir: "b", pair: "b" })], (p) => "#/" + p.dir, "desktop", NOW)
     expect(html.match(/class="card( broken)?"/g)).toHaveLength(3)
-    expect(countMessage(filterEntries([pair(), broken], DEFAULT_FILTER).length, 2)).toBe("2 of 2 comparisons")
+    expect(countMessage(filterEntries([pair(), broken], DEFAULT_FILTER).length, 2, 2, 2)).toBe("2 cells in 2 groups")
   })
 })
 
@@ -289,12 +294,14 @@ describe("the filter row", () => {
 
   it("offers the comp's chips minus Pending — refdiff has no run-in-progress state (gap 24)", () => {
     expect(SOURCE_CHIPS.map((c) => c.label)).toEqual(["Both sources", "Figma", "Claude Design"])
+    // The Library-groups comp RENAMED two of them, and both renames changed
+    // what the filter means — see STATE_CHIPS' own note.
     expect(STATE_CHIPS.map((c) => c.label)).toEqual([
       "Any state",
       "Failing",
       "Critical",
-      "Diverging",
-      "Low confidence",
+      "Regressed",
+      "Stale cells",
       "Has comments",
     ])
   })
@@ -318,20 +325,38 @@ describe("the filter row", () => {
   it("filters by state in refdiff's terms", () => {
     expect(dirs({ state: "fail" })).toEqual(["onboarding-document-step", "button"])
     expect(dirs({ state: "critical" })).toEqual(["onboarding-document-step", "button"])
-    expect(dirs({ state: "diverging" })).toEqual(["onboarding-document-step"])
-    expect(dirs({ state: "lowconf" })).toEqual(["onboarding-document-step"])
     expect(dirs({ state: "comments" })).toEqual(["onboarding-document-step"])
   })
 
+  // `Regressed` is NOT the retired `Diverging`. Both of these entries diverge
+  // (`introduced > resolved`); only the one whose delta carries a REGRESSION —
+  // a finding an earlier run had resolved and this one found again — matches.
+  it("filters by a fix come undone, not by a divergence", () => {
+    const diverging = pair({ dir: "d", delta: { introduced: 3, resolved: 1, regressions: 0 } })
+    const regressed = pair({ dir: "r", delta: { introduced: 3, resolved: 1, regressions: 2 } })
+    expect(filterEntries([diverging, regressed], { ...DEFAULT_FILTER, state: "regressed" }).map((e) => e.dir)).toEqual(["r"])
+  })
+
+  // `Stale cells` is NOT the retired `Low confidence`: it is a per-GROUP run
+  // property, so a low-confidence cell at its group's newest run does not match
+  // and a confident cell behind its group's newest does.
+  it("filters by staleness within the group, never by confidence", () => {
+    const entries = [
+      cell("ds-alert--a", { run: 4, confidence: 0.1 }),
+      cell("ds-alert--b", { run: 3, confidence: 0.99 }),
+    ]
+    expect(filterEntries(entries, { ...DEFAULT_FILTER, state: "stale" }).map((e) => e.dir)).toEqual(["ds-alert--b"])
+  })
+
   it("lists a broken run only under Any state — it has no state to filter by", () => {
-    for (const state of ["fail", "critical", "diverging", "lowconf", "comments"] as const) {
+    for (const state of ["fail", "critical", "regressed", "stale", "comments"] as const) {
       expect(matchesFilter(broken, { ...DEFAULT_FILTER, state })).toBe(false)
     }
     expect(matchesFilter(broken, { ...DEFAULT_FILTER, source: "figma" })).toBe(false)
   })
 
-  it("treats a first run as not diverging — there is nothing to diverge from", () => {
-    expect(matchesFilter(pair({ delta: undefined }), { ...DEFAULT_FILTER, state: "diverging" })).toBe(false)
+  it("treats a first run as not regressed — there is nothing to have come undone", () => {
+    expect(matchesFilter(pair({ delta: undefined }), { ...DEFAULT_FILTER, state: "regressed" })).toBe(false)
   })
 })
 
@@ -438,8 +463,10 @@ describe("groupEntries", () => {
     ]
     const groups = groupEntries(entries, { ...DEFAULT_FILTER, state: "fail" })
     expect(groups.map((g) => [g.id, g.cells.length, g.total])).toEqual([["ds-alert", 1, 2]])
-    // The head row still counts comparisons, not groups.
-    expect(countMessage(cellsShown(groups), entries.length)).toBe("1 of 3 comparisons")
+    // The head row counts CELLS and names the groups they sit in.
+    expect(countMessage(cellsShown(groups), entries.length, groups.length, 2)).toBe(
+      "1 of 3 cells · 1 of 2 groups",
+    )
     // Nothing matches anywhere: no groups at all, which is the empty state.
     expect(groupEntries(entries, { ...DEFAULT_FILTER, query: "nothing" })).toEqual([])
   })
@@ -542,123 +569,284 @@ describe("groupWhen — the vintage span, in the cards' own words", () => {
   })
 })
 
-describe("groupHeader", () => {
-  const g = (cells: PairSummary[], f = DEFAULT_FILTER) => groupEntries(cells, f)[0] as LibraryGroup
-
-  it("names the entry, counts its comparisons, and rolls up their severities", () => {
-    const ago = (ms: number) => new Date(NOW - ms).toISOString()
-    const html = groupHeader(
-      g([
-        cell("ds-button-fill--a", { critical: 1, major: 2, minor: 0, createdAt: ago(3 * 3_600_000) }),
-        cell("ds-button-fill--b", { critical: 0, major: 1, minor: 4, createdAt: ago(3 * 3_600_000 + 66_000) }),
-      ]),
-      false,
-      NOW,
-    )
-    expect(html).toContain('<span class="gname">ds-button-fill</span>')
-    expect(html).toContain('<span class="gcount">2 comparisons</span>')
-    expect(html).toContain('<span class="badge critical"><i class="dot"></i>Critical 1</span>')
-    expect(html).toContain('<span class="badge major"><i class="dot"></i>Major 3</span>')
-    expect(html).toContain('<span class="badge minor"><i class="dot"></i>Minor 4</span>')
-    expect(html).toContain('<span class="gwhen">3 h ago</span>')
-    expect(html).not.toContain("regressed")
-    expect(html).not.toContain("unreadable")
+describe("groupRunSpan — the Measured column, computed WITHIN a group", () => {
+  it("reports the range and how many cells are behind its top end", () => {
+    const span = groupRunSpan([cell("a--1", { run: 9 }), cell("a--2", { run: 10 }), cell("a--3", { run: 9 })])
+    expect(span).toEqual({ min: 9, max: 10, stale: 2, mixed: true })
   })
 
-  it("is the control that expands the group, and carries the state as aria-expanded", () => {
-    const cells = [cell("ds-alert--a"), cell("ds-alert--b")]
-    expect(groupHeader(g(cells), false, NOW)).toMatch(/^<button type="button" class="ghead" data-group="ds-alert" aria-expanded="false">/)
-    expect(groupHeader(g(cells), true, NOW)).toContain('aria-expanded="true"')
-    // One glyph for both states: the caret is rotated by CSS, because
-    // chevron_right is not in the icon subset (icon-names.ts).
-    expect(groupHeader(g(cells), true, NOW)).toContain('<span class="msi caret" aria-hidden="true">expand_more</span>')
+  it("is not mixed when a whole set ran in one go", () => {
+    const span = groupRunSpan([cell("a--1", { run: 2 }), cell("a--2", { run: 2 })])
+    expect(span).toEqual({ min: 2, max: 2, stale: 0, mixed: false })
   })
 
-  it("says how many of the set the filter left", () => {
-    const html = groupHeader(
-      g([cell("ds-checkbox--a", { notes: 2 }), cell("ds-checkbox--b", { notes: 0 }), cell("ds-checkbox--c", { notes: 0 })], {
-        ...DEFAULT_FILTER,
-        state: "comments",
-      }),
-      false,
-      NOW,
-    )
-    expect(html).toContain('<span class="gcount">1 of 3 comparisons</span>')
+  // A dir written before runs were numbered has no ordinal. Inventing an r0
+  // would print a confident number over a result that was never counted.
+  it("says nothing rather than inventing an ordinal, and ignores the cells that have none", () => {
+    expect(groupRunSpan([cell("a--1", { run: undefined })])).toEqual({
+      min: undefined,
+      max: undefined,
+      stale: 0,
+      mixed: false,
+    })
+    expect(groupRunSpan([cell("a--1", { run: undefined }), cell("a--2", { run: 5 })])).toEqual({
+      min: 5,
+      max: 5,
+      stale: 0,
+      mixed: false,
+    })
   })
 
-  it("surfaces a fix come undone, and a run nobody could read", () => {
-    const groups = groupEntries([
-      cell("ds-alert--a", { delta: { introduced: 2, resolved: 0, regressions: 1 } }),
-      { ...broken, dir: "ds-alert--b" },
-    ])
-    const html = groupHeader(groups[0] as LibraryGroup, false, NOW)
-    expect(html).toContain('trending_up</span>1 regressed</span>')
-    expect(html).toContain('warning</span>1 unreadable</span>')
+  it("never compares across groups — the DS root's r2 set is not stale against another's r10", () => {
+    // Measured 2026-09-04: ds-button-icon's eleven cells all sit at r2 while
+    // ds-button-fill is at r9/r10. A global newest would call all eleven stale.
+    const entries = [
+      cell("ds-button-icon--a", { run: 2 }),
+      cell("ds-button-icon--b", { run: 2 }),
+      cell("ds-button-fill--a", { run: 9 }),
+      cell("ds-button-fill--b", { run: 10 }),
+    ]
+    expect([...staleCells(entries)]).toEqual(["ds-button-fill--a"])
   })
 
-  it("says No findings for a clean set, as a card does", () => {
-    const html = groupHeader(
-      g([
-        cell("ds-chip--a", { critical: 0, major: 0, minor: 0, findings: 0, pass: true }),
-        cell("ds-chip--b", { critical: 0, major: 0, minor: 0, findings: 0, pass: true }),
-      ]),
-      false,
-      NOW,
-    )
-    expect(html).toContain('<span class="badge none">No findings</span>')
-  })
-
-  it("escapes the entry id — it comes from a directory on disk", () => {
-    const html = groupHeader(g([cell('a"<b>--1'), cell('a"<b>--2')]), false, NOW)
-    expect(html).not.toContain("<b>")
-    expect(html).toContain('data-group="a&quot;&lt;b&gt;"')
+  it("calls a lone item its own group of one, so it is never stale", () => {
+    expect([...staleCells([cell("solo", { run: 1 }), cell("other", { run: 9 })])]).toEqual([])
   })
 })
 
-describe("libraryList", () => {
+/* ------------------------------------------------- the comp's six columns -- */
+
+// A group as groupEntries builds one, so the renderers are exercised on the
+// real shape rather than on a literal that could drift from it.
+const grp = (dir: string, over: Partial<PairSummary> = {}, n = 3): LibraryGroup => {
+  const cells = Array.from({ length: n }, (_, k) => cell(dir + "--" + k, over))
+  const [g] = groupEntries(cells)
+  return g as LibraryGroup
+}
+
+describe("groupRow — the comp's six columns", () => {
+  it("draws the entry, its cell count, the roll-up and the Measured span", () => {
+    const g = grp("ds-button-fill", { critical: 1, major: 2, minor: 0, run: 10 })
+    const html = groupRow(g, false, "desktop", NOW)
+    expect(html).toContain('<span class="lname">ds-button-fill</span>')
+    expect(html).toContain('<div class="lcount mono">3 cells</div>')
+    // dot + COUNT in the severity colour, which is what the comp draws — not
+    // the card's "Critical 3" word-and-number badge.
+    expect(html).toContain('<span class="rb critical" title="Critical 3"><i class="dot"></i>3</span>')
+    expect(html).toContain('<span class="rb major" title="Major 6"><i class="dot"></i>6</span>')
+    expect(html).not.toContain('class="rb minor"')
+    expect(html).toContain('<span class="lrun-flat mono">r10</span>')
+  })
+
+  it("says Clean in the roll-up when a set has no findings at all", () => {
+    const g = grp("ds-tabs", { critical: 0, major: 0, minor: 0, findings: 0, pass: true })
+    expect(groupRow(g, false, "desktop", NOW)).toContain('<span class="rb clean" title="No findings">Clean</span>')
+  })
+
+  it("says how many of the set the filter left, not how many it holds", () => {
+    const cells = [
+      cell("ds-alert--a", { pass: false, critical: 2 }),
+      cell("ds-alert--b", { pass: true, critical: 0, major: 0, minor: 0, findings: 0 }),
+    ]
+    const [g] = groupEntries(cells, { ...DEFAULT_FILTER, state: "fail" })
+    const html = groupRow(g as LibraryGroup, false, "desktop", NOW)
+    expect(html).toContain('<div class="lcount mono">1 of 2</div>')
+    expect(html).not.toContain("2 cells")
+  })
+
+  it("draws the span with a history glyph on the older end when the group mixes vintages", () => {
+    const g = groupEntries([cell("ds-x--a", { run: 45 }), cell("ds-x--b", { run: 47 })])[0] as LibraryGroup
+    const html = groupRow(g, false, "desktop", NOW)
+    expect(html).toContain('<span class="lrun old"><span class="msi" aria-hidden="true">history</span>r45</span>')
+    expect(html).toContain("arrow_right_alt")
+    expect(html).toContain('<span class="lrun new">r47</span>')
+    expect(html).toContain("1 stale")
+  })
+
+  it("surfaces a fix come undone, and a run nobody could read", () => {
+    const g = groupEntries([
+      cell("ds-alert--a", { delta: { introduced: 0, resolved: 0, regressions: 2 } }),
+      { ...broken, dir: "ds-alert--b" },
+    ])[0] as LibraryGroup
+    const html = groupRow(g, false, "desktop", NOW)
+    expect(html).toContain("1 regressed")
+    expect(html).toContain("1 unreadable")
+  })
+
+  // The chunk-1 constraint, inverted by this comp: the sheet link was a SIBLING
+  // of a <button>, because an anchor inside a button is invalid. Here it is one
+  // of the row's six columns, so the row cannot be a button at all.
+  it("is a div with role=button, so the Open-sheet anchor can nest legally", () => {
+    const html = groupRow(grp("ds-button-fill"), true, "desktop", NOW)
+    expect(html).toContain('<div class="lrow open" data-group="ds-button-fill" role="button" tabindex="0" aria-expanded="true"')
+    expect(html).not.toContain("<button")
+    const row = html.slice(html.indexOf('class="lrow'))
+    expect(row.indexOf('class="lsheet"')).toBeGreaterThan(-1)
+    expect(row.slice(0, row.indexOf('class="lsheet"'))).not.toContain("</div></div></div>")
+  })
+
+  it("routes the sheet button to the entry's sheet, encoded, and names it for a screen reader", () => {
+    expect(groupRow(grp("ds-button-fill"), false, "desktop", NOW)).toContain('href="#/set/ds-button-fill"')
+    expect(groupRow(grp("a/b c"), false, "desktop", NOW)).toContain('href="#/set/a%2Fb%20c"')
+    expect(groupRow(grp("ds-chip"), false, "desktop", NOW)).toContain('aria-label="Open ds-chip as a variant sheet"')
+  })
+
+  // A lone item is one comparison that happens to sit in the same table. It is
+  // not a variant set, so there is no sheet to open and nothing to expand.
+  it("offers no sheet and no toggle for a lone item", () => {
+    const g = groupEntries([cell("refdiff-library-desktop")])[0] as LibraryGroup
+    const html = groupRow(g, false, "desktop", NOW)
+    expect(html).not.toContain("lsheet")
+    expect(html).not.toContain("role=\"button\"")
+    expect(html).toContain('class="lrow flat"')
+    expect(html).toContain('class="caret-gap"')
+  })
+
+  // Chunk 1 rotated ONE glyph because chevron_right was not in the icon subset;
+  // re-running icon-subset.mjs for these comps put it there (101 -> 112).
+  it("swaps the caret GLYPH rather than rotating one", () => {
+    expect(groupRow(grp("a"), true, "desktop", NOW)).toContain('<span class="msi caret" aria-hidden="true">expand_more</span>')
+    expect(groupRow(grp("a"), false, "desktop", NOW)).toContain('<span class="msi caret" aria-hidden="true">chevron_right</span>')
+  })
+
+  it("escapes the entry id — it comes from a directory on disk", () => {
+    const html = groupRow(grp('x"><script>'), false, "desktop", NOW)
+    expect(html).not.toContain("<script>")
+    expect(html).toContain("&quot;")
+  })
+})
+
+describe("cellRow — the sub-rows are CELLS, not chunk 1's cards", () => {
+  const span = { min: 45, max: 47, stale: 1, mixed: true }
+
+  it("draws a verdict dot, the capture at 34x24, the name, its badge and Compare", () => {
+    const html = cellRow(cell("ds-x--a", { run: 47, critical: 1 }), "#/ds-x--a", span, "desktop", NOW)
+    expect(html).toContain('<i class="vdot critical" aria-hidden="true"></i>')
+    expect(html).toContain('<div class="lcthumb"><img src="onboarding-document-step/impl.png"')
+    expect(html).toContain('<span class="cb critical">Critical</span>')
+    expect(html).toContain("Compare")
+    expect(html).toContain("chevron_right")
+    expect(html).toContain('href="#/ds-x--a"')
+  })
+
+  it("rings the dot green and says No findings when the cell is clean", () => {
+    const c = cell("ds-x--b", { critical: 0, major: 0, minor: 0, findings: 0, pass: true })
+    const html = cellRow(c, "#", span, "desktop", NOW)
+    expect(html).toContain('<i class="vdot clean" aria-hidden="true"></i>')
+    expect(html).toContain('<span class="cb none">No findings</span>')
+  })
+
+  // The comp names a cell by its VARIANT PROPS, which only the set index knows.
+  it("names a cell by its variant props when the set index is loaded, and by the pair id when it is not", () => {
+    const c = cell("ds-button--tone-primary_size-sm_state-default", { pair: "ds-button — tone=Primary" })
+    const names = new Map([[c.dir, "Primary · sm · Default"]])
+    expect(cellRow(c, "#", span, "desktop", NOW, names)).toContain(">Primary · sm · Default<")
+    expect(cellRow(c, "#", span, "desktop", NOW)).toContain("ds-button — tone=Primary")
+  })
+
+  it("pills a run behind the group's newest, and leaves the newest plain", () => {
+    const behind = cellRow(cell("ds-x--a", { run: 45 }), "#", span, "desktop", NOW)
+    expect(behind).toContain('class="lrun old"')
+    expect(behind).toContain("Measured in run r45")
+    expect(behind).toContain("2 runs behind")
+    expect(cellRow(cell("ds-x--b", { run: 47 }), "#", span, "desktop", NOW)).toContain('class="lrun new"')
+  })
+
+  it("lists an unreadable cell with its reason and nothing to open", () => {
+    const html = cellRow(broken, "", span, "desktop", NOW)
+    expect(html).toContain('class="lcell broken"')
+    expect(html).not.toContain("<a ")
+    expect(html).toContain("findings.json · Unexpected end of JSON input")
+  })
+})
+
+describe("libraryTable", () => {
   const href = (p: PairSummary) => "#/" + p.dir
-  const cells = [cell("ds-alert--a"), cell("ds-alert--b"), cell("ds-alert--c")]
 
-  it("renders a root of LONE ITEMS byte for byte the way the flat list did", () => {
-    // The annotator measures itself against the Library comp while serving the
-    // demo root, whose twelve pair ids carry no `--`. That pair moving would
-    // mean this change touched the ungrouped case; this is the assertion that
-    // says it did not, and it is the one the +0/−0 self-measurement mirrors.
-    const flat = [pair(), broken, pair({ dir: "button", pair: "Button" }), pair({ dir: "stepper", pair: "Stepper" })]
-    for (const layout of ["desktop", "mobile"] as const) {
-      expect(libraryList(groupEntries(flat), href, layout, NOW)).toBe(pairCards(flat, href, layout, NOW))
-    }
+  it("draws the comp's six column headers, in order, above the card", () => {
+    const html = libraryTable([grp("ds-alert")], href, "desktop", NOW)
+    expect(html.indexOf('class="lthead"')).toBeLessThan(html.indexOf('class="ltable"'))
+    expect([...html.matchAll(/<span>([^<]*)<\/span>/g)].slice(0, 6).map((m) => m[1])).toEqual([
+      "Component set",
+      "Source",
+      "Cells",
+      "Findings roll-up",
+      "Measured",
+      "",
+    ])
   })
 
-  it("wraps a set in a foldable section and draws NO cells while it is collapsed", () => {
-    const html = libraryList(groupEntries(cells), href, "desktop", NOW)
-    expect(html).toMatch(/^<section class="grp" data-group="ds-alert">/)
-    expect(html).toContain('aria-expanded="false"')
-    expect(html).not.toContain("gcells")
-    // Not hidden cards — none at all: on a 194-cell root that is 194 images
-    // the browser never has to fetch.
-    expect(html).not.toContain('class="card"')
-    expect(html).not.toContain("<img")
+  // The same decision chunk 1 made for the card grid: on a 194-cell root a
+  // collapsed Library is 194 lazy images the browser never has to make.
+  it("draws NO sub-rows while a group is collapsed", () => {
+    const html = libraryTable([grp("ds-alert")], href, "desktop", NOW, new Set())
+    expect(html).toContain('class="lrow')
+    expect(html).not.toContain('class="lcell"')
   })
 
-  it("draws the set's cards inside the group when it is open, unchanged from the flat list", () => {
-    const groups = groupEntries(cells)
-    const html = libraryList(groups, href, "desktop", NOW, new Set(["ds-alert"]))
-    expect(html).toContain('<section class="grp open" data-group="ds-alert">')
-    expect(html).toContain('aria-expanded="true"')
-    expect(html).toContain('<div class="gcells">' + pairCards(cells, href, "desktop", NOW) + "</div>")
+  it("draws one sub-row per cell when the group is open", () => {
+    const html = libraryTable([grp("ds-alert")], href, "desktop", NOW, new Set(["ds-alert"]))
+    expect(html.match(/class="lcell"/g)).toHaveLength(3)
   })
 
-  it("mixes groups and lone items in one list, in the order the groups came", () => {
-    const html = libraryList(groupEntries([...cells, pair({ dir: "stepper", pair: "Stepper" })]), href, "desktop", NOW)
-    expect(html.indexOf('data-group="ds-alert"')).toBeLessThan(html.indexOf('data-pair="stepper"'))
-    expect(html).toContain('<a class="card" data-pair="stepper"')
+  it("caps an open group at ten rows and offers the rest", () => {
+    const g = grp("ds-checkbox", {}, 45)
+    const html = libraryTable([g], href, "desktop", NOW, new Set(["ds-checkbox"]))
+    expect(ROW_CAP).toBe(10)
+    expect(html.match(/class="lcell"/g)).toHaveLength(10)
+    expect(html).toContain("Show 35 more")
+    const all = libraryTable([g], href, "desktop", NOW, new Set(["ds-checkbox"]), new Set(["ds-checkbox"]))
+    expect(all.match(/class="lcell"/g)).toHaveLength(45)
+    expect(all).not.toContain("Show ")
   })
 
-  it("passes the layout through to the cards inside a group", () => {
-    const html = libraryList(groupEntries(cells), href, "mobile", NOW, new Set(["ds-alert"]))
-    expect(html).toContain('<img class="tile"')
-    expect(html).not.toContain('class="shot"')
+  it("mixes sets and lone items in one table, in the order the groups came", () => {
+    const html = libraryTable(
+      groupEntries([cell("ds-alert--a"), cell("ds-alert--b"), cell("stepper")]),
+      href,
+      "desktop",
+      NOW,
+    )
+    expect(html.match(/class="lgcard"/g)).toHaveLength(2)
+    expect(html.indexOf("ds-alert")).toBeLessThan(html.indexOf("stepper"))
+  })
+
+  it("never expands a group of one, whatever the caller passed", () => {
+    const html = libraryTable(groupEntries([cell("stepper")]), href, "desktop", NOW, new Set(["stepper"]))
+    expect(html).not.toContain('class="lcell"')
+  })
+
+  // The phone comp is one rounded card per group, so there is no table head and
+  // no bg1 wrapper — the cards ARE the list.
+  it("drops the table chrome on the phone and keeps the group cards", () => {
+    const html = libraryTable([grp("ds-alert")], href, "mobile", NOW, new Set(["ds-alert"]))
+    expect(html).not.toContain('class="lthead"')
+    expect(html).not.toContain('class="ltable"')
+    expect(html).toContain('class="lgcard"')
+    expect(html).toContain('class="lrhead"')
+  })
+
+  it("escapes the group id in the wrapper it keys by", () => {
+    const html = libraryTable([grp('a"><script>')], href, "desktop", NOW)
+    expect(html).not.toContain("<script>")
+  })
+})
+
+describe("moreRow / filterExplainer", () => {
+  it("names how many rows the cap is hiding", () => {
+    expect(moreRow(grp("ds-checkbox"), 35)).toContain("Show 35 more")
+    expect(moreRow(grp("ds-checkbox"), 35)).toContain('data-more="ds-checkbox"')
+  })
+
+  // The comp's own sentence, and it CONFIRMS chunk 1's filter design rather
+  // than describing a new one.
+  it("explains the filter semantics only while a filter is active", () => {
+    expect(filterExplainer(DEFAULT_FILTER)).toBe("")
+    const html = filterExplainer({ ...DEFAULT_FILTER, state: "fail" })
+    expect(html).toContain("Filters apply to cells.")
+    expect(html).toContain("Groups with no matching cell are hidden")
+    expect(html).toContain('id="lib-clear"')
+    expect(html).toContain("filter_alt")
   })
 })
 
@@ -710,60 +898,5 @@ describe("the list-load error box (plan, section C)", () => {
 
   it("escapes what it quotes — the error text and the root are not trusted markup", () => {
     expect(errorBox(err({ tech: "<b>x</b>", root: "<i>" }))).not.toMatch(/<b>x<\/b>|<i>/)
-  })
-})
-
-describe("groupSheetLink", () => {
-  const group = (id: string): LibraryGroup => ({
-    id,
-    set: true,
-    total: 3,
-    cells: [],
-    roll: { critical: 0, major: 0, minor: 0, regressed: 0, broken: 0, pass: 0 },
-  })
-
-  // The defect it fixes: chunk 3 shipped the sheet and nothing linked to it, so
-  // the surface was reachable only by typing a URL — which on a phone is not
-  // reachable at all. An unlinked feature reads as an unbuilt one.
-  it("routes to the entry's sheet, encoded", () => {
-    expect(groupSheetLink(group("ds-button-fill"))).toContain('href="#/set/ds-button-fill"')
-    expect(groupSheetLink(group("a/b c"))).toContain('href="#/set/a%2Fb%20c"')
-  })
-
-  it("names the entry for a screen reader, not just the glyph", () => {
-    const html = groupSheetLink(group("ds-chip"))
-    expect(html).toContain('aria-label="Open ds-chip as a variant sheet"')
-    expect(html).toContain('aria-hidden="true"')
-  })
-
-  it("escapes the id in the human-readable attributes", () => {
-    const html = groupSheetLink(group('x"><script>'))
-    expect(html).not.toContain("<script>")
-    expect(html).toContain("&quot;")
-  })
-
-  // A link INSIDE .ghead would both follow itself and toggle the group, because
-  // the group's click handler resolves closest('.ghead'). As a sibling it does not.
-  it("is a sibling of the header button, never a child of it", () => {
-    const html = libraryList([group("ds-alert")], () => "#", "desktop", Date.now(), new Set())
-    expect(html).toContain('<div class="ghead-row">')
-    const row = html.slice(html.indexOf('class="ghead-row"'))
-    const head = row.indexOf('class="ghead"')
-    const link = row.indexOf('class="gsheet-link"')
-    expect(head).toBeGreaterThan(-1)
-    expect(link).toBeGreaterThan(head)
-    // the button is closed before the link opens
-    expect(row.slice(head, link)).toContain("</button>")
-  })
-
-  it("every foldable group in a rendered list gets exactly one", () => {
-    const html = libraryList(
-      [group("a"), group("b"), group("c")],
-      () => "#",
-      "desktop",
-      Date.now(),
-      new Set(),
-    )
-    expect(html.match(/class="gsheet-link"/g)).toHaveLength(3)
   })
 })

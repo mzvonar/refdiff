@@ -150,6 +150,32 @@ const LIBRARY_IGNORE = {
 // never be matched and the two screenshots are always "extra". Content-shaped:
 // the pattern names the artboard's vocabulary and expires with the artboard
 // (regenerate: `grep -oh '>[^<{]*<' design/refdiff/parts/*.dc.html`).
+// The Library-GROUPS pairs (chunk 5). Deliberately far smaller than
+// LIBRARY_IGNORE: most of what that one excuses does not exist in this comp.
+// It has no Pending/Processing/Queued vocabulary (its chips are Any state /
+// Failing / Critical / Regressed / Stale cells / Has comments), and no
+// computer/smartphone design-preview switch — only the theme toggle. So the
+// only rule carried over is the wall-clock one, for the same reason (gap 27).
+const LIBRARY_GROUPS_IGNORE = {
+  // gap 27: the relative "when" renders against the wall clock, and the
+  // fixture's is fixed — regenerate with --now and the strings agree, but the
+  // minutes still tick while the run captures. The comp's own words
+  // ('12 min ago', '1 h ago', '3 h ago', 'yesterday') are the same shape.
+  //
+  // dataSlots, NOT textPatterns, and the tool said so itself: run 1 declared
+  // the pattern as a textPattern and printed
+  //   "7 suppressed finding(s) moved >=8px — a rule is hiding geometry",
+  // topping out at 83.5px. A textPattern excuses EVERY finding type about a
+  // matching string, so a whole column landing in the wrong place was being
+  // excused as a clock difference. dataSlots masks the volatile shape out of
+  // both strings and compares the remainder, keeping position, size, colour and
+  // typography compared — which is what actually wanted measuring here, since
+  // the Measured column's geometry is half of chunk 5's spec.
+  dataSlots: {
+    patterns: ["just now", "\\d+ (min|h|d) ago", "yesterday"],
+  },
+}
+
 const PLACEHOLDER_TEXT =
   "^(Veriflow|Need help\\?|Document|Selfie|Review|Verify your identity|Choose a document type and upload a clear photo of it\\.|Passport|Driver’s licence|ID card|Photo page with MRZ visible|Front and back sides|Drag your document here|PNG, JPG or PDF · up to 10 MB|Browse files|Continue|Save for later|Your documents are encrypted in transit and processed in line with GDPR\\. Verification usually takes under a minute\\.|directions_car|badge|public|upload_file)$"
 
@@ -357,7 +383,11 @@ export const manifest = [
     id: "refdiff-library-desktop",
     title: "RefDiff · Library (desktop)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
-    app: { source: "live", route: "/", viewport: { width: 1180, height: 800 }, waitFor: "#cards .card" },
+    // `.card` was chunk 1's thumbnail card and chunk 5 replaced it with `.lrow`.
+    // Named BOTH: this pair's comp still draws the card grid, but the app it
+    // captures no longer does, and a pair that cannot capture reports nothing
+    // at all rather than reporting the drift. See the retirement note below.
+    app: { source: "live", route: "/", viewport: { width: 1180, height: 800 }, waitFor: "#cards .card, #cards .lrow" },
     ignore: LIBRARY_IGNORE,
   },
   {
@@ -371,8 +401,54 @@ export const manifest = [
     id: "refdiff-library-mobile",
     title: "RefDiff · Library (mobile)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
-    app: { source: "live", route: "/", viewport: mobile, waitFor: "#cards .card" },
+    // Both halves: see the desktop pair's note — `.card` is gone from the app.
+    app: { source: "live", route: "/", viewport: mobile, waitFor: "#cards .card, #cards .lrow" },
     ignore: LIBRARY_IGNORE,
+  },
+  // RETIREMENT, OPEN: these two pairs now measure the grouped TABLE against a
+  // comp that draws the card grid it replaced. They were kept on 2026-09-04
+  // because they were the only comp matching the app; chunk 5 ended that. The
+  // call is the repo owner's — the numbers are in docs/handoff-gallery-groups.md.
+  {
+    // CHUNK 5 — the Library rebuilt as the comp's six-column TABLE. A REBUILD,
+    // not a delta: chunk 1 grouped the existing thumbnail card grid, and this
+    // comp replaces the grid outright. Until this pair existed the grouped
+    // Library had never been compared to its own design — both pairs above name
+    // `RefDiff Library.dc.html`, which predates grouping entirely, which is why
+    // they carry the declared cause "Library comp predates groups".
+    //
+    // A full-bleed comp, so it MUST carry a viewport or the dc-html adapter
+    // captures at its 1560px default canvas and every column lands offset.
+    // 1240x860 is the comp's own $preview.
+    //
+    // `waitFor` names BOTH the card grid and the table row on purpose: the grid
+    // is what the app draws today (so run 1 measures rather than erroring) and
+    // `.lrow` is what replaces it, so the pair keeps capturing across the
+    // rebuild instead of going dark in the middle of it.
+    id: "refdiff-library-groups-desktop",
+    title: "RefDiff \u00b7 Library with groups (desktop)",
+    design: { file: "RefDiff Library Groups.dc.html", frame: "Library \u2014 grouped" },
+    app: { source: "live", route: "/", viewport: { width: 1240, height: 860 }, waitFor: "#cards .card, #cards .lrow" },
+    ignore: LIBRARY_GROUPS_IGNORE,
+  },
+  {
+    // The phone half: its own 390x844 phone frame in a showcase canvas, NOT the
+    // responsive-at-a-narrow-viewport shape the two Library pairs above use.
+    //
+    // AND IT NEEDS NO `scope`, which contradicts what the plan and the handoff
+    // both predicted for it. Measured, because the prediction cost a capture:
+    // with `scope: ".cc-theme-dark"` the run failed `scope-not-found` and
+    // compared nothing. In `RefDiff Gallery Mobile.dc.html` and `RefDiff
+    // Mobile.dc.html` the `data-screen-label` sits on an OUTER showcase node
+    // and `.cc-theme-dark` is the phone inside it, so a scope is what picks the
+    // phone. In THIS comp the label is on the `.cc-theme-dark` node itself — the
+    // frame already IS the phone, and a descendant search for the phone finds
+    // nothing. Check where the label sits before copying a scope between comps.
+    id: "refdiff-library-groups-mobile",
+    title: "RefDiff \u00b7 Library with groups (mobile)",
+    design: { file: "RefDiff Library Groups Mobile.dc.html", frame: "Library \u2014 grouped (mobile)" },
+    app: { source: "live", route: "/", viewport: mobile, waitFor: "#cards .card, #cards .lrow" },
+    ignore: LIBRARY_GROUPS_IGNORE,
   },
   {
     // The phone's DEFAULT layout — the toolbars over and under the canvas, which is what this

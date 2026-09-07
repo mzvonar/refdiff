@@ -132,13 +132,29 @@ const SOURCE_LABELS: Record<string, [label: string, icon: string]> = {
  * The state chips, in refdiff's own terms. The comp also offers `Pending`
  * (Processing / Queued runs); refdiff has no run-in-progress state — a run dir
  * exists once `compare` wrote it — so that chip is not drawn (plan, gap 24).
+ *
+ * TWO were RENAMED by the Library-groups comp, and both changed what the
+ * filter MEANS rather than only how it reads:
+ *
+ *   `Diverging`       -> `Regressed`    `introduced > resolved` became
+ *                                       `delta.regressions > 0`
+ *   `Low confidence`  -> `Stale cells`  an alignment property became a
+ *                                       per-group RUN property
+ *
+ * The second is why `matchesFilter` takes a third argument. Staleness is not a
+ * property of a cell — it is `run < max(run) over its GROUP` — and run ordinals
+ * count PER PAIR, so there is no global newest to compare against (the DS root
+ * measured r2 for eleven `ds-button-icon` cells against r10 for
+ * `ds-button-fill`; a global max would call all eleven stale against a run they
+ * were never behind). `staleCells` does the grouping once; the predicate only
+ * asks whether this dir is in the answer.
  */
 export const STATE_CHIPS: readonly { id: LibraryFilter["state"]; label: string }[] = [
   { id: "all", label: "Any state" },
   { id: "fail", label: "Failing" },
   { id: "critical", label: "Critical" },
-  { id: "diverging", label: "Diverging" },
-  { id: "lowconf", label: "Low confidence" },
+  { id: "regressed", label: "Regressed" },
+  { id: "stale", label: "Stale cells" },
   { id: "comments", label: "Has comments" },
 ]
 
@@ -146,13 +162,45 @@ export interface LibraryFilter {
   query: string
   /** A `SOURCE_CHIPS` id. */
   source: string
-  state: "all" | "fail" | "critical" | "diverging" | "lowconf" | "comments"
+  state: "all" | "fail" | "critical" | "regressed" | "stale" | "comments"
 }
 
 export const DEFAULT_FILTER: LibraryFilter = { query: "", source: "all", state: "all" }
 
+const NO_STALE: ReadonlySet<string> = new Set()
+
+/**
+ * Which cells are BEHIND their own group's newest run — the `Stale cells`
+ * chip's corpus, and the `N stale` the Measured column counts.
+ *
+ * Grouped by `entryIdOf`, exactly as the Library groups, so a lone item is its
+ * own group of one and is never stale. A cell with no `run` at all is NOT
+ * stale: a dir written before runs were numbered has no ordinal, and treating
+ * "unknown" as "behind" would mark every pre-numbering run stale forever.
+ */
+export function staleCells(entries: readonly PairEntry[]): Set<string> {
+  const newest = new Map<string, number>()
+  for (const e of entries) {
+    if (isBroken(e) || e.run === undefined) continue
+    const id = entryIdOf(e.dir) ?? e.dir
+    const n = newest.get(id)
+    if (n === undefined || e.run > n) newest.set(id, e.run)
+  }
+  const out = new Set<string>()
+  for (const e of entries) {
+    if (isBroken(e) || e.run === undefined) continue
+    const n = newest.get(entryIdOf(e.dir) ?? e.dir)
+    if (n !== undefined && e.run < n) out.add(e.dir)
+  }
+  return out
+}
+
 /** The comp's `match`: source, then text, then state — a broken run only under "Any state". */
-export function matchesFilter(entry: PairEntry, f: LibraryFilter): boolean {
+export function matchesFilter(
+  entry: PairEntry,
+  f: LibraryFilter,
+  stale: ReadonlySet<string> = NO_STALE,
+): boolean {
   const q = f.query.trim().toLowerCase()
   if (isBroken(entry)) {
     if (f.source !== "all") return false
@@ -167,10 +215,14 @@ export function matchesFilter(entry: PairEntry, f: LibraryFilter): boolean {
       return !entry.pass
     case "critical":
       return entry.critical > 0
-    case "diverging":
-      return !!entry.delta && entry.delta.introduced > entry.delta.resolved
-    case "lowconf":
-      return entry.confidence < CONFIDENCE_GATE
+    case "regressed":
+      // The comp's own words: "cells whose findings were fixed in an earlier
+      // run and are back". Deliberately NOT the retired `Diverging` test
+      // (`introduced > resolved`) — a reader can see that on every row's own
+      // trend; a fix coming undone they cannot.
+      return !!entry.delta && entry.delta.regressions > 0
+    case "stale":
+      return stale.has(entry.dir)
     case "comments":
       return entry.notes > 0
     default:
@@ -179,12 +231,32 @@ export function matchesFilter(entry: PairEntry, f: LibraryFilter): boolean {
 }
 
 export function filterEntries(entries: PairEntry[], f: LibraryFilter): PairEntry[] {
-  return entries.filter((e) => matchesFilter(e, f))
+  const stale = staleCells(entries)
+  return entries.filter((e) => matchesFilter(e, f, stale))
 }
 
-/** The head-row count: `N of M comparisons` — M counts the unreadable ones too. */
-export function countMessage(shown: number, total: number): string {
-  return shown + " of " + total + " comparisons"
+/**
+ * The head-row count, in the comp's shape: it counts CELLS, and names the
+ * groups they sit in.
+ *
+ *   unfiltered   `194 cells in 14 groups`
+ *   filtered     `12 of 194 cells · 3 of 14 groups`
+ *
+ * `total` counts the unreadable runs too — a pair that cannot be read is still
+ * a cell the root holds, and dropping it from the denominator would make the
+ * list look complete when it is not.
+ */
+export function countMessage(
+  shownCells: number,
+  totalCells: number,
+  shownGroups: number,
+  totalGroups: number,
+): string {
+  if (shownCells === totalCells && shownGroups === totalGroups)
+    return totalCells + " cells in " + totalGroups + " groups"
+  return (
+    shownCells + " of " + totalCells + " cells · " + shownGroups + " of " + totalGroups + " groups"
+  )
 }
 
 /* ------------------------------------------------------------ pieces -- */
@@ -359,8 +431,46 @@ export interface LibraryGroup {
    * inside a 45-cell set still names the set the match is in.
    */
   total: number
-  /** Over `cells`, so the header's numbers reconcile with the cards under it. */
+  /** Over `cells`, so the header's numbers reconcile with the rows under it. */
   roll: GroupRollup
+  /** The Measured column: `r<min> -> r<max>` over this group's OWN cells. */
+  span: GroupRunSpan
+}
+
+/**
+ * The Measured column, computed WITHIN one group — which is the only place it
+ * is computable. `ComparisonReport.run` is the ordinal of a run OF THAT PAIR,
+ * so ordinals are incomparable across groups and there is no global newest.
+ * (The comp's module-level `NEWEST = 47` is fixture scaffolding and must not be
+ * read as data: measured on the DS root, `ds-button-icon`'s eleven cells all
+ * sit at r2 while `ds-button-fill` is at r9/r10.)
+ *
+ * `mixed` is what decides which of the comp's two shapes the column draws: a
+ * span with a `history` glyph on the older end, or a single `r<n>` with its
+ * `when` underneath. Both ends absent means no cell in the group carried an
+ * ordinal, and the column then says nothing rather than inventing an `r0`.
+ */
+export interface GroupRunSpan {
+  min?: number | undefined
+  max?: number | undefined
+  /** Cells strictly behind `max` — the `N stale` the column prints. */
+  stale: number
+  /** `min !== max`: the group genuinely mixes vintages. */
+  mixed: boolean
+}
+
+export function groupRunSpan(cells: readonly PairEntry[]): GroupRunSpan {
+  let min: number | undefined
+  let max: number | undefined
+  for (const c of cells) {
+    if (isBroken(c) || c.run === undefined) continue
+    if (min === undefined || c.run < min) min = c.run
+    if (max === undefined || c.run > max) max = c.run
+  }
+  let stale = 0
+  if (max !== undefined)
+    for (const c of cells) if (!isBroken(c) && c.run !== undefined && c.run < max) stale++
+  return { min, max, stale, mixed: min !== undefined && max !== undefined && min !== max }
 }
 
 function rollUp(cells: PairEntry[]): GroupRollup {
@@ -391,26 +501,39 @@ export function groupEntries(
   entries: PairEntry[],
   f: LibraryFilter = DEFAULT_FILTER,
 ): LibraryGroup[] {
+  // Staleness is per GROUP, so it is resolved over the whole list before the
+  // filter runs — a `Stale cells` filter that computed it over the survivors
+  // would answer a different question each time it narrowed.
+  const stale = staleCells(entries)
   const order: string[] = []
-  const byId = new Map<string, { set: boolean; cells: PairEntry[]; total: number }>()
+  const byId = new Map<string, { set: boolean; cells: PairEntry[]; all: PairEntry[] }>()
   for (const e of entries) {
     const entryId = entryIdOf(e.dir)
     const id = entryId ?? e.dir
     let g = byId.get(id)
     if (!g) {
-      g = { set: false, cells: [], total: 0 }
+      g = { set: false, cells: [], all: [] }
       byId.set(id, g)
       order.push(id)
     }
     if (entryId !== null) g.set = true
-    g.total++
-    if (matchesFilter(e, f)) g.cells.push(e)
+    g.all.push(e)
+    if (matchesFilter(e, f, stale)) g.cells.push(e)
   }
   const out: LibraryGroup[] = []
   for (const id of order) {
     const g = byId.get(id)
     if (!g || g.cells.length === 0) continue
-    out.push({ id, set: g.set, cells: g.cells, total: g.total, roll: rollUp(g.cells) })
+    // The span reads off ALL the group's cells, not the surviving ones: the
+    // column answers "when was this SET measured", which a filter does not move.
+    out.push({
+      id,
+      set: g.set,
+      cells: g.cells,
+      total: g.all.length,
+      roll: rollUp(g.cells),
+      span: groupRunSpan(g.all),
+    })
   }
   return out
 }
@@ -502,48 +625,6 @@ export function groupWhen(cells: PairEntry[], now: number): string {
   const from = relativeWhen(new Date(oldest).toISOString(), now)
   const to = relativeWhen(new Date(newest).toISOString(), now)
   return from === to ? to : from + " → " + to
-}
-
-/**
- * The group row: the entry id, how many comparisons it holds, the roll-up of
- * their severities, a regressed and an unreadable count when there are any,
- * and when they ran. A button, because it is the control that expands the
- * group — `aria-expanded` carries the state, and the caret is ROTATED by CSS
- * rather than swapped for a second glyph (the icon face is a subset of
- * `icon-names.ts`, and `chevron_right` is not in it).
- */
-export function groupHeader(g: LibraryGroup, open: boolean, now: number = Date.now()): string {
-  const id = escapeHtml(g.id)
-  const count =
-    g.cells.length === g.total
-      ? g.total + " comparisons"
-      : countMessage(g.cells.length, g.total)
-  const when = groupWhen(g.cells, now)
-  return (
-    '<button type="button" class="ghead" data-group="' +
-    id +
-    '" aria-expanded="' +
-    (open ? "true" : "false") +
-    '"><span class="msi caret" aria-hidden="true">expand_more</span><span class="gname">' +
-    id +
-    '</span><span class="gcount">' +
-    count +
-    '</span><span class="badges">' +
-    severityBadges(g.roll) +
-    "</span>" +
-    (g.roll.regressed > 0
-      ? '<span class="gregressed"><span class="msi" aria-hidden="true">trending_up</span>' +
-        g.roll.regressed +
-        " regressed</span>"
-      : "") +
-    (g.roll.broken > 0
-      ? '<span class="warn"><span class="msi" aria-hidden="true">warning</span>' +
-        g.roll.broken +
-        " unreadable</span>"
-      : "") +
-    (when ? '<span class="gwhen">' + escapeHtml(when) + "</span>" : "") +
-    "</button>"
-  )
 }
 
 /* -------------------------------------------------------------- cards -- */
@@ -645,76 +726,448 @@ export function pairCards(
 ): string {
   return pairs.map((p) => pairCard(p, isBroken(p) ? "" : href(p), layout, now)).join("")
 }
+/* --------------------------------------------------- the grouped table -- */
+
 /**
- * The Library's list: a foldable section per variant set, everything else the
- * bare cards it always was. A root whose pair ids carry no `--` renders byte
- * for byte what `pairCards` renders — which is what keeps the annotator's own
- * self-measurement (twelve lone items in the demo root) a real assertion
- * about this change rather than one nobody can see.
+ * The Library IS a table now, and that is a REBUILD rather than a delta.
  *
- * A collapsed group renders NO cells: not hidden ones, none at all. On a
- * 194-cell root that is 194 lazy images the browser never has to make.
+ * Chunk 1 grouped the existing thumbnail card grid; `RefDiff Library
+ * Groups.dc.html` replaces the grid with a six-column table
+ * (`Component set | Source | Cells | Findings roll-up | Measured | .`), so
+ * `groupHeader`, `libraryList` and `groupSheetLink` went and these took their
+ * place. **The whole PURE layer survived** — `entryIdOf`, `groupEntries`,
+ * `cellsShown`, `isFoldable`, `isFilterActive`, `openGroups`, `groupWhen` and
+ * the roll-up all keep their contracts, because the comp confirms every
+ * semantic they encode. What changed is the markup and two filter meanings.
+ *
+ * Why the group row is a `div role="button"` and not a `<button>`: `Open
+ * sheet` is one of the row's six COLUMNS in this comp, and an anchor inside a
+ * button is invalid HTML. Chunk 1 solved the same problem by making the sheet
+ * link a SIBLING of the `.ghead` button inside a `.ghead-row`, which was right
+ * for a card grid and cannot work for a table row. As a div the anchor nests
+ * legally; the cost is that the keyboard handling is ours (Enter / Space in
+ * `app-shell.ts`) rather than the browser's.
+ *
+ * The header row sits OUTSIDE the `bg1` card, as the comp draws it, so neither
+ * claims an ARIA table role: a table role whose header row is not inside it
+ * describes a structure that is not there, which is worse for a screen reader
+ * than the plain group of rows this actually is. (Do not write that role name
+ * as a quoted token in here — `icon-subset.mjs` scans every quoted lowercase
+ * word in this file against Google's glyph list, and it is one of them.)
  */
+
+/** The comp caps an expanded group at TEN rows and offers `Show N more`. */
+export const ROW_CAP = 10
+
+/** The six column headers; the action column is deliberately unlabelled. */
+export const TABLE_HEAD =
+  '<div class="lthead" aria-hidden="true">' +
+  ["Component set", "Source", "Cells", "Findings roll-up", "Measured", ""]
+    .map((h) => "<span>" + h + "</span>")
+    .join("") +
+  "</div>"
+
 /**
- * The way INTO a set's sheet, and the only one there is.
- *
- * Chunk 3 shipped the sheet at `#/set/<entryId>` and nothing linked to it, so the
- * surface was reachable only by typing a URL — which on a phone is not reachable
- * at all. An unlinked feature is indistinguishable from an unbuilt one, and it
- * was reported as "click any set group" by the very session that skipped the
- * link.
- *
- * A SIBLING of the `.ghead` button, never a child: nesting an anchor inside a
- * button is invalid, and the group's click handler resolves `closest('.ghead')`,
- * so a link inside the header would toggle the group as well as follow itself.
- * As a sibling it bubbles past `.ghead` and only changes the hash.
- *
- * Every group that gets a header is a SET (`libraryList` renders one only for a
- * foldable group), so the link is always meaningful. It is offered even when the
- * root holds no `<entryId>.set.json` — the route answers that with a named error
- * naming the command that writes one, which is a better answer than hiding the
- * affordance and leaving the reader to wonder whether a sheet exists.
+ * The comp's 44x34 mini variant-sheet plate: a three-column grid of six tiles.
+ * Static art, not data — it reads as "this is a SET" at a glance, and no
+ * per-cell information would survive at 9x10px. The real per-cell captures are
+ * in the rows underneath, and in the sheet the `Open sheet` column opens.
  */
-export function groupSheetLink(g: LibraryGroup): string {
-  const id = escapeHtml(g.id)
+function groupThumb(): string {
+  let t = ""
+  for (let i = 0; i < 6; i++) t += '<i class="t' + (i % 3) + '"></i>'
+  return '<div class="lthumb" aria-hidden="true">' + t + "</div>"
+}
+
+/** The comp's roll-up: a dot and the COUNT in the severity colour, or a green `Clean`. */
+function rollupBadges(c: GroupRollup): string {
+  const out: string[] = []
+  for (const [sev, n, label] of [
+    ["critical", c.critical, "Critical"],
+    ["major", c.major, "Major"],
+    ["minor", c.minor, "Minor"],
+  ] as const)
+    if (n > 0)
+      out.push(
+        '<span class="rb ' + sev + '" title="' + label + " " + n + '"><i class="dot"></i>' + n + "</span>",
+      )
+  if (out.length === 0) out.push('<span class="rb clean" title="No findings">Clean</span>')
+  return out.join("")
+}
+
+/** A cell's own verdict: the severity WORD, as the comp's sub-rows read. */
+function cellBadge(c: PairSummary): string {
+  const [sev, label] =
+    c.critical > 0
+      ? ["critical", "Critical"]
+      : c.major > 0
+        ? ["major", "Major"]
+        : c.minor > 0
+          ? ["minor", "Minor"]
+          : ["none", "No findings"]
+  return '<span class="cb ' + sev + '">' + label + "</span>"
+}
+
+/** Filled by severity, a hollow green ring when the cell is clean. */
+function verdictDot(c: PairSummary): string {
+  const sev =
+    c.critical > 0 ? "critical" : c.major > 0 ? "major" : c.minor > 0 ? "minor" : "clean"
+  return '<i class="vdot ' + sev + '" aria-hidden="true"></i>'
+}
+
+const regressedPill = (n: number, word: string): string =>
+  n > 0
+    ? '<span class="lreg" title="Cells whose findings were fixed in an earlier run and are back">' +
+      '<span class="msi" aria-hidden="true">undo</span>' +
+      word +
+      "</span>"
+    : ""
+
+const commentsNote = (n: number): string =>
+  n > 0
+    ? '<span class="lcm"><span class="msi" aria-hidden="true">chat_bubble</span>' + n + "</span>"
+    : ""
+
+/** Unreadable runs are COUNTED in the open — the app's own column, no comp counterpart. */
+const brokenNote = (n: number): string =>
+  n > 0
+    ? '<span class="warn"><span class="msi" aria-hidden="true">warning</span>' +
+      n +
+      " unreadable</span>"
+    : ""
+
+/** The real capture at 34x24 (decision D6), the comp's plate when the run has none. */
+function cellThumb(c: PairSummary): string {
+  if (c.implPng)
+    return '<div class="lcthumb"><img src="' + escapeHtml(c.implPng) + '" alt="" loading="lazy"></div>'
+  return '<div class="lcthumb blank" aria-hidden="true"></div>'
+}
+
+/**
+ * The Measured column for a GROUP: the comp's two shapes, chosen by
+ * `span.mixed` — a `r<min> -> r<max>` range with a `history` glyph on the older
+ * end and `<when> . N stale` underneath, or a single `r<n>` with its `when`.
+ *
+ * A group no cell of which carried an ordinal prints nothing but a dash: the
+ * ordinals are optional (`PairSummary.run`) and an invented `r0` would be a
+ * confident number over a result that was never counted.
+ */
+function measuredGroup(g: LibraryGroup, now: number): string {
+  const when = groupWhen(g.cells, now)
+  const whenLine = (extra: string): string =>
+    when || extra ? '<span class="lwhen">' + escapeHtml(when) + extra + "</span>" : ""
+  if (g.span.max === undefined) return '<span class="lwhen">' + escapeHtml(when || "never") + "</span>"
+  if (g.span.mixed)
+    return (
+      '<div class="lspan mono" title="' +
+      escapeHtml(
+        g.span.stale +
+          " of " +
+          g.total +
+          " cells were last measured in run r" +
+          g.span.min +
+          "; the rest in r" +
+          g.span.max,
+      ) +
+      '"><span class="lrun old"><span class="msi" aria-hidden="true">history</span>r' +
+      g.span.min +
+      '</span><span class="msi arrow" aria-hidden="true">arrow_right_alt</span>' +
+      '<span class="lrun new">r' +
+      g.span.max +
+      "</span></div>" +
+      whenLine(g.span.stale > 0 ? " · " + g.span.stale + " stale" : "")
+    )
+  return '<span class="lrun-flat mono">r' + g.span.max + "</span>" + whenLine("")
+}
+
+/** The Measured column for one CELL: a run behind the group's newest gets the pill. */
+function measuredCell(c: PairSummary, span: GroupRunSpan, now: number): string {
+  const behind = c.run !== undefined && span.max !== undefined && c.run < span.max
+  const run =
+    c.run === undefined
+      ? ""
+      : '<span class="lrun ' +
+        (behind ? "old" : "new") +
+        '" title="' +
+        escapeHtml(
+          behind
+            ? "Measured in run r" +
+                c.run +
+                " — " +
+                ((span.max as number) - c.run) +
+                " runs behind this set's newest"
+            : "Measured in the newest run of this pair",
+        ) +
+        '">' +
+        (behind ? '<span class="msi" aria-hidden="true">history</span>' : "") +
+        "r" +
+        c.run +
+        "</span>"
+  return run + '<span class="lwhen">' + escapeHtml(relativeWhen(c.createdAt, now)) + "</span>"
+}
+
+/**
+ * What a sub-row calls itself. The comp names a cell by its VARIANT PROPS
+ * (`Primary . md . Default`) rather than by its pair id, which is what chunk
+ * 2's `props` in `<entryId>.set.json` made expressible — `/api/pairs` carries
+ * none, so the join is by run dir and the app fetches the set index for a
+ * group only once that group is OPEN.
+ *
+ * Falls back to the pair id, which is what the card showed. A fallback rather
+ * than a blank: a root with no set index still lists its cells, and the row
+ * stays clickable.
+ */
+function cellName(c: PairSummary, names: ReadonlyMap<string, string>): string {
+  return names.get(c.dir) ?? c.pair
+}
+
+/** One expanded sub-row. An anchor: the whole row opens the pair. */
+export function cellRow(
+  cell: PairEntry,
+  href: string,
+  span: GroupRunSpan,
+  layout: LibraryLayout,
+  now: number,
+  names: ReadonlyMap<string, string> = new Map(),
+): string {
+  if (isBroken(cell)) {
+    const nm = escapeHtml(cell.pair ?? cell.dir)
+    const body =
+      '<i class="vdot unreadable" aria-hidden="true"></i><div class="lcthumb blank broken" aria-hidden="true">' +
+      '<span class="msi" aria-hidden="true">broken_image</span></div><span class="lcn mono">' +
+      nm +
+      "</span>"
+    if (layout === "mobile")
+      return (
+        '<div class="lcell broken" data-pair="' +
+        escapeHtml(cell.dir) +
+        '">' +
+        body +
+        '<div class="lcbody"><span class="warn"><span class="msi" aria-hidden="true">warning</span>Couldn’t read this run</span>' +
+        '<span class="tech mono">' +
+        escapeHtml(cell.reason) +
+        "</span></div></div>"
+      )
+    return (
+      '<div class="lcell broken" data-pair="' +
+      escapeHtml(cell.dir) +
+      '"><div class="lcname">' +
+      body +
+      '</div><div></div><div></div><div class="lroll"><span class="warn">' +
+      '<span class="msi" aria-hidden="true">warning</span>Couldn’t read this run</span>' +
+      '<span class="tech mono">' +
+      escapeHtml(cell.reason) +
+      '</span></div><div class="lmeas"><span class="lwhen">' +
+      escapeHtml(cell.createdAt ? relativeWhen(cell.createdAt, now) : "never") +
+      "</span></div><div></div></div>"
+    )
+  }
+  const open =
+    '<a class="lcell" data-pair="' + escapeHtml(cell.dir) + '" href="' + escapeHtml(href) + '">'
+  const name = '<span class="lcn mono">' + escapeHtml(cellName(cell, names)) + "</span>"
+  const marks =
+    cellBadge(cell) +
+    regressedPill(cell.delta && cell.delta.regressions > 0 ? 1 : 0, "Regression") +
+    commentsNote(cell.notes)
+  if (layout === "mobile")
+    return (
+      open +
+      verdictDot(cell) +
+      cellThumb(cell) +
+      '<div class="lcbody">' +
+      name +
+      '<div class="lcmarks">' +
+      marks +
+      measuredCell(cell, span, now) +
+      '</div></div><span class="msi go" aria-hidden="true">chevron_right</span></a>'
+    )
   return (
-    '<a class="gsheet-link" href="#/set/' +
-    encodeURIComponent(g.id) +
-    '" title="Open ' +
-    id +
-    ' as a variant sheet" aria-label="Open ' +
-    id +
-    ' as a variant sheet"><span class="msi" aria-hidden="true">grid_view</span><span class="gsheet-label">Sheet</span></a>'
+    open +
+    '<div class="lcname">' +
+    verdictDot(cell) +
+    cellThumb(cell) +
+    name +
+    '</div><div></div><div></div><div class="lroll">' +
+    marks +
+    '</div><div class="lmeas lmeas-cell">' +
+    measuredCell(cell, span, now) +
+    '</div><div class="lgo">Compare<span class="msi" aria-hidden="true">chevron_right</span></div></a>'
   )
 }
 
-export function libraryList(
+/** The comp's `Show N more`, which lifts the ten-row cap for that group only. */
+export function moreRow(g: LibraryGroup, hidden: number): string {
+  return (
+    '<button type="button" class="lmore" data-more="' +
+    escapeHtml(g.id) +
+    '"><span class="msi" aria-hidden="true">unfold_more</span>Show ' +
+    hidden +
+    " more</button>"
+  )
+}
+
+/**
+ * One group row. Six columns on desktop; on the phone the comp folds the same
+ * fields into a `bg1` card with a 44px sheet button.
+ *
+ * `Open sheet` is offered whenever the group IS a set (`g.set`), not only when
+ * it is foldable: a set that measured exactly one variant still has a sheet
+ * worth opening, and the route answers a missing set index with a named error
+ * rather than a blank. A LONE item (`set: false`) is not a set and gets no
+ * button — it is one comparison that happens to sit in the same table.
+ */
+export function groupRow(
+  g: LibraryGroup,
+  open: boolean,
+  layout: LibraryLayout,
+  now: number,
+): string {
+  const id = escapeHtml(g.id)
+  const expandable = isFoldable(g)
+  // "1 cells" read as a bug on every lone-item row of the demo root (ten of
+  // them in run 2's extra-element list), and a lone item is the common case on
+  // any root that is not all variant sets.
+  const cellsLabel =
+    g.cells.length === g.total
+      ? g.total + (g.total === 1 ? " cell" : " cells")
+      : g.cells.length + " of " + g.total
+  let comments = 0
+  for (const c of g.cells) if (!isBroken(c)) comments += c.notes
+  // One chip when the group agrees on its design source, and nothing when it
+  // does not: a set's cells come from one Figma node or one comp, so a mixed
+  // group is a surprise worth showing as a blank rather than as a guess.
+  const sources = new Set<string>()
+  for (const c of g.cells) if (!isBroken(c)) sources.add(c.designSource)
+  const only = sources.size === 1 ? sources.values().next().value : undefined
+  const src = only === undefined ? "" : sourceChip(only)
+  const marks =
+    rollupBadges(g.roll) +
+    regressedPill(g.roll.regressed, g.roll.regressed + " regressed") +
+    brokenNote(g.roll.broken) +
+    commentsNote(comments)
+  const sheet = g.set
+    ? '<a class="lsheet" href="#/set/' +
+      encodeURIComponent(g.id) +
+      '" title="Open ' +
+      id +
+      ' as a variant sheet" aria-label="Open ' +
+      id +
+      ' as a variant sheet"><span class="msi" aria-hidden="true">grid_view</span>' +
+      '<span class="lsheet-label">Open sheet</span></a>'
+    : ""
+  // The comp swaps GLYPHS; chunk 1 rotated ONE because `chevron_right` was not
+  // in the icon subset. Re-running icon-subset.mjs for these comps put it there
+  // (101 -> 112 glyphs), so the rotation goes. It was never only cosmetic: a
+  // rotated `expand_more` is 18x22 where `chevron_right` is 15x19, so the
+  // extractor saw a size mismatch on every collapsed row.
+  const caret = expandable
+    ? '<span class="msi caret" aria-hidden="true">' +
+      (open ? "expand_more" : "chevron_right") +
+      "</span>"
+    : '<span class="caret-gap" aria-hidden="true"></span>'
+  const head =
+    '<div class="lrow' +
+    (open ? " open" : "") +
+    (expandable ? "" : " flat") +
+    '" data-group="' +
+    id +
+    '"' +
+    (expandable ? ' role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '"' : "") +
+    ">"
+  if (layout === "mobile")
+    return (
+      head +
+      '<div class="lrhead">' +
+      caret +
+      '<div class="lrcol"><div class="lrline">' +
+      groupThumb() +
+      '<span class="lname">' +
+      id +
+      '</span><span class="lcount mono">' +
+      cellsLabel +
+      '</span></div><div class="lrline wrap">' +
+      src +
+      marks +
+      '</div><div class="lrline meas">' +
+      measuredGroup(g, now) +
+      "</div></div>" +
+      sheet +
+      "</div></div>"
+    )
+  return (
+    head +
+    '<div class="lset">' +
+    caret +
+    groupThumb() +
+    '<div class="lnames"><span class="lname">' +
+    id +
+    '</span></div></div><div class="lsrc">' +
+    src +
+    '</div><div class="lcount mono">' +
+    cellsLabel +
+    '</div><div class="lroll">' +
+    marks +
+    '</div><div class="lmeas">' +
+    measuredGroup(g, now) +
+    '</div><div class="lact">' +
+    sheet +
+    "</div></div>"
+  )
+}
+
+/**
+ * The Library's list: the comp's table, one row per group and — when the group
+ * is open — one sub-row per cell, capped at `ROW_CAP` with a `Show N more`.
+ *
+ * A collapsed group renders NO sub-rows: not hidden ones, none at all. On a
+ * 194-cell root that is 194 lazy images the browser never has to make, and it
+ * is the same decision chunk 1 made for the card grid.
+ *
+ * `more` names the groups whose cap the reader has lifted; `names` maps a run
+ * dir to its variant props, and an empty map is the honest default (the label
+ * falls back to the pair id).
+ */
+export function libraryTable(
   groups: LibraryGroup[],
   href: (pair: PairSummary) => string,
   layout: LibraryLayout = "desktop",
   now: number = Date.now(),
   open: ReadonlySet<string> = new Set(),
+  more: ReadonlySet<string> = new Set(),
+  names: ReadonlyMap<string, string> = new Map(),
 ): string {
   let out = ""
   for (const g of groups) {
-    if (!isFoldable(g)) {
-      out += pairCards(g.cells, href, layout, now)
-      continue
+    const isOpen = open.has(g.id) && isFoldable(g)
+    let body = groupRow(g, isOpen, layout, now)
+    if (isOpen) {
+      const cap = more.has(g.id) ? g.cells.length : ROW_CAP
+      const shown = g.cells.slice(0, cap)
+      body +=
+        shown
+          .map((c) => cellRow(c, isBroken(c) ? "" : href(c), g.span, layout, now, names))
+          .join("") +
+        (g.cells.length > shown.length ? moreRow(g, g.cells.length - shown.length) : "")
     }
-    const isOpen = open.has(g.id)
-    out +=
-      '<section class="grp' +
-      (isOpen ? " open" : "") +
-      '" data-group="' +
-      escapeHtml(g.id) +
-      '"><div class="ghead-row">' +
-      groupHeader(g, isOpen, now) +
-      groupSheetLink(g) +
-      "</div>" +
-      (isOpen ? '<div class="gcells">' + pairCards(g.cells, href, layout, now) + "</div>" : "") +
-      "</section>"
+    out += '<div class="lgcard" data-group="' + escapeHtml(g.id) + '">' + body + "</div>"
   }
-  return out
+  return layout === "mobile" ? out : TABLE_HEAD + '<div class="ltable">' + out + "</div>"
+}
+
+/**
+ * The comp's filter-semantics explainer, shown only while a filter is active.
+ * Its wording is the comp's own, and it is the sentence that confirms chunk 1's
+ * filter design rather than describing a new one: the filter applies to CELLS,
+ * a group with no matching cell disappears, and a matching group opens to show
+ * only its matches (`openGroups`).
+ */
+export function filterExplainer(f: LibraryFilter): string {
+  if (!isFilterActive(f)) return ""
+  return (
+    '<div class="lfx"><span class="msi" aria-hidden="true">filter_alt</span><span>' +
+    "Filters apply to cells. Groups with no matching cell are hidden; matching groups open to show only their matches." +
+    '</span><button type="button" class="lclear" id="lib-clear">Clear</button></div>'
+  )
 }
 
 /* -------------------------------------------------------- error states -- */

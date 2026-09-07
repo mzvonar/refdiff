@@ -86,6 +86,7 @@ ${VIEWPORT_META}
       <span class="vsep" aria-hidden="true"></span>
       <div class="chips-group" id="state-chips"></div>
     </div>
+    <div id="lib-fx"></div>
     <div class="cards" id="cards"></div>
     <p class="lib-empty" id="index-empty" hidden></p>
   </div>
@@ -140,7 +141,13 @@ const RETRY_SECS = 30;
 // survives an active filter expanded), so a hand toggle survives a re-render
 // and a filter change without either overriding the other. (No backticks in
 // here: this whole boot script is a template literal and one would close it.)
-const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null, opened: new Set(), closed: new Set() };
+const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null, opened: new Set(), closed: new Set(), more: new Set(), names: new Map() };
+// Which set indexes have been asked for. A group's variant props come from
+// <entryId>.set.json (/api/pairs carries none), so the fetch is LAZY: only a
+// group the reader has opened needs them, and 14 eager fetches on the DS root
+// would pay for 14 sheets to draw one. Recorded on ATTEMPT, not on success —
+// a root with no set index must not re-fetch on every re-render.
+const setNamesAsked = new Set();
 
 const routePair = () => {
   const hash = location.hash.replace(/^#\/?/, '');
@@ -161,6 +168,51 @@ function renderChips(el, chips, active, onPick) {
   }
 }
 
+// The comp's Clear button: every filter back to its default, and the hand
+// toggles with them — a reader who clears has stopped narrowing, so the
+// expansions an active filter caused should not survive it (openGroups would
+// otherwise keep them open through lib.opened).
+function clearFilters() {
+  lib.filter = Object.assign({}, DEFAULT_FILTER);
+  lib.opened.clear();
+  lib.closed.clear();
+  lib.more.clear();
+  const q = $('pair-q');
+  if (q) q.value = '';
+  renderIndexView();
+}
+
+// A sub-row names its cell by its VARIANT PROPS (Primary . md . Default), which
+// only <entryId>.set.json knows; the join is by run dir. Fetched per OPEN group
+// and re-rendered once, so a closed Library makes no requests at all. The prop
+// ORDER comes from axes.properties rather than from Object.values(props): both
+// are insertion-ordered today, but the axes are the declaration and the props
+// object is a by-product of it.
+async function loadSetNames(groups, open) {
+  const want = groups.filter((g) => g.set && open.has(g.id) && !setNamesAsked.has(g.id));
+  if (!want.length) return;
+  let added = false;
+  for (const g of want) {
+    setNamesAsked.add(g.id);
+    try {
+      const res = await fetch(encodeURIComponent(g.id) + '.set.json');
+      if (!res.ok) continue;
+      const idx = await res.json();
+      const order = Object.keys((idx.axes && idx.axes.properties) || {});
+      for (const entry of (idx.pairs || [])) {
+        const props = entry.props || {};
+        const keys = order.length ? order : Object.keys(props);
+        const label = keys.map((k) => props[k]).filter(Boolean).join(' \u00b7 ');
+        if (entry.dir && label) { lib.names.set(entry.dir, label); added = true; }
+      }
+    } catch (err) {
+      // No set index in this root, or it is not JSON. The rows keep the pair id
+      // (cellName's fallback) and nothing is retried.
+    }
+  }
+  if (added) renderIndexView();
+}
+
 function renderIndexView() {
   const mobile = libMobile();
   document.body.classList.toggle('lib-mobile', mobile);
@@ -175,6 +227,7 @@ function renderIndexView() {
     $('lib-count').textContent = 'List unavailable';
     $('lib-filters').hidden = true;
     $('cards').innerHTML = '';
+    $('lib-fx').innerHTML = '';
     $('index-empty').hidden = true;
     return;
   }
@@ -183,11 +236,18 @@ function renderIndexView() {
   $('lib-filters').hidden = false;
   const groups = groupEntries(pairs, lib.filter);
   const shown = cellsShown(groups);
-  $('lib-count').textContent = countMessage(shown, pairs.length);
+  // Groups BEFORE the filter, for the head-row denominator. Derived the same way
+  // groupEntries derives them, so the two can never disagree about what a group is.
+  const totalGroups = new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir)).size;
+  $('lib-count').textContent = countMessage(shown, pairs.length, groups.length, totalGroups);
+  const fx = $('lib-fx');
+  fx.innerHTML = filterExplainer(lib.filter);
+  const clear = $('lib-clear');
+  if (clear) clear.addEventListener('click', clearFilters);
   const cards = $('cards');
-  cards.className = 'cards' + (mobile ? ' list' : '') + (mobile && !lib.narrow ? ' capped' : '');
   const open = openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed });
-  cards.innerHTML = libraryList(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open);
+  cards.innerHTML = libraryTable(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names);
+  void loadSetNames(groups, open);
   const empty = $('index-empty');
   empty.hidden = !(shown === 0 && pairs.length > 0);
   empty.textContent = empty.hidden ? '' : 'Nothing matches your search or filter.';
@@ -462,16 +522,36 @@ document.addEventListener('click', (e) => {
   if (!tile) return;
   location.hash = '#/' + encodeURIComponent(tile.dataset.pair);
 });
-// A group row expands its set. aria-expanded is the state the header rendered,
-// so the toggle reads the DOM rather than recomputing the default here — one
-// place decides it (openGroups) and this only records the reader's choice.
-document.addEventListener('click', (e) => {
-  const head = e.target.closest && e.target.closest('.ghead');
-  if (!head) return;
-  const id = head.dataset.group;
-  if (head.getAttribute('aria-expanded') === 'true') { lib.opened.delete(id); lib.closed.add(id); }
+// A group row expands its set. aria-expanded is the state the row rendered, so
+// the toggle reads the DOM rather than recomputing the default here — one place
+// decides it (openGroups) and this only records the reader's choice.
+//
+// The row is a div with role="button", not a <button>: the comp makes the
+// Open-sheet control one of its six COLUMNS, and an anchor inside a button is
+// invalid HTML. (No backticks in this comment — this whole boot script is a
+// template literal and a backticked identifier would close it.)
+// So the anchor is guarded here instead, and Enter / Space are ours to handle.
+function toggleGroup(row) {
+  const id = row.dataset.group;
+  if (row.getAttribute('aria-expanded') === 'true') { lib.opened.delete(id); lib.closed.add(id); }
   else { lib.closed.delete(id); lib.opened.add(id); }
   renderIndexView();
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest) return;
+  const more = e.target.closest('.lmore[data-more]');
+  if (more) { lib.more.add(more.dataset.more); renderIndexView(); return; }
+  // The sheet link lives INSIDE the row; let it navigate instead of toggling.
+  if (e.target.closest('.lsheet')) return;
+  const row = e.target.closest('.lrow[role="button"]');
+  if (row) toggleGroup(row);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest && e.target.closest('.lrow[role="button"]');
+  if (!row) return;
+  e.preventDefault();
+  toggleGroup(row);
 });
 void loadPairs().then(route);
 `
@@ -504,7 +584,16 @@ body.route-index { display:block; height:auto; min-height:100%; overflow:auto; }
 .lib-top .brand-name { font-size:13px; font-weight:700; letter-spacing:.02em; }
 .lib-top .spacer { flex:1; }
 .lib-top .theme-toggle { margin-left:0; }
-.lib { max-width:1180px; margin:0 auto; padding:20px 16px 40px; }
+/* 1240 is the comps' own wrap (RefDiff Library Groups.dc.html: maxWidth 1240).
+   It was 1180 — the OLD Library comp's VIEWPORT, where a max-width never binds,
+   so nothing measured it. The groups comp captures at 1240, where 1180 does
+   bind: the container centred, content started at x=46 instead of 16, and every
+   element in the page was displaced. Measured on run 2 of
+   refdiff-library-groups-desktop — the Library heading at x=46 against the
+   comp's 16, the table card 1148 wide against 1208, every filter chip 7px left.
+   Raising it cannot move the two RefDiff Library pairs: they capture at 1180 and
+   1240 does not bind there either. Verified by re-running both. */
+.lib { max-width:1240px; margin:0 auto; padding:20px 16px 40px; }
 .lib-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 .lib-head h1 { font-size:19px; font-weight:700; letter-spacing:-.01em; margin:0; }
 .lib-count { font-size:12.5px; color:var(--txt2); }
@@ -527,41 +616,126 @@ body.lib-mobile .fchip { padding:5px 10px; font-size:11.5px; }
 /* ---- desktop: the thumbnail card grid */
 /* .thumb is the comp's content-box 132px + its 1px border-bottom: 133 in border-box. Rendered at 132 it
    shaved 1px per card row (alignment scaleY 0.9966 on the Library desktop pair, 3 rows = 3px). */
-.cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }
+/* The table lays itself out; this was the card grid chunk 1 grouped inside.
+   The .card rules below are kept for now with NO caller — see the follow-up. */
+.cards { display:block; }
+body.lib-mobile #cards { display:flex; flex-direction:column; gap:8px; }
 .card { display:flex; flex-direction:column; background:var(--bg1); border:1px solid var(--line); border-radius:12px; overflow:hidden;
   color:var(--txt); text-decoration:none; cursor:pointer; }
 a.card:hover { border-color:var(--acc); }
-/* ---- groups: one section per variant set, spanning the whole card grid */
-.grp { grid-column:1/-1; display:flex; flex-direction:column; gap:14px; min-width:0; }
-.ghead { display:flex; align-items:center; gap:10px; flex-wrap:wrap; width:100%; text-align:left; cursor:pointer; font:inherit;
-  color:var(--txt); background:var(--bg1); border:1px solid var(--line); border-radius:10px; padding:9px 12px; }
-.ghead:hover { border-color:var(--acc); }
-/* ONE glyph, rotated when collapsed: chevron_right is not in the icon subset (icon-names.ts). */
-.ghead .caret { font-size:18px; color:var(--txt2); flex-shrink:0; transition:transform .12s; }
-.grp:not(.open) .ghead .caret { transform:rotate(-90deg); }
-.gname { font-size:13.5px; font-weight:700; letter-spacing:-.01em; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gcount { font-size:11.5px; color:var(--txt2); white-space:nowrap; }
-.ghead .badges { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
-.gregressed { display:flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:var(--critical); white-space:nowrap; }
-.gregressed .msi { font-size:14px; }
-.gwhen { margin-left:auto; font-size:11px; color:var(--txt2); white-space:nowrap; }
-.gcells { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }
-/* The header row: the toggle button, and beside it the way into the sheet. The
-   link is a SIBLING of .ghead (an anchor inside a button is invalid, and the
-   group toggle resolves closest('.ghead')), so the row is what puts them level. */
-.ghead-row { display:flex; align-items:stretch; gap:8px; min-width:0; }
-.ghead-row .ghead { flex:1; min-width:0; }
-.gsheet-link { display:flex; align-items:center; gap:7px; flex-shrink:0; padding:0 14px; border:1px solid var(--line); border-radius:10px;
-  background:var(--bg1); color:var(--txt2); text-decoration:none; font-size:11.5px; font-weight:600; white-space:nowrap; }
-.gsheet-link:hover { border-color:var(--acc); color:var(--txt); }
-.gsheet-link .msi { font-size:17px; }
-/* On a phone the label goes and the glyph stays: the row is already carrying a
-   name, a count and a badge set, and a 390px viewport has no room for a word
-   that the icon and the aria-label both already say. */
-body.lib-mobile .gsheet-link { padding:0 12px; }
-body.lib-mobile .gsheet-label { display:none; }
-body.lib-mobile .grp { gap:8px; }
-body.lib-mobile .gcells { display:flex; flex-direction:column; gap:8px; }
+/* ---- the grouped TABLE (chunk 5, RefDiff Library Groups.dc.html).
+   Every metric here is READ OFF the first refdiff-library-groups-desktop run,
+   not off the comp's source: column template, gap 12, min-width 1064, the
+   10.5px/.07em uppercase header, rows at 54 and sub-rows at 40. The header row
+   sits OUTSIDE the bg1 card, which is how the comp draws it. */
+.ltwrap { overflow-x:auto; margin:0 -16px; padding:0 16px; }
+.lthead, .lrow, .lcell { display:grid;
+  grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;
+  gap:12px; min-width:1064px; box-sizing:border-box; }
+.lthead { padding:0 14px 8px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); }
+.ltable { background:var(--bg1); border:1px solid var(--line); border-radius:12px; min-width:1064px; box-sizing:border-box; overflow:hidden; }
+.lrow { align-items:center; padding:8px 14px; min-height:54px; border-bottom:1px solid var(--line); cursor:pointer; }
+.lrow.open { background:var(--bg2); }
+.lrow.flat { cursor:default; }
+.lrow:not(.flat):not(.open):hover { background:var(--bg2); }
+.lset { display:flex; align-items:center; gap:8px; min-width:0; }
+/* TWO glyphs, as the comp draws them — not one rotated. The chevron-right glyph
+   is in the icon subset since these comps landed; before that it was not, which
+   is why chunk 1 rotated the expand-more glyph and lost 3px of height doing it.
+   (No backticks in here: INDEX_CSS is a template literal.) */
+.lrow .caret { font-size:18px; color:var(--txt2); flex-shrink:0; }
+.caret-gap { width:18px; flex-shrink:0; }
+.lthumb { width:44px; height:34px; border-radius:5px; background:#f4f5f7; border:1px solid var(--line); flex-shrink:0;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:3px; padding:4px; box-sizing:border-box; }
+.lthumb i { border-radius:2px; }
+.lthumb .t0 { background:#4F46E5; }
+.lthumb .t1 { background:rgba(79,70,229,.35); }
+.lthumb .t2 { background:#d9dbe0; }
+.lnames { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.lname { font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lcount { font-size:12px; color:var(--txt); white-space:nowrap; }
+.lroll { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.rb { display:flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+.rb .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.rb.critical { color:var(--critical); } .rb.critical .dot { background:var(--critical); }
+.rb.major { color:var(--major); } .rb.major .dot { background:var(--major); }
+.rb.minor { color:var(--minor); } .rb.minor .dot { background:var(--minor); }
+.rb.clean { color:#46a758; }
+.lreg { display:flex; align-items:center; gap:3px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  padding:2px 7px; border-radius:999px; background:var(--critical); color:#fff; white-space:nowrap; }
+.lreg .msi { font-size:12px; }
+.lcm { display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--txt2); }
+.lcm .msi { font-size:14px; }
+.lmeas { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.lspan { display:flex; align-items:center; gap:5px; font-size:11.5px; }
+.lspan .arrow { font-size:13px; color:var(--txt2); }
+.lrun { display:flex; align-items:center; gap:3px; white-space:nowrap; }
+.lrun.old { padding:1px 6px; border-radius:5px; background:var(--bg3); color:var(--txt2); font-size:11px; }
+.lrun.old .msi { font-size:12px; }
+.lrun.new { color:var(--txt); font-size:11px; }
+.lrun-flat { font-size:11.5px; }
+.lwhen { font-size:11px; color:var(--txt2); white-space:nowrap; }
+.lact { display:flex; justify-content:flex-end; }
+.lsheet { display:flex; align-items:center; gap:6px; padding:0 11px; height:30px; border-radius:8px; border:1px solid var(--line);
+  background:var(--bg2); color:var(--txt); font-size:12px; font-weight:600; white-space:nowrap; text-decoration:none; }
+.lsheet:hover { border-color:var(--acc); }
+.lsheet .msi { font-size:16px; }
+/* ---- the expanded sub-rows: the set's CELLS, not chunk 1's cards */
+.lcell { align-items:center; padding:0 14px; min-height:40px; border-bottom:1px solid var(--line); background:var(--bg0);
+  color:var(--txt); text-decoration:none; }
+a.lcell:hover { background:var(--bg2); }
+.lcname { display:flex; align-items:center; gap:8px; min-width:0; padding-left:28px; }
+.vdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; box-sizing:border-box; }
+.vdot.critical { background:var(--critical); }
+.vdot.major { background:var(--major); }
+.vdot.minor { background:var(--minor); }
+.vdot.clean { background:transparent; border:1.5px solid #46a758; }
+.vdot.unreadable { background:transparent; border:1.5px solid var(--major); }
+.lcthumb { width:34px; height:24px; border-radius:4px; background:#f4f5f7; border:1px solid var(--line); flex-shrink:0;
+  overflow:hidden; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
+.lcthumb img { display:block; width:100%; height:100%; object-fit:cover; object-position:top; }
+.lcthumb.blank { background:var(--bg2); }
+.lcthumb.blank .msi { font-size:14px; color:var(--txt2); }
+.lcn { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cb { font-size:11.5px; font-weight:600; white-space:nowrap; }
+.cb.critical { color:var(--critical); }
+.cb.major { color:var(--major); }
+.cb.minor { color:var(--minor); }
+.cb.none { color:var(--txt2); font-weight:400; }
+.lmeas-cell { flex-direction:row; align-items:center; gap:7px; font-size:11.5px; }
+.lgo { display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:var(--txt2); }
+.lgo .msi { font-size:15px; }
+.lcell .tech { font-size:11px; color:var(--txt2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lmore { display:flex; align-items:center; gap:8px; width:100%; padding:0 14px 0 58px; min-height:38px; box-sizing:border-box;
+  border:none; border-bottom:1px solid var(--line); background:var(--bg0); color:var(--acc); font:inherit; font-size:12px;
+  font-weight:600; cursor:pointer; text-align:left; }
+.lmore .msi { font-size:16px; }
+/* The filter-semantics explainer, shown only while a filter is active. */
+.lfx { display:flex; align-items:center; gap:8px; margin:-6px 0 12px; font-size:12px; color:var(--txt2); }
+.lfx .msi { font-size:15px; }
+.lclear { padding:2px 9px; border-radius:999px; border:1px solid var(--line); background:transparent; font:inherit;
+  font-size:11.5px; font-weight:600; cursor:pointer; color:var(--txt); }
+/* ---- the phone: the comp folds the same six fields into one rounded card per
+   group, with an icon-only sheet button and 44px touch rows. */
+body.lib-mobile .lgcard { background:var(--bg1); border:1px solid var(--line); border-radius:11px; overflow:hidden; }
+body.lib-mobile .lrow { display:block; min-width:0; padding:0; border-bottom:none; }
+body.lib-mobile .lrhead { display:flex; align-items:flex-start; gap:9px; padding:10px 10px 10px 8px; min-height:44px; box-sizing:border-box; }
+body.lib-mobile .lrcol { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+body.lib-mobile .lrline { display:flex; align-items:center; gap:7px; min-width:0; }
+body.lib-mobile .lrline.wrap { gap:8px; flex-wrap:wrap; }
+body.lib-mobile .lrline .lname { flex:1; min-width:0; font-size:13px; }
+body.lib-mobile .lrline.meas .lmeas { flex-direction:row; align-items:center; gap:6px; font-size:11px; }
+body.lib-mobile .lsheet { width:44px; height:44px; margin:-6px -4px 0 0; padding:0; justify-content:center;
+  border:none; background:transparent; color:var(--txt2); flex-shrink:0; }
+body.lib-mobile .lsheet .msi { font-size:20px; }
+body.lib-mobile .lsheet-label { display:none; }
+body.lib-mobile .lcell { display:flex; align-items:center; gap:8px; min-width:0; padding:9px 12px 9px 35px; min-height:44px;
+  border-top:1px solid var(--line); border-bottom:none; }
+body.lib-mobile .lcbody { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+body.lib-mobile .lcmarks { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+body.lib-mobile .lcn { font-size:11.5px; }
+body.lib-mobile .lcell .go { font-size:18px; color:var(--txt2); flex-shrink:0; }
+body.lib-mobile .lmore { padding:10px 12px 10px 35px; min-height:44px; border-top:1px solid var(--line); border-bottom:none; }
 .thumb { height:calc(132px + 1px); background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:center;
   position:relative; overflow:hidden; }
 .thumb .shot { display:block; width:100%; height:100%; object-fit:cover; object-position:top; }

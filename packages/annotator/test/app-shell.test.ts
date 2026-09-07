@@ -95,31 +95,65 @@ describe("renderAppShell", () => {
     expect(html).toContain("mobile ? 'mobile' : 'desktop'")
   })
 
-  it("draws the Library as GROUPS, and still counts comparisons rather than groups", () => {
+  it("draws the Library as the comp's TABLE, and counts cells and the groups they sit in", () => {
     expect(html).toContain("const groups = groupEntries(pairs, lib.filter);")
     expect(html).toContain("const shown = cellsShown(groups);")
-    expect(html).toContain("countMessage(shown, pairs.length)")
+    expect(html).toContain("countMessage(shown, pairs.length, groups.length, totalGroups)")
+    // The denominator is derived the way groupEntries derives groups, so the
+    // two can never disagree about what a group is.
+    expect(html).toContain("new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir)).size")
     expect(html).toContain("openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed })")
-    expect(html).toContain("cards.innerHTML = libraryList(groups,")
+    expect(html).toContain("cards.innerHTML = libraryTable(groups,")
+    expect(html).not.toContain("libraryList(")
     // The empty state is still about cells: a filter that matches nothing
-    // leaves no groups either, and "N of M comparisons" is what the head says.
+    // leaves no groups either.
     expect(html).toContain("empty.hidden = !(shown === 0 && pairs.length > 0);")
   })
 
   it("makes a group row a control: the reader's own expand/collapse survives a re-render", () => {
     expect(html).toContain("opened: new Set(), closed: new Set()")
-    expect(html).toContain("e.target.closest('.ghead')")
-    expect(html).toContain("head.getAttribute('aria-expanded') === 'true'")
+    expect(html).toContain("e.target.closest('.lrow[role=\"button\"]')")
+    expect(html).toContain("row.getAttribute('aria-expanded') === 'true'")
     expect(html).toContain("lib.opened.delete(id); lib.closed.add(id);")
     expect(html).toContain("lib.closed.delete(id); lib.opened.add(id);")
   })
 
-  it("styles the group row so a set spans the whole card grid and its cells keep the grid", () => {
-    expect(html).toContain(".grp { grid-column:1/-1;")
-    expect(html).toContain(".gcells { display:grid; grid-template-columns:repeat(auto-fill, minmax(262px, 1fr)); gap:14px; }")
-    // One glyph for both states — chevron_right is not in the icon subset.
-    expect(html).toContain(".grp:not(.open) .ghead .caret { transform:rotate(-90deg); }")
-    expect(html).toContain("body.lib-mobile .gcells { display:flex; flex-direction:column; gap:8px; }")
+  // The row is a div, not a button, because Open sheet is one of its COLUMNS
+  // and an anchor inside a button is invalid — so the anchor is guarded and the
+  // keyboard is ours.
+  it("lets the nested sheet link navigate, and handles Enter and Space itself", () => {
+    expect(html).toContain("if (e.target.closest('.lsheet')) return;")
+    expect(html).toContain("if (e.key !== 'Enter' && e.key !== ' ') return;")
+  })
+
+  it("lifts one group's ten-row cap, and clears every filter with the comp's Clear button", () => {
+    expect(html).toContain("e.target.closest('.lmore[data-more]')")
+    expect(html).toContain("lib.more.add(more.dataset.more);")
+    expect(html).toContain("fx.innerHTML = filterExplainer(lib.filter);")
+    expect(html).toContain("if (clear) clear.addEventListener('click', clearFilters);")
+    expect(html).toContain("lib.more.clear();")
+  })
+
+  // The variant-props join: /api/pairs carries none, so a sub-row's name comes
+  // from <entryId>.set.json — fetched only for a group the reader has OPENED.
+  it("fetches a set index lazily, once per group, and never retries a root that has none", () => {
+    expect(html).toContain("fetch(encodeURIComponent(g.id) + '.set.json')")
+    expect(html).toContain("g.set && open.has(g.id) && !setNamesAsked.has(g.id)")
+    expect(html).toContain("setNamesAsked.add(g.id);")
+    expect(html).toContain("const order = Object.keys((idx.axes && idx.axes.properties) || {});")
+  })
+
+  it("styles the table with the comp's own column template, row metric and header", () => {
+    expect(html).toContain("grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;")
+    expect(html).toContain("gap:12px; min-width:1064px; box-sizing:border-box; }")
+    expect(html).toContain("font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase")
+    expect(html).toContain(".lrow { align-items:center; padding:8px 14px; min-height:54px;")
+    expect(html).toContain(".lcell { align-items:center; padding:0 14px; min-height:40px;")
+    // The card grid and chunk 1's group sections are gone with the renderers.
+    expect(html).not.toContain(".grp {")
+    expect(html).not.toContain(".gcount {")
+    expect(html).not.toContain("transform:rotate(-90deg)")
+    expect(html).toContain("body.lib-mobile .lgcard {")
   })
 
   it("gives the index its own theme toggle, driven by the report client's shared handler", () => {
