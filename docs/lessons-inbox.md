@@ -5,6 +5,86 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-07 — a `waitFor` inside a conditionally-visible pane reports as an UNBUILT SURFACE
+
+- **Context:** `refdiff-gallery-mobile` waited on `#cells-impl .cellslot`. At 390px the
+  comparison tool shows ONE pane, so those slots exist in the DOM but are never VISIBLE, and the
+  pair failed `selector-not-found` — measuring nothing. Its last successful numbers (426 findings,
+  confidence **0.00**, 87 impl leaves against the comp's 311) were then quoted in the handoff as
+  evidence that the phone sheet was "unbuilt". Fixing the selector to accept either pane's slots
+  gives **261 findings at confidence 0.78**: rough, not absent.
+- **Lesson:** confidence 0.00 with a tiny impl leaf count is the SIGNATURE of a capture that
+  did not really happen, and it is indistinguishable from an unimplemented surface if you only
+  read the report. Two things follow. **(1) A `waitFor` must name something that is visible in
+  every layout the pair captures** — a selector inside a pane, tab or drawer that a breakpoint
+  hides is a pair that silently stops measuring at that breakpoint, and `exit 2` is easy to miss
+  in a loop over several pairs. Name both alternatives (`#cells-design .cellslot,
+  #cells-impl .cellslot`) or pin the layout the way the toolbar pairs pin `?layout=`. **(2) Never
+  quote a pair's numbers as the state of a surface without checking the run EXITED 0** — the
+  numbers on disk are from whenever it last succeeded, which may be a different build entirely.
+- **Also, the method that settled it:** before attributing the failure to the change in hand, the
+  change was REVERTED and the pair re-run — same failure, so pre-existing. Two minutes, and it is
+  the difference between fixing a bug and "fixing" an innocent line.
+- **Candidate home:** `SKILL.md` § "Configuring a pair", next to `waitFor`; and rule 6 ("a capture
+  is not a pass") gains the mirror — a stale report is not a measurement.
+
+## 2026-09-07 — `explain`'s `within: { role }` takes its regions from the IMPL side
+
+- **Context:** the sheet stopped drawing `absent` cells, so the comps' 24 `ABSENT` tiles became
+  findings. The first declaration was `explain: [{ types, within: { role: "text" }, text: "ABSENT",
+  … }]`. It sat in the policy and explained **0 of 37**.
+- **Lesson:** `explainFindings` builds `within`'s regions from `implElements` — elements of the
+  IMPL capture — and a finding matches only if EVERY one of its boxes falls inside one. So
+  `within` can never explain a finding whose whole point is that the impl element is missing.
+  `within` is for a container that EXISTS on both sides (a canvas, a rail, a screenshot); a removed
+  element needs `region`, or a different tool. Here a `region` wide enough to hold them
+  (x 154..1008, y 500..730) would have covered the entire grid and swallowed every real finding of
+  those eight types, so the answer was an anchored `textPatterns: ["^ABSENT$"]` — precise because
+  the string exists ONLY on the comp side, and audited by checking that all 118 suppressed
+  findings carry it and nothing else.
+- **The related judgement:** the run's `⚠ suppressed finding(s) moved ≥8px — a rule is hiding
+  geometry` is normally a real warning, and the documented remedy is `dataSlots` (which keeps
+  geometry compared). That remedy is WRONG when the element is gone rather than churning: there is
+  no geometry left to compare, only the matcher pairing a removed comp tile against a surviving app
+  cell. Record that beside the rule or the next reader "fixes" it.
+- **Candidate home:** `SKILL.md`'s `ignore` table — say what `within` resolves against, and add the
+  removed-element row.
+
+## 2026-09-07 — check rendered text CASE-INSENSITIVELY: CSS can transform it
+
+- **Context:** verifying the sheet's new cell notes, a probe searched the extracted elements for
+  `"Missing in impl"` and found **zero**, on both viewports — which looked like the notes not
+  rendering at all, and nearly sent a real feature back for repair. `.cellnote` carries
+  `text-transform:uppercase`, so the extractor reports `MISSING IN IMPL`. Fourteen of them were
+  there the whole time.
+- **Lesson:** the structural extractor reads what the browser RENDERS, not what the source writes,
+  so any assertion about on-screen text must fold case (and whitespace) or it is testing the CSS
+  rather than the content. This is the third instance in this repo of an anchored-on-one-shape check
+  reading zero and being mistaken for a real absence — the earlier two were a doc sweep anchored on
+  one casing and a namespace-blind `ElementTree` query on the compliance report. **A zero from a
+  hand-written extractor is a claim about the QUERY until proven otherwise: verify it against a
+  known-present member first.**
+- **Candidate home:** `SKILL.md` § "Reading the measurements", with the namespace-blind-count note
+  it generalises.
+
+## 2026-09-07 — the backtick trap fires in CSS comments too, and twice more
+
+- **Context:** the handoff's env gotchas already warn that a backtick in `app-shell.ts`'s `APP_BOOT`
+  or `INDEX_CSS`, or `render.ts`'s `CLIENT` / `EMBEDDED_BOOT`, closes the template literal — and
+  that it always arrives "by writing an identifier in a comment the way this repo writes identifiers
+  everywhere else". It fired twice more today, in CSS comments (`/* … `unmapped` is the impl's gap
+  … */`) inside those very blocks, plus once in a JS comment.
+- **Lesson:** the existing rule says "no backticked identifiers in comments in there" and it is
+  right; what it under-states is WHERE. A CSS comment inside a styles template feels like CSS, not
+  like TypeScript, which is exactly why the habit survives the warning. Two things help more than
+  the prohibition: the failure signature is a burst of `TS1005` plus `TS1160 Unterminated template
+  literal` pointing at the comment rather than the backtick, and the diagnosis is
+  `grep -n '\`' <file>` — every remaining backtick should be a template delimiter, and any line
+  with one that is not is the culprit. Naming the block in the comment ("no backticks in here:
+  INDEX_CSS is a template literal") is what stops the next edit re-introducing it.
+- **Candidate home:** the existing CLAUDE.md / handoff bullet — extend it to CSS comments explicitly
+  and add the grep.
+
 ## 2026-09-07 — I wrote a CAUSE into a handoff without measuring it, and it framed a decision
 
 - **Context:** chunk 5's handoff explained a missing Measured-column span as *"no group in the

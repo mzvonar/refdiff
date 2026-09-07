@@ -74,6 +74,39 @@ open fork below, and chunk 5, the Library rebuild.
 
 ## What's DONE
 
+- **THE SHEET DRAWS ONLY WHAT THE DESIGN DEFINES, and marks only the impl's gaps**
+  (`cbd3c09`). Repo owner, 2026-09-07: *"too many holes in the sheet. let's use only what is
+  in figma, and only mark what's missing in impl that figma defines"*.
+  - **`absent` draws nothing** — no tile, no dotted outline, no note, on either pane. 58 of
+    them across the DS's fourteen sets AFTER `pruneToOccupied` had already dropped the empty
+    rows and columns, so tiles drawn goes **555 → 497**. `ds-dialog-header` was half holes,
+    `ds-chip` a quarter. The COUNT survives in the summary's tail
+    (`23 of 91 combinations undeclared`): the sparsity is a fact about the SET, it is just
+    not a cell.
+  - **`skipped` split in two, because it was one state telling two opposite stories.**
+    `unmapped` = the design declares it and the story has no cell ("Missing in impl", 90 on
+    this DS); `filtered` = the manifest's `only`/`omit` chose not to measure it ("Out of
+    scope", 191). The old single note said "Skipped · no impl cell" of all 281 — false for
+    the 191 nobody looked for. Only `unmapped` claims anything about the implementation now,
+    and it carries the one distinguishing border colour.
+  - **Structural, not prose.** Core's `expandVariants` sets `kind` at all three emission
+    sites and `SetIndexSkipped` carries it into `<entryId>.set.json`. **Precedence:**
+    `only`/`omit` are tested BEFORE the story selector, so a variant that is both out of
+    scope and unmapped reports `filtered` — asserted in core, because "we did not look" is
+    the honest answer when we did not.
+  - **The read side falls back to the `only:` / `omit:` PREFIX** for an index written before
+    `kind` (re-expanding a root needs Figma plus a running Storybook). Exact rather than
+    hopeful: a core test asserts on the real recorded Button/Fill set that every
+    `only:`/`omit:` reason is `filtered` and no other reason is. Delete it once every root is
+    re-expanded.
+  - **Verified on the real DS root**, not only in tests — `ds-chip` reads
+    `DS · Chip — 68 cells · 2 measured · 63 missing in impl · 3 not measured · run 3 · 23 of
+    91 combinations undeclared`, with zero `ABSENT` tiles and 126 `MISSING IN IMPL` notes
+    (63 cells × two panes).
+  - **`refdiff-gallery-mobile` was broken and is fixed** — see § "What REMAINS" step 2's
+    correction. It had been failing `selector-not-found` and its last numbers were being
+    quoted as the surface's state.
+
 - **CHUNK 5 — PART-SHIPPED: the Library is the comp's six-column table** (`1b62208`,
   `90d0aba`). Plan § "Chunk 5" carries the per-run table; this is the inventory.
   - **Both prerequisites done.** The two comps are on disk (fetched with DesignSync, and the
@@ -446,6 +479,15 @@ bound:
 | 3 | design pane + axes | 730 | 0.40 |
 | 4 | the comp's cell metric | 678 | 0.40 |
 | 5 | content centred in its track | **627** | 0.40 |
+| — | the sheet stopped drawing absent cells (2026-09-07) | **641** | 0.40 |
+
+The last row is not an iteration and not a regression to chase: the comps still draw 24
+`ABSENT` tiles and still label every skipped cell `SKIPPED · NO IMPL CELL`, so the product
+moving ahead of them costs findings. An anchored `textPatterns: ["^ABSENT$"]` on both gallery
+pairs takes 673 down to 641, with all 118 suppressed findings carrying that text and nothing
+else. **The real fix is a DESIGN ASK: redraw both Gallery comps without the absent cells and
+with the product's note vocabulary** (`Missing in impl` / `Out of scope`). Delete the rule
+when they land — the manifest comment says so beside it.
 
 Criticals went 245 → 97; impl-only elements 1163 → 92; the app draws 499 leaves against the
 comp's 648.
@@ -469,8 +511,16 @@ one-off causes ship with empty expected/actual (`fixtures/make-demo-root.ts`,
 
 **Also open on mobile:** the sheet has no mobile treatment. It renders and scrolls inside
 its own container at 390px with no page-level horizontal scroll, but there is no fit, no
-zoom and no phone layout. `RefDiff Gallery Mobile.dc.html` IS that design and it is unbuilt
-(426 findings, confidence 0.00, `x 0.67 / y 0.06` — 311 comp leaves against the app's 87).
+zoom and no phone layout. `RefDiff Gallery Mobile.dc.html` IS that design.
+
+**CORRECTED 2026-09-07 — its numbers were read off a FAILED CAPTURE.** This section said
+"unbuilt (426 findings, confidence 0.00, `x 0.67 / y 0.06` — 311 comp leaves against the
+app's 87)". The pair's `waitFor` named `#cells-impl .cellslot`, and at 390px the comparison
+tool shows ONE pane, so those slots are never VISIBLE: the pair failed `selector-not-found`
+and measured nothing. `waitFor` now accepts either pane's slots, and the pair reads
+**261 findings at confidence 0.78**. Confidence 0.00 and 87 impl leaves were the signature of
+the broken capture, not of an unbuilt surface — the phone sheet is rough, not absent. Whatever
+mobile work it needs, size it off the new numbers.
 
 **And `#view-gallery` survives only as the un-layoutable fallback** (a root with no set
 index, or a `gallery` naming a property the set lacks). Worth deleting once the sheet is
