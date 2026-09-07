@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..200&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#2a2b2e;min-height:100%}
+a{color:#5b8def;text-decoration:none}a:hover{color:#7da4f2}
+input{outline:none}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed}
+.msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
+</style>
+</helmet>
+<div class="cc-theme-dark {{themeClass}}" style="min-height:100%;background:var(--bg0);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif" data-screen-label="Library — grouped">
+  <div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;background:var(--bg1);border-bottom:1px solid var(--line)">
+    <div style="width:18px;height:18px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+    <span style="font-size:13px;font-weight:700;letter-spacing:0.02em">RefDiff</span>
+    <span style="font-size:12px;color:var(--txt2)">Design system · run 47</span>
+    <div style="flex:1"></div>
+    <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
+  </div>
+  <div style="{{wrapStyle}}">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="font-size:19px;font-weight:700;letter-spacing:-0.01em">Library</span>
+      <span style="font-size:12.5px;color:var(--txt2)">{{countMsg}}</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg1);border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;flex:1;min-width:170px;max-width:340px">
+        <span class="msi" style="font-size:17px;color:var(--txt2)">search</span>
+        <input style="flex:1;background:transparent;border:none;color:var(--txt);font-size:13px;font-family:'IBM Plex Sans',sans-serif;min-width:0" placeholder="Search sets and variants&#8230;" value="{{query}}" onChange="{{onQuery}}">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{srcChips}}" as="c" hint-placeholder-count="3"><div style="{{c.style}}" onClick="{{c.onClick}}">{{c.label}}</div></sc-for>
+      </div>
+      <div style="width:1px;height:20px;background:var(--line);flex-shrink:0"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{filterChips}}" as="c" hint-placeholder-count="5"><div style="{{c.style}}" onClick="{{c.onClick}}">{{c.label}}</div></sc-for>
+      </div>
+    </div>
+    <sc-if value="{{filterActive}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;align-items:center;gap:8px;margin:-6px 0 12px;font-size:12px;color:var(--txt2)">
+        <span class="msi" style="font-size:15px">filter_alt</span>
+        <span>{{filterMsg}}</span>
+        <div style="padding:2px 9px;border-radius:999px;border:1px solid var(--line);font-size:11.5px;font-weight:600;cursor:pointer;color:var(--txt)" onClick="{{clearFilters}}">Clear</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isDesk}}" hint-placeholder-val="{{true}}">
+      <div style="overflow-x:auto;margin:0 -16px;padding:0 16px"><div style="display:grid;grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;gap:12px;padding:0 14px 8px;min-width:1064px;box-sizing:border-box;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">
+        <span>Component set</span><span>Source</span><span>Cells</span><span>Findings roll-up</span><span>Measured</span><span></span>
+      </div>
+      <div style="background:var(--bg1);border:1px solid var(--line);border-radius:12px;min-width:1064px;box-sizing:border-box;overflow:hidden"><div style="display:flex;flex-direction:column">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="6">
+          <div style="{{g.rowStyle}}" onClick="{{g.toggle}}">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span class="msi" style="font-size:18px;color:var(--txt2);flex-shrink:0;transition:transform 0.15s">{{g.chev}}</span>
+              <div style="{{g.thumbStyle}}"><sc-for list="{{g.thumbCells}}" as="t" hint-placeholder-count="6"><span style="{{t.style}}"></span></sc-for></div>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <span style="font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.name}}</span>
+                <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.path}}</span>
+              </div>
+            </div>
+            <div><span style="{{g.srcStyle}}"><span class="msi" style="font-size:12px">{{g.srcIcon}}</span>{{g.srcLabel}}</span></div>
+            <div style="{{g.cellsStyle}}">{{g.cellsLabel}}</div>
+            <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+              <sc-if value="{{g.isNode}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--txt2)"><span class="msi" style="font-size:14px">account_tree</span>Hierarchy only — nothing measured</span></sc-if>
+              <sc-for list="{{g.badges}}" as="b" hint-placeholder-count="2"><span style="{{b.style}}" title="{{b.title}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+              <sc-if value="{{g.hasReg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#e5484d;color:#fff;white-space:nowrap" title="Cells whose findings were fixed in an earlier run and are back"><span class="msi" style="font-size:12px">undo</span>{{g.regLabel}}</span></sc-if>
+              <sc-if value="{{g.hasComments}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--txt2)"><span class="msi" style="font-size:14px">chat_bubble</span>{{g.comments}}</span></sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+              <sc-if value="{{g.isMixed}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex;align-items:center;gap:5px;font-size:11.5px;font-family:'IBM Plex Mono',monospace" title="{{g.spanTip}}">
+                  <span style="display:flex;align-items:center;gap:3px;padding:1px 6px;border-radius:5px;background:var(--bg3);color:var(--txt2)"><span class="msi" style="font-size:12px">history</span>{{g.oldestRun}}</span>
+                  <span class="msi" style="font-size:13px;color:var(--txt2)">arrow_right_alt</span>
+                  <span style="color:var(--txt)">{{g.newestRun}}</span>
+                </div>
+                <span style="font-size:11px;color:var(--txt2);white-space:nowrap">{{g.spanWhen}} · {{g.staleLabel}}</span>
+              </sc-if>
+              <sc-if value="{{g.isSingle}}" hint-placeholder-val="{{true}}">
+                <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace">{{g.newestRun}}</span>
+                <span style="font-size:11px;color:var(--txt2)">{{g.newestWhen}}</span>
+              </sc-if>
+              <sc-if value="{{g.isNode}}" hint-placeholder-val="{{false}}"><span style="font-size:11.5px;color:var(--txt2)">—</span></sc-if>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <sc-if value="{{g.hasGallery}}" hint-placeholder-val="{{true}}">
+                <a href="{{g.galleryHref}}" onClick="{{g.stop}}" style="display:flex;align-items:center;gap:6px;padding:0 11px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);font-size:12px;font-weight:600;white-space:nowrap" style-hover="border-color:var(--acc)" title="Open the variant sheet for this set"><span class="msi" style="font-size:16px">grid_view</span>Open sheet</a>
+              </sc-if>
+              <sc-if value="{{g.isNode}}" hint-placeholder-val="{{false}}">
+                <span style="font-size:11px;color:var(--txt2);text-align:right;line-height:1.35">No sheet<br>nothing to compare</span>
+              </sc-if>
+            </div>
+          </div>
+          <sc-if value="{{g.open}}" hint-placeholder-val="{{false}}">
+            <sc-for list="{{g.children}}" as="k" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;gap:12px;align-items:center;padding:0 14px;min-height:40px;border-bottom:1px solid var(--line);background:var(--bg0)">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-left:44px"><span class="msi" style="font-size:16px;color:var(--txt2)">folder</span><span style="font-size:12.5px;color:var(--txt2)">{{k.name}}</span></div>
+                <div></div>
+                <div style="font-size:12px;color:var(--txt2)">0</div>
+                <div style="font-size:11.5px;color:var(--txt2);display:flex;align-items:center;gap:5px"><span class="msi" style="font-size:14px">block</span>Declared in Figma, no impl counterpart</div>
+                <div style="font-size:11.5px;color:var(--txt2)">never</div>
+                <div></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+              <a href="./RefDiff Comparison Tool.dc.html" style="display:grid;grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;gap:12px;align-items:center;padding:0 14px;min-height:40px;border-bottom:1px solid var(--line);background:var(--bg0);color:var(--txt)" style-hover="background:var(--bg2)">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-left:28px">
+                  <span style="{{r.vStyle}}"></span>
+                  <div style="{{r.thumbStyle}}"><span style="{{r.thumbInner}}"></span></div>
+                  <span style="font-size:12px;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.name}}</span>
+                </div>
+                <div></div>
+                <div></div>
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                  <sc-for list="{{r.badges}}" as="b" hint-placeholder-count="1"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+                  <sc-if value="{{r.reg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#e5484d;color:#fff"><span class="msi" style="font-size:12px">undo</span>Regression</span></sc-if>
+                  <sc-if value="{{r.hasComments}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--txt2)"><span class="msi" style="font-size:14px">chat_bubble</span>{{r.comments}}</span></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;font-family:'IBM Plex Mono',monospace">
+                  <span style="{{r.runStyle}}" title="{{r.runTip}}"><sc-if value="{{r.stale}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:12px">history</span></sc-if>{{r.runLabel}}</span>
+                  <span style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:var(--txt2)">{{r.when}}</span>
+                </div>
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--txt2)">Compare<span class="msi" style="font-size:15px">chevron_right</span></div>
+              </a>
+            </sc-for>
+            <sc-if value="{{g.hasMore}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px 0 58px;min-height:38px;box-sizing:border-box;border-bottom:1px solid var(--line);background:var(--bg0);font-size:12px;font-weight:600;color:var(--acc);cursor:pointer" onClick="{{g.showMore}}"><span class="msi" style="font-size:16px">unfold_more</span>{{g.moreLabel}}</div>
+            </sc-if>
+          </sc-if>
+        </sc-for>
+      </div></div>
+    </sc-if>
+    <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="6">
+          <div style="background:var(--bg1);border:1px solid var(--line);border-radius:11px;overflow:hidden">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 10px 10px 8px;min-height:44px;cursor:pointer" onClick="{{g.toggle}}">
+              <span class="msi" style="font-size:18px;color:var(--txt2);flex-shrink:0;margin-top:1px">{{g.chev}}</span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <div style="{{g.thumbStyle}}"><sc-for list="{{g.thumbCells}}" as="t" hint-placeholder-count="6"><span style="{{t.style}}"></span></sc-for></div>
+                  <span style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.name}}</span>
+                  <span style="{{g.cellsStyle}}">{{g.cellsLabel}}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="{{g.srcStyle}}"><span class="msi" style="font-size:12px">{{g.srcIcon}}</span>{{g.srcLabel}}</span>
+                  <sc-if value="{{g.isNode}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">account_tree</span>Hierarchy only — nothing measured</span></sc-if>
+                  <sc-for list="{{g.badges}}" as="b" hint-placeholder-count="2"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+                  <sc-if value="{{g.hasReg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:#e5484d;color:#fff"><span class="msi" style="font-size:12px">undo</span>{{g.regLabel}}</span></sc-if>
+                </div>
+                <sc-if value="{{g.isMixed}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">
+                    <span style="display:flex;align-items:center;gap:3px;padding:1px 6px;border-radius:5px;background:var(--bg3)"><span class="msi" style="font-size:12px">history</span>{{g.oldestRun}}</span>
+                    <span class="msi" style="font-size:13px">arrow_right_alt</span>
+                    <span style="color:var(--txt)">{{g.newestRun}}</span>
+                    <span style="font-family:'IBM Plex Sans',sans-serif">· {{g.spanWhen}}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{g.isSingle}}" hint-placeholder-val="{{true}}"><span style="font-size:11px;color:var(--txt2)"><span style="font-family:'IBM Plex Mono',monospace">{{g.newestRun}}</span> · {{g.newestWhen}}</span></sc-if>
+              </div>
+              <sc-if value="{{g.hasGallery}}" hint-placeholder-val="{{true}}">
+                <a href="{{g.galleryHref}}" onClick="{{g.stop}}" style="width:44px;height:44px;margin:-6px -4px 0 0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--txt2);flex-shrink:0" title="Open sheet"><span class="msi" style="font-size:20px">grid_view</span></a>
+              </sc-if>
+            </div>
+            <sc-if value="{{g.open}}" hint-placeholder-val="{{false}}">
+              <sc-for list="{{g.children}}" as="k" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;padding:9px 12px 9px 35px;border-top:1px solid var(--line);background:var(--bg0);font-size:12px;color:var(--txt2)"><span class="msi" style="font-size:15px">folder</span><span style="flex:1">{{k.name}}</span><span style="font-size:11px">not measured</span></div>
+              </sc-for>
+              <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+                <a href="./RefDiff Comparison Tool.dc.html" style="display:flex;align-items:center;gap:8px;padding:9px 12px 9px 35px;border-top:1px solid var(--line);background:var(--bg0);color:var(--txt);min-height:44px;box-sizing:border-box">
+                  <span style="{{r.vStyle}}"></span>
+                  <div style="{{r.thumbStyle}}"><span style="{{r.thumbInner}}"></span></div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.name}}</span>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <sc-for list="{{r.badges}}" as="b" hint-placeholder-count="1"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
+                      <sc-if value="{{r.reg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:#e5484d;color:#fff"><span class="msi" style="font-size:11px">undo</span>Regression</span></sc-if>
+                      <span style="{{r.runStyle}}"><sc-if value="{{r.stale}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:12px">history</span></sc-if>{{r.runLabel}}</span>
+                    </div>
+                  </div>
+                  <span class="msi" style="font-size:18px;color:var(--txt2)">chevron_right</span>
+                </a>
+              </sc-for>
+              <sc-if value="{{g.hasMore}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 12px 10px 35px;border-top:1px solid var(--line);background:var(--bg0);font-size:12px;font-weight:600;color:var(--acc);cursor:pointer;min-height:44px;box-sizing:border-box" onClick="{{g.showMore}}"><span class="msi" style="font-size:16px">unfold_more</span>{{g.moreLabel}}</div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+      <div style="padding:60px 20px;text-align:center;color:var(--txt2);font-size:13px">No set has a cell matching this search or filter.</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:860},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;,&quot;section&quot;:&quot;Appearance&quot;},&quot;mobile&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;boolean|null&quot;}}">
+const SEV = { critical: '#e5484d', major: '#f5a623', minor: '#4c9aff' };
+const SEVL = { critical: 'Critical', major: 'Major', minor: 'Minor' };
+const SRC = { figma: ['Figma', 'design_services'], claude: ['Claude Design', 'auto_awesome'] };
+const NEWEST = 47;
+const WHEN = { 47: '12 min ago', 46: '1 h ago', 45: '3 h ago', 44: 'yesterday' };
+const ST5 = ['Default', 'Hover', 'Active', 'Focus', 'Disabled'], ST6 = ST5.concat(['Error']);
+const GROUPS = [
+  { id: 'button', name: 'Button', path: 'Actions / Button', src: 'figma', cells: 41, axes: [['tone', ['Primary', 'Secondary', 'Tertiary', 'Danger']], ['size', ['sm', 'md', 'lg']], ['state', ST5]], health: 0.92, mixed: [45] },
+  { id: 'checkbox', name: 'Checkbox', path: 'Forms / Checkbox', src: 'figma', cells: 45, axes: [['state', ST6], ['checked', ['checked', 'unchecked', 'indeterminate']], ['label', ['with-label', 'without-label']], ['size', ['md', 'sm']]], health: 0.5, mixed: [44, 45] },
+  { id: 'textfield', name: 'Text field', path: 'Forms / Text field', src: 'claude', cells: 24, axes: [['state', ['Default', 'Hover', 'Focus', 'Filled', 'Disabled', 'Error']], ['size', ['md', 'lg']], ['label', ['with-label', 'without-label']]], health: 0.5 },
+  { id: 'radio', name: 'Radio', path: 'Forms / Radio', src: 'figma', cells: 18, axes: [['state', ST6], ['checked', ['selected', 'unselected']], ['label', ['with-label', 'without-label']]], health: 0.3 },
+  { id: 'select', name: 'Select', path: 'Forms / Select', src: 'claude', cells: 16, axes: [['state', ['Default', 'Hover', 'Focus', 'Open', 'Disabled', 'Error']], ['size', ['md', 'lg']], ['label', ['with-label', 'without-label']]], health: 0.6, mixed: [46] },
+  { id: 'switch', name: 'Switch', path: 'Forms / Switch', src: 'figma', cells: 12, axes: [['state', ST6], ['on', ['on', 'off']]], health: 0.2 },
+  { id: 'foundations', name: 'Foundations', path: 'Foundations', src: 'figma', node: true, children: ['Color tokens', 'Type scale', 'Elevation', 'Spacing'] },
+  { id: 'chip', name: 'Chip', path: 'Data display / Chip', src: 'claude', cells: 10, axes: [['kind', ['Filter', 'Input', 'Assist']], ['state', ['Default', 'Hover', 'Selected', 'Disabled']]], health: 0.4 },
+  { id: 'tabs', name: 'Tabs', path: 'Navigation / Tabs', src: 'figma', cells: 8, axes: [['state', ['Default', 'Hover', 'Selected', 'Disabled']], ['icon', ['no-icon', 'leading-icon']]], health: 0 },
+  { id: 'badge', name: 'Badge', path: 'Data display / Badge', src: 'figma', cells: 6, axes: [['tone', ['Neutral', 'Info', 'Success', 'Warning', 'Error', 'Brand']]], health: 0.35 },
+  { id: 'avatar', name: 'Avatar', path: 'Data display / Avatar', src: 'claude', cells: 5, axes: [['size', ['xs', 'sm', 'md', 'lg', 'xl']]], health: 0 },
+  { id: 'tooltip', name: 'Tooltip', path: 'Overlays / Tooltip', src: 'claude', cells: 4, axes: [['placement', ['top', 'right', 'bottom', 'left']]], health: 0.5 },
+  { id: 'stepper', name: 'Stepper', path: 'Navigation / Stepper', src: 'figma', cells: 3, axes: [['state', ['Current', 'Complete', 'Upcoming']]], health: 0 },
+  { id: 'iconbutton', name: 'Icon button', path: 'Actions / Icon button', src: 'figma', cells: 2, axes: [['tone', ['Primary', 'Ghost']]], health: 0.7 }];
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10000) / 10000; }
+function cellsFor(g) {
+  if (g.node) return [];
+  let combos = [[]];
+  for (const [, vals] of g.axes) { const next = []; for (const c of combos) for (const v of vals) next.push(c.concat([v])); combos = next; }
+  return combos.slice(0, g.cells).map((vals, i) => {
+    const key = g.id + ':' + vals.join('/'), r = hash(key), r2 = hash(key + 's');
+    const sev = r < g.health ? (r2 < 0.18 ? 'critical' : r2 < 0.55 ? 'major' : 'minor') : null;
+    const run = g.mixed && hash(key + 'r') < 0.16 ? g.mixed[Math.floor(hash(key + 'm') * g.mixed.length)] : NEWEST;
+    return { id: g.id + '-' + i, name: vals.join(' \u00b7 '), sev, reg: !!sev && hash(key + 'g') < 0.12, run, comments: hash(key + 'k') < 0.07 ? 1 + Math.floor(hash(key + 'kk') * 3) : 0 };
+  });
+}
+function thumbShape(g, c) {
+  const fail = !!c.sev, fill = fail ? '#6366F1' : '#4F46E5';
+  switch (g.id) {
+    case 'checkbox': return { width: 10, height: 10, borderRadius: 2, background: fill };
+    case 'radio': case 'avatar': return { width: 10, height: 10, borderRadius: '50%', background: fill };
+    case 'switch': return { width: 16, height: 9, borderRadius: 5, background: fill };
+    case 'textfield': case 'select': return { width: 22, height: 10, borderRadius: 2, border: '1px solid ' + fill, boxSizing: 'border-box' };
+    case 'chip': case 'badge': return { width: 18, height: 8, borderRadius: 4, background: fill };
+    case 'tabs': case 'stepper': return { width: 22, height: 3, borderRadius: 1, background: fill };
+    case 'tooltip': return { width: 16, height: 8, borderRadius: 2, background: '#22262b' };
+    case 'iconbutton': return { width: 12, height: 12, borderRadius: 3, background: fill };
+    default: return { width: 20, height: 8, borderRadius: 2, background: c.name.startsWith('Danger') ? '#DC2626' : c.name.startsWith('Primary') ? fill : 'transparent', border: c.name.startsWith('Secondary') ? '1px solid ' + fill : 'none', boxSizing: 'border-box' };
+  }
+}
+const CELLS = {}; GROUPS.forEach(g => { CELLS[g.id] = cellsFor(g); });
+const TOTAL = GROUPS.reduce((n, g) => n + (g.cells || 0), 0);
+class Component extends DCLogic {
+  state = { theme: null, query: '', filter: 'all', src: 'all', open: {}, more: {} };
+  theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  renderVals() {
+    const S = this.state, light = this.theme() === 'light', isM = !!this.props.mobile;
+    const q = S.query.trim().toLowerCase();
+    const filterActive = !!q || S.filter !== 'all' || S.src !== 'all';
+    const cellMatch = c => {
+      if (q && !c.name.toLowerCase().includes(q)) return false;
+      if (S.filter === 'fail') return c.sev === 'critical' || c.sev === 'major';
+      if (S.filter === 'critical') return c.sev === 'critical';
+      if (S.filter === 'regressed') return c.reg;
+      if (S.filter === 'stale') return c.run < NEWEST;
+      if (S.filter === 'comments') return c.comments > 0;
+      return true;
+    };
+    const chip = act => ({ padding: isM ? '5px 10px' : '6px 12px', borderRadius: 999, fontSize: isM ? 11.5 : 12, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (act ? 'var(--acc)' : 'var(--line)'), color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'var(--bg1)', whiteSpace: 'nowrap' });
+    const srcChips = [['all', 'Both sources'], ['figma', 'Figma'], ['claude', 'Claude Design']].map(([id, label]) => ({ id, label, style: chip(S.src === id), onClick: () => this.setState({ src: id }) }));
+    const filterChips = [['all', 'Any state'], ['fail', 'Failing'], ['critical', 'Critical'], ['regressed', 'Regressed'], ['stale', 'Stale cells'], ['comments', 'Has comments']].map(([id, label]) => ({ id, label, style: chip(S.filter === id), onClick: () => this.setState({ filter: id }) }));
+    const badge = (sv, n, small) => ({ label: String(n), title: SEVL[sv] + ' ' + n, style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: small ? 11 : 11.5, fontWeight: 600, color: SEV[sv], whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono',monospace" }, dot: { width: 8, height: 8, borderRadius: '50%', background: SEV[sv], display: 'inline-block' } });
+    let shownCells = 0, shownGroups = 0;
+    const groups = [];
+    for (const g of GROUPS) {
+      if (S.src !== 'all' && g.src !== S.src) continue;
+      const nameHit = !q || g.name.toLowerCase().includes(q) || g.path.toLowerCase().includes(q) || (g.children || []).some(c => c.toLowerCase().includes(q));
+      const all = CELLS[g.id];
+      const vis = g.node ? [] : (nameHit && !q ? all.filter(cellMatch) : all.filter(cellMatch).concat(nameHit && S.filter === 'all' ? all.filter(c => !cellMatch(c)) : []));
+      if (g.node) { if (S.filter !== 'all' || !nameHit) continue; }
+      else if (vis.length === 0) continue;
+      shownGroups++; shownCells += vis.length;
+      const open = S.open[g.id] ?? (filterActive ? true : (g.id === 'button' || g.id === 'foundations'));
+      const cnt = { critical: 0, major: 0, minor: 0 }; let reg = 0, stale = 0, comments = 0, oldest = NEWEST;
+      for (const c of all) { if (c.sev) cnt[c.sev]++; if (c.reg) reg++; if (c.run < NEWEST) { stale++; oldest = Math.min(oldest, c.run); } comments += c.comments; }
+      const badges = ['critical', 'major', 'minor'].filter(s => cnt[s] > 0).map(s => badge(s, cnt[s]));
+      if (!g.node && !badges.length) badges.push({ label: 'Clean', title: 'No findings', style: { fontSize: 11.5, fontWeight: 600, color: '#46a758' }, dot: { display: 'none' } });
+      const limit = S.more[g.id] ? Infinity : 10;
+      const rows = vis.slice(0, limit).map(c => ({
+        name: c.name, reg: c.reg, comments: c.comments, hasComments: c.comments > 0, stale: c.run < NEWEST,
+        runLabel: 'r' + c.run, when: WHEN[c.run], runTip: c.run < NEWEST ? 'Measured in run ' + c.run + ' \u2014 ' + (NEWEST - c.run) + ' runs behind the newest' : 'Measured in the newest run',
+        runStyle: c.run < NEWEST ? { display: 'flex', alignItems: 'center', gap: 3, padding: '1px 6px', borderRadius: 5, background: 'var(--bg3)', color: 'var(--txt2)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 } : { color: 'var(--txt)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 },
+        thumbStyle: { width: 34, height: 24, borderRadius: 4, background: '#f4f5f7', border: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' },
+        thumbInner: thumbShape(g, c),
+        vStyle: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: c.sev ? SEV[c.sev] : 'transparent', border: c.sev ? 'none' : '1.5px solid #46a758', boxSizing: 'border-box' },
+        badges: c.sev ? [{ label: SEVL[c.sev], style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600, color: SEV[c.sev] }, dot: { display: 'none' } }] : [{ label: 'No findings', style: { fontSize: 11.5, color: 'var(--txt2)' }, dot: { display: 'none' } }]
+      }));
+      const [sl, si] = SRC[g.src];
+      groups.push({
+        id: g.id, name: g.name, path: g.path, open, isNode: !!g.node, hasGallery: !g.node, galleryHref: './RefDiff Gallery.dc.html', stop: e => e.stopPropagation(),
+        chev: open ? 'expand_more' : 'chevron_right',
+        thumbStyle: { width: 44, height: 34, borderRadius: 5, background: g.node ? 'var(--bg2)' : '#f4f5f7', border: '1px solid var(--line)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 3, padding: 4, boxSizing: 'border-box', opacity: g.node ? 0.7 : 1 },
+        thumbCells: g.node ? [{ style: { gridColumn: 'span 3', borderRadius: 2, background: 'var(--bg3)' } }] : Array.from({ length: 6 }, (_, i) => ({ style: { borderRadius: 2, background: i % 3 === 0 ? '#4F46E5' : i % 3 === 1 ? 'rgba(79,70,229,0.35)' : '#d9dbe0' } })),
+        rowStyle: { display: 'grid', gridTemplateColumns: 'minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px', gap: 12, alignItems: 'center', padding: '8px 14px', minHeight: 54, borderBottom: '1px solid var(--line)', cursor: 'pointer', background: open ? 'var(--bg2)' : 'transparent', opacity: g.node ? 0.82 : 1 },
+        toggle: () => this.setState(s => ({ open: { ...s.open, [g.id]: !open } })),
+        srcLabel: sl, srcIcon: si, srcStyle: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, padding: '2px 8px 2px 6px', borderRadius: 999, border: '1px solid var(--line)', color: 'var(--txt2)', whiteSpace: 'nowrap' },
+        cellsLabel: g.node ? '0 cells' : (filterActive && vis.length < all.length ? vis.length + ' of ' + all.length : all.length + ' cells'),
+        cellsStyle: { fontSize: 12, fontFamily: "'IBM Plex Mono',monospace", color: g.node ? 'var(--txt2)' : 'var(--txt)', whiteSpace: 'nowrap' },
+        badges: g.node ? [] : badges, hasReg: reg > 0, regLabel: reg + ' regressed', hasComments: comments > 0, comments,
+        isMixed: stale > 0, isSingle: !g.node && stale === 0, oldestRun: 'r' + oldest, newestRun: 'r' + NEWEST, newestWhen: WHEN[NEWEST],
+        spanWhen: WHEN[oldest] + ' \u2192 ' + WHEN[NEWEST], staleLabel: stale + ' stale', spanTip: stale + ' of ' + all.length + ' cells were last measured in run ' + oldest + '; the rest in run ' + NEWEST,
+        children: g.node && open ? g.children.map(n => ({ name: n })) : [], rows: g.node ? [] : rows,
+        hasMore: vis.length > rows.length, moreLabel: 'Show ' + (vis.length - rows.length) + ' more', showMore: e => { e.stopPropagation(); this.setState(s => ({ more: { ...s.more, [g.id]: true } })); }
+      });
+    }
+    return {
+      themeClass: light ? 'cc-theme-light' : '', themeIcon: light ? 'dark_mode' : 'light_mode',
+      toggleTheme: () => this.setState({ theme: light ? 'dark' : 'light' }),
+      wrapStyle: { maxWidth: isM ? 480 : 1240, margin: '0 auto', padding: '20px 16px 40px', boxSizing: 'border-box' },
+      query: S.query, onQuery: e => this.setState({ query: e.target.value }),
+      countMsg: filterActive ? shownCells + ' of ' + TOTAL + ' cells \u00b7 ' + shownGroups + ' of ' + GROUPS.length + ' groups' : TOTAL + ' cells in ' + GROUPS.length + ' groups',
+      filterActive, filterMsg: 'Filters apply to cells. Groups with no matching cell are hidden; matching groups open to show only their matches.',
+      clearFilters: () => this.setState({ query: '', filter: 'all', src: 'all', open: {} }),
+      srcChips, filterChips, groups, isMobile: isM, isDesk: !isM, empty: groups.length === 0,
+      mobListStyle: { display: 'flex', flexDirection: 'column', gap: 8 }
+    };
+  }
+}
+</script>
+</body>
+</html>

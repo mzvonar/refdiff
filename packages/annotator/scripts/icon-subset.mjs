@@ -35,7 +35,17 @@ const walk = (dir, pred) =>
 
 const sources = [
   ...walk(join(root, "design", "refdiff"), (p) => p.endsWith(".dc.html")),
-  ...walk(join(root, "packages", "annotator", "src"), (p) => p.endsWith(".ts") && !p.endsWith(".test.ts")),
+  // src/icon-names.ts is EXCLUDED because it is this script's own OUTPUT and it
+  // lives in the directory this script scans. The quoted-token heuristic is
+  // deliberately over-inclusive — an ordinary lowercase word that happens to be
+  // a glyph name gets subsetted, which costs bytes and never breaks a render —
+  // but reading the generated list back in makes every such false positive
+  // PERMANENT and self-sustaining: `table`, picked up from a quoted role name
+  // in an index-view.ts comment on 2026-09-07, survived the comment being
+  // rephrased because the generated file was still feeding it back. Fixing the
+  // source could not remove it and only this exclusion can.
+  ...walk(join(root, "packages", "annotator", "src"), (p) =>
+    p.endsWith(".ts") && !p.endsWith(".test.ts") && !p.endsWith("icon-names.ts")),
 ]
 
 const known = new Set(
