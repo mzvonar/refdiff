@@ -380,7 +380,25 @@ const COMPARE_ROUTE = "/#/onboarding-document-step"
 
 export const manifest = [
   {
+    // DISABLED at chunk 5, by the repo owner's call (2026-09-07): kept rather
+    // than deleted, so the declaration survives if the card grid is ever wanted
+    // back. `RefDiff Library.dc.html` draws the thumbnail card grid that the
+    // six-column table replaced, so this pair measures the new surface against
+    // the old design: 18 -> 489 findings, confidence 0.88 -> 0.14, which is
+    // BELOW the 0.5 gate where position / size / missing-element findings stop
+    // meaning much. 299 of them already sat under the declared cause "Library
+    // comp predates groups" — a cause that is now measuring the wrong comp
+    // rather than explaining a real one.
+    //
+    // The comp shows up in `pair-coverage`'s `unmeasured` bucket, not as
+    // unpaired: declared and deliberately not measured is a third state, and
+    // conflating it with "paired" would put a hole in the guard that exists to
+    // keep "the design exists" apart from "the pair is measured".
+    //
+    // To re-enable: delete the `disabled` key. Nothing else here was changed,
+    // and the `waitFor` below already names the table's `.lrow`.
     id: "refdiff-library-desktop",
+    disabled: "RefDiff Library.dc.html draws the card grid chunk 5 replaced — 489 findings at confidence 0.14",
     title: "RefDiff · Library (desktop)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
     // `.card` was chunk 1's thumbnail card and chunk 5 replaced it with `.lrow`.
@@ -398,17 +416,23 @@ export const manifest = [
     ignore: COMPARE_IGNORE,
   },
   {
+    // DISABLED with its desktop half — same comp, same reason. Its numbers were
+    // less stark (16 -> 335 findings, confidence 1.00 -> 0.67, so still above
+    // the gate), but a phone card list and a phone group-card list share more
+    // furniture than the two desktop layouts do; the comp is superseded either
+    // way. See the desktop pair above for the whole reasoning.
     id: "refdiff-library-mobile",
+    disabled: "RefDiff Library.dc.html draws the card grid chunk 5 replaced — 335 findings at confidence 0.67",
     title: "RefDiff · Library (mobile)",
     design: { file: "RefDiff Library.dc.html", frame: "Library" },
     // Both halves: see the desktop pair's note — `.card` is gone from the app.
     app: { source: "live", route: "/", viewport: mobile, waitFor: "#cards .card, #cards .lrow" },
     ignore: LIBRARY_IGNORE,
   },
-  // RETIREMENT, OPEN: these two pairs now measure the grouped TABLE against a
-  // comp that draws the card grid it replaced. They were kept on 2026-09-04
-  // because they were the only comp matching the app; chunk 5 ended that. The
-  // call is the repo owner's — the numbers are in docs/handoff-gallery-groups.md.
+  // RETIREMENT, ANSWERED 2026-09-07: DISABLED, not deleted — see both entries
+  // above. `disabled` is a manifest key added for exactly this case; the pairs
+  // and the comp stay declared, nothing runs them, and re-enabling is deleting
+  // one key.
   {
     // CHUNK 5 — the Library rebuilt as the comp's six-column TABLE. A REBUILD,
     // not a delta: chunk 1 grouped the existing thumbnail card grid, and this

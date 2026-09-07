@@ -28,6 +28,21 @@ import { describe, expect, it } from "vitest"
  * The kind of waiver that has to be re-read whenever its file moves, not only
  * when its reason changes.
  */
+/**
+ * Comps on disk whose every pair is `disabled` — declared, deliberately not
+ * measured. Asserted exactly, so this list moving is a deliberate edit.
+ */
+const DISABLED_COMPS: string[] = [
+  // The two `refdiff-library-*` pairs. Chunk 5 rebuilt the Library as the
+  // six-column table `RefDiff Library Groups.dc.html` draws, so this comp's card
+  // grid is a surface the app no longer has: the pairs went 18 -> 489 findings
+  // at confidence 0.88 -> 0.14 and 16 -> 335 at 1.00 -> 0.67, the desktop one
+  // below the 0.5 gate where its findings stop meaning much. Kept rather than
+  // deleted at the repo owner's call (2026-09-07) so the comp and its two pair
+  // declarations survive if the card grid is ever wanted back.
+  "RefDiff Library.dc.html",
+]
+
 const UNPAIRED_BY_DESIGN = new Map<string, string>([
   // Both Gallery comps were here until chunk 3 stubbed the sheet and registered
   // `refdiff-gallery-desktop` / `-mobile`. The waivers went in the SAME change,
@@ -39,26 +54,48 @@ const UNPAIRED_BY_DESIGN = new Map<string, string>([
 ])
 
 export interface PairCoverage {
-  /** On disk, no pair names it, and not allow-listed. */
+  /** On disk, no pair names it at all, and not allow-listed. */
   unpaired: string[]
   /** Named by a pair, but not on disk. */
   missing: string[]
   /** Allow-listed but no longer on disk — the waiver outlived its comp. */
   staleWaivers: string[]
+  /**
+   * On disk and DECLARED, but every pair naming it is `disabled` — so nothing
+   * measures it.
+   *
+   * Its own bucket rather than a pass, because "declared" and "measured" are
+   * the two facts this whole guard exists to keep apart, and a disabled pair
+   * satisfies the first while failing the second. Counting it as paired would
+   * put a silent hole in exactly the check that was written to close one. The
+   * real-dir test asserts this list EXACTLY, so disabling or re-enabling a pair
+   * has to be a deliberate edit here — a `contains` assertion would pass on an
+   * empty list, which is indistinguishable from a clean tree.
+   */
+  unmeasured: string[]
 }
 
-/** Pure: compare the comps on disk against the files the manifest names. */
+/**
+ * Pure: compare the comps on disk against the files the manifest names.
+ *
+ * `manifestFiles` is EVERY pair's comp, disabled ones included; `enabledFiles`
+ * is the subset that a run would actually capture. Passing the same list twice
+ * is the no-disabled-pairs case.
+ */
 export function pairCoverage(
   comps: readonly string[],
   manifestFiles: readonly string[],
   allowed: ReadonlySet<string>,
+  enabledFiles: readonly string[] = manifestFiles,
 ): PairCoverage {
   const named = new Set(manifestFiles)
+  const measured = new Set(enabledFiles)
   const onDisk = new Set(comps)
   return {
     unpaired: comps.filter((c) => !named.has(c) && !allowed.has(c)).sort(),
     missing: [...named].filter((f) => !onDisk.has(f)).sort(),
     staleWaivers: [...allowed].filter((a) => !onDisk.has(a)).sort(),
+    unmeasured: comps.filter((c) => named.has(c) && !measured.has(c)).sort(),
   }
 }
 
@@ -93,7 +130,23 @@ describe("pairCoverage", () => {
   // positive control above is what gives the clean-tree cases below meaning.
   it("is clean when every comp has a pair", () => {
     const r = pairCoverage(["A.dc.html"], ["A.dc.html"], new Set())
-    expect(r).toEqual({ unpaired: [], missing: [], staleWaivers: [] })
+    expect(r).toEqual({ unpaired: [], missing: [], staleWaivers: [], unmeasured: [] })
+  })
+
+  // A disabled pair keeps its comp OUT of `unpaired` — the declaration is still
+  // there — and puts it in `unmeasured`, which is the honest description.
+  it("calls a comp whose only pair is disabled unmeasured, not unpaired", () => {
+    const r = pairCoverage(["A.dc.html", "B.dc.html"], ["A.dc.html", "B.dc.html"], new Set(), ["A.dc.html"])
+    expect(r.unpaired).toEqual([])
+    expect(r.missing).toEqual([])
+    expect(r.unmeasured).toEqual(["B.dc.html"])
+  })
+
+  // Two pairs can name one comp — the desktop and mobile halves do. Disabling
+  // ONE of them leaves the comp measured, so it is not unmeasured.
+  it("keeps a comp measured while any one of its pairs is enabled", () => {
+    const r = pairCoverage(["A.dc.html"], ["A.dc.html", "A.dc.html"], new Set(), ["A.dc.html"])
+    expect(r.unmeasured).toEqual([])
   })
 })
 
@@ -105,14 +158,20 @@ describe("the real design dir", () => {
     expect(comps.length).toBeGreaterThan(2)
 
     const { manifest } = (await import(manifestUrl.href)) as {
-      manifest: { id: string; design: { file?: string } }[]
+      manifest: { id: string; disabled?: string | boolean; design: { file?: string } }[]
     }
     const named = manifest.flatMap((p) => (p.design.file ? [p.design.file] : []))
+    const enabled = manifest.flatMap((p) => (p.design.file && !p.disabled ? [p.design.file] : []))
     expect(named.length).toBeGreaterThan(0)
 
-    const r = pairCoverage(comps, named, new Set(UNPAIRED_BY_DESIGN.keys()))
+    const r = pairCoverage(comps, named, new Set(UNPAIRED_BY_DESIGN.keys()), enabled)
     expect(r.unpaired, "comps with no pair — add one to design/refdiff.manifest.mjs, or waive it in UNPAIRED_BY_DESIGN with the reason").toEqual([])
     expect(r.missing, "pairs naming a comp that is not on disk — re-fetch it with DesignSync, or drop the pair").toEqual([])
     expect(r.staleWaivers, "UNPAIRED_BY_DESIGN entries whose comp is gone — drop the waiver").toEqual([])
+    // EXACT, never `contains`: an empty list is indistinguishable from a clean
+    // tree, so disabling or re-enabling a pair has to be an edit here.
+    expect(r.unmeasured, "comps whose every pair is disabled — re-enable one, or retire the comp").toEqual(
+      DISABLED_COMPS,
+    )
   })
 })

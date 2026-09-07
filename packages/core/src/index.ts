@@ -40,6 +40,7 @@ export {
 } from "./accepted.js"
 export {
   parseManifest,
+  readDisabled,
   readGallery,
   readSectionPath,
   readSections,

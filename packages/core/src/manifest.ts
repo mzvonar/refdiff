@@ -73,6 +73,40 @@ export interface PairSpec {
   gallery?: GalleryConfig
 }
 
+/**
+ * A pair kept in the manifest but NOT measured — `disabled: "<why>"`.
+ *
+ * The case it exists for: a comp is superseded by a rebuild, so its pair now
+ * measures the new surface against the old design and reports hundreds of
+ * findings that mean nothing. Deleting the pair loses the declaration and the
+ * comp's linkage; leaving it enabled trains a reader to ignore a number. This
+ * is the third option — the declaration survives, nothing runs, and re-enabling
+ * is deleting one key.
+ *
+ * **The reason is REQUIRED and `disabled: true` is refused.** A pair silently
+ * not running is the worst failure this tool has (a comp with no pair reports
+ * its drift nowhere), so the one thing a disabled pair must carry is why. Same
+ * call as `gallery`'s empty `{}`: refused where the message can name the entry.
+ *
+ * It is read EARLY, before the design and impl specs are validated, so a
+ * disabled pair whose impl spec has rotted does not fail the whole manifest for
+ * a pair nobody runs. The consequence, stated: a typo inside a disabled entry
+ * is not found until it is re-enabled. Its `design.file` is still linked,
+ * because `pair-coverage` reads the raw module rather than this parse — a
+ * disabled pair keeps its comp OUT of `unpaired` and puts it in `unmeasured`.
+ */
+export function readDisabled(raw: unknown): Result<string | undefined, string> {
+  if (raw === undefined || raw === false) return ok(undefined)
+  if (typeof raw !== "string") {
+    return err(
+      `disabled must be the REASON as a string (got ${typeof raw}) — a pair that silently does not run is the one failure that reports itself nowhere`,
+    )
+  }
+  const reason = raw.trim()
+  if (reason === "") return err("disabled needs a non-empty reason")
+  return ok(reason)
+}
+
 export type ManifestError =
   | { kind: "not-an-array"; detail: string }
   | { kind: "invalid-entry"; index: number; detail: string }
@@ -506,6 +540,12 @@ export function parseManifest(
       return err({ kind: "invalid-entry", index, detail: "entry needs a string `id`" })
     }
     const id = entry["id"]
+    const disabled = readDisabled(entry["disabled"])
+    if (!disabled.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${disabled.error}` })
+    if (disabled.value !== undefined) {
+      skipped.push({ id, reason: `disabled — ${disabled.value}` })
+      continue
+    }
     const app = entry["app"]
     const viewport = isRecord(app) ? readViewport(app["viewport"]) : undefined
     const ignore = readPolicy(entry["ignore"])

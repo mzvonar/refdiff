@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseManifest } from "./manifest.js";
+import { parseManifest, readDisabled } from "./manifest.js";
 
 const entry = {
   id: "doc-detail-owner-desktop",
@@ -370,5 +370,88 @@ describe("readGallery — how a set's cells lay out", () => {
     expect(parsed.value.pairs[0]?.section).toBeUndefined();
     expect(parsed.value.pairs[0]?.gallery).toBeUndefined();
     expect(parsed.value.sections).toEqual([]);
+  });
+});
+
+describe("readDisabled — a pair kept in the manifest but not measured", () => {
+  it("takes the reason as a string, and trims it", () => {
+    expect(readDisabled("superseded by the groups rebuild")).toEqual({
+      ok: true,
+      value: "superseded by the groups rebuild",
+    });
+    expect(readDisabled("  spaced  ")).toEqual({ ok: true, value: "spaced" });
+  });
+
+  it("is absent when the key is, and `false` means enabled", () => {
+    expect(readDisabled(undefined)).toEqual({ ok: true, value: undefined });
+    expect(readDisabled(false)).toEqual({ ok: true, value: undefined });
+  });
+
+  // A pair that silently does not run is the worst failure this tool has — a
+  // comp with no pair reports its drift nowhere — so the ONE thing a disabled
+  // pair must carry is why. Same call as gallery's empty `{}`.
+  it("REFUSES `disabled: true` — the reason is the whole point", () => {
+    const r = readDisabled(true);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.error).toContain("must be the REASON as a string");
+  });
+
+  it("refuses an empty or whitespace reason", () => {
+    expect(readDisabled("").ok).toBe(false);
+    expect(readDisabled("   ").ok).toBe(false);
+    expect(readDisabled(0).ok).toBe(false);
+    expect(readDisabled({ reason: "x" }).ok).toBe(false);
+  });
+});
+
+describe("parseManifest — a disabled entry", () => {
+  const disabled = {
+    id: "refdiff-library-desktop",
+    disabled: "the comp it names was superseded by the groups rebuild",
+    design: { file: "old.dc.html", frame: "Library" },
+    app: { source: "live", route: "/", viewport: { width: 1180, height: 800 } },
+  };
+
+  it("diverts it into `skipped` with the reason, and never into `pairs`", () => {
+    const parsed = parseManifest([entry, disabled]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs.map((p) => p.id)).toEqual(["doc-detail-owner-desktop"]);
+    expect(parsed.value.skipped).toEqual([
+      {
+        id: "refdiff-library-desktop",
+        reason: "disabled — the comp it names was superseded by the groups rebuild",
+      },
+    ]);
+  });
+
+  // Read EARLY, before the design and impl specs are validated, so a disabled
+  // pair whose spec has rotted does not fail the whole manifest for a pair
+  // nobody runs. Stated consequence: a typo inside it waits until re-enabling.
+  it("does not validate the rest of a disabled entry", () => {
+    const parsed = parseManifest([
+      { id: "rotted", disabled: "kept for later", design: 42, app: { source: "nonsense" } },
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs).toEqual([]);
+    expect(parsed.value.skipped[0]?.reason).toBe("disabled — kept for later");
+  });
+
+  it("fails the manifest when the reason is missing, naming the entry", () => {
+    const parsed = parseManifest([{ ...disabled, disabled: true }]);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error.kind).toBe("invalid-entry");
+    expect("detail" in parsed.error && parsed.error.detail).toContain("refdiff-library-desktop");
+  });
+
+  // The enabled pairs around it are untouched — a disabled entry is a hole in
+  // the list, not a truncation of it.
+  it("leaves the entries after it parsing normally", () => {
+    const parsed = parseManifest([disabled, entry]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs.map((p) => p.id)).toEqual(["doc-detail-owner-desktop"]);
   });
 });
