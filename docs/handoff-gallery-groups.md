@@ -28,7 +28,7 @@ file covers only the Library-groups / gallery workstream, whose plan is
 
 ## State of play
 
-**Chunks 1, 2, 3 and 4 are SHIPPED; chunk 5 is PART-SHIPPED. TWENTY-SEVEN commits on `main`,
+**Chunks 1, 2, 3 and 4 are SHIPPED; chunk 5 is PART-SHIPPED. TWENTY-EIGHT commits on `main`,
 nothing pushed** (Mato has not asked). `4b57f12` was the workstream's base; the last CODE
 commit is **`b874e4a`**, and HEAD is the docs commit carrying this file — which is why the
 table below stops at `b874e4a` and cannot name its own sha.
@@ -394,6 +394,20 @@ too. **Proposed and stopped here**, per the repo's rule that a settled decision 
 amended by a measurement that was not available when it was made, and that the agent proposes
 rather than proceeds. Cost of the growth is not the blocker — the fixture is 464 KB and a
 variant dir is a 2.4 KB `findings.json` with no PNG, so 194 cells is ~470 KB.
+
+**The sub-rows and the props join are VERIFIED IN A BROWSER, not only unit-tested.** The
+Library renders collapsed, so `cellRow` and the lazy `<entryId>.set.json` join never ran in
+the measured pairs — the "validated is not wired" gap. A throwaway probe pair (app `steps`
+clicking `.lrow[data-group="ds-button"]`, then capture) closed it: **10 variant-props names
+rendered as `Danger · lg · Default`**, 10 `Compare` cells, 10 cell thumbnails at exactly
+34×24, 28 verdict dots at 8×8, one `expand_more` caret and `Show 31 more` (41 cells − the
+10-row cap). Impl leaf elements went 270 → 363.
+
+**And that probe measured what decision (b) is worth**, which is the number the deferred
+declaration should be re-read against: expanding ONE group moved **matched 182 → 237** and
+**design-only 305 → 250**. So the all-collapsed default costs ~55 matched elements on this
+fixture, out of 487 design leaves. Worth knowing before declaring it away — and worth
+re-measuring after (c), because the same probe is two lines of manifest.
 
 **What is deliberately left RED, and should stay that way for now:** the section `path` line
 (`Actions / Button`) and the hierarchy-only row with its `folder` children. Chunk 4 shipped
