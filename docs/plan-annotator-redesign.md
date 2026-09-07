@@ -379,7 +379,12 @@ footer, the confidence WARNING line under the 0.5 gate) and the mobile row
 `sortEntries` (newest first, ties in dir order, no readable time last);
 `filterEntries` (search over name + route, source chips Both / Figma / Claude
 Design, state chips Any / Failing / Critical / Diverging / Low confidence /
-Has comments); `errorBox` + auto-retry (section C states A and B, from spec,
+Has comments — **the last two were RENAMED and RE-MEANT at chunk 5 of the
+Library-groups workstream, 2026-09-07: `Diverging` → `Regressed`
+(`delta.regressions > 0`, not `introduced > resolved`) and `Low confidence` →
+`Stale cells` (a per-group run property, not an alignment one). This paragraph
+records what the annotator-redesign comps drew; `skills/refdiff/SKILL.md` §1b
+is the current description**); `errorBox` + auto-retry (section C states A and B, from spec,
 unmeasured); the degraded card with the comp's copy. `app-shell.ts`: brand-only
 46px topbar with the layout toggle (`computer`/`smartphone`, forces the row
 list, not persisted — the comp's preview aid; REMOVED 2026-08-28, it is the

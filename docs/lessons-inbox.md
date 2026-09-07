@@ -5,6 +5,83 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-07 — a generated file inside the scanned directory makes every false positive permanent
+
+- **Context:** `icon-subset.mjs` derives the glyph list by intersecting every quoted lowercase token
+  in `design/refdiff/**` and `packages/annotator/src/*.ts` with Google's codepoints list. Chunk 5
+  added a doc comment containing the quoted ARIA role name `table` — which is also a glyph name — so
+  the subset grew to 113. Rephrasing the comment did NOT remove it: `--check` still reported 113.
+- **Lesson:** the script writes `src/icon-names.ts` INTO the directory it scans, so it reads its own
+  output back as input. Any false positive is thereby self-sustaining and **cannot be removed by
+  fixing the source that introduced it** — only by excluding the generated file, which is now done.
+  This is the mirror of the rule the consuming repo already has ("a scanner whose own detection
+  patterns spell the forbidden tokens must exclude its own home directory"): there the scanner
+  flagged its own regexes, here it re-fed its own output. The general form is **a derived artifact
+  must never be an input to its own derivation**, and the symptom is diagnostic — a fix to the
+  source that provably does not change the output.
+- **Candidate home:** `SKILL.md` or CLAUDE.md, beside the icon-subset note. Pair it with the
+  over-inclusion fact: of the 12 glyphs this session added, only 5 were icons the comps DRAW — 6 came
+  from the comps' fixture ids (`radio`, `switch`, `tabs`, `tooltip`, `select`, `label` are all real
+  glyph names) and 1 from a comment. Over-inclusion is the safe direction (a missing glyph renders as
+  its NAME and poisons a pair; a spare one costs ~1.7 KB), but a reader who greps the subset for
+  `switch` and hunts for the icon will not find one.
+
+## 2026-09-07 — a max-width never binds at its own viewport, so no pair ever measures it
+
+- **Context:** the annotator's `.lib` was `max-width:1180px`. The two RefDiff Library pairs capture
+  at viewport 1180, so the rule never engaged and both pairs sat at confidence 0.89 / 1.00 for weeks.
+  The new Library-groups comp captures at 1240, where 1180 DOES bind: the container centred, content
+  started at x=46 against the comp's 16, the table card measured 1148 against 1208, and every filter
+  chip landed 7px left. One stale value displaced the entire page.
+- **Lesson:** **a constraint whose threshold equals its only pair's viewport is invisible to
+  measurement, not correct.** Reading the CSS tells you nothing — 1180 looks deliberate — and reading
+  the comp tells you nothing either. Only a pair at a DIFFERENT viewport can see it. So when a new
+  pair for the same surface arrives at a new size, expect the container constraints to be the first
+  thing it finds, and check them before chasing the elements they displace: the 52 `position`
+  findings in run 2 were one cause. The reverse also holds and is what made the fix safe — raising
+  1180 to the comp's own 1240 could not move the old pairs, because 1240 does not bind at 1180
+  either, and both were re-run to prove it rather than argued about.
+- **Candidate home:** `SKILL.md` § "Reading the measurements", as a container-first ordering rule for
+  a first run at a new viewport.
+
+## 2026-09-07 — where the screen label sits decides whether a phone comp needs a `scope`
+
+- **Context:** the plan and the handoff both stated, twice each, that
+  `refdiff-library-groups-mobile` needs `scope: ".cc-theme-dark"` because it is "its own 390x844
+  phone frame inside a showcase". It does not: with the scope the run failed `scope-not-found` and
+  compared NOTHING (exit 2).
+- **Lesson:** the rule is not "phone comps need a scope", it is **where `data-screen-label` sits
+  relative to the phone node**. Measured across the three phone comps in this repo: `RefDiff Gallery
+  Mobile.dc.html` and `RefDiff Mobile.dc.html` put the label on an OUTER showcase node with
+  `.cc-theme-dark` inside it, so the scope is what picks the phone; `RefDiff Library Groups
+  Mobile.dc.html` puts the label ON the `.cc-theme-dark` node, so the frame already IS the phone and
+  a descendant search finds nothing. One grep answers it before a run does
+  (`grep -o 'data-screen-label="[^"]*"'` plus a check of whether that tag also carries the class).
+  The generalisation: **a `scope` copied between sibling comps is a guess about their DOM shape**, and
+  the failure is loud but costs a capture.
+- **Candidate home:** `SKILL.md` § "Configuring a pair", next to `scope`.
+
+## 2026-09-07 — a reference comp below the persist-to-disk threshold has a verified route, not only a deferral
+
+- **Context:** the 2026-09-04 lesson said a `get_file` result over ~32 KB is persisted to
+  `tool-results/` and can be decoded with no transcription, and that below that threshold "the honest
+  move is to DEFER rather than hand-copy a reference artifact". Both Library Groups comps came back
+  INLINE and complete (`truncated: false`), so the prescribed route did not exist and chunk 5's
+  blocking prerequisite could not be met by deferring again.
+- **Lesson:** the deferral is the right DEFAULT, but the named hazard is specific and mechanically
+  closable — "emitting the CHARACTER instead of the six-character escape". Reproducing the
+  **JSON-escaped** string verbatim into a file and letting `json.loads` do the decode removes the
+  whole class, because the escapes are never interpreted by hand. What is left is ordinary copy
+  error, and that is falsifiable without the remote: transcribe both comps independently, then diff
+  the regions they SHARE. Measured here — the two script bodies differed by exactly one line
+  (`isM = !!this.props.mobile` vs `isM = true`), the shared `isMobile` markup branch by exactly its
+  `hint-placeholder-val`, and the shared chrome by exactly the phone-frame wrapper; ~19 KB of each
+  file cross-confirmed by the other. Plus a targeted count for the named hazard (zero literal `·` /
+  `→` / `—` in either script block, the escapes present) and the `$preview` dimensions matching a
+  plan table written three days earlier from the same comps.
+- **Candidate home:** `SKILL.md`'s refetch procedure — replace "defer" with "defer, or use the
+  JSON-decode route with a shared-region diff", and keep the ban on hand-DECODING escapes.
+
 ## 2026-09-04 — an unlinked surface is indistinguishable from an unbuilt one
 
 - **Context:** chunk 3 shipped the variant sheet at `#/set/<entryId>` and deliberately did NOT link

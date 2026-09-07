@@ -419,19 +419,34 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   rewrites only the entries it names. It also carries the entry's `gallery`
   declaration when it has one — which axis is columns, pinned option order,
   human labels ("Declaring the library's shape").
-- **The annotator's Library folds a set into ONE row.** It groups run dirs by
-  the entry their pair id names — every variant pair is `<entryId>--<slug>`,
-  so `ds-button-fill--state-hover_variant-default` sits under
-  `ds-button-fill` — collapsed, showing that entry's comparison count, the
-  roll-up of its cells' severities, how many of them have a REGRESSION (a fix
-  come undone), how many are unreadable, and an `oldest → newest` span when
-  its cells came from different runs, which is how a subset re-run's mixed
-  vintages stop being invisible. A pair id with no `--` stays a single
-  top-level card. Expanding a group lists that entry's cards unchanged; a
-  search or a filter chip expands every group it left a match in, and the head
-  row keeps counting comparisons, never groups.
-- **A set also has a SHEET, reached by the `Sheet` button on its Library group row
-  (or `#/set/<entryId>` directly), drawing its whole cross-product as a grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
+- **The annotator's Library is a TABLE, one row per set.** Six columns —
+  `Component set · Source · Cells · Findings roll-up · Measured · ⌄` — grouping
+  run dirs by the entry their pair id names: every variant pair is
+  `<entryId>--<slug>`, so `ds-button-fill--state-hover_variant-default` sits
+  under `ds-button-fill`. A row is collapsed and shows that entry's cell count,
+  the roll-up of its cells' severities as a dot and a count (or a green
+  `Clean`), how many cells carry a REGRESSION (a fix come undone), how many are
+  unreadable, and — in the Measured column — `r<min> → r<max>` over that group's
+  OWN cells with `N stale`, which is how a subset re-run's mixed vintages stop
+  being invisible. **Read that span per GROUP: `run` is the ordinal of a run OF
+  THAT PAIR, so ordinals are incomparable across sets and there is no global
+  newest.** A pair id with no `--` is a lone item: one row, no sheet, nothing to
+  expand.
+  Expanding a row lists that entry's CELLS as sub-rows — a verdict dot, the
+  cell's own capture at 34×24, its variant props as its name (`Primary · md ·
+  Default`, joined from `<entryId>.set.json` and fetched only for a group the
+  reader has opened), its badge, its run pill and `Compare ›` — capped at ten
+  with a `Show N more`. A search or a filter chip expands every group it left a
+  match in, and the head row counts CELLS and names the groups they sit in
+  (`194 cells in 14 groups`, or `12 of 194 cells · 3 of 14 groups` when
+  filtered).
+  Two filter chips mean something different from their names in older reports:
+  **`Regressed`** (was `Diverging`) is `delta.regressions > 0`, a fix come
+  undone — not `introduced > resolved`; **`Stale cells`** (was `Low
+  confidence`) is a per-group RUN property, not an alignment one.
+- **A set also has a SHEET, reached by the `Open sheet` button in its Library
+  row's last column (or `#/set/<entryId>` directly), drawing its whole
+  cross-product as a grid.** It joins `<out-root>/<entryId>.set.json` with `/api/pairs`, so it is the
   one surface that can show what was never measured — every cell is `measured`
   (verdict + severity badge), `skipped` (greyed, its reason on hover), `absent`
   (in the axes but declared by neither side) or `pending` (expanded as a pair,
@@ -789,7 +804,11 @@ export const manifest = [
   one line for a manifest that declares any (`hierarchy: 3 sections declared,
   1/2 entries placed`) and nothing for one that does not. The run root does not
   carry the section tree yet, so no surface groups by it — the annotator's
-  Library still groups by the entry a pair id names (§1b).
+  Library still groups by the entry a pair id names (§1b). The consequence is
+  visible: the Library comps draw a section `path` line under each set name
+  (`Actions / Button`) and a hierarchy-only row with children, and the app draws
+  neither, so both are reported against every Library-groups run. That is a real
+  gap, deliberately left red rather than declared away.
 
 ## Reading the measurements (the ported "what to compare" checklist)
 

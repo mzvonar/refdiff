@@ -610,7 +610,57 @@ the selector templates) — carried into the handoff.
 
 ---
 
-## Chunk 5 — the Library rebuilt to the comp (NEW, 2026-09-04)
+## Chunk 5 — the Library rebuilt to the comp — **PART-SHIPPED 2026-09-07**
+
+**What landed.** Both prerequisites, the table on both layouts, and four
+measured iterations of the loop. Every number below is from a run, not from a
+reading of the comp.
+
+| run | change | findings | conf | matched | impl-only |
+| --- | --- | --- | --- | --- | --- |
+| 1 | the card grid, against its own comp for the first time | 762 | **0.30** | 127 | 169 |
+| 2 | the six-column table replaces the grid | 572 | 0.44 | 176 | 94 |
+| 3 | `.lib` max-width 1180 → 1240, `1 cell`, `dataSlots` | 549 | **0.50** | 183 | 87 |
+| 4 | manifest only (no impl change) | 548 | 0.50 | 182 | 88 |
+
+`refdiff-library-groups-mobile`'s FIRST run: **487 findings, confidence 0.77** —
+a much better start than the desktop, because a phone comp's single-column card
+list is close to what the app already drew.
+
+**The one measured fix worth naming**, because reading the comp would never have
+found it: `.lib` was `max-width:1180px`, which is the OLD Library comp's
+VIEWPORT — a max-width never binds at its own viewport, so no pair had ever
+measured it. The groups comp captures at 1240, where it does bind: the container
+centred, content started at x=46 against the comp's 16, the table card came out
+1148 wide against 1208, and every filter chip sat 7px left. One value, and it
+displaced the whole page. Raising it to the comp's own 1240 cannot move the two
+old Library pairs — they capture at 1180, where 1240 does not bind either — and
+both were re-run to prove it.
+
+**Two prerequisite corrections, both measured:**
+
+1. **The mobile pair needs NO `scope`,** which is the opposite of what this plan
+   and the handoff both said. With `scope: ".cc-theme-dark"` the run failed
+   `scope-not-found` and compared nothing. In `RefDiff Gallery Mobile.dc.html`
+   and `RefDiff Mobile.dc.html` the `data-screen-label` sits on an OUTER
+   showcase node and `.cc-theme-dark` is the phone inside it; in `RefDiff
+   Library Groups Mobile.dc.html` the label is ON the `.cc-theme-dark` node, so
+   the frame already IS the phone. Check where the label sits before copying a
+   scope between comps.
+2. **The icon subset moved 101 → 112 glyphs, not by five.** The five the handoff
+   named (`chevron_right`, `account_tree`, `folder`, `filter_alt`,
+   `unfold_more`) plus six the comps' own FIXTURE IDS collide with (`radio`,
+   `switch`, `tabs`, `tooltip`, `select`, `label` are all real glyph names). The
+   scanner intersects quoted lowercase tokens with Google's list, so it
+   over-includes — the safe direction. See the lessons inbox for the feedback
+   loop that found in the same pass.
+
+**Still open, and none of it is a defect** — see the handoff's § "What REMAINS":
+the default-open decision (this plan's own revisit trigger has fired), the
+fixture's shape, and whether the two old Library pairs retire.
+
+### The original specification
+
 
 Chunk 1 grouped the existing card grid. The chunk-0 comp
 (`RefDiff Library Groups.dc.html`) draws something else: a **six-column table**.
@@ -658,11 +708,13 @@ a `Clear` button appear above the list.
 
 **Prerequisites, in order:**
 
-1. **Fetch the two Library Groups comps to disk** (deliberately deferred — see
-   the handoff) and register their pairs. The mobile one is its own 390×844
+1. ~~**Fetch the two Library Groups comps to disk**~~ — **DONE 2026-09-07**, and
+   register their pairs (`refdiff-library-groups-desktop` / `-mobile`). The mobile one is its own 390×844
    phone frame in a showcase canvas, so its pair needs `scope: ".cc-theme-dark"`
    — NOT the responsive-at-a-narrow-viewport shape today's Library pairs use.
-2. **Re-run `icon-subset.mjs`.** The Library comps need `chevron_right`,
+2. ~~**Re-run `icon-subset.mjs`**~~ — **DONE 2026-09-07, 101 → 112 glyphs** (not
+   the five below; see the correction above). The Library comps need
+   `chevron_right`,
    `account_tree`, `folder`, `filter_alt` and `unfold_more`, none of which are
    in the subset — the 2026-09-04 run picked up only the Gallery's four, because
    these two files were not on disk. A glyph the subset lacks renders as its
