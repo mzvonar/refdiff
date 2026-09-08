@@ -80,7 +80,7 @@ without it. **Read the `action` field — it is the one thing to branch on:**
 | fact | value | why it lands where it does |
 | --- | --- | --- |
 | `build_freshness` | `STALE` / `MISSING` | **halt.** The CLI execs `dist/cli.js`, so a dist behind src measures code you did not write. `(cd <checkout> && pnpm build)`, or start the watcher. |
-| `server_freshness` | `STALE` | **halt.** The annotator renders its page shell at process START, so an instance older than dist serves the previous build however fresh dist is. Kill by PID, poll until the port frees, restart, verify by CONTENT. |
+| `server_freshness` | `STALE` | **halt.** The annotator renders its page shell at process START, so an instance older than dist serves the previous build however fresh dist is. Kill by PID, poll until the port frees, restart, verify by CONTENT. It is a check on the BUILD only — it compares the process against `dist` and can say nothing about the DATA a running instance serves, so read a number that disagrees with the disk by content (`curl /api/pairs`), never off this row. (The run-dir listing itself is re-read per request since 2026-09-08; before that a run which ADDED a pair was invisible until a restart, while one that rewrote a pair showed up — the two look identical from outside.) |
 | `skill_freshness` | `stale-<N>` / `differs` | **ask.** *Sync* → `sync-skill.sh`, then restart against the updated copy. *Carry on* → this copy still measures correctly, it may simply not know a newer rule. `stale-<N>` is a real commit count (local objects present); `differs` means only `ls-remote` could answer — say **differs**, never "behind", because without the objects the direction is unknowable. |
 | `checkout_freshness` | `behind-<N>` / `diverged-…` | **ask.** *Pull + rebuild* → `git pull --ff-only && pnpm build`. *Carry on* → the engine, and in dev mode SKILL.md itself, stay at this version. `diverged` is a merge/rebase decision, not a pull. |
 | `ahead-<N>` · `current` · `skipped-*` | | Continue silently — being ahead is not drift. |
@@ -411,10 +411,22 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   set's variant count, the same pair the run prints as `N variant pairs, M
   skipped`; the cross-product of `axes.properties` is what was DECLARED, and
   the difference is cells that exist in neither list. Measured on a DS set:
-  `ds-chip` expands to 5 pairs and 63 skipped out of 105 declared, with 2 run
+  `chip` expands to 5 pairs and 63 skipped out of 105 declared, with 2 run
   dirs in the Library. **Read `axes.source` before you trust the option
-  ORDER** — `definitions` is the designer's own order, `child-names` is the
-  fallback's traversal order, and on real sets the two disagree. It is a FILE
+  ORDER** — `definitions` echoes Figma's `variantOptions`, `child-names` is the
+  fallback's traversal order, and on real sets the two disagree. **Neither is
+  the order the designer LAID OUT, and `definitions` is the one that fools you**:
+  `variantOptions` tracks roughly when each option was CREATED, so an option
+  added late sits last however early it appears on the canvas. Measured across a
+  DS file's 12 sets (2026-09-07): 10 cleanly-separated axes diverge from the
+  canvas, including all 7 `State` axes — four button sets share ONE canvas order
+  (`Default, Hover, Active, Focus, Disabled, Loading`) and report four DIFFERENT
+  `variantOptions` orders, two of them alphabetical with `Focus` appended. Derive
+  the real order from the children's `absoluteBoundingBox.x` (ordering each
+  option by its LEFTMOST cell — widths vary, so x-spans can overlap without the
+  columns interleaving; check one fixed row before trusting a span-based read)
+  and pin it with `gallery.order`. Treat `order` as load-bearing on any axis a
+  human will read as columns, not as a `child-names` remedy. It is a FILE
   at the root, so every run-dir walker ignores it, and a subset re-run
   rewrites only the entries it names. It also carries the entry's `gallery`
   declaration when it has one — which axis is columns, pinned option order,
@@ -423,8 +435,8 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   ALPHABETICALLY.** Six columns —
   `Component set · Source · Cells · Findings roll-up · Measured · ⌄` — grouping
   run dirs by the entry their pair id names: every variant pair is
-  `<entryId>--<slug>`, so `ds-button-fill--state-hover_variant-default` sits
-  under `ds-button-fill`. Rows are alphabetical ascending (numeric-aware, so
+  `<entryId>--<slug>`, so `button-fill--state-hover_variant-default` sits
+  under `button-fill`. Rows are alphabetical ascending (numeric-aware, so
   `-2` precedes `-10`); the row that just finished is found by the `Measured`
   column, not by position, because an order that moved on every subset re-run
   could not be scanned. Cells INSIDE a group stay newest-run-first — those are
@@ -485,21 +497,99 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   with ONE value across the survivors stops being an axis** — it would draw a
   row per option repeating the same value. Those values are not lost: the sheet
   states them once, in its title (`DS · Button / Stroke [variant=light ·
-  Size=md · Theme=Dark]`). Measured: `ds-button-stroke` 6×10 with 36 "Out of
-  scope" tiles → **6×4, 24 cells, no gaps**; `ds-select-field` 7×10 → 7×1. Nine
+  Size=md · Theme=Dark]`). Measured: `button-stroke` 6×10 with 36 "Out of
+  scope" tiles → **6×4, 24 cells, no gaps**; `select-field` 7×10 → 7×1. Nine
   of the fourteen sets end at 100% fill.
   **A sheet with pinned properties is a SLICE, and its cell lookups must be
   filtered to it.** Dropping an axis shortens the props key, so
   `State=Active` alone can be shared by dozens of variants and a keyed lookup
   keeps whichever came last — which silently redrew a coverage gap as
   out-of-scope. The gaps that remain after all this are honest sparsity:
-  `ds-dialog-header` declares 8 of its 16 combinations and no layout choice
+  `dialog-header` declares 8 of its 16 combinations and no layout choice
   changes that. **`precedence`: `only` / `omit` are tested
   before the story selector, so a variant that is both out of scope and unmapped
   reports as `filtered` — "we did not look" is the honest answer when we did
   not.** A measured cell links to its own pair, because
   the sheet is a way INTO the pairs rather than a replacement: a finding's box
-  means something in the pair view. Staleness is read PER SET (`run` is the
+  means something in the pair view.
+  **The rail on a sheet lists CAUSES, not findings, and clicking one lights every
+  cell that carries it** — a `--diff` outline on each hit, the rest of the sheet
+  dropped to 0.18, and the row's own count pill filled in the same colour; clicking
+  it again clears. That is how you tell a token from a variant without opening a
+  single pair: a cause on nearly every cell is not per-cell code. The colour is not
+  the accent on purpose — the accent means SELECTION, and you can hold one of each.
+  **A cell's box on each pane is that PANE'S OWN capture**, not the shared cell
+  rect, so an outline hugs what was measured; a measured cell otherwise draws
+  nothing of its own, and only the unmeasured kinds show a dashed box.
+  **The overlay modes work on a sheet too** — Wipe, Onion, Blink and Diff superimpose
+  the design CELLS over the impl pane, the same way they superimpose the design PNG on
+  a pair. Wipe is the one to reach for on a set: one drag tells you which cells differ
+  in PAINT rather than in structure, which is the half the element channel cannot see.
+  **So does the ALIGN pill, per CELL** (since 2026-09-08): Top left puts every design at
+  its own cell origin, Top right registers each by its own top-right corner, Width scales
+  each design to its own impl's width, Anchors keeps each cell's measured fit. It used to
+  do nothing at all on a sheet — the sheet's own alignment is the IDENTITY, because the
+  world IS the grid, and feeding the pill that made all four modes compute the same
+  registration. **What it registers is the two CAPTURE FRAMES, which is worth knowing when
+  a mode "does not line up": if a story tags a WRAPPER rather than the component — a grid
+  cell that stretches to its column with the component centred in it — the frames coincide
+  exactly while the visible components sit the wrapper's slack apart. Measured on a DS
+  button set: 9.9px, reported all along as `position … offset by (9.9, 0)px`. Fix the
+  tagged element, not the registration; and do NOT fix it by selecting the component
+  instead, because the captured ROOT is never a leaf and tagging it removes it from the
+  element model (30 of 110 pairs went `blank-render`). A cell that hugs its component is
+  the answer.**
+- **`--bleed <px>` when paint LIVES OUTSIDE the box** — a focus ring, an outline
+  with an offset, a drop shadow, a glow. A capture is clipped to the node's
+  border box, so those pixels are not compared and not drawn; they are INVISIBLE
+  rather than reported, because both sides stop in the same place and nothing
+  differs. The tell is a state whose whole point is the ring (`State=Focus`)
+  looking identical to `Default`, or a ring showing only its left and right
+  slivers where the box happened to be wider than tall. Set it per entry in a
+  manifest (`bleed: 8`, both sides) or run-wide with the flag; a side's own
+  `bleed` wins over the entry's, and the entry's over the run's.
+  **It changes no measurement** — element boxes stay relative to the node's own
+  origin, the alignment is untouched, and the report records the margin actually
+  captured per side so every consumer can place the PNG. Verified rather than
+  asserted: the DS stroke set's 24 pairs report the same 145 findings with and
+  without it, messages, `expected`/`actual`, boxes and identity keys included.
+  **On a GALLERY grid, check the gap before raising it: `gap > bleed +
+  whatever a neighbour paints past its own box`, or a cell photographs the cell
+  beside it.** Measured: a DS button grid at `gap-x-3` (12px) against a 4px focus
+  ring and `bleed: 8` is exactly TANGENT, and the clip's floor to a whole CSS px
+  then tips 0.72px of the neighbour's ring into the picture. It is cosmetic —
+  the sliver lands outside the compared frame region, 0 diff-mask pixels — but it
+  reads as a defect in the component under review. Two things make it hard to
+  dismiss by eye: it appeared on 1 of 164 captures, because a cell's content is
+  usually CENTRED and only the widest row reaches its wrapper's edge; and a
+  margin scan that assumes the outermost pixels are margin will report false
+  positives on any pair whose `bleed` is clamped to 0 on that side, where those
+  pixels are the element's own border. Read the per-side bleed first.
+  It applies to every browser capture — one pair or a whole set, impl side or a
+  `.dc.html` design. **On a FIGMA design it is a SWITCH, not a distance** (since
+  2026-09-07; it used to be ignored there entirely). The `/images` endpoint takes
+  no margin parameter — it renders the node's LAYOUT box under
+  `use_absolute_bounds`, or its RENDER bounds without it, and nothing between —
+  so any positive `bleed` means "render the node's own render bounds" and the
+  margin you get is whatever that node has. A pair asking 8 whose node paints a
+  4px ring records 4; `bleed` describes the PICTURE, and a recorded 8 would make
+  every crop read 4px off in each direction. Two nodes never take it: one whose
+  render bounds CROP the box (a TEXT node renders to its glyph ink — that crop is
+  what `use_absolute_bounds` exists to prevent, and trading it for a margin puts
+  every element box off silently), and one that paints nothing outside, where the
+  two renders are the same picture. `figmaRenderBleed` decides both, and the
+  batch render splits its ids on it — the flag is one query parameter per chunk
+  while the need is per CELL, so a set's Focus column and its Default column go
+  in separate calls. **The capture and the batch must agree**: a cell rendered
+  one way and size-checked the other fails as `figma-render-failed`, which reads
+  like a Figma bug (observed, deliberately, while A/B-ing this).
+  Same neutrality claim, measured the same way on `button-fill`'s 41 pairs: 200
+  findings both arms, 37 lists byte-identical, 0 structurally different, no
+  alignment moved. The 4 that differ are Focus cells whose `pixel-region` FRAME
+  ratio fell (75.13% → 74.19%, and three like it) — the design picture now holds
+  the ring the impl paints, so less of the frame differs. That is the value
+  moving toward parity, not the measurement changing: `pixel-region` keys on
+  `changeKind` and box, so the delta is `+0/−0`. Staleness is read PER SET (`run` is the
   per-pair ordinal — there is no global newest), and the entry's `gallery`
   declaration decides the arrangement. A route with no `<entryId>.set.json` says
   so and names the command that writes one, rather than drawing an empty grid;
@@ -831,6 +921,8 @@ export const manifest = [
     section: "Core components / Buttons",                 // a flat path, never a nested tree
     design: { kind: "figma", fileKey: "…", nodeId: "…", variants: { selector: "…" } },
     app: { source: "storybook", storyId: "ds-button--fill" },
+    bleed: 8,                                             // px of margin around BOTH sides' nodes,
+                                                          // so a focus ring or shadow is captured
     // Only on a component SET — every field names a variant PROPERTY.
     gallery: {
       columns: "State",                                   // which axis is columns
@@ -865,9 +957,15 @@ export const manifest = [
   cell carries, is shape-valid. It travels VERBATIM into
   `<out-root>/<entryId>.set.json` (`gallery`), beside the `axes` it refers to,
   and the run prints it back — `axes from definitions, gallery columns=State
-  rows=variant` — which is where a mismatch can be seen at all. `order` earns
-  its keep on the `child-names` branch specifically: there the axes' own order
-  is traversal order, not the designer's (§1b).
+  rows=variant order pinned for State` — which is where a mismatch can be seen at
+  all. The pinned properties are named rather than counted: a pin is the one
+  field that OVERRIDES the axes, so a reader comparing the line against `axes
+  from …` has to know which properties stopped coming from there.
+  **`order` earns its keep on BOTH branches, and the `definitions` one is where
+  it is easiest to skip.** The fallback's traversal order is visibly arbitrary,
+  so nobody trusts it; `variantOptions` looks authoritative and is not the canvas
+  order (§1b: 10 of 12 sets measured, every `State` axis among them). Pin any
+  axis a human will read as columns.
 - **An unresolvable `gallery` name is graded, and the grade is the rule.** The
   manifest parser holds no Figma node, so it can only check the SHAPE; the
   annotator's sheet holds both the declaration and the axes and is the first
@@ -992,6 +1090,30 @@ items is now a typed finding — read it there:
   `missing-element` per piece. Match the markup shape (each interpolated
   value in its own span — harmless markup) rather than removing a border or
   re-wording the copy.
+  **The same leaf-shape asymmetry can DELETE a comparison instead of adding a
+  finding, and that failure is silent.** A container's paint reaches the
+  comparison only by HOISTING onto a lone descendant leaf, and the `surface`
+  fallback that emits an unclaimed painting container is guarded by `!isRoot` —
+  so when the captured node IS the painting container, which is every
+  component-set variant pair, the hoist is the only path there is. A sibling that
+  breaks the chain therefore does not move the fill to another element; it
+  removes it from the model. Measured: a Figma Focus variant is `[wrapper]
+  [focus-ring]` inside the frame that paints the fill, while CSS spells the ring
+  as a `box-shadow` PROPERTY — one leaf on the DOM side, two on the design side,
+  and the fill compared on neither. Six `button-fill` Focus cells rendered the
+  REST colour against the design's HOVER colour with **zero `color` findings**,
+  the whole difference sitting inside the frame `pixel-region` at 50–74%. Fixed
+  2026-09-07 (`ringsParent`: an enclosing stroke-only vector sibling no longer
+  breaks the chain); with the bug reintroduced the same cells now report
+  `"DANGER" background is rgb(230, 89, 89), design says rgb(255, 181, 176)
+  (ΔE2000 21.4)`. **The general shape outlives that fix**: a design fill that
+  reaches no leaf is reported nowhere, so when an impl leaf carries a
+  `backgroundColor` and its design partner carries none, the fill is not being
+  compared — 39 of that corpus's 194 pairs are still in that state (down from
+  49), and a green colour channel on such a pair means "not measured", not
+  "agrees". Diff the two sides' `backgroundColor` presence in `elements.json`
+  before trusting a clean colour read on a cell whose design side has more than
+  one leaf.
 - **Pixels** → `pixel-region` only inside matched boxes ≥ 16 px that are not
   text and not already reported; `actual.diffRatio` plus
   `actual.changeKind`: `shape` (a different glyph or drawing — the story's
