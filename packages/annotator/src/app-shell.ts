@@ -379,9 +379,15 @@ async function openGallery(entryId) {
     } catch (e) { /* the slot stands; the cell simply shows nothing */ }
   }));
 
+  // A sheet owns neither artifact a pair does: annotations belong to the CELL
+  // they sit on (one run dir each) and there is no elements.json at a root. Both
+  // are declared null rather than left to default, which asked the server for
+  // /api/annotations and /elements.json on every sheet open and got two 404s.
   openReport(sheetReport(index, resolved, rich, layout), null, {
     indexHref: '#/',
     base: '',
+    annotationsUrl: null,
+    elementsUrl: null,
     readOnly: serverReadOnly,
   }, { entryId: entryId, cells: rich, layout: layout, resolved: resolved, index: index });
 }
@@ -457,8 +463,19 @@ function sheetFindings(cells) {
 
 // A sheet that cannot be laid out renders the reason in the report view's own
 // canvas area, so the chrome and the way back stay where they are.
+// (No backticks in this comment: the whole block is a template literal.)
+// route() has ALREADY put the body on route-report by the time this runs, because a
+// sheet opens in the report view. The two route rules hide each other's section —
+// route-report hides #view-gallery, route-gallery hides #view-report — so a body
+// wearing BOTH hid both and rendered a BLANK PAGE. That is the mirror of the trap
+// the INDEX_CSS comment warns about, and it is why the removes below name
+// route-report and route-index; the old line removed route-gallery and added it back
+// in the same breath, which was a no-op. Reachable from any stale #/set/<id> link —
+// what a renamed manifest entry leaves behind (found 2026-09-07 by dropping this
+// repo's ds- prefix and re-opening the old route).
 function sheetFailure(entryId, message) {
-  document.body.classList.remove('route-gallery');
+  document.body.classList.remove('route-index');
+  document.body.classList.remove('route-report');
   document.body.classList.add('route-gallery');
   $('gal-name').textContent = entryId;
   $('gal-count').textContent = '';
@@ -497,6 +514,9 @@ function route() {
   if (setId) {
     currentPair = null;
     document.body.classList.remove('route-index');
+    // …and route-gallery, or a sheet reached FROM a failed one inherits the fallback
+    // class and both sections stay hidden. sheetFailure re-adds it when it has to.
+    document.body.classList.remove('route-gallery');
     document.body.classList.add('route-report');
     if (setId !== currentSet) void openGallery(setId);
     return;

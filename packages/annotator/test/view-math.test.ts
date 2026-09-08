@@ -6,6 +6,8 @@ import {
   IDENTITY_ALIGNMENT,
   alignRemap,
   aspectStretch,
+  bleedOf,
+  bleedOrigin,
   displayAlignment,
   shownFromWorld,
   worldFromShown,
@@ -33,6 +35,8 @@ import {
   GALLERY_MIN_CELL,
   GALLERY_PAD,
   cellOrigin,
+  cellPlacement,
+  cellPngBox,
   galleryLayout,
   projectCellBox,
   unprojectCellBox,
@@ -104,7 +108,67 @@ describe("image transforms keep both panes in the same world", () => {
   })
 
   it("uses scaleY when the alignment is anisotropic", () => {
-    expect(designImageTransform(view, A, 2)).toContain(`scale(${0.943 / 2}, ${0.935 / 2})`)
+    // The chain splits the old single scale(sx/dpr, sy/dpr) in two so the bleed
+    // shift can sit BETWEEN them, in raw design CSS px. The per-axis scales are
+    // still there, and the composition is unchanged — the test above proves that
+    // by landing a design leaf and its impl match on the same screen point.
+    expect(designImageTransform(view, A, 2)).toContain(`scale(${0.943}, ${0.935})`)
+    expect(designImageTransform(view, A, 2)).toContain(`scale(${1 / 2})`)
+  })
+
+  // --- bleed: the PNG grew, nothing else did ------------------------------
+  // A capture with `bleed` keeps `b` px of margin around the node, so its PNG
+  // starts at (-left, -top) in that side's own CSS px. The element boxes, the
+  // alignment and every finding are untouched, so the ONLY correct thing to do
+  // is slide the picture — and the proof is that the same world point still
+  // lands on the same screen point once the extra margin is counted.
+  const B = { top: 4, right: 6, bottom: 8, left: 10 }
+
+  it("with no bleed the transforms are what they were", () => {
+    expect(apply(implImageTransform(view, 2, { top: 0, right: 0, bottom: 0, left: 0 }), { x: 100, y: 60 }))
+      .toEqual(apply(implImageTransform(view, 2), { x: 100, y: 60 }))
+  })
+
+  it("impl: a world point moves by exactly the left/top margin in PNG px", () => {
+    const world = { x: 120, y: 90 }
+    const plain = apply(implImageTransform(view, 2), { x: world.x * 2, y: world.y * 2 })
+    // Same world point, but the PNG now starts 10 css px left and 4 css px up,
+    // so the pixel that shows it is (10, 4) css px further into the image.
+    const bled = apply(implImageTransform(view, 2, B), {
+      x: (world.x + B.left) * 2,
+      y: (world.y + B.top) * 2,
+    })
+    expect(bled.x).toBeCloseTo(plain.x, 6)
+    expect(bled.y).toBeCloseTo(plain.y, 6)
+  })
+
+  it("design: the shift is in RAW design css px, so the alignment scale applies to it", () => {
+    const world = designToWorld({ x: 200, y: 300 }, A)
+    const onImpl = apply(implImageTransform(view, 2), { x: world.x * 2, y: world.y * 2 })
+    // The design PNG's own pixel for that leaf, once its bleed margin is in front of it.
+    const onDesign = apply(designImageTransform(view, A, 2, B), {
+      x: (200 + B.left) * 2,
+      y: (300 + B.top) * 2,
+    })
+    expect(onDesign.x).toBeCloseTo(onImpl.x, 6)
+    expect(onDesign.y).toBeCloseTo(onImpl.y, 6)
+  })
+
+  it("bleedOrigin is where the PNG starts, and a missing field reads as none", () => {
+    expect(bleedOrigin({ bleed: B })).toEqual({ x: -10, y: -4 })
+    expect(bleedOrigin({})).toEqual({ x: 0, y: 0 })
+    expect(bleedOrigin(undefined)).toEqual({ x: 0, y: 0 })
+  })
+
+  it("designCaptureDpr counts the bleed margin in the width it divides by", () => {
+    // 100 raw css px wide at dpr 2, normalized ×1.5 onto the impl (design.width
+    // 150), with 10 css px of margin each side: the PNG is (100+20)·2 = 240 native.
+    expect(designCaptureDpr(240, { width: 150 }, 1.5)).toBeCloseTo(2.4, 6)
+    expect(
+      designCaptureDpr(240, { width: 150, bleed: { top: 10, right: 10, bottom: 10, left: 10 } }, 1.5),
+    ).toBeCloseTo(2, 6)
+    // A recorded dpr always wins — the ratio is only ever the fallback.
+    expect(designCaptureDpr(240, { width: 150, dpr: 3 }, 1.5)).toBe(3)
   })
 })
 
@@ -685,5 +749,126 @@ describe("a cell's content is centred in its track", () => {
     })
     expect(one.cells[0]!.rect).toEqual({ x: 0, y: 0, w: 680, h: 740 })
     expect(projectCellBox({ x: 36, y: 586, w: 280, h: 48 }, one.cells[0]!)).toEqual({ x: 36, y: 586, w: 280, h: 48 })
+  })
+})
+
+describe("cellPlacement — a sheet registers per CELL, which is what the align pill moves", () => {
+  const rect = { x: 100, y: 200 }
+  const identity = { scale: 1, scaleY: 1, offsetX: 0, offsetY: 0 }
+  // A cell whose design is wider and shorter than its impl, and whose run fit
+  // put the design 6px right and 4px down.
+  const design = { width: 80, height: 30 }
+  const impl = { width: 60, height: 40 }
+  const fit = { scale: 1, scaleY: 1, offsetX: 6, offsetY: 4 }
+
+  it("never moves the impl: world px ARE impl css px", () => {
+    for (const mode of ALIGN_MODES) {
+      const p = cellPlacement(mode, rect, design, impl, fit)
+      expect(p.impl.box, `mode ${mode}`).toEqual({ x: 100, y: 200, w: 60, h: 40 })
+    }
+  })
+
+  // The bug: the sheet fed the pill the SHEET's alignment, which is the
+  // identity, so every mode computed the same box. Four modes, four boxes.
+  it("gives the four modes four DIFFERENT design boxes — the control does something", () => {
+    const boxes = ALIGN_MODES.map((m) => JSON.stringify(cellPlacement(m, rect, design, impl, fit).design.box))
+    expect(new Set(boxes).size).toBe(ALIGN_MODES.length)
+  })
+
+  it("anchors keeps the cell's own measured fit", () => {
+    expect(cellPlacement("anchors", rect, design, impl, fit).design.box).toEqual({
+      x: 106, y: 204, w: 80, h: 30,
+    })
+  })
+
+  it("left puts the design at the cell's own origin, 1:1", () => {
+    expect(cellPlacement("left", rect, design, impl, fit).design.box).toEqual({
+      x: 100, y: 200, w: 80, h: 30,
+    })
+  })
+
+  it("right registers the design by its own top-RIGHT corner", () => {
+    const box = cellPlacement("right", rect, design, impl, fit).design.box
+    expect(box).toEqual({ x: 80, y: 200, w: 80, h: 30 })
+    // The registration is what it says it is: the right edges coincide.
+    expect(box.x + box.w).toBe(rect.x + impl.width)
+  })
+
+  it("width scales the design to its own impl's width, corners together", () => {
+    const box = cellPlacement("width", rect, design, impl, fit).design.box
+    expect(box).toEqual({ x: 100, y: 200, w: 60, h: 22.5 })
+    expect(box.w).toBe(impl.width)
+  })
+
+  // The run fits x and y independently; drawing a reference under that stretch
+  // is what the pair view refuses, and the sheet used to take design.height
+  // verbatim. 90 = 30 raw × the x scale, NOT × the y scale.
+  it("aspect-locks anchors, so a stretched fit does not stretch the picture", () => {
+    const stretched = { scale: 3, scaleY: 5, offsetX: 0, offsetY: 0 }
+    // raw = 240/3 × 150/5 = 80 × 30
+    const box = cellPlacement("anchors", rect, { width: 240, height: 150 }, impl, stretched).design.box
+    expect(box).toEqual({ x: 100, y: 200, w: 240, h: 90 })
+  })
+
+  // Every pair of the corpus this was found on has scale 1, so a same-size
+  // fixture cannot tell a scaled bleed from an unscaled one. This one can.
+  it("scales the DESIGN bleed by the registration and leaves the impl's alone", () => {
+    const bled = { width: 160, height: 60, bleed: { top: 8, right: 8, bottom: 8, left: 8 } }
+    const implBled = { width: 60, height: 40, bleed: { top: 2, right: 2, bottom: 2, left: 2 } }
+    const run = { scale: 2, scaleY: 2, offsetX: 0, offsetY: 0 }
+    const p = cellPlacement("anchors", rect, bled, implBled, run)
+    // raw 80×30 at scale 2 → 160×60, and 8 raw px of margin is 16 world px.
+    expect(p.design.box).toEqual({ x: 100, y: 200, w: 160, h: 60 })
+    expect(p.design.png).toEqual({ x: 84, y: 184, w: 192, h: 92 })
+    // The impl's bleed is already world px — no scale, whatever the design did.
+    expect(p.impl.png).toEqual({ x: 98, y: 198, w: 64, h: 44 })
+  })
+
+  it("treats a missing bleed as none, so an unbled cell's picture IS its frame", () => {
+    const p = cellPlacement("left", rect, design, impl, identity)
+    expect(p.design.png).toEqual(p.design.box)
+    expect(p.impl.png).toEqual(p.impl.box)
+  })
+})
+
+describe("cellPngBox — the picture is its OWN pixels, not the box we guessed", () => {
+  const rect = { x: 100, y: 200 }
+  const identity = { scale: 1, scaleY: 1, offsetX: 0, offsetY: 0 }
+
+  // The real numbers off one corpus: a 106.81px button with 8px of bleed is
+  // 122.81 css px of content, and the browser clipped to whole DEVICE px and
+  // returned a 248px PNG at dpr 2 — 124 css px, 1.19 too wide.
+  it("uses the natural size, so a device-pixel-rounded capture is not squashed", () => {
+    const impl = { width: 106.81, height: 40, bleed: { top: 8, right: 8, bottom: 8, left: 8 } }
+    const at = cellPlacement("left", rect, { width: 100, height: 40 }, impl, identity).impl
+    expect(at.png).toEqual({ x: 92, y: 192, w: 122.81, h: 56 })
+
+    const real = cellPngBox(at, { w: 248, h: 112 }, 2)
+    expect(real.w).toBe(124)
+    expect(real.h).toBe(56)
+    // The ORIGIN does not move: the excess lands right and bottom, where the
+    // outward rounding put it, so the element's own corner stays registered.
+    expect(real.x).toBe(at.png.x)
+    expect(real.y).toBe(at.png.y)
+  })
+
+  it("scales the DESIGN picture by its registration, as the pair view does", () => {
+    const design = { width: 160, height: 60, bleed: { top: 8, right: 8, bottom: 8, left: 8 } }
+    const run = { scale: 2, scaleY: 2, offsetX: 0, offsetY: 0 }
+    const at = cellPlacement("anchors", rect, design, { width: 60, height: 40 }, run).design
+    expect(at.scale).toBe(2)
+    // natural 200x100 at dpr 2 = 100x50 raw css, drawn at the 2x registration.
+    expect(cellPngBox(at, { w: 200, h: 100 }, 2)).toEqual({ x: 84, y: 184, w: 200, h: 100 })
+  })
+
+  it("treats a zero or missing dpr as 1 rather than dividing by it", () => {
+    const at = cellPlacement("left", rect, { width: 10, height: 10 }, { width: 10, height: 10 }, identity).impl
+    expect(cellPngBox(at, { w: 30, h: 20 }, 0)).toEqual({ x: 100, y: 200, w: 30, h: 20 })
+  })
+
+  it("agrees with the estimate exactly when nothing was rounded", () => {
+    const side = { width: 100, height: 40, bleed: { top: 8, right: 8, bottom: 8, left: 8 } }
+    const at = cellPlacement("left", rect, side, side, identity).impl
+    expect(cellPngBox(at, { w: 232, h: 112 }, 2)).toEqual(at.png)
   })
 })

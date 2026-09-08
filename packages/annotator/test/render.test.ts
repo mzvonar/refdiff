@@ -202,13 +202,34 @@ describe("renderReport", () => {
     expect(html).toContain('id="op-pill"')
     expect(html).toContain('id="lab-amount"')
     expect(html).toContain("labAmount: { onion: 55, difference: 100 }")
-    expect(html).toContain("else if (state.lab === 'difference') { ghost.style.opacity = state.labAmount.difference / 100; }")
+    expect(html).toContain("else if (state.lab === 'difference') { setOpacity(state.labAmount.difference / 100); }")
     // The wipe is a curtain at a WORLD x with the comps' sync_alt knob, not a percentage of the pane.
     expect(html).toContain('id="wipe"')
     expect(html).toContain(">sync_alt</span>")
     expect(html).toContain("$('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)'")
     // Pane labels go while an overlay is on (the panes no longer show one side each).
     expect(html).toContain("body.lab-on .pane-label { display:none; }")
+  })
+
+  it("gives a SHEET a ghost of its own, so the overlay modes are not dead on it", () => {
+    // Every mode works through #ghost-wrap over the impl pane, and its only occupant
+    // was #img-ghost — a .shot, which body.is-sheet hides. So on a sheet Wipe / Onion
+    // / Blink / Diff revealed nothing at all while their buttons still lit up: the
+    // control said it was on and the canvas showed only the implementation.
+    expect(html).toContain('<div class="cellshots ghost" id="cells-ghost"></div>')
+    expect(html).toContain("function ghostTargets() { return [imgs.ghost, $('cells-ghost')]; }")
+    // Populated with the design cells, and cleared with the other two hosts.
+    expect(html).toContain("$('cells-ghost').replaceChildren();")
+    expect(html).toContain("const over = design.cloneNode(false);")
+    expect(html).toContain("$('cells-ghost').appendChild(over);")
+    // Moved by the GHOST's view, which is the impl's under lockstep — not the design
+    // pane's, or it would sit where the other pane is looking.
+    expect(html).toContain("$('cells-ghost').style.transform = worldLayerTransform(ghostView());")
+    // The blink flips this layer's opacity every 650ms; a per-cell transition smears it.
+    expect(html).toContain("#cells-ghost .cellshot { transition:none; }")
+    // A lit cause dims it like the other two, or the overlay would show every cell
+    // while the panes under it show one.
+    expect(html).toContain("for (const host of [$('cells-design'), $('cells-impl'), $('cells-ghost')]) {")
   })
 
   it("keeps the lockstep lock in every view — with one pane and an overlay on, the registration is exactly what needs changing (2026-08-29)", () => {
@@ -452,6 +473,121 @@ describe("renderReport", () => {
     expect(html).not.toContain("body.single .pane-label")
   })
 
+  it("draws no per-cell finding-count badge on a sheet", () => {
+    // Removed outright rather than layer-gated (repo owner, 2026-09-07): it ignored the
+    // layer segment AND was painted under the cell's own screenshot, so it showed on the
+    // fifth of cells whose track is wider than the impl and nowhere else. Asserted as an
+    // ABSENCE on the class, the style and the DOM call, so re-adding any one of the three
+    // is a red test rather than a silent return.
+    expect(html).not.toContain("cellcount")
+    expect(html).not.toContain("finding(s) in this cell")
+    // The slot, the note and the screenshots are what a cell still draws.
+    expect(html).toContain("slot.className = 'cellslot k-' + cell.kind;")
+    expect(html).toContain("impl.className = 'cellshot';")
+  })
+
+  it("lights the CELLS of a lit cause, not just its finding badges", () => {
+    // The rail row has always promised "click to light up every cell with this cause";
+    // the dimming reached the .vmark badges only, which at sheet zoom are ~6px dots, so
+    // the click read as a no-op. The Gallery comp's rule: --diff outline on every cell
+    // that carries it, 0.18 on the rest. --diff and not --acc, because --acc is SELECTION
+    // and a lit cause can hold a selected cell.
+    expect(html).toContain("function causeCellKeys() {")
+    expect(html).toContain("for (const f of report.findings) if (f.cell && ids.has(f.id)) keys.add(f.cell);")
+    expect(html).toContain("host.classList.toggle('has-cause', !!keys);")
+    expect(html).toContain("el.classList.toggle('cell-lit', !!keys && keys.has(el.dataset.cell));")
+    // Runs on every mark render, which is what keeps it in step with the rail.
+    expect(html).toContain("function renderMarks() {\n  applyCauseCells();")
+    expect(html).toContain(".cellshots.has-cause .cellslot:not(.cell-lit), .cellshots.has-cause .cellshot:not(.cell-lit) { opacity:.18; }")
+    expect(html).toContain(".cellslot.cell-lit { outline:2px solid var(--diff); outline-offset:2px; }")
+    expect(html).toContain(".causerow.lit { background:rgba(255,92,208,.12); box-shadow:inset 2px 0 0 var(--diff); }")
+    // Every element the dimming and the outline address has to carry its cell key.
+    for (const el of ["slot", "impl", "design"]) expect(html).toContain(el + ".dataset.cell = cell.key;")
+  })
+
+  it("draws a measured cell at its OWN side's capture box, and draws no border on it", () => {
+    // cell.rect is the per-axis MAX of design and impl, so using it for both panes ran the
+    // impl's box past the impl's picture on every cell whose design is wider (128 vs 109 on
+    // this repo's stroke buttons). With a border on it that dead strip WAS the "extended
+    // canvas"; it is also the strip the removed finding-count badge used to sit in.
+    expect(html).toContain("const t = cell.report ? sideBox(cell, side) : (cell.track || cell.rect);")
+    // The slot takes the ELEMENT box and the picture is placed by placeCellImg,
+    // both off ONE registration call, so neither can register a cell differently
+    // from the other. A browser clips a screenshot to whole DEVICE px, so the
+    // picture is re-placed from its own pixels once it has loaded — the estimate
+    // is up to 1.2px wide and stretching the image into it scales it by 0.99.
+    expect(html).toContain("const sideBox = (cell, side) => cellPlacementOf(cell)[side].box;")
+    expect(html).toContain("function placeCellImg(el, cell, side) {")
+    expect(html).toContain("  const box = el.naturalWidth")
+    for (const side of ["impl", "design"]) {
+      expect(html).toContain("placeCellImg(" + side + ", cell, '" + side + "');")
+      expect(html).toContain("if (ok) placeCellImg(" + side + ", cell, '" + side + "'); return ok;")
+    }
+    // The ghost is the design cell again in the impl pane, so it is re-placed too.
+    expect(html).toContain("if (ok) placeCellImg(over, cell, 'design'); return ok;")
+    expect(html).not.toContain("impl.style.left = cell.rect.x + 'px';")
+    expect(html).not.toContain("design.style.left = (cell.rect.x + (a.offsetX || 0)) + 'px';")
+    // A measured cell is transparent, as the comp's is; only the unmeasured kinds draw.
+    expect(html).toContain(".cellslot { position:absolute; box-sizing:border-box; border:1px solid transparent;")
+    expect(html).toContain(".cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-color:var(--line); border-style:dashed;")
+    expect(html).not.toContain(".cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line);")
+  })
+
+  it("ellipsises the pair title instead of running it under the toolbar, and keeps the full string as a tooltip", () => {
+    // A SHEET's title is the long one — "DS · Button / Ghost — 34 cells · 34 measured ·
+    // runs 4→18 · 2 of 36 combinations undeclared" measured 499px against a 324px
+    // tb-left at 1280 and ran 286px UNDER the layout segment, because the rule had
+    // white-space:nowrap and nothing else. It is a flex item, so it is blockified and
+    // overflow applies; overflow:hidden is also what drops its automatic minimum size
+    // to 0 so it can shrink below its own text at all.
+    expect(html).toContain(
+      ".tb-left .pair-title { font-size:12px; color:var(--txt2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }",
+    )
+    expect(html).toContain('<span class="pair-title" title="\' + esc(report.pair) + \'">')
+    // The narrow layout's rule is display-only now: two copies of the ellipsis is one
+    // that can drift, and the base carries it for every layout.
+    expect(html).toContain("body.layout-minimal .tb-left .pair-title { display:inline; }")
+    expect(html).not.toContain(
+      "body.layout-minimal .tb-left .pair-title { display:inline; overflow:hidden; text-overflow:ellipsis; }",
+    )
+  })
+
+  it("lets the ALIGN MODE register each cell of a sheet, and re-places them when it changes", () => {
+    // The sheet's own report.alignment is the IDENTITY (the world is the grid),
+    // so feeding the align pill that alignment made all four modes compute the
+    // same registration: the control was live, wired and inert. Registration is
+    // per CELL — each one has a design and an impl to sit against each other.
+    expect(html).toContain("function cellPlacementOf(cell) {")
+    expect(html).toContain("    state.align,")
+    // Moving the layer is not moving the cells: applyView pans the container the
+    // cells sit in, which is the same for every mode.
+    expect(html).toContain("function placeDesignCells() {")
+    expect(html).toContain("  placeDesignCells();\n  if (state.userMoved) applyView(); else fit();")
+    // The impl side is never re-placed: world px ARE impl css px.
+    expect(html).not.toContain("put(impl.querySelector")
+    // `cellPlacement` itself is view-math's, and this suite injects a STUB for
+    // that module — its presence in the real page is embedded-modules' job.
+  })
+
+  it("makes the Design / Impl control a SWITCH: clicking the half you are on flips too", () => {
+    // The gesture the control exists for is comparing one side against the other, so requiring
+    // the correct half cost a read of the pill before every click. Both halves — and the group's
+    // own padding — now flip, which is why the listener is on the group with no [data-side] hit
+    // test. The minimal layout's pane-swap is the same switch under another skin.
+    expect(html).toContain("function toggleSide() { setSide(state.side === 'design' ? 'impl' : 'design'); }")
+    expect(html).toContain("$('side-switch').addEventListener('click', toggleSide);")
+    expect(html).toContain("$('pane-swap').addEventListener('click', toggleSide);")
+    expect(html).not.toContain("closest('[data-side]'); if (b) setSide(b.dataset.side)")
+    // setSide stays TARGETED for the callers that mean one specific side, so it keeps its
+    // same-side early return: a ghost badge says "go there", never "go to the other one".
+    expect(html).toContain("closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }")
+    expect(html).toContain("if (state.side === side) return;")
+    // The pill still reports which side is live; only the click semantics changed.
+    expect(html).toContain('<button type="button" data-side="design">Design</button>')
+    expect(html).toContain("b.classList.toggle('on', b.dataset.side === state.side)")
+    expect(html).toContain('title="Switch design / implementation — either half flips it"')
+  })
+
   it("has the comps' topbar and delta strip, and no verdict header (gap 14)", () => {
     expect(html).toContain('<header id="hdr" class="topbar">')
     expect(html).toContain('id="hdr-left"')
@@ -501,7 +637,7 @@ describe("renderReport", () => {
   it("draws the superimposed ghost with the design pane's own view once the lockstep is off", () => {
     expect(html).toContain("function ghostView() { return state.lock ? state.view : viewOf('design'); }")
     expect(html).toContain("function ghostRegistered() { return state.lock && state.align === 'anchors'; }")
-    expect(html).toContain("imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD);")
+    expect(html).toContain("imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD, bD);")
     // The stretch note describes the registration, so it goes with it.
     expect(html).toContain("const off = Math.abs(stretch - 1) >= 0.02 && ghostRegistered();")
   })

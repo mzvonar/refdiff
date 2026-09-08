@@ -34,7 +34,7 @@ import {
   type ComparisonReport,
   type ElementNode,
 } from "@refdiff/core"
-import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { networkInterfaces } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
@@ -53,6 +53,7 @@ import {
 } from "./annotations.js"
 import { renderAppShell } from "./app-shell.js"
 import { readOnlyRefusal } from "./read-only.js"
+import { discoverRunDirs, isRunDir, runsForRequest, type RunDir } from "./run-dirs.js"
 import { type BrokenPair, type PairSummary } from "./index-view.js"
 import { fontFile } from "./fonts.js"
 import { renderReport } from "./render.js"
@@ -318,7 +319,14 @@ function readBody(req: IncomingMessage, limit = 5 * 1024 * 1024): Promise<string
 
 interface AppApiOptions {
   root: string
-  runs: { name: string; dir: string }[]
+  /**
+   * The dirs found at STARTUP. On a root this is only the fallback for a
+   * re-scan that fails — the list is re-read per request (see run-dirs.ts), so
+   * a pair measured for the first time after the server started is served
+   * without a restart. On a single run dir it is the whole answer: there is
+   * one pair and nothing to discover.
+   */
+  runs: RunDir[]
   /** A lone run dir is served AS the root, so its artifacts sit at `/`. */
   single: boolean
   shell: string
@@ -328,8 +336,12 @@ interface AppApiOptions {
 
 
 /**
- * The app's server half. Everything is read from disk per request, so a
- * `compare` run finished after the server started shows up on reload:
+ * The app's server half. Everything is read from disk per request — both the
+ * run dirs the root CONTAINS and each one's report — so a `compare` run
+ * finished after the server started shows up on reload whether it rewrote a
+ * pair or added one. This comment used to promise that while only the reports
+ * were re-read; the listing was frozen at startup, so a NEW pair stayed
+ * invisible until a restart (run-dirs.ts carries the measurement):
  *
  *   GET  /                          the shell (no data)
  *   GET  /fonts/<file>              the self-hosted faces (assets/fonts, whitelisted in fonts.ts)
@@ -345,11 +357,26 @@ interface AppApiOptions {
 const FONTS_DIR = new URL("../assets/fonts/", import.meta.url)
 
 function appApi(options: AppApiOptions) {
-  const byName = new Map(options.runs.map((r) => [r.name, r.dir]))
+  let lastGood = options.runs
+  const listRuns = async (): Promise<RunDir[]> => {
+    if (options.single) return options.runs
+    lastGood = runsForRequest(await discoverRunDirs(options.root), lastGood)
+    return lastGood
+  }
   // A lone run dir is its own root: the shell still lists exactly one pair, and
   // its artifacts are addressed by the dir name that serveDir cannot see.
-  const dirFor = (name: string): string | undefined =>
-    options.single ? (name === options.runs[0]!.name ? options.root : undefined) : byName.get(name)
+  //
+  // On a root the name is resolved by looking it up in the CURRENT listing,
+  // never by joining it onto the root: every name that resolves therefore came
+  // from a filesystem listing of the root, so a decoded `..%2f..%2fetc` cannot
+  // address anything (the byName map this replaced gave the same guarantee, and
+  // it is the reason neither needs a traversal check of its own). It also means
+  // the list and the lookup are the same code, so a pair that appears in one
+  // cannot be missing from the other.
+  const dirFor = async (name: string): Promise<string | undefined> => {
+    if (options.single) return name === options.runs[0]!.name ? options.root : undefined
+    return (await listRuns()).find((r) => r.name === name)?.dir
+  }
   return async (req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
     const path = new URL(req.url ?? "/", "http://localhost").pathname
     if (path === "/" || path === "/index.html") {
@@ -363,7 +390,7 @@ function appApi(options: AppApiOptions) {
     if (path === "/api/pairs") {
       sendJson(res, 200, {
         root: options.root,
-        pairs: await summarisePairs(options),
+        pairs: await summarisePairs(await listRuns()),
         ...(options.readOnly ? { readOnly: true } : {}),
       })
       return true
@@ -397,7 +424,7 @@ function appApi(options: AppApiOptions) {
     const focusMatch = /^\/api\/pairs\/([^/]+)\/focus$/.exec(path)
     if (focusMatch) {
       const focusName = decodeURIComponent(focusMatch[1]!)
-      const focusDir = dirFor(focusName)
+      const focusDir = await dirFor(focusName)
       if (!focusDir) {
         sendJson(res, 404, { error: `unknown pair ${focusName}` })
         return true
@@ -452,7 +479,7 @@ function appApi(options: AppApiOptions) {
     const triageMatch = /^\/api\/pairs\/([^/]+)\/triage$/.exec(path)
     if (triageMatch) {
       const triageName = decodeURIComponent(triageMatch[1]!)
-      const triageDir = dirFor(triageName)
+      const triageDir = await dirFor(triageName)
       if (!triageDir) {
         sendJson(res, 404, { error: `unknown pair ${triageName}` })
         return true
@@ -512,7 +539,7 @@ function appApi(options: AppApiOptions) {
         : null)
     if (!match) return false
     const name = decodeURIComponent(match[1]!)
-    const runDir = dirFor(name)
+    const runDir = await dirFor(name)
     if (!runDir) {
       sendJson(res, 404, { error: `unknown pair ${name}` })
       return true
@@ -580,9 +607,9 @@ async function fileExists(path: string): Promise<boolean> {
  * bad pair never kills the set, and a pair that silently vanishes from the
  * list is the failure the list exists to prevent.
  */
-async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | BrokenPair)[]> {
+async function summarisePairs(runs: RunDir[]): Promise<(PairSummary | BrokenPair)[]> {
   const out: (PairSummary | BrokenPair)[] = []
-  for (const run of options.runs) {
+  for (const run of runs) {
     const loaded = await loadReport(run.dir)
     if (!loaded.ok) {
       out.push({
@@ -657,33 +684,19 @@ async function summarisePairs(options: AppApiOptions): Promise<(PairSummary | Br
  * The target is either ONE run dir (it has findings.json) or an out root whose
  * children are run dirs. Anything else is a usage error — a silent "0 pairs"
  * would look like an empty set instead of a wrong path.
+ *
+ * STARTUP only. The scan itself lives in run-dirs.ts because the server repeats
+ * it per request; what belongs here is the part that must not repeat — exiting
+ * the process. An empty root is a wrong path when you type it and a transient
+ * disk state once the server is up, so a request-time re-scan never calls this.
  */
-async function collectRunDirs(target: string): Promise<{ name: string; dir: string }[]> {
-  const hasReport = async (dir: string): Promise<boolean> => {
-    try {
-      await readFile(join(dir, "findings.json"), "utf8")
-      return true
-    } catch {
-      return false
-    }
-  }
-  if (await hasReport(target)) return [{ name: basename(target), dir: target }]
-  let names: string[]
-  try {
-    names = (await readdir(target, { withFileTypes: true }))
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name)
-      .sort()
-  } catch (e) {
-    return usageError(`cannot read ${target}: ${(e as Error).message}`)
-  }
-  const runs: { name: string; dir: string }[] = []
-  for (const name of names) {
-    const dir = join(target, name)
-    if (await hasReport(dir)) runs.push({ name, dir })
-  }
-  if (runs.length === 0) return usageError(`no findings.json in ${target} or its subdirectories`)
-  return runs
+async function collectRunDirs(target: string): Promise<RunDir[]> {
+  if (await isRunDir(target)) return [{ name: basename(target), dir: target }]
+  const found = await discoverRunDirs(target)
+  if (!found.ok) return usageError(found.reason)
+  if (found.runs.length === 0)
+    return usageError(`no findings.json in ${target} or its subdirectories`)
+  return found.runs
 }
 
 function lanAddresses(): string[] {

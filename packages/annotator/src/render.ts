@@ -236,7 +236,7 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <div class="pane-label" id="label-design">DESIGN</div>
         </div>
         <div class="pane" id="pane-impl" data-side="impl">
-          <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="cellshots" id="cells-impl"></div><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg><div class="vmarks" id="vmarks-impl"></div><div class="wipe" id="wipe" hidden title="drag to wipe between the design and the implementation"><div class="wipe-line"></div><div class="wipe-knob"><span class="msi" aria-hidden="true">sync_alt</span></div></div></div>
+          <div class="stage"><img class="shot" id="img-impl" alt="implementation"><div class="cellshots" id="cells-impl"></div><div class="ghost-wrap" id="ghost-wrap"><img class="shot ghost" id="img-ghost" alt="design superimposed on the implementation"><div class="cellshots ghost" id="cells-ghost"></div></div><img class="shot mask" id="img-mask" alt=""><svg class="marks diffs" id="diffs-impl"></svg><svg class="marks" id="marks-impl"></svg><svg class="marks anns" id="anns-impl"></svg><div class="vmarks" id="vmarks-impl"></div><div class="wipe" id="wipe" hidden title="drag to wipe between the design and the implementation"><div class="wipe-line"></div><div class="wipe-knob"><span class="msi" aria-hidden="true">sync_alt</span></div></div></div>
           <div class="pane-label right" id="label-impl">IMPLEMENTATION</div>
         </div>
         <div class="zoom-pill" id="zoom-pill">
@@ -245,7 +245,7 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <button type="button" id="zoom-in" title="Zoom in (+)"><span class="msi" aria-hidden="true">add</span></button>
           <button type="button" id="fit" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
         </div>
-        <div class="side-fab" id="side-switch" role="group" aria-label="which side"><button type="button" data-side="design">Design</button><button type="button" data-side="impl">Impl</button></div>
+        <div class="side-fab" id="side-switch" role="group" aria-label="which side" title="Switch design / implementation — either half flips it"><button type="button" data-side="design">Design</button><button type="button" data-side="impl">Impl</button></div>
         <button type="button" class="pane-swap" id="pane-swap" title="Switch design / implementation"><span class="msi" aria-hidden="true">swap_horiz</span><span id="pane-swap-label">Design</span></button>
         <button type="button" class="rail-btn" id="rail-btn" title="Review panel"><span class="msi" aria-hidden="true">list_alt</span><span class="rail-count" id="rail-count">0</span></button>
         <div class="op-pill" id="op-pill" hidden><span class="msi" aria-hidden="true">opacity</span><span id="op-label" class="op-label">Onion</span><input type="range" id="lab-amount" min="0" max="100" step="1" value="55" aria-label="overlay opacity"><span id="op-pct" class="op-pct">55%</span></div>
@@ -335,7 +335,14 @@ body { display:flex; flex-direction:column; }
 .tb-left .back .msi { font-size:19px; }
 .tb-left .brand { width:18px; height:18px; border-radius:5px; background:var(--acc); flex-shrink:0; }
 .tb-left .brand-name { font-size:13px; font-weight:700; letter-spacing:.02em; }
-.tb-left .pair-title { font-size:12px; color:var(--txt2); white-space:nowrap; }
+/* The title ELLIPSISES rather than running under the toolbar. It is a flex item, so it is
+   blockified and overflow applies (it would not on a bare inline span), and overflow:hidden is
+   also what drops its automatic minimum size to 0 so it can shrink below its text at all.
+   A sheet's title is the long one: "DS · Button / Ghost — 34 cells · 34 measured · runs 4→18 ·
+   2 of 36 combinations undeclared" measures 499px against a 324px tb-left at 1280, and ran
+   286px under the toolbar. The full string stays reachable as the element's title attribute,
+   set in renderTopbar. (No backticks in here: the whole block is a template literal.) */
+.tb-left .pair-title { font-size:12px; color:var(--txt2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .seg { display:flex; background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:2px; gap:2px; flex-shrink:0; }
 .seg button { padding:5px 10px; border:0; border-radius:6px; font-size:12px; font-weight:500; line-height:16px; cursor:pointer; color:var(--txt2); background:transparent; white-space:nowrap; }
 .seg button.on { color:var(--txt); font-weight:600; background:var(--bg3); }
@@ -461,7 +468,10 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .csec-n { font-family:var(--font-mono); font-weight:500; letter-spacing:0; }
 .causerow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
 .causerow:hover { background:var(--bg2); }
-.causerow.lit { background:rgba(91,141,239,.10); box-shadow:inset 2px 0 0 var(--acc); }
+/* Pink, per the comp: --acc means SELECTION everywhere else in this app, and a
+   lit cause is not a selection — you can have one of each at once. */
+.causerow.lit { background:rgba(255,92,208,.12); box-shadow:inset 2px 0 0 var(--diff); }
+.causerow.lit .ccount { color:#fff; background:var(--diff); border-radius:999px; padding:1px 7px; }
 .chead { display:flex; align-items:center; gap:8px; }
 .cdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .cdot.critical { background:var(--critical); } .cdot.major { background:var(--major); } .cdot.minor { background:var(--minor); }
@@ -709,31 +719,45 @@ body.single .align-wrap { bottom:58px; }
    them by construction. */
 .cellshots { position:absolute; left:0; top:0; width:0; height:0; overflow:visible; transform-origin:0 0; pointer-events:none; }
 /* In sheet mode the single page images have nothing to show: their src is never
-   set, and an unset img still paints a broken-image glyph in some browsers. */
+   set, and an unset img still paints a broken-image glyph in some browsers. This is
+   also what made the overlay modes dead on a sheet — #img-ghost is a .shot — which
+   is why a sheet superimposes #cells-ghost instead. That one is a div, so this rule
+   does not reach it, and on a pair it is empty. */
 body.is-sheet .shot { display:none; }
 .cellshot { position:absolute; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
 /* The cell's slot, drawn under its screenshot so a cell with nothing to show is
    still a place on the sheet rather than a hole. Only for cells the DESIGN
    defines: k-absent has no rule any more because no absent slot is created —
    see the early continue in renderCellShots. (No backticks in here: this whole
-   block is a template literal.) */
-.cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line); border-radius:4px; }
+   block is a template literal.)
+   A MEASURED cell draws NOTHING of its own — the comp's cell is transparent with
+   no border, and its box only becomes visible when it is selected or lit. The
+   slot is sized to the per-axis MAX of the two sides, so on a cell whose design
+   is wider than its impl (or the reverse) a border drew an empty rectangle beside
+   the component that read as the component being too wide. Nothing was extended:
+   the box around the dead space was the whole of what you could see. */
+.cellslot { position:absolute; box-sizing:border-box; border:1px solid transparent; border-radius:4px; transition:opacity .15s; }
 /* Dashed = declared but not compared. UNMAPPED is the impl's own gap, FILTERED
-   is a scope decision, PENDING a capture that produced no report. */
-.cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-style:dashed; background:rgba(128,132,140,.06); }
+   is a scope decision, PENDING a capture that produced no report. These DO draw:
+   an unmeasured cell has no screenshot, so its box is the only thing saying a
+   cell belongs there at all. */
+.cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-color:var(--line); border-style:dashed; background:rgba(128,132,140,.06); }
 /* The impl's own coverage gap is the one worth seeing across a sheet. */
 .cellslot.k-unmapped { border-color:#f5a623; }
 .cellslot { display:flex; align-items:center; justify-content:center; }
+/* A lit cause: the comp outlines every cell that carries it in --diff and drops
+   the rest to 0.18. Pink, not the accent, because the accent is SELECTION and the
+   two are independent — a lit cause with a selected cell inside it has to read as
+   two things. The cells and their shots are siblings in one zero-size world layer,
+   so the dimming is per element rather than one opacity on a wrapper. */
+.cellshots.has-cause .cellslot:not(.cell-lit), .cellshots.has-cause .cellshot:not(.cell-lit) { opacity:.18; }
+.cellslot.cell-lit { outline:2px solid var(--diff); outline-offset:2px; }
+.cellshot { transition:opacity .15s; }
 .cellnote { font-size:9px; line-height:1.25; text-align:center; color:var(--txt2); text-transform:uppercase; letter-spacing:.06em; padding:0 3px; }
 /* The axes. Both panes draw them, as the comp does. */
 .cellhead { position:absolute; display:flex; align-items:center; color:var(--txt2); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; pointer-events:none; }
 .cellhead.col { justify-content:center; }
 .cellhead.row { justify-content:flex-end; text-align:right; padding-right:8px; text-transform:none; letter-spacing:0; font-weight:500; }
-/* The CELL's finding count — the cell's number, not a finding's, so renderMarks
-   never touches it and it does not dim with a lit cause. */
-.cellcount { position:absolute; transform:translate(-100%, 0); font-family:var(--font-mono); font-size:9.5px; font-weight:600; line-height:1; padding:2px 3px; border-radius:3px; pointer-events:none; }
-.cellcount.has { background:var(--major); color:#1b1400; }
-.cellcount.ok { color:var(--ok); }
 .vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:all; user-select:none;
   box-shadow:0 1px 4px rgba(0,0,0,.4); border:2px solid rgba(255,255,255,.9); transform:scale(var(--cs)); transform-origin:center; }
@@ -837,6 +861,13 @@ body:not(.single) .gpill .gsw { display:none; }
    one-sided ghost (.gfoot / .gpill, below); the two share nothing but the word. */
 .ghost { opacity:0; transition:opacity .08s linear; }
 .ghost.difference { mix-blend-mode:difference; }
+/* A SHEET has no single design PNG to superimpose — body.is-sheet hides .shot, the
+   ghost image included — so Wipe / Onion / Blink / Diff had nothing to reveal and did
+   nothing at all, silently, while their buttons still lit up. Its ghost is a second
+   copy of the design CELLS, in the impl pane, carrying the same .ghost opacity and
+   blend as the image does. Its own children must not animate: the blink flips this
+   layer's opacity every 650ms and a per-cell transition would smear it. */
+#cells-ghost .cellshot { transition:none; }
 /* The wipe handle: a 28px grab strip with the comps' 2px accent line and sync_alt knob. */
 .wipe { position:absolute; top:0; bottom:0; width:28px; cursor:ew-resize; z-index:7; display:flex; align-items:center; justify-content:center; touch-action:none; }
 .wipe[hidden] { display:none; }
@@ -923,7 +954,9 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   body.layout-minimal .tb-left { flex:1 1 0; min-width:4px; gap:7px; }
   body.layout-minimal .tb-right { gap:7px; }
   body.layout-minimal .tb-left .brand { width:16px; height:16px; }
-  body.layout-minimal .tb-left .pair-title { display:inline; overflow:hidden; text-overflow:ellipsis; }
+  /* Only the display: the base rule carries the ellipsis for every layout now. This one
+     exists to undo the <=1119px display:none above. */
+  body.layout-minimal .tb-left .pair-title { display:inline; }
   body.layout-minimal .view-toggle { display:inline-flex; }
   body.layout-minimal #seg-variant, body.layout-minimal .layer-strip, body.layout-minimal .zoom-pill, body.layout-minimal .side-fab { display:none; }
   /* The bottom row is 38px tall (the comp's 36 + border); the 36px strip centres in it, so it sits 1px up. */
@@ -1046,7 +1079,7 @@ let report = null;
 // rather than a second view. view-math.ts asserts the geometry half of that
 // (a 1x1 layout puts its cell at the world origin); this is the view half.
 let sheet = null;
-let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations', readOnly: false };
+let page = { indexHref: null, base: '', annotationsUrl: 'api/annotations', elementsUrl: undefined, readOnly: false };
 const $ = (id) => document.getElementById(id);
 
 // iOS Safari ignores user-scalable=no, so page pinch-zoom has to be refused
@@ -1520,6 +1553,12 @@ function setSide(side) {
   state.side = side; applySide(); saveControls();
   if (state.userMoved) applyView(); else fit();
 }
+// The side control is a SWITCH, not a picker: clicking the half you are already on
+// flips too. Comparing one side against the other is the gesture this control exists
+// for, and requiring the correct half meant looking at the pill before every click —
+// a read, then an aimed click, to do the one thing there is to do. setSide stays
+// targeted for the callers that mean a specific side (a ghost badge, a lab mode).
+function toggleSide() { setSide(state.side === 'design' ? 'impl' : 'design'); }
 // The tool strip's three modes are exclusive: pan, focus (drag a region), comment (tap = note,
 // drag = region). Pan is the rest state the other two fall back to.
 function setPan() { setFocusing(false); setAnnMode(null); saveControls(); }
@@ -1662,6 +1701,9 @@ function setAlign(mode) {
   // Choosing a registration re-links the panes: it is a statement about how the frames sit on each other.
   state.lock = true; state.viewD = state.view;
   applyAlignMode(); applyLock(); saveControls(); applyLab();
+  // A sheet registers per CELL, so the mode has to move the cells themselves;
+  // applyView only moves the layer they sit in.
+  placeDesignCells();
   if (state.userMoved) applyView(); else fit();
 }
 function cycleAlign(step) {
@@ -1705,17 +1747,24 @@ function pageShadow(dpr) { return '0 ' + 4 * dpr + 'px ' + 30 * dpr + 'px rgba(0
 
 function applyView() {
   const v = state.view, vd = viewOf('design');
-  imgs.design.style.transform = designImageTransform(vd, projection(), state.dprD);
+  // Each side's PNG starts at (-left, -top) of its own bleed, so the transform
+  // slides the picture and nothing else — the marks, the alignment and every
+  // finding box are in element space and never move. A pair with no bleed
+  // composes to exactly the transform it had before the flag existed.
+  const bD = bleedOf(report.design), bI = bleedOf(report.impl);
+  imgs.design.style.transform = designImageTransform(vd, projection(), state.dprD, bD);
   imgs.design.style.boxShadow = pageShadow(state.dprD);
-  imgs.impl.style.transform = implImageTransform(v, state.dprI);
+  imgs.impl.style.transform = implImageTransform(v, state.dprI, bI);
   imgs.impl.style.boxShadow = pageShadow(state.dprI);
   // The ghost is the design drawn with the FULL alignment — per-axis stretch
   // included. The design PANE refuses that distortion on purpose (you cannot
   // judge type against a stretched reference); superimposing needs the opposite
   // trade, because a blink or a difference blend against a frame that does not
   // land on the impl compares nothing. #lab-note states the stretch.
-  imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD);
-  imgs.mask.style.transform = implImageTransform(v, state.dprI);
+  imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD, bD);
+  // The mask is written at the impl PNG's own size, bleed included (writeDiffMask
+  // paints into a canvas that IS that PNG), so it takes the impl's shift too.
+  imgs.mask.style.transform = implImageTransform(v, state.dprI, bI);
   // Finding boxes and annotation shapes are baked into world space through the RUN's alignment, so
   // the design side re-maps them onto whatever registration is being drawn — otherwise every mark
   // but the fit's own floats off the image it annotates.
@@ -1733,6 +1782,11 @@ function applyView() {
   if (sheet) {
     $('cells-impl').style.transform = worldLayerTransform(v);
     $('cells-design').style.transform = worldLayerTransform(vd);
+    // The ghost layer lives in the IMPL pane, so it takes the ghost's view — which is
+    // the impl's under lockstep and the design pane's when unlinked, exactly as the
+    // ghost IMAGE does. Each cell's own registration is already baked into where it
+    // sits, so there is no alignment left to apply here.
+    $('cells-ghost').style.transform = worldLayerTransform(ghostView());
   }
   // Badges keep a constant screen size (the comps' scale(min(2.4, 1/s))); the point circles too.
   for (const side of ['design', 'impl']) {
@@ -1763,7 +1817,7 @@ function renderTopbar() {
   $('hdr-left').innerHTML =
     (page.indexHref ? '<a class="back" href="' + esc(page.indexHref) + '" title="Library"><span class="msi" aria-hidden="true">arrow_back</span></a>' : '') +
     '<span class="brand" aria-hidden="true"></span><span class="brand-name">RefDiff</span>' +
-    '<span class="pair-title">' + esc(report.pair) + '</span>';
+    '<span class="pair-title" title="' + esc(report.pair) + '">' + esc(report.pair) + '</span>';
   applyTheme(currentTheme());
   $('label-impl').title = 'Implementation · ' + report.impl.ref + ' · ' + report.impl.width + '×' + report.impl.height;
 }
@@ -1947,6 +2001,33 @@ function sheetRailHtml(kept) {
   return h;
 }
 
+// The CELLS a lit cause touches, by cell key — null when nothing is lit. Sheet
+// finding ids are namespaced <cellKey>::<id> and each moved finding carries its
+// own cell key, so the cells are a projection of the ids the rail already computed;
+// no second grouping pass. This is the half of "click to light up every cell with
+// this cause" that the rail row's title has always promised: the dimming used to
+// reach the finding BADGES only, which at sheet zoom are ~6px dots, so clicking a
+// cause looked like it did nothing at all.
+function causeCellKeys() {
+  if (!sheet || !state.cause) return null;
+  const ids = causeIds();
+  const keys = new Set();
+  for (const f of report.findings) if (f.cell && ids.has(f.id)) keys.add(f.cell);
+  return keys;
+}
+// Cheap enough to run on every mark render (two hosts x ~72 elements on the DS's
+// biggest sheet) and that is what keeps it in step with the rail without a second
+// call site to forget.
+function applyCauseCells() {
+  if (!sheet) return;
+  const keys = causeCellKeys();
+  for (const host of [$('cells-design'), $('cells-impl'), $('cells-ghost')]) {
+    host.classList.toggle('has-cause', !!keys);
+    for (const el of host.querySelectorAll('[data-cell]')) {
+      el.classList.toggle('cell-lit', !!keys && keys.has(el.dataset.cell));
+    }
+  }
+}
 // The findings of the lit cause, as a Set. Empty when nothing is lit, which is
 // what makes the dimming a no-op rather than a special case at every call site.
 let causeCache = { key: null, ids: new Set() };
@@ -2231,6 +2312,7 @@ function ghostPill(box, f, only, cls) {
   return d;
 }
 function renderMarks() {
+  applyCauseCells();
   for (const side of ['design', 'impl']) {
     const layer = layers[side], blayer = markLayers[side];
     layer.replaceChildren();
@@ -2478,21 +2560,27 @@ function setLab(mode) {
   if (mode !== 'none' && single() && state.side !== 'impl') setSide('impl');
   applyLayout(); saveControls(); applyLab();
 }
+// What an overlay mode acts on: the design PNG for a pair, the design CELLS for a
+// sheet. Both, always — the inactive one is empty or display:none, so driving the
+// pair is one branch fewer than asking which kind of page this is, and a mode can
+// never turn on for a page whose ghost nobody moved.
+function ghostTargets() { return [imgs.ghost, $('cells-ghost')]; }
 function applyLab() {
   clearInterval(blinkTimer); blinkTimer = null;
-  const ghost = imgs.ghost;
-  ghost.classList.toggle('difference', state.lab === 'difference');
+  const ghosts = ghostTargets();
+  const setOpacity = (o) => { for (const g of ghosts) g.style.opacity = o; };
+  for (const g of ghosts) g.classList.toggle('difference', state.lab === 'difference');
   $('ghost-wrap').style.clipPath = '';
-  if (state.lab === 'none') { ghost.style.opacity = 0; }
-  else if (state.lab === 'onion') { ghost.style.opacity = state.labAmount.onion / 100; }
-  else if (state.lab === 'difference') { ghost.style.opacity = state.labAmount.difference / 100; }
-  else if (state.lab === 'swipe') { ghost.style.opacity = 1; }
+  if (state.lab === 'none') { setOpacity(0); }
+  else if (state.lab === 'onion') { setOpacity(state.labAmount.onion / 100); }
+  else if (state.lab === 'difference') { setOpacity(state.labAmount.difference / 100); }
+  else if (state.lab === 'swipe') { setOpacity(1); }
   else if (state.lab === 'blink') {
     // The blink comparator: the eye is far better at spotting a thing that
     // MOVES between two frames than a thing that is slightly wrong in one.
     let on = true;
-    ghost.style.opacity = 1;
-    blinkTimer = setInterval(() => { on = !on; ghost.style.opacity = on ? 1 : 0; }, 650);
+    setOpacity(1);
+    blinkTimer = setInterval(() => { on = !on; setOpacity(on ? 1 : 0); }, 650);
   }
   renderLabNote();
   applyView();
@@ -2682,7 +2770,7 @@ function wire() {
   const wipeUp = (e) => { if (wiping === e.pointerId) wiping = null; };
   wipe.addEventListener('pointerup', wipeUp); wipe.addEventListener('pointercancel', wipeUp);
   wipe.addEventListener('click', (e) => e.stopPropagation());
-  $('side-switch').addEventListener('click', (e) => { const b = e.target.closest('[data-side]'); if (b) setSide(b.dataset.side); });
+  $('side-switch').addEventListener('click', toggleSide);
   $('seg-layout').addEventListener('click', (e) => { const b = e.target.closest('[data-layout]'); if (b) setLayout(b.dataset.layout === 'full'); });
   for (const id of ['seg-variant', 'seg-variant-m']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-lab]'); if (b) setLab(b.dataset.lab); });
   for (const id of ['seg-layer', 'seg-layer-m', 'seg-layer-p']) $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-layer]'); if (b) setLayer(b.dataset.layer); });
@@ -2701,7 +2789,7 @@ function wire() {
     if (state.settingsOpen && !inside('.settings-wrap')) setSettingsOpen(false);
   });
   $('fit-m').addEventListener('click', fit);
-  $('pane-swap').addEventListener('click', () => setSide(state.side === 'design' ? 'impl' : 'design'));
+  $('pane-swap').addEventListener('click', toggleSide);
   $('rail-btn').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
   $('move-toggle').addEventListener('click', setPan);
   $('focus-toggle').addEventListener('click', () => {
@@ -3019,7 +3107,13 @@ function renderAnnMarks() {
   renderFocusBand();
 }
 async function loadAnnotations() {
-  if (ann.storage === 'api') {
+  // A SHEET has no annotations file of its own: notes belong to the CELL they
+  // are drawn on, which is a different run dir per cell. Asking anyway 404s,
+  // and a 404 here silently demotes storage to localStorage under the sheet's
+  // synthetic title — a note saved somewhere nobody reads. Until a note can be
+  // routed to its cell's dir, a sheet keeps the local store deliberately.
+  if (!page.annotationsUrl) ann.storage = 'local';
+  if (ann.storage === 'api' && page.annotationsUrl) {
     try {
       const res = await fetch(page.annotationsUrl);
       if (res.ok) { const p = parseAnnotationSet(await res.json(), report.pair); if (p.ok) { ann.set = p.value; return; } }
@@ -3033,8 +3127,12 @@ async function loadAnnotations() {
   } catch (e) { /* embedded copy stays */ }
 }
 async function loadElements() {
+  // Same for the element trees: a sheet is N pairs and there is no elements.json
+  // at its root, so snapping is off and the note editor says so
+  // (ann.elementsLoaded). Fetching it only produced a 404 per sheet open.
+  if (page.elementsUrl === null) { ann.elementsLoaded = false; return; }
   try {
-    const res = await fetch(page.base + 'elements.json'); if (!res.ok) throw new Error(res.status);
+    const res = await fetch((page.elementsUrl || page.base + 'elements.json')); if (!res.ok) throw new Error(res.status);
     const j = await res.json(); ann.elements = { design: j.design || [], impl: j.impl || [] }; ann.elementsLoaded = true;
   } catch (e) { ann.elementsLoaded = false; }
 }
@@ -3044,6 +3142,67 @@ function loadImage(img, src) {
   return new Promise((resolve) => { img.addEventListener('load', () => resolve(true), { once: true }); img.addEventListener('error', () => resolve(false), { once: true }); img.src = src; });
 }
 // ---- a SHEET's cells ------------------------------------------------------
+// One cell's registration under the CURRENT align mode. Read per call rather
+// than cached with the cell: the mode changes without the sheet being rebuilt.
+function cellPlacementOf(cell) {
+  return cellPlacement(
+    state.align,
+    cell.rect,
+    cell.report.design,
+    cell.report.impl,
+    cell.report.alignment || { scale: 1, offsetX: 0, offsetY: 0 },
+  );
+}
+
+// A cell capture's dpr. Recorded on every modern run; an older report recovers
+// it from the picture, which is what designCaptureDpr exists for (it must not be
+// naturalWidth / width — design.width already carries the run scale).
+function cellDpr(cell, side, natW) {
+  const m = side === 'impl' ? cell.report.impl : cell.report.design;
+  if (side === 'design') return designCaptureDpr(natW, m, (cell.report.alignment || {}).scale || 1);
+  if (m.dpr > 0) return m.dpr;
+  const b = bleedOf(m);
+  return natW && m.width ? natW / (m.width + b.left + b.right) : 1;
+}
+// Put one cell's picture down. Before it has loaded the box is the estimate; once
+// it has, its own pixels are, which is the difference the device-pixel rounding
+// makes (cellPngBox).
+function placeCellImg(el, cell, side) {
+  const at = cellPlacementOf(cell)[side];
+  const box = el.naturalWidth
+    ? cellPngBox(at, { w: el.naturalWidth, h: el.naturalHeight }, cellDpr(cell, side, el.naturalWidth))
+    : at.png;
+  el.style.left = box.x + 'px';
+  el.style.top = box.y + 'px';
+  el.style.width = box.w + 'px';
+  el.style.height = box.h + 'px';
+}
+
+// Re-register every cell's DESIGN capture in place, for a mode change.
+//
+// Not a rebuild: renderCellShots replaces the hosts' children and re-loads every
+// image, which on a 105-cell sheet flashes the whole grid to reposition it. The
+// elements already carry their cell key, so moving them is a write of four style
+// properties each. The impl side is not touched — the mode never moves it.
+function placeDesignCells() {
+  if (!sheet) return;
+  const design = $('cells-design'), ghost = $('cells-ghost');
+  for (const cell of sheet.cells) {
+    if (!cell.report) continue;
+    const at = cellPlacementOf(cell).design;
+    const sel = '[data-cell="' + (window.CSS && CSS.escape ? CSS.escape(cell.key) : cell.key) + '"]';
+    const slot = design.querySelector('.cellslot' + sel);
+    if (slot) {
+      slot.style.left = at.box.x + 'px';
+      slot.style.top = at.box.y + 'px';
+      slot.style.width = at.box.w + 'px';
+      slot.style.height = at.box.h + 'px';
+    }
+    for (const el of [design.querySelector('img.cellshot' + sel), ghost.querySelector('img.cellshot' + sel)]) {
+      if (el) placeCellImg(el, cell, 'design');
+    }
+  }
+}
 // The cells' screenshots, laid out in WORLD px inside the zero-size .cellshots
 // container. No per-image transform: the container's one transform (applyView)
 // maps the lot, so N images cost what one did and the existing pan, zoom, fit
@@ -3057,6 +3216,9 @@ function renderCellShots() {
   const hosts = { design: $('cells-design'), impl: $('cells-impl') };
   hosts.design.replaceChildren();
   hosts.impl.replaceChildren();
+  // The impl pane's copy of the design cells — what the overlay modes reveal on a
+  // sheet, where there is no single design PNG for them to work on.
+  $('cells-ghost').replaceChildren();
   if (!sheet) return Promise.resolve(true);
   const loads = [];
   const res = sheet.resolved;
@@ -3097,6 +3259,14 @@ function renderCellShots() {
   }
 
   // ---- the cells --------------------------------------------------------
+  // Where a measured cell's two captures land, in sheet world px — one call, so
+  // the slot and the picture cannot drift apart, and so the ALIGN MODE reaches
+  // every cell. See cellPlacement: the impl sits at the cell origin (world px
+  // ARE impl css px) and the design is registered against it by the mode.
+  // The SLOT stays on the ELEMENT (an outline has to hug the component, not the
+  // margin --bleed captured around it); the picture is placed by placeCellImg,
+  // which grows it to the margin and, once loaded, to its own pixels.
+  const sideBox = (cell, side) => cellPlacementOf(cell)[side].box;
   for (const cell of sheet.cells) {
     // ABSENT and FILTERED cells draw nothing on either pane. Absent is the axes'
     // cross-product minus everything the design declares — not a cell at all,
@@ -3107,14 +3277,20 @@ function renderCellShots() {
     // here to skip. (No backticks in this comment: the whole block
     // is a template literal and one would close it.)
     if (cell.kind === 'absent' || cell.kind === 'filtered') continue;
-    const count = cell.report ? (cell.report.findings || []).length : 0;
     for (const side of ['design', 'impl']) {
       const slot = document.createElement('div');
       slot.className = 'cellslot k-' + cell.kind;
-      // The SLOT is the track; the content rect inside it is centred, as the
-      // comp centres it. Drawing the slot at the content box would shrink every
-      // cell's outline to its button.
-      const t = cell.track || cell.rect;
+      slot.dataset.cell = cell.key;
+      // A MEASURED cell's slot is that SIDE'S OWN capture box — exactly where this
+      // pane's screenshot goes, so a lit or selected outline hugs the component.
+      // It used to be cell.rect for both, which is the per-axis MAX of the two
+      // sides: on a cell whose design is 128 wide against a 109 impl, the impl
+      // pane's box ran 19px past the button with nothing in it. That dead strip is
+      // what read as an extended canvas, and it is the same strip the finding-count
+      // badge used to sit in, which is why removing the badge did not remove it.
+      // An unmeasured cell has no capture, so it keeps the layout's box: without
+      // one there is nothing to say a cell belongs there.
+      const t = cell.report ? sideBox(cell, side) : (cell.track || cell.rect);
       slot.style.left = t.x + 'px';
       slot.style.top = t.y + 'px';
       slot.style.width = t.w + 'px';
@@ -3134,50 +3310,55 @@ function renderCellShots() {
     }
     if (!cell.report) continue;
 
-    // The count the comp draws in each measured cell. It is the CELL's number,
-    // not a finding's, so it is not a mark and renderMarks never touches it.
-    for (const side of ['design', 'impl']) {
-      const b = document.createElement('span');
-      b.className = 'cellcount' + (count ? ' has' : ' ok');
-      const tb = cell.track || cell.rect;
-      b.style.left = (tb.x + tb.w - 4) + 'px';
-      b.style.top = (tb.y + 4) + 'px';
-      b.textContent = count ? String(count) : '\u2713';
-      b.title = count + ' finding(s) in this cell';
-      hosts[side].appendChild(b);
-    }
+    // No per-cell finding COUNT badge. It used to sit at the track's top-right on
+    // both panes and it was removed outright (repo owner, 2026-09-07), not moved or
+    // layer-gated. Two things were wrong with it and the second is the reason:
+    // it ignored the Findings / Comments / All / Clean segment, so Clean was not
+    // clean; and it was appended BEFORE the cell's screenshot, which paints over it
+    // — 19 of ds-button-stroke's 24 badges were at least half covered. The five that
+    // showed were exactly the cells whose track is wider than the impl (a track is
+    // the per-axis MAX of design and impl, so a wider design leaves a margin the
+    // badge sat in), which read as a yellow rectangle floating outside the
+    // component. A number visible on a fifth of the cells, chosen by which side
+    // happened to be wider, is worse than no number: the rail's cause rows carry the
+    // counts, and the marks carry them per cell in the Findings layer.
 
     // IMPL: world px ARE impl css px, so the shot goes at the cell's origin.
     const impl = document.createElement('img');
     impl.className = 'cellshot';
+    impl.dataset.cell = cell.key;
     impl.alt = '';
-    impl.style.left = cell.rect.x + 'px';
-    impl.style.top = cell.rect.y + 'px';
-    impl.style.width = cell.report.impl.width + 'px';
-    impl.style.height = cell.report.impl.height + 'px';
+    placeCellImg(impl, cell, 'impl');
     hosts.impl.appendChild(impl);
-    loads.push(loadImage(impl, cell.dir + '/' + cell.report.artifacts.implPng));
+    loads.push(loadImage(impl, cell.dir + '/' + cell.report.artifacts.implPng)
+      .then((ok) => { if (ok) placeCellImg(impl, cell, 'impl'); return ok; }));
 
-    // DESIGN: through the cell's OWN alignment, and this is the whole of step 2.
-    // report.design.width already carries the run's scale (see rawDesignSize),
-    // so the WORLD size is that width verbatim and no natural size is needed —
-    // which is what lets the image be positioned before it has loaded. The
-    // offset is the cell's own registration, on top of its cellOrigin.
+    // DESIGN: registered against this cell's own impl, under the reader's align
+    // mode. The size comes from the report and the mode, never from the loaded
+    // image, which is what lets it be positioned before it has loaded.
     //
-    // Consequence, stated: the align-mode pill (Anchors / Width / Top left /
-    // Top right) is a per-PAIR registration control and does not reach a sheet's
-    // design pane, because each cell here is registered by its own fit. On a
-    // sheet the pill has nothing to re-register.
-    const a = cell.report.alignment || { scale: 1, offsetX: 0, offsetY: 0 };
+    // The align-mode pill DOES reach a sheet, per cell — Top left puts every
+    // design at its own cell origin, Top right registers each by its own
+    // top-right corner, and so on (cellPlacement). This comment used to say the
+    // opposite, and it was true of the code rather than of the surface: the
+    // sheet fed the pill its OWN alignment, which is the identity, so all four
+    // modes computed the same registration and the control moved nothing.
     const design = document.createElement('img');
     design.className = 'cellshot';
+    design.dataset.cell = cell.key;
     design.alt = '';
-    design.style.left = (cell.rect.x + (a.offsetX || 0)) + 'px';
-    design.style.top = (cell.rect.y + (a.offsetY || 0)) + 'px';
-    design.style.width = cell.report.design.width + 'px';
-    design.style.height = cell.report.design.height + 'px';
+    placeCellImg(design, cell, 'design');
     hosts.design.appendChild(design);
-    loads.push(loadImage(design, cell.dir + '/' + cell.report.artifacts.designPng));
+    loads.push(loadImage(design, cell.dir + '/' + cell.report.artifacts.designPng)
+      .then((ok) => { if (ok) placeCellImg(design, cell, 'design'); return ok; }));
+
+    // …and the same cell again in the impl pane's ghost layer, at the same world
+    // position. Its own element rather than a moved one: both panes draw the design
+    // at once under Onion and Wipe, so one node cannot serve both.
+    const over = design.cloneNode(false);
+    $('cells-ghost').appendChild(over);
+    loads.push(loadImage(over, cell.dir + '/' + cell.report.artifacts.designPng)
+      .then((ok) => { if (ok) placeCellImg(over, cell, 'design'); return ok; }));
   }
   return Promise.all(loads).then(() => true);
 }
@@ -3192,7 +3373,7 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   // than setting it around the call is what removes that ordering trap.
   sheet = sheetData || null;
   document.body.classList.toggle('is-sheet', !!sheet);
-  page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', triageUrl: null, readOnly: false }, pageData || {});
+  page = Object.assign({ indexHref: null, base: '', annotationsUrl: 'api/annotations', elementsUrl: undefined, triageUrl: null, readOnly: false }, pageData || {});
   byId = new Map(report.findings.concat(report.suppressed.map((s) => Object.assign({ isSuppressed: true }, s))).map((f) => [f.id, f]));
   ann.set = annotationSet || { version: 1, pair: report.pair, annotations: [] };
   ann.mode = null; ann.draft = null; ann.draftText = ''; ann.selected = null; ann.band = null; ann.sticky = false;
@@ -3212,9 +3393,18 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   renderTopbar(); renderDeltaStrip(); renderRail();
   if (!wired) { wire(); wired = true; }
   applyLayout(); applySide(); applyNarrow(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
+  // UNCONDITIONAL, and out here rather than in the array so the two image slots keep
+  // their positions (okD / okI below read 0 and 1). renderCellShots empties both cell
+  // hosts before it looks at anything, then early-returns when there is no sheet. It
+  // used to be called only FOR a sheet, so a pair opened from one kept that sheet's 48
+  // images and 48 slots underneath it — the pair drawn on top of the grid it came from.
+  // Nothing else empties those hosts, and body.is-sheet hides only the single page
+  // images, never the cells. (No backticks in this comment: template literal.)
+  const cells = renderCellShots();
   return Promise.all([
-    sheet ? renderCellShots() : loadImage(imgs.design, page.base + report.artifacts.designPng),
+    sheet ? Promise.resolve(true) : loadImage(imgs.design, page.base + report.artifacts.designPng),
     sheet ? Promise.resolve(true) : loadImage(imgs.impl, page.base + report.artifacts.implPng),
+    cells,
     loadAnnotations(),
     loadElements(),
     loadTriage(),
@@ -3231,7 +3421,7 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
     // renderCellShots, so there is no single page image to probe and nothing for
     // these two to scale. Left at 1 rather than guessed from a cell.
     state.dprD = sheet ? 1 : (okD ? designCaptureDpr(imgs.design.naturalWidth, report.design, report.alignment.scale) : 1);
-    state.dprI = sheet ? 1 : (okI ? (report.impl.dpr || imgs.impl.naturalWidth / report.impl.width) : 1);
+    state.dprI = sheet ? 1 : (okI ? (report.impl.dpr || imgs.impl.naturalWidth / (report.impl.width + bleedOf(report.impl).left + bleedOf(report.impl).right)) : 1);
     if (!sheet && !okD) $('label-design').textContent += ' — image missing';
     if (!sheet && !okI) $('label-impl').textContent += ' — image missing';
     setLab(state.lab);

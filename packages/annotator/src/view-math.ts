@@ -121,28 +121,72 @@ export function rawDesignSize(design: { width: number; height: number }, a: VAli
  */
 export function designCaptureDpr(
   naturalWidth: number,
-  design: { width: number; dpr?: number },
+  design: { width: number; dpr?: number; bleed?: VBleed },
   alignmentScale: number,
 ): number {
   if (design.dpr && design.dpr > 0) return design.dpr
   if (!naturalWidth || !design.width) return 1
   const scale = alignmentScale > 0 ? alignmentScale : 1
-  return (naturalWidth * scale) / design.width
+  // The PNG is the RAW capture plus its bleed margin, so the raw CSS width the
+  // ratio is against is (width / scale + left + right), scaled back up.
+  const outset = (bleedOf(design).left + bleedOf(design).right) * scale
+  return (naturalWidth * scale) / (design.width + outset)
+}
+
+/**
+ * Margin captured around a side's node, in that side's own CSS px. A capture
+ * made before `--bleed`, or one that asked for none, has no field and reads as
+ * zero — which is the identity for every use below.
+ */
+export interface VBleed {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+const ZERO_BLEED: VBleed = { top: 0, right: 0, bottom: 0, left: 0 }
+export const bleedOf = (side: { bleed?: VBleed } | undefined): VBleed => side?.bleed ?? ZERO_BLEED
+
+/**
+ * Where a side's PNG starts, in that side's own CSS px: `(-left, -top)`.
+ *
+ * Every consumer that DRAWS a capture needs this and nothing else. The element
+ * boxes, the alignment and every finding stay exactly where they were — bleed
+ * moves the picture under them, never them.
+ */
+export const bleedOrigin = (side: { bleed?: VBleed } | undefined): { x: number; y: number } => {
+  const b = bleedOf(side)
+  // `|| 0` normalises -0, which negating a zero produces and which reads back as
+  // "translate(-0px)" in a transform and as a failed toEqual in a test.
+  return { x: -b.left || 0, y: -b.top || 0 }
 }
 
 /**
  * CSS `transform` for the design PNG element: native px → design CSS px (÷dpr)
  * → world (alignment) → screen (view). CSS composes right-to-left.
  */
-export function designImageTransform(view: View, a: VAlignment, dpr: number): string {
-  const sx = a.scale / dpr
-  const sy = (a.scaleY ?? a.scale) / dpr
-  return `translate(${view.tx}px, ${view.ty}px) scale(${view.z}) translate(${a.offsetX}px, ${a.offsetY}px) scale(${sx}, ${sy})`
+export function designImageTransform(
+  view: View,
+  a: VAlignment,
+  dpr: number,
+  bleed: VBleed = ZERO_BLEED,
+): string {
+  const sx = a.scale
+  const sy = a.scaleY ?? a.scale
+  const base = `translate(${view.tx}px, ${view.ty}px) scale(${view.z}) translate(${a.offsetX}px, ${a.offsetY}px)`
+  // The bleed shift is in RAW DESIGN CSS px, so it goes AFTER the alignment
+  // scale and BEFORE the ÷dpr — which is why this chain splits what used to be
+  // one scale(sx/dpr) into two. With no bleed the two forms are identical.
+  const o = bleedOrigin({ bleed })
+  return `${base} scale(${sx}, ${sy}) translate(${o.x}px, ${o.y}px) scale(${1 / dpr})`
 }
 
 /** CSS `transform` for the impl PNG element: native px → world (÷dpr) → screen. */
-export function implImageTransform(view: View, dpr: number): string {
-  return `translate(${view.tx}px, ${view.ty}px) scale(${view.z / dpr})`
+export function implImageTransform(view: View, dpr: number, bleed: VBleed = ZERO_BLEED): string {
+  const base = `translate(${view.tx}px, ${view.ty}px) scale(${view.z})`
+  // World px ARE impl CSS px, so the shift is applied in world space directly.
+  const o = bleedOrigin({ bleed })
+  return `${base} translate(${o.x}px, ${o.y}px) scale(${1 / dpr})`
 }
 
 /** CSS `transform` for a layer whose children are laid out in world units (marks). */
@@ -618,6 +662,117 @@ export function cellOrigin(
   let y = gutter.h
   for (let r = 0; r < row; r++) y += rowHeights[r] ?? 0
   return { x: x + pad, y: y + pad }
+}
+
+/** One side of a cell as its report records it: the capture's frame and its margin. */
+export interface CellSide {
+  width: number
+  height: number
+  bleed?: VBleed
+}
+
+/** Where one side of a cell is drawn: the element frame, and the PNG around it. */
+export interface CellPlacement {
+  /** The capture's own frame — what a slot outline hugs. */
+  box: VBox
+  /**
+   * The picture, ESTIMATED as the frame plus whatever margin `--bleed` captured.
+   * Good enough to lay out before the image has loaded, and up to ~1.2px wrong —
+   * see `cellPngBox`, which is the size to use once it has.
+   */
+  png: VBox
+  /** The registration scale applied to this side; 1 on the impl, always. */
+  scale: number
+  scaleY: number
+}
+
+/**
+ * The picture's TRUE css box, once the image has loaded — its OWN pixels, rather
+ * than the frame-plus-bleed the layout guessed.
+ *
+ * A browser clips an element screenshot to whole DEVICE pixels, so a fractional
+ * element width comes back rounded outward: a 106.81px button with 8px of bleed
+ * is 122.81 css px of content and a 124 css px PNG. Stretching that picture into
+ * the 122.81 box scales it by 0.99 — every mark inside drifts by up to the 1.19px
+ * of excess, worst at the far edge. Measured on one corpus: 54 of 416 captures,
+ * every one of them a fractional width.
+ *
+ * The origin does NOT move: it stays the element origin minus the bleed, so the
+ * excess lands on the right and the bottom, which is where the outward rounding
+ * put it. That is also exactly what the pair view does (`designImageTransform`
+ * scales the natural pixels by 1/dpr), so the two surfaces place one capture the
+ * same way — the property the whole gallery section rests on.
+ */
+export function cellPngBox(at: CellPlacement, natural: Size, dpr: number): VBox {
+  const d = dpr > 0 ? dpr : 1
+  return {
+    x: at.png.x,
+    y: at.png.y,
+    w: (natural.w / d) * at.scale,
+    h: (natural.h / d) * at.scaleY,
+  }
+}
+
+/** `box` grown by a bleed expressed in that side's own CSS px, hence the scale. */
+function withBleed(box: VBox, b: VBleed, sx: number, sy: number): VBox {
+  return {
+    x: box.x - b.left * sx,
+    y: box.y - b.top * sy,
+    w: box.w + (b.left + b.right) * sx,
+    h: box.h + (b.top + b.bottom) * sy,
+  }
+}
+
+/**
+ * Where a cell's two captures land on a sheet, under the reader's align mode.
+ *
+ * A sheet is not one registration but N of them, and this is where they are
+ * decided. The sheet's own `report.alignment` is the identity — the world IS
+ * the grid — so feeding the align pill the sheet's alignment made all four
+ * modes collapse onto each other and the control did nothing at all. Each CELL
+ * still has a design and an impl that can be registered against each other, and
+ * that is what the reader is asking for: `left` puts every cell's design at its
+ * own cell origin, `right` registers each by its own top-right, `width` scales
+ * each design to its own impl's width, `anchors` keeps each cell's measured fit.
+ *
+ * The impl side never moves: world px ARE impl CSS px, which is what makes one
+ * renderer serve both surfaces (see `cellOrigin`).
+ *
+ * Two details that a corpus of same-size captures cannot show, so they are
+ * asserted rather than observed:
+ *
+ * - `anchors` is ASPECT-LOCKED, like the pair view's. The run fits x and y
+ *   independently; drawing the design under that stretch is fine for locating a
+ *   box and wrong for looking at a reference, and a reader cannot tell a
+ *   stretched reference from a badly-drawn one. The sheet used to take
+ *   `design.height` verbatim, stretch included.
+ * - the design's bleed is in RAW design CSS px, so it is scaled by the
+ *   registration; the impl's is already world px. The sheet used to add both
+ *   unscaled to an already-scaled width, which is exact only while the scale is
+ *   1 — as it is on all 208 pairs of the corpus this was found on.
+ */
+export function cellPlacement(
+  mode: AlignMode,
+  rect: { x: number; y: number },
+  design: CellSide,
+  impl: CellSide,
+  run: VAlignment,
+): { design: CellPlacement; impl: CellPlacement } {
+  const implBox: VBox = { x: rect.x, y: rect.y, w: impl.width, h: impl.height }
+  const raw = rawDesignSize(design, run)
+  const d = displayAlignment(mode, run, raw, { w: impl.width, h: impl.height })
+  const sx = d.scale
+  const sy = d.scaleY ?? d.scale
+  const designBox: VBox = {
+    x: rect.x + d.offsetX,
+    y: rect.y + d.offsetY,
+    w: raw.w * sx,
+    h: raw.h * sy,
+  }
+  return {
+    design: { box: designBox, png: withBleed(designBox, bleedOf(design), sx, sy), scale: sx, scaleY: sy },
+    impl: { box: implBox, png: withBleed(implBox, bleedOf(impl), 1, 1), scale: 1, scaleY: 1 },
+  }
 }
 
 /**
