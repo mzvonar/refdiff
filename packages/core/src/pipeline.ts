@@ -7,7 +7,7 @@
  */
 
 import type { CaptureStep } from "./adapters/steps.js";
-import type { Alignment, Box, CaptureScope, ElementNode } from "./types.js";
+import type { Alignment, Bleed, Box, CaptureScope, ElementNode } from "./types.js";
 
 export interface Viewport {
   width: number;
@@ -40,6 +40,13 @@ export interface DcHtmlSource {
    */
   scope?: string;
   viewport?: Viewport;
+  /**
+   * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
+   * — a focus ring, an offset outline, a drop shadow — is in the picture. It
+   * changes no measurement: element boxes stay relative to the node's own
+   * origin, and the recorded `bleed` says where the PNG's (0, 0) landed.
+   */
+  bleed?: number;
 }
 
 /** A Storybook story rendered via the bare iframe. */
@@ -65,6 +72,14 @@ export interface StorybookSource {
    * Figma variant COMPONENT. Missing → typed `selector-not-found`.
    */
   selector?: string;
+  /**
+   * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
+   * — a focus ring, an offset outline, a drop shadow — is in the picture. It
+   * changes no measurement: element boxes stay relative to the node's own
+   * origin, and the recorded `bleed` says where the PNG's (0, 0) landed. Ignored
+   * when the whole viewport is being shot, which has no box to grow.
+   */
+  bleed?: number;
 }
 
 /**
@@ -85,6 +100,19 @@ export interface FigmaSource {
    * typography is bound to a variable or shared style). Default 0.3.
    */
   minQuality?: number;
+  /**
+   * Capture the paint OUTSIDE the node's box — a focus ring, an offset
+   * outline, a drop shadow — instead of stopping at it.
+   *
+   * On the browser sides this number is the margin. Here it is only a SWITCH:
+   * the `/images` endpoint takes no margin, offering the node's box or
+   * everything it paints and nothing in between, so the margin obtained is the
+   * node's own (`figmaRenderBleed`) and the recorded `bleed` is what was
+   * actually captured, not what was asked for. Absent or 0 keeps
+   * `use_absolute_bounds`, which is what stops Figma cropping a TEXT node to
+   * its glyph ink.
+   */
+  bleed?: number;
 }
 
 /** How a live-URL capture authenticates before navigating. */
@@ -116,6 +144,14 @@ export interface LiveUrlSource {
   auth?: LiveAuth;
   /** Full-page screenshot (document height) instead of the viewport. */
   fullPage?: boolean;
+  /**
+   * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
+   * — a focus ring, an offset outline, a drop shadow — is in the picture. It
+   * changes no measurement: element boxes stay relative to the node's own
+   * origin, and the recorded `bleed` says where the PNG's (0, 0) landed. Ignored
+   * when the whole viewport is being shot, which has no box to grow.
+   */
+  bleed?: number;
 }
 
 export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource;
@@ -164,6 +200,12 @@ export interface Capture {
    * the pair an ELEMENT pair (origins coincide → identity alignment).
    */
   scope?: CaptureScope;
+  /**
+   * Margin actually captured around the node, in this capture's own CSS px.
+   * Absent = none. It is the ASKED-FOR bleed clamped to the page, so a node at
+   * the viewport edge keeps the margins that fit and loses the ones that do not.
+   */
+  bleed?: Bleed;
   /** Figma only: the GIGO quality score, echoed even when the gate passed. */
   quality?: DesignQuality;
 }
@@ -302,6 +344,9 @@ export const defaultDesignScale = (design: Capture): number | "auto" => (design.
 export function normalize(pair: Pair, { designScale: wanted = defaultDesignScale(pair.design) }: NormalizeOptions = {}): NormalizedPair {
   const raw = wanted === "auto" ? pair.impl.width / pair.design.width : wanted;
   const designScale = Math.abs(raw - 1) < SCALE_EPSILON ? 1 : raw;
+  // `bleed` rides the spread UNSCALED, and must: it is in RAW design CSS px,
+  // which is the space `toDesignNative` lands in after dividing by the total
+  // design→impl scale. Scaling it here would double-count that division.
   const design =
     designScale === 1
       ? pair.design

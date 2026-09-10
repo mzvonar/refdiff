@@ -5,6 +5,112 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-07 — "it stopped working" needs a CONTROL, and two of three were never working
+
+Three reports after a day of sheet changes. The instinct was that all three were mine.
+A `git worktree add <scratch> HEAD --detach`, one `pnpm --filter annotator build` and a
+second server on another port settled it in about two minutes:
+
+| report | HEAD (before) | now | verdict |
+| --- | --- | --- | --- |
+| wipe dead on a sheet | ghost `display:none`, no src | identical | never worked |
+| a pair drawn over the sheet's grid | 96 stale cell nodes | identical | pre-existing |
+| impl cells are black rectangles | captures dated three days earlier | — | a real FINDING |
+
+- **A same-repo control is cheap and it is the only thing that separates "you broke it"
+  from "you exposed it".** Two of the three had a plausible story pointing at that day's
+  diff (I had touched the sheet's cell rendering, the ghost transform and the route
+  classes). Reasoning from the code would have reached the right answer more slowly and
+  with less confidence than building HEAD next to it.
+- **A dead control that still LIGHTS UP is worse than a missing one.** Every overlay mode
+  runs through `#ghost-wrap`, whose only occupant was `#img-ghost` — a `.shot`, and
+  `body.is-sheet .shot { display:none }`. So on a sheet the Wipe button turned on, the
+  handle appeared, the clip-path was set, and nothing was revealed. Every observable said
+  it was working. **When a feature is scoped off by a CSS rule somewhere else, its control
+  does not learn about it** — so either the control goes, or the feature follows.
+- **The third report was the tool doing its job.** `button-fill`'s danger/success cells
+  render `rgb(0,0,0)` against a design of `rgb(230,89,89)` — 16 findings, already in
+  `findings.json` from three days earlier, and the same `neutral.black` resolution the
+  repo owner is holding red for the designer. **Check the artifact's date before believing
+  a regression report:** the captures predated the session by three days, which is one
+  `ls` and ends the question.
+- **Candidate home:** the control-build habit belongs in CLAUDE.md next to the
+  measurement rules; the dead-control observation belongs wherever the annotator's
+  overlay modes are documented.
+
+## 2026-09-07 — clipped is INVISIBLE, and an A/B is what turns "changes nothing" into a fact
+
+`--bleed` landed: a capture is clipped to its node's border box, so a focus ring, an
+offset outline or a drop shadow is simply not in the picture. **The failure mode is what
+makes it worth a rule: it reports NOTHING.** Both sides stop in the same place, so the
+missing paint differs on neither, and a `State=Focus` column looks identical to `Default`
+with a green structural channel. A whole class of drift was unmeasurable and nothing said so.
+The tell is not a finding, it is a state whose entire point is invisible.
+
+- **The measurement-neutrality claim was FALSIFIED, not asserted, and it was wrong twice
+  before it was right.** Run 1 of the A/B: 10 of 24 pairs differed. Run 2 after the first
+  fix: 11 of 24, by ~0.02pp. A control (two no-bleed runs) was byte-stable at 0.00000, which
+  is what proved the difference was mine rather than run-to-run noise. **Run the control:
+  without it, "0.02pp, that is just noise" is a story rather than a finding.**
+- **Defect 1 was pre-existing and the bleed only exposed it.** `clusterMask`'s results were
+  sorted by pixel count alone — not a total order, so two equal-sized regions kept whatever
+  order the flood fill discovered them in, and the message read `26x40 at (0, 0); 26x40 at
+  (84, 0)` one run and the reverse the next. A message is part of a finding's identity, so
+  that is a phantom resolved+introduced pair in the delta: a fix come undone that nobody
+  undid. **An unstable comparator over data whose order reaches a user-visible string is a
+  bug even while its input happens to be deterministic.**
+- **Defect 2 was the interesting one: Playwright's element screenshot does NOT clip at the
+  element's box.** It expands to whole CSS pixels — measured, a 109.40625px node at dpr 2
+  comes back 222 native, i.e. floor(x) to ceil(x+w). A raw fractional clip therefore starts
+  the PNG ~0.78px earlier and every crop taken from it shifts. Flooring the clip origin fixes
+  it exactly, because `floor(x - n) === floor(x) - n` for integer n — so `clip.x + bleed.left`
+  lands on the very pixel the element shot started from. Result: 24/24 byte-identical
+  findings, `max abs delta = 0`. **Before changing HOW a screenshot is taken, measure what
+  the old call was actually framing; "it clips to the element" was an assumption.**
+- **Also: my own comparison command was wrong and looked right.** `ls | grep -v md` to list
+  run dirs matched every one of them, because every DS pair id contains `size-md` — so `comm`
+  reported no difference between a 23-dir and a 24-dir roster. Same family as the repo's
+  "name the CORPUS in the same breath as the number" rule: the extractor is the thing to
+  probe, and a diff that reports NO difference deserves the same suspicion as one that
+  reports a surprising one.
+- **Candidate home:** the clipped-is-invisible framing and the element-screenshot geometry
+  belong in SKILL.md (both landed there already); the unstable-comparator and the
+  control-run rules belong in CLAUDE.md.
+
+## 2026-09-07 — a comment that names a value the caller never passes, and what "it's still there" means
+
+Three defects in the sheet renderer, found in one sitting by a user reporting what they SAW.
+
+- **`cell.track` was computed and never delivered.** `galleryLayout` returns a `track` per cell and
+  `renderCellShots` reads `cell.track || cell.rect` under a comment saying "The SLOT is the track…
+  drawing the slot at the content box would shrink every cell's outline to its button." But
+  `openGallery` copies only `rect` onto its rich cells, so `track` was `undefined` for the life of
+  the feature and the `||` fell through to the branch the comment explicitly rejects. **A `a || b`
+  fallback plus a comment asserting `a` is a claim nothing tests** — the code ran, looked plausible,
+  and the comment read as documentation of the opposite behaviour. Lesson: when a comment names the
+  field a line PREFERS, assert that field arrives, or the fallback is the real implementation.
+- **"X is still there after you removed Y" usually means a THIRD thing.** The user reported the
+  sheet's "extended canvas as if the count badge was still there" right after the badge was removed
+  and verified gone (0 in the DOM). What they were seeing was `.cellslot`'s 1px border, drawn at
+  the per-axis MAX of design and impl, so on a cell whose design is 128 wide against a 109 impl the
+  box ran 19px past the picture with nothing in it — the same strip the badge had sat in, which is
+  exactly why removing the badge did not remove the appearance. Lesson: a report of "unchanged"
+  against a verified change is a pointer to a co-located element, not a failed deploy — measure the
+  BOX the user is describing, not the thing you just touched.
+- **Two mutually exclusive route classes, and no rule saying so.** `route-report` hides
+  `#view-gallery` and `route-gallery` hides `#view-report`; the sheet route adds the first and
+  `sheetFailure` added the second without removing it, so an unknown `#/set/<id>` rendered a
+  completely BLANK page. The INDEX_CSS comment warns about the two-sections-at-once direction of
+  this trap and the zero-sections direction had no guard at all. Lesson: when two classes hide each
+  other's section, the invariant is that at most one is set — write it down and test it, because
+  the failure is invisible (no error, no content, nothing in the console).
+- **Also:** the backtick-in-a-template-literal compile break fired TWICE more today, once in each
+  file, despite both files carrying "(No backticks in this comment: the whole block is a template
+  literal.)" markers. The marker is next to SOME blocks, not all of them; a lint rule would be
+  cheaper than the note.
+- **Candidate home:** the first and third belong in CLAUDE.md (they are general); the second is a
+  debugging heuristic worth a line in the same place; the fourth is a tooling ask.
+
 ## 2026-09-07 — dropping a dimension shortens a KEY, and a shortened key collides silently
 
 - **Context:** the variant sheet stopped drawing axes whose value never varies (a set narrowed to

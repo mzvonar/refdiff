@@ -17,7 +17,16 @@ import { mkdir, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
 import { err, ok, type Result } from "../result.js"
-import { captureUntilStable, closeQuietly, FREEZE_CSS, openPage, waitForFonts } from "./browser.js"
+import {
+  captureUntilStable,
+  closeQuietly,
+  FREEZE_CSS,
+  openPage,
+  shootElement,
+  waitForFonts,
+} from "./browser.js"
+import { isNoBleed, NO_BLEED } from "../geometry.js"
+import type { Bleed } from "../types.js"
 import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 
@@ -208,10 +217,13 @@ export async function captureLiveUrl(
 
     // Settle pixels first, extract second (tree must describe the shot).
     let png: Buffer
+    // Bleed is a property of an ELEMENT shot: a viewport or full-page shot has
+    // no box to grow, and its origin is the page's own.
+    let bleed: Bleed = NO_BLEED
     if (source.selector) {
       const root = page.locator(source.selector).first()
       await root.scrollIntoViewIfNeeded()
-      ;({ png } = await captureUntilStable(() => root.screenshot()))
+      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0))
     } else {
       ;({ png } = await captureUntilStable(() =>
         page.screenshot({ fullPage: source.fullPage ?? false }),
@@ -250,6 +262,7 @@ export async function captureLiveUrl(
       height,
       dpr: DPR,
       elements: extraction.elements,
+      ...(isNoBleed(bleed) ? {} : { bleed }),
       ...(source.selector !== undefined
         ? { scope: { mode: "explicit" as const, selector: source.selector } }
         : {}),

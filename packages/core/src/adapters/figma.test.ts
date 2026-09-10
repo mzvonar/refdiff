@@ -73,6 +73,91 @@ describe("captureFigma", () => {
     expect((await sharp(r.value.pngPath).metadata()).width).toBe(480);
   });
 
+  describe("design-side bleed (paint outside the node's box)", () => {
+    // The fixture node has no render bounds of its own, so each case states the
+    // ones it means — a 4px ring on all sides, the shape a Focus variant has.
+    const withRing = (grow: number): string => {
+      const doc = JSON.parse(nodesJson);
+      const b = doc.nodes["1:2"].document.absoluteBoundingBox;
+      doc.nodes["1:2"].document.absoluteRenderBounds = {
+        x: b.x - grow,
+        y: b.y - grow,
+        width: b.width + grow * 2,
+        height: b.height + grow * 2,
+      };
+      return JSON.stringify(doc);
+    };
+    const ringFetch =
+      (nodes: string, pngBuf: Buffer, seen: string[]): typeof fetch =>
+      async (input) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (url.includes("/nodes?")) return new Response(nodes);
+        if (url.includes("/variables/local")) return new Response(variablesJson);
+        if (url.includes("/v1/images/")) {
+          seen.push(url);
+          return new Response(JSON.stringify({ err: null, images: { "1:2": "https://cdn/1-2.png" } }));
+        }
+        if (url.startsWith("https://cdn/")) return new Response(new Uint8Array(pngBuf));
+        return new Response("nope", { status: 404 });
+      };
+
+    it("renders at the render bounds and records the margin it got, not the one it asked for", async () => {
+      const seen: string[] = [];
+      // 240x80 box + 4px each side = 248x88, at scale 2 = 496x176.
+      const r = await captureFigma(
+        { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
+        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(496, 176), seen)) },
+      );
+      expect(r.ok, JSON.stringify(r)).toBe(true);
+      if (!r.ok) return;
+      expect(seen[0]).toContain("use_absolute_bounds=false");
+      // The pair asked for 8 and the node has 4. `bleed` describes the PICTURE,
+      // so it records 4 — a recorded 8 would make every crop through
+      // toDesignNative read 4px off in each direction.
+      expect(r.value.bleed).toEqual({ left: 4, top: 4, right: 4, bottom: 4 });
+      // The mapping box is untouched: bleed moves the PNG under the elements.
+      expect(r.value).toMatchObject({ width: 240, height: 80 });
+    });
+
+    it("leaves the flag on and records no bleed when the pair did not ask for one", async () => {
+      const seen: string[] = [];
+      const r = await captureFigma(
+        { ...source, scale: 2, minQuality: 0.1 },
+        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(480, 160), seen)) },
+      );
+      expect(r.ok, JSON.stringify(r)).toBe(true);
+      if (!r.ok) return;
+      expect(seen[0]).toContain("use_absolute_bounds=true");
+      expect(r.value.bleed).toBeUndefined();
+    });
+
+    it("leaves the flag on when the pair asks but the node paints nothing outside its box", async () => {
+      const seen: string[] = [];
+      const r = await captureFigma(
+        { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
+        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(0), await png(480, 160), seen)) },
+      );
+      expect(r.ok, JSON.stringify(r)).toBe(true);
+      if (!r.ok) return;
+      expect(seen[0]).toContain("use_absolute_bounds=true");
+      expect(r.value.bleed).toBeUndefined();
+    });
+
+    it("still verifies the PNG size — a bleed render that came back at the BOX size is a failure, not a silent 4px offset", async () => {
+      // The exact shape a size check left on the bounding box would produce in
+      // reverse: PNG and expectation disagree, and every element box would be
+      // read 4px off in both axes if this passed.
+      const r = await captureFigma(
+        { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
+        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(480, 160), [])) },
+      );
+      expect(r).toMatchObject({
+        ok: false,
+        error: { kind: "figma-render-failed", detail: "rendered PNG is 480x160, node bounds say 496x176 at scale 2" },
+      });
+    });
+  });
+
   it("fails the GIGO gate below --min-design-quality with the score in the error", async () => {
     const r = await captureFigma(source, { pngPath: join(dir, "d.png"), client: client(happyFetch(await png(480, 160))) });
     expect(r).toMatchObject({ ok: false, error: { kind: "figma-low-quality", minQuality: 0.3, quality: { score: 0.21 } } });

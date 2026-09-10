@@ -11,6 +11,7 @@
 
 export type {
   Alignment,
+  Bleed,
   Box,
   CaptureScope,
   ComparisonReport,
@@ -146,6 +147,7 @@ export {
   type FigmaVariablesResponse,
 } from "./adapters/figma-api.js"
 export {
+  figmaRenderBleed,
   figmaTreeToElements,
   indexVariables,
   paintToCss,
@@ -176,7 +178,17 @@ export {
 } from "./structural/checks.js"
 export { aggregate, type AggregateOptions } from "./structural/aggregate.js"
 
-export { clampBox, padBox, scaleBox, toDesignNative, toImplNative } from "./geometry.js"
+export {
+  bleedClip,
+  bleedOutset,
+  clampBox,
+  isNoBleed,
+  NO_BLEED,
+  padBox,
+  scaleBox,
+  toDesignNative,
+  toImplNative,
+} from "./geometry.js"
 export {
   clusterMask,
   unionBox,

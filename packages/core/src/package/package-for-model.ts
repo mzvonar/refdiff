@@ -100,8 +100,8 @@ export async function packageForModel(
     const padded = padBox(cssBox, cropPadding)
     // Design png is at original (pre-alignment) scale: invert the total
     // design→impl transform, then go to native pixels.
-    const designNative = toDesignNative(padded, alignment, design.dpr)
-    const implNative = toImplNative(padded, impl.dpr)
+    const designNative = toDesignNative(padded, alignment, design.dpr, design.bleed)
+    const implNative = toImplNative(padded, impl.dpr, impl.bleed)
     const designCrop = join(outDir, "crops", `${f.id}-design.png`)
     const implCrop = join(outDir, "crops", `${f.id}-impl.png`)
     const [dOk, iOk] = await Promise.all([
@@ -147,6 +147,7 @@ export async function packageForModel(
       // The viewer sizes designPng by this: `width` is the NORMALIZED width,
       // so inferring the ratio from the PNG folds `alignment.scale` into it.
       dpr: design.dpr,
+      ...(design.bleed ? { bleed: design.bleed } : {}),
       ...(design.scope ? { scope: design.scope } : {}),
       ...(design.quality ? { quality: design.quality } : {}),
     },
@@ -156,6 +157,7 @@ export async function packageForModel(
       width: impl.width,
       height: impl.height,
       dpr: impl.dpr,
+      ...(impl.bleed ? { bleed: impl.bleed } : {}),
     },
     alignment,
     findings: withKeys,

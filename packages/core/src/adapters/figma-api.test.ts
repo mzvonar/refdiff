@@ -139,6 +139,24 @@ describe("FigmaClient (fake fetch)", () => {
     expect(urls[0]).toContain("scale=2");
   });
 
+  it("sends use_absolute_bounds=false when the caller asks for the render bounds", async () => {
+    // The design-side bleed path: the endpoint has no margin parameter, so
+    // turning the flag OFF is the only way paint outside the box reaches the
+    // PNG. The value is spelled out rather than omitted — Figma's own default
+    // is false, but a reader of the URL should not have to know that.
+    const urls: string[] = [];
+    const client = new FigmaClient("t", {
+      cooldownFile: join(dir, "cd.json"),
+      env: {},
+      fetchImpl: fakeFetch((url) => {
+        urls.push(url);
+        return new Response(JSON.stringify({ err: null, images: { "1:1": "https://cdn/1-1.png" } }));
+      }),
+    });
+    await client.renderImages("key", ["1:1"], 2, { absoluteBounds: false });
+    expect(urls[0]).toContain("use_absolute_bounds=false");
+  });
+
   it("surfaces the images endpoint's err field", async () => {
     const client = new FigmaClient("t", { cooldownFile: join(dir, "cd.json"), env: {}, fetchImpl: fakeFetch(() => new Response(JSON.stringify({ err: "Render timeout" }))) });
     expect(await client.renderImages("key", ["1:1"], 2)).toMatchObject({ ok: false, error: { kind: "http", detail: "images: Render timeout" } });

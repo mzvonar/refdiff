@@ -25,8 +25,11 @@ import {
   FREEZE_CSS,
   isReachable,
   openPage,
+  shootElement,
   waitForFonts,
 } from "./browser.js"
+import { isNoBleed, NO_BLEED } from "../geometry.js"
+import type { Bleed } from "../types.js"
 import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 
@@ -181,11 +184,13 @@ export async function captureStorybook(
     const rootSelector = source.selector ?? (source.overlay ? "body" : ROOT)
     const viewportOrigin = source.selector === undefined && (source.overlay ?? false)
     let png: Buffer
+    // Bleed is a property of an ELEMENT shot: a viewport shot has no box to grow.
+    let bleed: Bleed = NO_BLEED
     if (viewportOrigin) {
       ;({ png } = await captureUntilStable(() => page.screenshot()))
     } else {
       const root = page.locator(rootSelector).first()
-      ;({ png } = await captureUntilStable(() => root.screenshot()))
+      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0))
     }
 
     const extraction = await extractElementTree(page, rootSelector, { viewportOrigin })
@@ -212,6 +217,7 @@ export async function captureStorybook(
       height,
       dpr: DPR,
       elements: extraction.elements,
+      ...(isNoBleed(bleed) ? {} : { bleed }),
       ...(source.selector !== undefined
         ? { scope: { mode: "explicit" as const, selector: source.selector } }
         : {}),

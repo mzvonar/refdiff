@@ -33,7 +33,8 @@ import {
 import { launchBrowser } from "./adapters/browser.js"
 import { captureDcHtml } from "./adapters/dc-html.js"
 import { FigmaClient, parseFigmaRef, readToken } from "./adapters/figma-api.js"
-import { expandVariants, variantAxes } from "./adapters/figma-variants.js"
+import { figmaRenderBleed } from "./adapters/figma-tree.js"
+import { expandVariants, variantAxes, variantSpec } from "./adapters/figma-variants.js"
 import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
 import { captureLiveUrl } from "./adapters/live-url.js"
 import { ensureStorybook } from "./adapters/storybook-server.js"
@@ -110,6 +111,14 @@ Common to one pair:
                           size; dc-html default). Figma default is 1: its units
                           ARE CSS px, so a wider frame is a layout difference,
                           not a scale to normalize away
+  --bleed <px>            capture this much margin AROUND the node on both sides,
+                          so a focus ring, an offset outline or a drop shadow is
+                          in the picture instead of clipped off it (default 0).
+                          Changes no measurement — element boxes and the alignment
+                          are untouched; only the PNG grows. A manifest entry's
+                          own bleed overrides it. Figma ignores it (the /images
+                          render is whatever the node's own bounds are); it
+                          applies to every browser capture, single pair or set
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
 design { file, frame } or { kind: "figma", fileKey, nodeId, variants? }; app
@@ -240,6 +249,8 @@ interface RunOptions {
   minDesignQuality?: number
   /** Design→impl geometry scale; default per design source (Figma 1, dc-html auto). */
   designScale?: number | "auto"
+  /** Run-wide margin captured around each node; a pair's own `bleed` wins. */
+  bleed?: number
   outDir: string
   failThreshold: Severity
   maxGamma?: number
@@ -314,6 +325,23 @@ function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undef
   return undefined
 }
 
+/**
+ * How much margin this capture keeps around its node: the side's own `bleed`,
+ * else the entry's, else the run's `--bleed`. Three tiers rather than two
+ * because the need is usually per COMPONENT (a button has a focus ring on both
+ * sides) while the exception is per side (only the impl paints an outline).
+ * Omitted entirely when nothing asked, so a capture with no bleed is byte-for-
+ * byte the shot it was before the flag existed.
+ */
+function bleedFor(
+  spec: PairSpec,
+  own: number | undefined,
+  o: RunOptions,
+): { bleed?: number } {
+  const px = own ?? spec.bleed ?? o.bleed
+  return px !== undefined && px > 0 ? { bleed: px } : {}
+}
+
 async function captureDesign(
   browser: Browser,
   spec: PairSpec,
@@ -332,6 +360,10 @@ async function captureDesign(
         ...(o.minDesignQuality !== undefined && spec.design.minQuality === undefined
           ? { minQuality: o.minDesignQuality }
           : {}),
+        // Figma reads this as a switch, not a distance — see FigmaSource.bleed.
+        // Resolved through the same precedence as every other side, so an
+        // entry-level `bleed` reaches BOTH sides of the pair or neither.
+        ...bleedFor(spec, spec.design.bleed, o),
       },
       { pngPath, ...(o.prefetched ? { prefetched: o.prefetched } : {}) },
     )
@@ -346,7 +378,12 @@ async function captureDesign(
   console.log(`capturing design: ${spec.design.file}#${spec.design.frame}`)
   return captureDcHtml(
     browser,
-    { ...spec.design, dir: resolve(o.designDir), ...(scope !== undefined ? { scope } : {}) },
+    {
+      ...spec.design,
+      dir: resolve(o.designDir),
+      ...(scope !== undefined ? { scope } : {}),
+      ...bleedFor(spec, spec.design.bleed, o),
+    },
     { pngPath },
   )
 }
@@ -366,12 +403,16 @@ async function captureImpl(
     const auth = liveAuth(spec.impl, o.live, url.value)
     return captureLiveUrl(
       browser,
-      { ...rest, url: url.value, ...(auth ? { auth } : {}) },
+      { ...rest, url: url.value, ...(auth ? { auth } : {}), ...bleedFor(spec, rest.bleed, o) },
       { pngPath },
     )
   }
   console.log(`capturing impl: ${spec.impl.storyId}`)
-  return captureStorybook(browser, { ...spec.impl, url: o.storybookUrl }, { pngPath })
+  return captureStorybook(
+    browser,
+    { ...spec.impl, url: o.storybookUrl, ...bleedFor(spec, spec.impl.bleed, o) },
+    { pngPath },
+  )
 }
 
 /** One pair through the whole pipeline. Capture errors are data. */
@@ -686,6 +727,7 @@ async function expandFigmaSet(
   spec: PairSpec,
   figmaScale: number | undefined,
   outRoot: string,
+  runBleed: number | undefined,
 ): Promise<Result<{ specs: PairSpec[]; prefetched: Map<string, Prefetched> }, CaptureError>> {
   if (spec.design.kind !== "figma" || spec.design.variants === undefined) {
     // Not a set: no index. An entry with one pair has nothing to be the index OF.
@@ -755,9 +797,17 @@ async function expandFigmaSet(
   // a `columns` naming a property this set does not define is shape-valid (the
   // manifest parser has no node), and reading it back beside `axes from …` is
   // where a reader can see the mismatch at all until a consumer resolves it.
+  // `order` is named too, and by PROPERTY rather than as a boolean: a pin is the
+  // one gallery field that overrides what the axes say, so a reader comparing
+  // this line against `axes from definitions` has to know which properties are
+  // no longer coming from there. Whether each pin AGREES with the axes is the
+  // sheet's to report — it holds both — but a pin nobody can see in the log is
+  // a silent reordering.
+  const pinned = Object.keys(index.gallery?.order ?? {})
   const galleryAxes = [
     index.gallery?.columns !== undefined ? `columns=${index.gallery.columns}` : "",
     index.gallery?.rows !== undefined ? `rows=${index.gallery.rows}` : "",
+    pinned.length > 0 ? `order pinned for ${pinned.join(",")}` : "",
   ].filter(Boolean)
   const galleryNote =
     index.gallery === undefined
@@ -773,36 +823,55 @@ async function expandFigmaSet(
   const variables = await client.localVariables(design.fileKey)
   if (!variables.ok) return err(apiErr(variables.error))
   const scale = design.scale ?? figmaScale ?? FIGMA_DEFAULTS.scale
-  const images = await client.renderImages(
-    design.fileKey,
-    expanded.value.pairs.map((p) => p.nodeId),
-    scale,
-    version ? { version } : {},
-  )
-  if (!images.ok) return err(apiErr(images.error))
-
   const byId = new Map(set.children?.map((c) => [c.id, c]) ?? [])
+
+  // `use_absolute_bounds` is one query parameter for the whole chunk, and
+  // whether a cell NEEDS the render bounds is a per-cell fact — a set's Focus
+  // column paints a ring and its Default column does not. So the ids are split
+  // and rendered in two batches rather than one, or every cell would inherit
+  // whichever answer the first one needed. Both batches still chunk internally,
+  // so the request count is unchanged in the common case where one side is
+  // empty. The condition below MUST match `captureFigma`'s, since that is what
+  // sizes the PNG check: a cell rendered one way and verified the other fails
+  // as `figma-render-failed` with a size mismatch that reads like a Figma bug.
+  const wantsBleed = (design.bleed ?? spec.bleed ?? runBleed ?? 0) > 0
+  const bled = new Set(
+    wantsBleed
+      ? expanded.value.pairs
+          .filter((p) => {
+            const child = byId.get(p.nodeId)
+            return child !== undefined && figmaRenderBleed(child) !== undefined
+          })
+          .map((p) => p.nodeId)
+      : [],
+  )
+  const images: Record<string, string | null> = {}
+  for (const absoluteBounds of [true, false]) {
+    const ids = expanded.value.pairs.map((p) => p.nodeId).filter((id) => bled.has(id) !== absoluteBounds)
+    if (ids.length === 0) continue
+    const r = await client.renderImages(design.fileKey, ids, scale, {
+      ...(version ? { version } : {}),
+      ...(absoluteBounds ? {} : { absoluteBounds: false }),
+    })
+    if (!r.ok) return err(apiErr(r.error))
+    Object.assign(images, r.value)
+  }
+  if (bled.size > 0) {
+    console.log(`  design bleed: ${bled.size}/${expanded.value.pairs.length} cells paint outside their box — rendered at their render bounds`)
+  }
   const prefetched = new Map<string, Prefetched>()
   const specs: PairSpec[] = expanded.value.pairs.map((p) => {
     const id = `${spec.id}--${p.slug}`
-    const url = images.value[p.nodeId]
+    const url = images[p.nodeId]
     prefetched.set(id, {
       document: byId.get(p.nodeId)!,
       ...(version ? { version } : {}),
       variables: variables.value ?? null,
       ...(url ? { imageUrl: url } : {}),
     })
-    return {
-      id,
-      title: `${spec.title ?? spec.id} — ${p.name}`,
-      design: {
-        ...design,
-        nodeId: p.nodeId,
-        ...(figmaScale !== undefined && design.scale === undefined ? { scale } : {}),
-      },
-      impl: { ...spec.impl, selector: p.selector },
-      ...(spec.ignore ? { ignore: spec.ignore } : {}),
-    }
+    // Pure, and unit-tested in figma-variants.test.ts: this is where an
+    // entry-level setting goes missing, silently and on every cell at once.
+    return variantSpec(spec, p, design, figmaScale)
   })
   return ok({ specs, prefetched })
 }
@@ -893,6 +962,7 @@ async function compare(argv: string[]): Promise<void> {
       story: { type: "string" },
       viewport: { type: "string" },
       "design-scale": { type: "string" },
+      bleed: { type: "string" },
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
@@ -950,6 +1020,13 @@ async function compare(argv: string[]): Promise<void> {
     designScale = raw === "auto" ? "auto" : Number(raw)
     if (designScale !== "auto" && !(designScale >= 0.1 && designScale <= 10))
       fail(`--design-scale must be auto or 0.1..10`)
+  }
+
+  let bleed: number | undefined
+  if (values.bleed !== undefined) {
+    bleed = Number(values.bleed)
+    if (!Number.isFinite(bleed) || bleed < 0 || bleed > 200)
+      fail("--bleed must be 0..200 CSS px of margin around the captured node")
   }
 
   const dataSlotText = values["data-slot-text"] ?? []
@@ -1123,7 +1200,7 @@ async function compare(argv: string[]): Promise<void> {
   {
     const expanded: PairSpec[] = []
     for (const spec of specs) {
-      const r = await expandFigmaSet(spec, figmaScale, outRoot ?? "out")
+      const r = await expandFigmaSet(spec, figmaScale, outRoot ?? "out", bleed)
       if (!r.ok) {
         anyError = true
         console.error(`\n${spec.id}: component-set expansion failed (typed error):`)
@@ -1180,6 +1257,7 @@ async function compare(argv: string[]): Promise<void> {
         ...(figmaScale !== undefined ? { figmaScale } : {}),
         ...(minDesignQuality !== undefined ? { minDesignQuality } : {}),
         ...(designScale !== undefined ? { designScale } : {}),
+        ...(bleed !== undefined ? { bleed } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

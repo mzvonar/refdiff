@@ -11,7 +11,10 @@ import type { AddressInfo } from "node:net"
 import { readFile } from "node:fs/promises"
 import http from "node:http"
 import { extname, join, normalize, resolve, sep } from "node:path"
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright"
+import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright"
+
+import { bleedClip, NO_BLEED } from "../geometry.js"
+import type { Bleed } from "../types.js"
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -166,6 +169,42 @@ export async function captureUntilStable(
     prev = next
   }
   return { png: prev, stable: false }
+}
+
+/**
+ * Shoot one element, optionally keeping `bleed` px of whatever is painted around
+ * it (a focus ring, an offset outline, a drop shadow) — the effectful half of
+ * `--bleed`; `bleedClip` is the pure half and owns the clamping.
+ *
+ * With no bleed this is `locator.screenshot()`, byte for byte what it always
+ * was. With bleed it becomes a CLIPPED page shot, which does not scroll for you,
+ * so the element is scrolled into view and re-measured first. A locator with no
+ * box (display:none, detached) falls back to the plain element shot rather than
+ * inventing a clip — the caller's own blank-render check is what should speak.
+ */
+export async function shootElement(
+  page: Page,
+  locator: Locator,
+  requested = 0,
+): Promise<{ png: Buffer; bleed: Bleed; stable: boolean }> {
+  if (requested > 0) {
+    await locator.scrollIntoViewIfNeeded().catch(() => undefined)
+    const box = await locator.boundingBox()
+    const size = page.viewportSize()
+    if (box && size) {
+      const { clip, bleed } = bleedClip(
+        { x: box.x, y: box.y, w: box.width, h: box.height },
+        requested,
+        size,
+      )
+      const { png, stable } = await captureUntilStable(() =>
+        page.screenshot({ clip: { x: clip.x, y: clip.y, width: clip.w, height: clip.h } }),
+      )
+      return { png, bleed, stable }
+    }
+  }
+  const { png, stable } = await captureUntilStable(() => locator.screenshot())
+  return { png, bleed: NO_BLEED, stable }
 }
 
 /** Waits for document.fonts.ready with a hard cap so a hung font fetch can't stall a run. */

@@ -7,7 +7,7 @@
  * Figma frame.
  */
 
-import type { ElementNode } from "../types.js";
+import type { Bleed, ElementNode } from "../types.js";
 import type { DesignQuality } from "../pipeline.js";
 import type { FigmaNode, FigmaPaint, FigmaVariablesResponse } from "./figma-api.js";
 
@@ -189,6 +189,100 @@ export function textBox(n: FigmaNode): FigmaRect | undefined {
 }
 
 /**
+ * The margin a node PAINTS outside its own box, per side, in CSS px — or
+ * `undefined` when there is none to capture.
+ *
+ * Figma gives two boxes: `absoluteBoundingBox` is the node's layout box, which
+ * is the origin every element box in the mapping is relative to, and
+ * `absoluteRenderBounds` is what the node actually paints — the layout box
+ * grown by a focus ring, an offset outline, a drop shadow, a glow. The
+ * `/images` endpoint takes no margin parameter, so rendering at the render
+ * bounds (`use_absolute_bounds=false`) is the ONLY way those pixels reach the
+ * PNG, and this is the offset between the two origins that the caller must
+ * then record as the capture's `bleed`.
+ *
+ * Two cases return `undefined`, and both are refusals rather than absences:
+ *
+ *  - **Any side is NEGATIVE.** Render bounds SMALLER than the box mean Figma
+ *    would CROP — a TEXT node renders to its glyph ink, which is exactly what
+ *    `use_absolute_bounds` exists to prevent. Trading a crop for a margin puts
+ *    every element box off by the crop, silently, so the flag stays on.
+ *  - **Every side is ZERO.** Nothing paints outside, so the two renders are the
+ *    same picture and the flag's guarantee is free. Asking for the render
+ *    bounds here would buy nothing and give up the crop protection.
+ *
+ * The sides are kept SEPARATE rather than reduced to one number for the reason
+ * `Bleed` states: the margin obtained is not the margin asked for, and a single
+ * number would make the PNG's origin a guess. An asymmetric ring (a shadow with
+ * a y-offset) is the normal case, not the exotic one.
+ */
+export function figmaRenderBleed(node: FigmaNode): Bleed | undefined {
+  const b = node.absoluteBoundingBox;
+  const r = node.absoluteRenderBounds;
+  if (!b || !r) return undefined;
+  const bleed: Bleed = {
+    left: round(b.x - r.x),
+    top: round(b.y - r.y),
+    right: round(r.x + r.width - (b.x + b.width)),
+    bottom: round(r.y + r.height - (b.y + b.height)),
+  };
+  if (bleed.left < 0 || bleed.top < 0 || bleed.right < 0 || bleed.bottom < 0) return undefined;
+  if (bleed.left + bleed.top + bleed.right + bleed.bottom === 0) return undefined;
+  return bleed;
+}
+
+/**
+ * A sibling that RINGS its parent instead of sitting inside it: a focus ring, an
+ * offset outline, a halo. Tolerated by the decoration hoist alongside icons.
+ *
+ * The case, measured: a Figma Focus variant is `[button-wrapper] [focus-ring]`
+ * inside a frame that paints the fill, where `focus-ring` is a RECTANGLE with no
+ * fill, a 2px stroke, and a box 4px larger than the frame on every side. CSS
+ * spells the same ring as a `box-shadow` PROPERTY of the button, so the DOM side
+ * has one leaf carrying the fill and Figma has two children carrying none — the
+ * hoist stopped at the ring and the frame's fill reached no leaf at all. A
+ * container with children is never itself a leaf, so that fill was not compared
+ * on ANY Focus cell: six button-fill cells rendered the REST colour against the
+ * design's HOVER colour with zero `color` findings, and the whole difference sat
+ * inside the pixel-region frame residual at 50–74%.
+ *
+ * Three conditions, and each one is doing work:
+ *
+ *  - **A vector shape.** A container could hold content; a RECTANGLE/ELLIPSE
+ *    with no children is a drawn shape and nothing else.
+ *  - **Paints a stroke and NO fill.** A fill makes it a surface — an overlay, a
+ *    scrim, a plate — and those genuinely occlude the parent's paint, so the
+ *    hoist must still stop. An outline occludes nothing.
+ *  - **Its box CONTAINS the parent's.** This is what separates decoration from
+ *    content. A shape INSIDE the frame may be a divider, a bar, a progress
+ *    track; a shape that encloses the frame is drawn around it, which is what a
+ *    ring is. Deliberately not "large enough to look like a ring": size is
+ *    already why this went unnoticed for so long — `isIconLike` capped at
+ *    `MAX_ICON_PX`, so the identical construct hoisted fine on `button-icon`
+ *    (a 32-48px ring) and broke on `button-fill` (84px+). A rule keyed on
+ *    geometry rather than on magnitude cannot have that seam.
+ *
+ * What it does NOT do: the ring still emits as its own element, so it is still
+ * reported missing against a `box-shadow` the DOM has no node for. That is a
+ * different gap — this one is only about the parent's fill reaching a leaf.
+ */
+function ringsParent(n: FigmaNode, parent: FigmaNode): boolean {
+  if (!VECTOR_TYPES.has(n.type)) return false;
+  if (firstSolid(n.fills)) return false;
+  if (!firstSolid(n.strokes) || (n.strokeWeight ?? 0) <= 0) return false;
+  const b = n.absoluteBoundingBox;
+  const pb = parent.absoluteBoundingBox;
+  if (!b || !pb) return false;
+  const eps = 0.5;
+  return (
+    b.x <= pb.x + eps &&
+    b.y <= pb.y + eps &&
+    b.x + b.width >= pb.x + pb.width - eps &&
+    b.y + b.height >= pb.y + pb.height - eps
+  );
+}
+
+/**
  * Map a node subtree to leaves. Leaves: TEXT; vector shapes; childless
  * containers that paint something; containers whose descendants are all
  * vectors (→ `icon`). Invisible, fully transparent and zero-area nodes are
@@ -241,7 +335,10 @@ export function figmaTreeToElements(root: FigmaNode, vars: VariableIndex = {}): 
         const parent = ancestors[i]!;
         const onPath = i === ancestors.length - 1 ? n : ancestors[i + 1]!;
         const siblings = (parent.children ?? []).filter(isVisible).filter((c) => c !== onPath);
-        if (!siblings.every(isIconLike)) break;
+        // Icons and RINGS do not break the chain; anything else does. See
+        // `ringsParent` for why an enclosing stroke-only shape is decoration
+        // and an inner one, or any filled one, is content.
+        if (!siblings.every((c) => isIconLike(c) || ringsParent(c, parent))) break;
         const pb = parent.absoluteBoundingBox;
         if (!pb) break;
         const pd = decorationOf(parent, pb.width, pb.height, false, effectiveOpacity(ancestors.slice(0, i + 1)));

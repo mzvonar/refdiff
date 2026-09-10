@@ -25,8 +25,10 @@ import {
   FREEZE_CSS,
   openPage,
   serveDir,
+  shootElement,
   waitForFonts,
 } from "./browser.js"
+import { isNoBleed } from "../geometry.js"
 import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
 import { CANVAS_SLACK, isFluidFrame, pickLargestChild, type ScopeCandidate } from "./scope.js"
@@ -282,7 +284,7 @@ export async function captureDcHtml(
 
     // Settle the pixels first, then extract, so the element tree describes
     // exactly the state the screenshot shows.
-    const { png } = await captureUntilStable(() => locator.screenshot())
+    const { png, bleed } = await shootElement(page, locator, source.bleed ?? 0)
 
     const extraction = await extractElementTree(page, scope.selector)
     if (!extraction) {
@@ -308,6 +310,7 @@ export async function captureDcHtml(
       height: extraction.height,
       dpr: DPR,
       elements: extraction.elements,
+      ...(isNoBleed(bleed) ? {} : { bleed }),
       scope,
     })
   } catch (e) {

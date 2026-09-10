@@ -193,7 +193,10 @@ function findingFor(d: MatchDiff, o: Required<PixelCheckOptions>): RawFinding | 
   // handful they neither locate anything nor survive as anything but weight in
   // findings.json.
   const regionBoxes = [...clusters]
-    .sort((a, b) => b.pixels - a.pixels)
+    // Same total order as the remainder's — see byPixelsThenPosition in diff.ts:
+    // equal pixel counts must not depend on flood-fill discovery order, or the
+    // message moves between runs and the delta reports a phantom regression.
+    .sort((a, b) => b.pixels - a.pixels || a.box.y - b.box.y || a.box.x - b.box.x)
     .slice(0, o.maxRegions)
     .map((c) => roundBox(toImplCss(c.box, d.match.impl.box, d.dpr)))
   // Boxes within the size tolerance still differ in size: the design crop was

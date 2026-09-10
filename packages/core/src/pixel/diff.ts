@@ -25,6 +25,23 @@ import sharp, { type Sharp } from "sharp"
 import { clusterMask, type Cluster } from "./cluster.js"
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 
+/**
+ * Largest first, then top-to-bottom, then left-to-right.
+ *
+ * The size comparison ALONE is not a total order, and two clusters of equal
+ * pixel count then keep whatever order the flood fill happened to discover them
+ * in — which moves when the crop's origin moves. Found by the `--bleed` A/B on
+ * this repo's stroke buttons: identical ratios, identical region counts, and
+ * `26x40 at (0, 0); 26x40 at (84, 0)` swapping places in the message between two
+ * runs of the same pair. A message is part of a finding's identity, so an
+ * unstable order there is a spurious resolved+introduced pair in the next run's
+ * delta — a fix come undone that nobody undid.
+ */
+const byPixelsThenPosition = (
+  a: { pixels: number; box: { x: number; y: number } },
+  b: { pixels: number; box: { x: number; y: number } },
+): number => b.pixels - a.pixels || a.box.y - b.box.y || a.box.x - b.box.x
+
 export interface DiffOptions {
   /** pixelmatch per-pixel threshold (0..1, YIQ distance). Default 0.1. */
   threshold?: number
@@ -93,7 +110,7 @@ async function diffMatch(
   o: Required<DiffOptions>,
 ): Promise<MatchDiff | null> {
   const { design, impl, alignment } = pair
-  const implNative = toImplNative(match.impl.box, impl.dpr)
+  const implNative = toImplNative(match.impl.box, impl.dpr, impl.bleed)
   if (implNative.w < o.minBoxPx || implNative.h < o.minBoxPx) return null
   const implRaw = await rawCrop(implPng, implNative, o.blur)
   if (!implRaw) return null
@@ -107,7 +124,7 @@ async function diffMatch(
   const designBox = padBox(match.design.box, marginCss)
   const designRaw = await rawCrop(
     designPng,
-    toDesignNative(designBox, alignment, design.dpr),
+    toDesignNative(designBox, alignment, design.dpr, design.bleed),
     o.blur,
     { width: width + 2 * s, height: height + 2 * s },
   )
@@ -235,12 +252,16 @@ export async function diffRemainder(
   const { design, impl, alignment } = pair
   const frameCss: Box = { x: 0, y: 0, w: impl.width, h: impl.height }
 
-  const implRaw = await rawCrop(sharp(impl.pngPath), toImplNative(frameCss, impl.dpr), o.blur)
+  const implRaw = await rawCrop(
+    sharp(impl.pngPath),
+    toImplNative(frameCss, impl.dpr, impl.bleed),
+    o.blur,
+  )
   if (!implRaw) return null
   const { width, height } = implRaw
   const designRaw = await rawCrop(
     sharp(design.pngPath),
-    toDesignNative(frameCss, alignment, design.dpr),
+    toDesignNative(frameCss, alignment, design.dpr, design.bleed),
     o.blur,
     { width, height },
   )
@@ -259,6 +280,8 @@ export async function diffRemainder(
 
   // Subtract every matched element. A matched box that compared clean and one
   // that produced a finding are BOTH explained: the per-match channel owns them.
+  // No bleed here, deliberately: these index the MASK, whose origin is the frame
+  // above and not the PNG's. The two crops are where the PNG's origin matters.
   for (const m of matches) {
     const b = toImplNative(m.impl.box, impl.dpr)
     const x0 = Math.max(0, Math.floor(b.x) - margin)
@@ -286,7 +309,7 @@ export async function diffRemainder(
         h: Math.round((c.box.h / impl.dpr) * 10) / 10,
       },
     }))
-    .sort((a, b) => b.pixels - a.pixels)
+    .sort(byPixelsThenPosition)
   return {
     diffRatio: totalPixels === 0 ? 0 : diffPixels / totalPixels,
     diffPixels,
@@ -323,6 +346,10 @@ export async function writeDiffMask(
   dilate = 1,
 ): Promise<void> {
   const meta = await sharp(pair.impl.pngPath).metadata()
+  // The canvas IS the impl PNG, bleed margin included, so the origins below are
+  // in PNG space and carry the bleed — the annotator lays the mask over the
+  // screenshot with the same transform, and a mask short by the bleed would sit
+  // offset from the pixels it explains.
   const width = meta.width ?? 0
   const height = meta.height ?? 0
   const canvas = new Uint8Array(width * height * 4)
@@ -337,7 +364,7 @@ export async function writeDiffMask(
   for (const { diff: d, finding } of diffs) {
     const kind = finding?.actual?.["changeKind"]
     const color = (typeof kind === "string" ? MASK_COLORS[kind] : undefined) ?? MASK_FALLBACK
-    const origin = toImplNative(d.match.impl.box, d.dpr)
+    const origin = toImplNative(d.match.impl.box, d.dpr, pair.impl.bleed)
     const ox = Math.max(0, Math.floor(origin.x))
     const oy = Math.max(0, Math.floor(origin.y))
     for (let y = 0; y < d.mask.height; y++) {

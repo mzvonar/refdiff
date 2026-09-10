@@ -16,6 +16,7 @@ import { dirname } from "node:path";
 import sharp from "sharp";
 
 import type { Capture, CaptureError, FigmaSource } from "../pipeline.js";
+import { bleedOutset } from "../geometry.js";
 import { err, ok, type Result } from "../result.js";
 import {
   FigmaClient,
@@ -25,7 +26,7 @@ import {
   type FigmaNode,
   type FigmaVariablesResponse,
 } from "./figma-api.js";
-import { figmaTreeToElements, indexVariables } from "./figma-tree.js";
+import { figmaRenderBleed, figmaTreeToElements, indexVariables } from "./figma-tree.js";
 
 export const FIGMA_DEFAULTS = { scale: 2, minQuality: 0.3 } as const;
 
@@ -123,10 +124,19 @@ export async function captureFigma(
     }
 
     // 4. Render + download + verify (a batch render may have supplied the URL).
+    //
+    // `bleed` here is a SWITCH, not a distance: Figma renders either the node's
+    // box or everything it paints, with nothing in between, so the margin is
+    // whatever the node has (`figmaRenderBleed`) and the requested px only says
+    // whether to go looking for it. A pair that asks for 8 and meets a 4px ring
+    // gets 4 — recorded truthfully, because `bleed` describes the PICTURE and a
+    // wrong one makes every crop through `toDesignNative` read the wrong bytes.
+    const bleed = source.bleed !== undefined && source.bleed > 0 ? figmaRenderBleed(document) : undefined;
     let url = prefetched.imageUrl;
     if (url === undefined) {
       const images = await client.renderImages(source.fileKey, [source.nodeId], scale, {
         ...(source.version ? { version: source.version } : {}),
+        ...(bleed ? { absoluteBounds: false } : {}),
       });
       if (!images.ok) return err(apiError(identity, images.error));
       url = images.value[source.nodeId] ?? undefined;
@@ -138,8 +148,12 @@ export async function captureFigma(
     if (!png.ok) return err(apiError(identity, png.error));
 
     const meta = await sharp(png.value).metadata();
-    const expectW = Math.round(mapping.width * scale);
-    const expectH = Math.round(mapping.height * scale);
+    // The PNG covers the mapping box PLUS the bleed — the render bounds when
+    // one was asked for, the bounding box otherwise. Checking against the wrong
+    // one turns a correct bleed capture into `figma-render-failed`.
+    const outset = bleedOutset({ width: mapping.width, height: mapping.height }, bleed);
+    const expectW = Math.round(outset.width * scale);
+    const expectH = Math.round(outset.height * scale);
     const w = meta.width ?? 0;
     const h = meta.height ?? 0;
     if (w === 0 || h === 0 || Math.abs(w - expectW) > scale || Math.abs(h - expectH) > scale) {
@@ -163,6 +177,7 @@ export async function captureFigma(
       dpr: scale,
       elements: mapping.elements,
       scope: { mode: "explicit", selector: `figma:${source.nodeId}` },
+      ...(bleed ? { bleed } : {}),
       quality: mapping.quality,
     });
   } catch (e) {

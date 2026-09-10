@@ -71,6 +71,25 @@ export interface PairSpec {
   section?: string
   /** Grid layout for a variant SET's cells. Only ever set on a set entry. */
   gallery?: GalleryConfig
+  /**
+   * CSS px of margin to capture around BOTH sides' nodes, so paint outside the
+   * box — a focus ring, an offset outline, a drop shadow — is in the picture.
+   * Per entry because it is a property of the COMPONENT, not of one side: a
+   * button with a focus ring has one on both sides or the pair is the finding.
+   *
+   * Entry-level is the ONLY level this parser reads. `DesignSpec` / `ImplSpec`
+   * each carry a `bleed` that wins for their side, and nothing here populates
+   * it — that override reaches a `PairSpec` built in code, never a manifest.
+   *
+   * **A Figma design reads it as a switch, not a distance.** The `/images`
+   * endpoint takes no margin, offering the node's box or everything it paints
+   * and nothing between, so any positive value means "render the node's own
+   * render bounds" and the margin obtained is whatever the node has — recorded
+   * per side on the capture, which is what every consumer of the PNG reads.
+   * (This said "Figma ignores it" until design-side bleed landed; a pair whose
+   * Figma node paints a ring outside its frame now captures it.)
+   */
+  bleed?: number
 }
 
 /**
@@ -590,11 +609,22 @@ export function parseManifest(
       })
     }
 
+    const bleed = entry["bleed"]
+    if (bleed !== undefined && !(typeof bleed === "number" && bleed >= 0 && bleed <= 200)) {
+      return err({
+        kind: "invalid-entry",
+        index,
+        detail: `${id}: bleed must be a number 0..200 (CSS px of margin around the node)`,
+      })
+    }
+
+
     pairs.push({
       id,
       ...(typeof entry["title"] === "string" ? { title: entry["title"] } : {}),
       design: d.value,
       impl: i.value,
+      ...(bleed !== undefined ? { bleed } : {}),
       ...(ignore ? { ignore } : {}),
       ...(section !== undefined ? { section } : {}),
       ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),

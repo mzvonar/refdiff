@@ -359,6 +359,25 @@ describe("readGallery — how a set's cells lay out", () => {
     expect(noVariants.ok).toBe(false);
   });
 
+  it("takes an entry-level bleed, validates it, and REFUSES a bad one", async () => {
+    // "Every new manifest field needs a row asserting it ARRIVES" — the note on
+    // the test below. This is that row for `bleed`, and figma-variants.test.ts
+    // carries its twin one level on, where a SET entry hands it to its cells.
+    const { parseManifest } = await import("./manifest.js");
+    const withBleed = parseManifest([{ ...entry, bleed: 8 }]);
+    expect(withBleed.ok).toBe(true);
+    if (withBleed.ok) expect(withBleed.value.pairs[0]?.bleed).toBe(8);
+    // Absent stays absent — a written 0 would be a different statement from
+    // "nobody asked", and the capture path branches on undefined.
+    const none = parseManifest([entry]);
+    expect(none.ok).toBe(true);
+    if (none.ok) expect(none.value.pairs[0]?.bleed).toBeUndefined();
+    for (const bad of ["8", -1, 500, true]) {
+      const r = parseManifest([{ ...entry, bleed: bad }]);
+      expect(r.ok, `bleed: ${JSON.stringify(bad)} should be refused`).toBe(false);
+    }
+  });
+
   it("carries an entry's section and gallery nowhere near the ignore policy", async () => {
     // Regression shape from `contentsOf`: core, policy and manifest were all
     // correct and five pairs of six did not move, because the parser dropped

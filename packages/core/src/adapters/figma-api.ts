@@ -249,14 +249,28 @@ export class FigmaClient {
   /**
    * Render node ids → { [id]: cdnUrl | null }, one `/v1/images` call per
    * chunk (Figma times out on big batches: "request fewer or smaller
-   * images"). `use_absolute_bounds` so the PNG covers `absoluteBoundingBox`
-   * exactly, which is the coordinate frame the element tree uses.
+   * images").
+   *
+   * `absoluteBounds` (the default) sends `use_absolute_bounds`, so the PNG
+   * covers `absoluteBoundingBox` exactly — the coordinate frame the element
+   * tree uses. It is the default because the flag's real job is stopping
+   * Figma from CROPPING: a text node renders to its glyph ink without it,
+   * and a PNG smaller than the box it claims to be puts every element box
+   * off by the crop.
+   *
+   * Pass `false` to get `absoluteRenderBounds` instead — the box GROWN by
+   * whatever paints outside it (a focus ring, an offset outline, a drop
+   * shadow). That is the only way to capture design-side bleed, since the
+   * endpoint takes no margin parameter of its own. It is not free: the
+   * caller then owns the offset between the two boxes, must record it as
+   * the capture's `bleed`, and must never send it for a node whose render
+   * bounds are SMALLER than its box. `figmaRenderBleed` decides both.
    */
   async renderImages(
     fileKey: string,
     ids: readonly string[],
     scale: number,
-    { chunkSize = 5, version }: { chunkSize?: number; version?: string } = {},
+    { chunkSize = 5, version, absoluteBounds = true }: { chunkSize?: number; version?: string; absoluteBounds?: boolean } = {},
   ): Promise<Result<Record<string, string | null>, FigmaApiError>> {
     const images: Record<string, string | null> = {};
     for (const part of chunk([...new Set(ids)], chunkSize)) {
@@ -264,7 +278,7 @@ export class FigmaClient {
         ids: part.join(","),
         format: "png",
         scale: String(scale),
-        use_absolute_bounds: "true",
+        use_absolute_bounds: String(absoluteBounds),
       });
       if (version) q.set("version", version);
       const r = await this.get(`/v1/images/${encodeURIComponent(fileKey)}?${q}`);

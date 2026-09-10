@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import type { FigmaNode, FigmaNodesResponse } from "./figma-api.js";
-import { expandVariants, parseVariantName, variantAxes, variantProperties, type VariantConfig } from "./figma-variants.js";
+import { expandVariants, parseVariantName, variantAxes, variantProperties, variantSpec, type VariantConfig } from "./figma-variants.js";
+import type { FigmaDesignSpec, PairSpec } from "../manifest.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = JSON.parse(
@@ -203,5 +204,60 @@ describe("expandVariants", () => {
       ok: false,
       error: { kind: "not-a-component-set", nodeId: "1:1", type: "FRAME" },
     });
+  });
+});
+
+describe("variantSpec — what an entry hands down to its cells", () => {
+  const design: FigmaDesignSpec = {
+    kind: "figma",
+    fileKey: "FILE",
+    nodeId: "1:1",
+    variants: { selector: '[data-col="{State}"]' },
+  };
+  const entry: PairSpec = {
+    id: "button-stroke",
+    title: "DS · Button / Stroke",
+    design,
+    impl: { kind: "storybook", storyId: "ds-button--stroke" },
+    bleed: 8,
+    section: "Core components/Buttons",
+    gallery: { columns: "State" },
+    ignore: { textPatterns: ["^\\d+$"] },
+  };
+  const variant = { slug: "state-default", name: "State=Default", nodeId: "2:2", selector: '[data-col="Default"]' };
+
+  // A SET entry is never run — N specs built from it are. Anything this builder
+  // does not copy is absent on every one of them, while the SAME setting works
+  // on a single-pair entry. `bleed` shipped with exactly that: declared on all
+  // fourteen DS entries, present in the parse, undefined in all 24 reports.
+  it("carries the settings that describe the COMPONENT", () => {
+    const out = variantSpec(entry, variant, design);
+    expect(out.bleed).toBe(8);
+    expect(out.ignore).toEqual(entry.ignore);
+    expect(out.id).toBe("button-stroke--state-default");
+    expect(out.title).toBe("DS · Button / Stroke — State=Default");
+    expect(out.impl).toEqual({ kind: "storybook", storyId: "ds-button--stroke", selector: '[data-col="Default"]' });
+    expect(out.design.nodeId).toBe("2:2");
+  });
+
+  // The mirror row, so "carry everything" does not become the rule by accident:
+  // these two describe where the SET sits and how its grid is laid out, and
+  // neither means anything on one cell of it.
+  it("drops the settings that describe the SET", () => {
+    const out = variantSpec(entry, variant, design);
+    expect(out.section).toBeUndefined();
+    expect(out.gallery).toBeUndefined();
+  });
+
+  it("omits an absent bleed rather than writing a zero", () => {
+    const { bleed, ...noBleed } = entry;
+    void bleed;
+    expect("bleed" in variantSpec(noBleed, variant, design)).toBe(false);
+  });
+
+  it("fills the render scale only when the design has not pinned its own", () => {
+    expect(variantSpec(entry, variant, design, 3).design.scale).toBe(3);
+    expect(variantSpec(entry, variant, { ...design, scale: 2 }, 3).design.scale).toBe(2);
+    expect(variantSpec(entry, variant, design).design.scale).toBeUndefined();
   });
 });

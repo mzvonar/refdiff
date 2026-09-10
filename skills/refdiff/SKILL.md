@@ -595,7 +595,6 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   so and names the command that writes one, rather than drawing an empty grid;
   refdiff reports such a page as `{"kind":"error-page"}`, so a sheet cannot be
   measured against a root with no set.
-
 ### 2. Classify every finding — this is the whole skill
 
 | class | how it looks | what you do |

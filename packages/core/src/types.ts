@@ -14,6 +14,34 @@ export interface Box {
   h: number
 }
 
+/**
+ * Margin captured AROUND the element, per side, in that capture's own CSS px.
+ *
+ * A screenshot clipped to an element's border box loses everything painted
+ * outside it — a focus ring, an outline with an offset, a drop shadow, a glow.
+ * They are invisible rather than wrong: the picture simply stops, and both sides
+ * stop in the same place, so nothing reports a difference. `--bleed` widens the
+ * clip so those pixels are captured.
+ *
+ * It is a property of the PICTURE, never of the measurement. Element boxes stay
+ * relative to the element's own origin, the alignment is untouched, and every
+ * finding keeps the coordinates it had — the only thing that moves is where the
+ * PNG's (0, 0) sits, which is `(-left, -top)` in element space. Two helpers own
+ * that shift: `toImplNative` / `toDesignNative` for anything reading the PNG,
+ * and the annotator's image transforms for anything drawing it.
+ *
+ * The four sides are recorded separately because the ASKED-FOR bleed is not
+ * always the one you get: the clip is clamped to the page, so an element at the
+ * viewport's left edge keeps its top margin and loses its left one. Recording a
+ * single number would make the PNG's origin a guess.
+ */
+export interface Bleed {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
 /** One leaf element extracted from a side (design or implementation). */
 export interface ElementNode {
   id: string
@@ -492,10 +520,25 @@ export interface ComparisonReport {
     /** Native PNG px per RAW capture CSS px (the PNG is rawWidth·dpr wide). */
     dpr?: number
     scope?: CaptureScope
+    /**
+     * Margin captured around the frame, in RAW capture CSS px — absent means
+     * none, which is every report written before `--bleed` existed. `width` is
+     * the NORMALIZED width and this is not, for the same reason `dpr` is not:
+     * both describe the raw PNG.
+     */
+    bleed?: Bleed
     /** Figma GIGO score (always echoed, even when the gate passed). */
     quality?: { score: number; leaves: number; bound: number; instances: number; detached: number }
   }
-  impl: { source: string; ref: string; width: number; height: number; dpr?: number }
+  impl: {
+    source: string
+    ref: string
+    width: number
+    height: number
+    dpr?: number
+    /** Margin captured around the element, in impl CSS px. Absent means none. */
+    bleed?: Bleed
+  }
   alignment: Alignment
   findings: Finding[]
   /** Findings the ignore policy removed — visible, never silently dropped. */

@@ -23,6 +23,7 @@
  */
 
 import type { FigmaNode } from "./figma-api.js";
+import type { FigmaDesignSpec, PairSpec } from "../manifest.js";
 import { err, ok, type Result } from "../result.js";
 
 export interface VariantConfig {
@@ -256,4 +257,42 @@ export function expandVariants(set: FigmaNode, config: VariantConfig): Result<Va
     pairs.push({ nodeId: v.id, name: v.name, props, selector: selector.value, slug: slugify(props) });
   }
   return ok({ setId: set.id, setName: set.name, pairs, skipped });
+}
+
+/**
+ * One expanded variant as a runnable pair spec — the pure half of a set run.
+ *
+ * Extracted because this is where an entry-level setting goes missing. A SET
+ * entry is not run: N specs built from it are, and anything the builder does not
+ * copy is silently absent on every one of them while the same setting works
+ * perfectly on a single-pair entry. `bleed` shipped with exactly that defect —
+ * declared on all fourteen DS entries, present in the parse, and `undefined` in
+ * all 24 reports, because this map did not carry it. `manifest.test.ts` already
+ * says "every new manifest field needs a row asserting it ARRIVES"; that row has
+ * to be here too, one level further on.
+ *
+ * `section` and `gallery` are deliberately NOT carried: they say where the SET
+ * sits in the library and how its grid is laid out, and neither means anything
+ * on one cell of it.
+ */
+export function variantSpec(
+  entry: PairSpec,
+  variant: { slug: string; name: string; nodeId: string; selector: string },
+  design: FigmaDesignSpec,
+  scale?: number,
+  // A set expansion always produces a FIGMA design, so say so rather than
+  // returning the DesignSpec union and making every caller narrow it back.
+): PairSpec & { design: FigmaDesignSpec } {
+  return {
+    id: `${entry.id}--${variant.slug}`,
+    title: `${entry.title ?? entry.id} — ${variant.name}`,
+    design: {
+      ...design,
+      nodeId: variant.nodeId,
+      ...(scale !== undefined && design.scale === undefined ? { scale } : {}),
+    },
+    impl: { ...entry.impl, selector: variant.selector },
+    ...(entry.ignore ? { ignore: entry.ignore } : {}),
+    ...(entry.bleed !== undefined ? { bleed: entry.bleed } : {}),
+  }
 }

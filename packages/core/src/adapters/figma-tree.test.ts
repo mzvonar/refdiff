@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import type { FigmaNode, FigmaNodesResponse, FigmaVariablesResponse } from "./figma-api.js";
-import { applyTextCase, figmaTreeToElements, indexVariables, paintToCss } from "./figma-tree.js";
+import { applyTextCase, figmaRenderBleed, figmaTreeToElements, indexVariables, paintToCss } from "./figma-tree.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "../../test/fixtures/figma");
@@ -185,18 +185,21 @@ describe("figmaTreeToElements on the recorded Button/Fill component set", () => 
   it("uses the set's bounding box and emits one leaf per label, icon and focus ring", () => {
     expect([width, height]).toEqual([1283, 761]);
     // 42 variants → 42 labels; 27 icon instances (globe/loader) → 27 icons; 7 Focus rings → 7 boxes.
-    // …and 7 SURFACES, one per Focus variant (42 variants / 6 states). Those are the
-    // button fills that were invisible before: hoisting gives a painted frame's
-    // decoration to its lone label, but a Focus variant's frame has a focus-ring
-    // child too, and a ring is not icon-like, so it BREAKS the chain and the label
-    // cannot claim the fill. The other 35 frames are still not emitted — their
-    // labels did claim them (`claimed`), and emitting both would report every pill
-    // twice, which is what the "Container with children and decoration is not
-    // itself a leaf" test below pins.
-    expect(roles).toEqual({ text: 42, icon: 27, box: 7, surface: 7 });
-    const surfaces = elements.filter((e) => e.role === "surface");
-    // They carry real paint — otherwise this channel would be adding noise, not design.
-    expect(surfaces.every((e) => e.style?.backgroundColor !== undefined)).toBe(true);
+    // NO surfaces: all 42 frames' fills are claimed by their labels. This read
+    // `surface: 7` until 2026-09-07 — one per Focus variant, whose ring broke the
+    // hoist chain so its label could not claim the frame. `ringsParent` now
+    // tolerates an enclosing stroke-only sibling, so Focus hoists like the other
+    // five states and the set is uniform. The surface channel losing those 7 is
+    // the POINT, not a regression: a claimed fill is compared on the label, and
+    // emitting both would report every pill twice — what the "Container with
+    // children and decoration is not itself a leaf" test below pins.
+    expect(roles).toEqual({ text: 42, icon: 27, box: 7 });
+    expect(elements.filter((e) => e.role === "surface")).toHaveLength(0);
+    // The fill did not vanish with the surfaces — it moved onto the labels, and
+    // every one of the 42 now carries it. That is the assertion the `surface: 7`
+    // version could not make, and its absence is why the root-level hole below
+    // shipped: nothing checked that the paint arrived SOMEWHERE.
+    expect(elements.filter((e) => e.role === "text" && e.style?.backgroundColor !== undefined)).toHaveLength(42);
     expect(elements.some((e) => e.id.startsWith("vector") || e.id.startsWith("boolean_operation"))).toBe(false);
   });
 
@@ -281,5 +284,223 @@ describe("figmaTreeToElements on the recorded Alert component set (fill-width te
     expect(text.layoutSizingHorizontal).toBe("FILL");
     expect(text.absoluteBoundingBox!.width).toBe(724);
     expect(Math.round(text.absoluteRenderBounds!.width)).toBe(255);
+  });
+});
+
+
+describe("figmaRenderBleed on the recorded Button/Fill component set", () => {
+  const real = JSON.parse(readFileSync(join(fixtures, "nodes-button-fill-set.json"), "utf8")) as FigmaNodesResponse;
+  const set = real.nodes["8226:4244"]!.document;
+  const cell = (name: string): FigmaNode => set.children!.find((c) => c.name === name)!;
+
+  it("measures the focus ring a Focus cell paints outside its box", () => {
+    // bbox 76x40 at (966, 1431); render bounds 84x48 at (962, 1427) — the 2px
+    // ring at a 4px offset that the story draws as a box-shadow.
+    expect(figmaRenderBleed(cell("State=Focus, iconPlacement=none, variant=default"))).toEqual({
+      left: 4,
+      top: 4,
+      right: 4,
+      bottom: 4,
+    });
+  });
+
+  it("finds the same ring on every Focus cell regardless of the cell's width", () => {
+    const focus = set.children!.filter((c) => c.name.startsWith("State=Focus"));
+    expect(focus).toHaveLength(7);
+    expect(focus.map((c) => figmaRenderBleed(c))).toEqual(
+      focus.map(() => ({ left: 4, top: 4, right: 4, bottom: 4 })),
+    );
+  });
+
+  it("returns undefined for a cell that paints nothing outside its box — the POSITIVE CONTROL for the two refusals below", () => {
+    // Same set, same run, render bounds identical to the bounding box. Without
+    // this row every assertion below passes on a helper that returns undefined
+    // for every input.
+    const flat = cell("State=Default, iconPlacement=none, variant=default");
+    expect(flat.absoluteRenderBounds).toEqual(flat.absoluteBoundingBox);
+    expect(figmaRenderBleed(flat)).toBeUndefined();
+  });
+
+  it("refuses a node whose render bounds CROP it — the case use_absolute_bounds exists for", () => {
+    // A real fill-width TEXT node from the Alert set: bbox 724 wide, glyph ink
+    // 255. Rendering at these bounds would hand back a PNG 469px narrower than
+    // the box every element coordinate is relative to.
+    const alert = JSON.parse(readFileSync(join(fixtures, "nodes-alert-set.json"), "utf8")) as FigmaNodesResponse;
+    const info = alert.nodes["6765:4792"]!.document.children!.find(
+      (c) => c.name === "Color=Info, Aligned=Left, Type=Text",
+    )!;
+    const text = info.children!.find((c) => c.type === "TEXT")!;
+    expect(text.absoluteBoundingBox!.width).toBe(724);
+    expect(Math.round(text.absoluteRenderBounds!.width)).toBe(255);
+    expect(figmaRenderBleed(text)).toBeUndefined();
+  });
+
+  it("refuses a node with no render bounds at all rather than guessing zero", () => {
+    const { absoluteRenderBounds, ...noRender } = cell("State=Focus, iconPlacement=none, variant=default");
+    void absoluteRenderBounds;
+    expect(figmaRenderBleed(noRender)).toBeUndefined();
+  });
+
+  it("keeps the four sides separate — a one-sided shadow is not a uniform margin", () => {
+    const base = cell("State=Default, iconPlacement=none, variant=default");
+    const b = base.absoluteBoundingBox!;
+    const dropShadow: FigmaNode = {
+      ...base,
+      absoluteRenderBounds: { x: b.x, y: b.y, width: b.width + 6, height: b.height + 10 },
+    };
+    expect(figmaRenderBleed(dropShadow)).toEqual({ left: 0, top: 0, right: 6, bottom: 10 });
+  });
+
+  it("refuses when ONE side crops even though the others grow", () => {
+    // The mixed case a `some side is positive` test would let through: the
+    // render bounds grow downward and cut the left edge off.
+    const base = cell("State=Default, iconPlacement=none, variant=default");
+    const b = base.absoluteBoundingBox!;
+    const mixed: FigmaNode = {
+      ...base,
+      absoluteRenderBounds: { x: b.x + 3, y: b.y, width: b.width - 3, height: b.height + 10 },
+    };
+    expect(figmaRenderBleed(mixed)).toBeUndefined();
+  });
+});
+
+
+/**
+ * The shape a PAIR capture actually has: one variant COMPONENT as the root, not
+ * the set. It matters because the `surface` fallback — a painting container
+ * emitted as its own leaf — is guarded by `!isRoot`, so a captured root's paint
+ * reaches the comparison through the decoration hoist and through nothing else.
+ * When the hoist broke, the fill was not lost to a different role; it was gone.
+ */
+describe("figmaTreeToElements on ONE Button/Fill variant (the pair-capture root)", () => {
+  const real = JSON.parse(readFileSync(join(fixtures, "nodes-button-fill-set.json"), "utf8")) as FigmaNodesResponse;
+  const set = real.nodes["8226:4244"]!.document;
+  const variant = (name: string): FigmaNode => set.children!.find((c) => c.name === name)!;
+  const map = (name: string) => figmaTreeToElements(variant(name), indexVariables(undefined));
+
+  it("gives a Focus variant's fill to its label, past the focus ring", () => {
+    // The regression this closes: six button-fill Focus cells rendered the REST
+    // colour against the design's HOVER colour and reported ZERO color findings,
+    // because no element on the design side carried a background at all.
+    const { elements } = map("State=Focus, iconPlacement=none, variant=default");
+    const label = elements.find((e) => e.role === "text")!;
+    expect(label.text).toBe("LABEL");
+    expect(label.style?.backgroundColor).toBe("rgb(145, 243, 255)");
+  });
+
+  it("gives the SAME treatment to a state with no ring — the control that says the fix changed nothing else", () => {
+    const { elements } = map("State=Default, iconPlacement=none, variant=default");
+    expect(elements).toHaveLength(1);
+    expect(elements[0]!.style?.backgroundColor).toBe("rgb(90, 216, 230)");
+  });
+
+  it("still emits the ring as its own box, with its stroke — hoisting the fill does not swallow it", () => {
+    const { elements } = map("State=Focus, iconPlacement=none, variant=default");
+    const ring = elements.find((e) => e.role === "box")!;
+    expect(ring.box).toEqual({ x: -4, y: -4, w: 84, h: 48 });
+    expect(ring.style).toMatchObject({ borderWidth: 2, borderColor: "rgb(89, 171, 230)", borderStyle: "solid" });
+    expect(ring.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("carries the fill on EVERY Focus cell of the set, not just the one probed", () => {
+    const focus = set.children!.filter((c) => c.name.startsWith("State=Focus"));
+    expect(focus).toHaveLength(7);
+    for (const c of focus) {
+      const label = figmaTreeToElements(c, indexVariables(undefined)).elements.find((e) => e.role === "text");
+      expect(label?.style?.backgroundColor, c.name).toBeDefined();
+    }
+  });
+
+  it("does NOT hoist past a sibling that fills — an overlay occludes the parent's paint", () => {
+    // The negative control for `ringsParent`'s no-fill condition. Same geometry as
+    // the real ring; the only change is that it paints. Without this row the rule
+    // would read as "any enclosing shape", which would hand a leaf the paint of a
+    // frame the viewer cannot even see.
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const scrim: FigmaNode = { ...ring, fills: [{ type: "SOLID", color: { r: 0, g: 0, b: 0, a: 1 } }] };
+    const withScrim: FigmaNode = { ...base, children: [base.children![0]!, scrim] };
+    const label = figmaTreeToElements(withScrim, indexVariables(undefined)).elements.find((e) => e.role === "text");
+    expect(label?.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("does NOT hoist past a large enclosed sibling — a shape INSIDE the frame is content", () => {
+    // The negative control for the containment condition: a divider, a bar, a
+    // progress track all sit inside the box and are not decoration around it.
+    //
+    // It must be LARGER than MAX_ICON_PX to test anything. Written first at 20×4,
+    // this expected no hoist and got one — correctly: the pre-existing icon
+    // tolerance already passes any vector shape under 64px, ring or not, and that
+    // is not behaviour `ringsParent` introduced or should change. So the
+    // containment condition only ever decides the BIG shapes, and only they can
+    // falsify it. 70×30 inside a 76×40 frame is the smallest honest fixture.
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const b = base.absoluteBoundingBox!;
+    const inner: FigmaNode = { ...ring, absoluteBoundingBox: { x: b.x + 3, y: b.y + 5, width: 70, height: 30 } };
+    const withInner: FigmaNode = { ...base, children: [base.children![0]!, inner] };
+    const label = figmaTreeToElements(withInner, indexVariables(undefined)).elements.find((e) => e.role === "text");
+    expect(label?.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("tolerates a SMALL inner shape, as it always has — the icon rule, not the ring rule", () => {
+    // Pinned so the row above cannot be "fixed" back to a small fixture: this is
+    // pre-existing behaviour (`isIconLike`), unchanged, and the reason the
+    // containment condition needs a large offender to be exercised at all.
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const b = base.absoluteBoundingBox!;
+    const dot: FigmaNode = { ...ring, absoluteBoundingBox: { x: b.x + 8, y: b.y + 8, width: 20, height: 4 } };
+    const withDot: FigmaNode = { ...base, children: [base.children![0]!, dot] };
+    const label = figmaTreeToElements(withDot, indexVariables(undefined)).elements.find((e) => e.role === "text");
+    expect(label?.style?.backgroundColor).toBe("rgb(145, 243, 255)");
+  });
+
+  it("does NOT hoist past a stroke-less enclosing shape — it paints nothing, so it is not decoration", () => {
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const bare: FigmaNode = { ...ring, strokes: [], strokeWeight: 0 };
+    const withBare: FigmaNode = { ...base, children: [base.children![0]!, bare] };
+    const label = figmaTreeToElements(withBare, indexVariables(undefined)).elements.find((e) => e.role === "text");
+    expect(label?.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("does NOT hoist past an enclosing stroke-only CONTAINER — it can hold content", () => {
+    // The negative control for the vector-shape condition, added because the
+    // mutation probe found it uncovered: with the type check dropped, every other
+    // row stayed green. A RECTANGLE is a drawn shape and nothing else; a FRAME
+    // with the same paint may wrap real children (a bordered card), and handing
+    // the parent's fill to a leaf while a sibling subtree holds content is how
+    // paint gets assigned to the wrong element.
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const wrapper: FigmaNode = {
+      ...ring,
+      type: "FRAME",
+      children: [{ id: "x", name: "inner", type: "TEXT", characters: "X", absoluteBoundingBox: { x: 0, y: 0, width: 10, height: 10 } }],
+    };
+    const withWrapper: FigmaNode = { ...base, children: [base.children![0]!, wrapper] };
+    const label = figmaTreeToElements(withWrapper, indexVariables(undefined)).elements.find(
+      (e) => e.role === "text" && e.text === "LABEL",
+    );
+    expect(label?.style?.backgroundColor).toBeUndefined();
+  });
+
+  it("is keyed on GEOMETRY, not on size — the seam that hid this for so long", () => {
+    // `isIconLike` caps at MAX_ICON_PX (64), so the identical construct hoisted on
+    // button-icon (32-48px rings) and broke on button-fill (84px+). A ring shrunk
+    // under the cap and one grown far past it must behave the same.
+    const base = variant("State=Focus, iconPlacement=none, variant=default");
+    const ring = base.children!.find((c) => c.type === "RECTANGLE")!;
+    const b = base.absoluteBoundingBox!;
+    for (const grow of [1, 4, 200]) {
+      const r: FigmaNode = {
+        ...ring,
+        absoluteBoundingBox: { x: b.x - grow, y: b.y - grow, width: b.width + grow * 2, height: b.height + grow * 2 },
+      };
+      const n: FigmaNode = { ...base, children: [base.children![0]!, r] };
+      const label = figmaTreeToElements(n, indexVariables(undefined)).elements.find((e) => e.role === "text");
+      expect(label?.style?.backgroundColor, `grow=${grow}`).toBe("rgb(145, 243, 255)");
+    }
   });
 });

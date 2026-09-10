@@ -184,6 +184,24 @@ describe("the gallery route", () => {
     expect(html).toContain("body.route-gallery #view-index, body.route-gallery #view-report { display:none; }")
   })
 
+  // Those same two rules make the route classes MUTUALLY EXCLUSIVE: a body wearing
+  // both hides both sections and renders a blank page. A sheet route puts the body on
+  // route-report before openGallery runs, so the fallback has to TAKE that class off,
+  // and entering a sheet has to drop a fallback class left by a previous failure.
+  // Observed as a blank page on an unknown #/set/<id> — which is what a renamed
+  // manifest entry leaves behind for every stale link (2026-09-07).
+  it("never lets route-report and route-gallery coexist", () => {
+    expect(html).toContain(`function sheetFailure(entryId, message) {
+  document.body.classList.remove('route-index');
+  document.body.classList.remove('route-report');
+  document.body.classList.add('route-gallery');`)
+    // The pre-fix line removed the very class it then added, and left route-report on.
+    expect(html).not.toContain(`document.body.classList.remove('route-gallery');
+  document.body.classList.add('route-gallery');`)
+    expect(html).toContain(`    document.body.classList.remove('route-gallery');
+    document.body.classList.add('route-report');`)
+  })
+
   // A run dir is one path segment under the out root and can never hold a
   // slash, which is what makes the prefix a namespace no pair can collide with.
   it("routes #/set/<entryId> by a prefix a run dir cannot produce", () => {
