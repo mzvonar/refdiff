@@ -595,6 +595,39 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   so and names the command that writes one, rather than drawing an empty grid;
   refdiff reports such a page as `{"kind":"error-page"}`, so a sheet cannot be
   measured against a root with no set.
+- **The ground is NOT captured, by default** (`--ground <transparent|keep>`, or
+  `ground:` per entry; since 2026-09-10). A browser screenshot is a composite of
+  the page, so every ancestor's paint is in the bytes; a Figma `/images` render
+  is the node's subtree on transparency and no parameter would change it. The
+  two sides of a pair were therefore photographing different things, and the
+  difference landed in the frame-level `pixel-region` residual where it reads as
+  generic noise about a container. So a browser capture now marks its node's
+  ANCESTRY non-painting, shoots with an alpha channel, and takes the marking off
+  — after which both sides hold the node's own subtree and nothing else.
+  **What it is worth, measured on a dark-surface component gallery**: one
+  ghost-button cell went 60.76% → 1.12% unexplained frame difference; across
+  that repo's entries, ghost 28.4% → 1.1%, stroke 25.5% → 7.4%, checkbox
+  50.8% → 3.5%. **Fill went 11.2% → 11.0%, and that is the control working** —
+  its own fill covers the frame, so its residual was real drift all along and
+  correctly survives. **A halfway version buys nothing and looks like it
+  should**: making the page ground white instead of dark moves the same cell
+  60.76% → 59.66%, because pixelmatch 7 defaults `checkerboard: true` and blends
+  a transparent pixel against a position-varying pattern rather than a flat
+  colour — it can never agree with ANY uniform ground. Only real alpha on both
+  sides collapses it, which is why the neutralised ancestry and the alpha
+  channel are one change and neither half is optional.
+  **`ground: "keep"` opts back into the composite**, byte for byte the shot this
+  tool took before the option existed — for a pair that is genuinely ABOUT its
+  ground (a full-page comp whose artboard paints its own background, where the
+  two sides already agree about what is behind the node). Resolution is the same
+  three tiers as `bleed`: a side's own wins over the entry's, the entry's over
+  `--ground`. **ELEMENT shots only** — a viewport or full-page shot has no
+  ancestry to speak of and its ground is part of what it is for.
+  **What this does NOT do is make the two grounds agree; it removes the ground
+  from the comparison on both sides.** A quiet frame residual is then silence
+  about the surface, not agreement — the same reading the Figma side alone has
+  always needed.
+
 ### 2. Classify every finding — this is the whole skill
 
 | class | how it looks | what you do |
@@ -922,6 +955,8 @@ export const manifest = [
     app: { source: "storybook", storyId: "ds-button--fill" },
     bleed: 8,                                             // px of margin around BOTH sides' nodes,
                                                           // so a focus ring or shadow is captured
+    ground: "keep",                                       // OPT-OUT. Default is "transparent":
+                                                          // the paint BEHIND the node is not captured
     // Only on a component SET — every field names a variant PROPERTY.
     gallery: {
       columns: "State",                                   // which axis is columns

@@ -6,6 +6,7 @@
  * docs/architecture.md "Pipeline".
  */
 
+import type { Ground } from "./adapters/ground.js";
 import type { CaptureStep } from "./adapters/steps.js";
 import type { Alignment, Bleed, Box, CaptureScope, ElementNode } from "./types.js";
 
@@ -47,6 +48,13 @@ export interface DcHtmlSource {
    * origin, and the recorded `bleed` says where the PNG's (0, 0) landed.
    */
   bleed?: number;
+  /**
+   * What the shot does with the paint BEHIND the node (default `transparent`).
+   * A browser screenshot composites its ancestors; Figma's node export never
+   * does, and cannot be made to. `keep` opts one side back into the composite.
+   * Element shots only — see `adapters/ground.ts`.
+   */
+  ground?: Ground;
 }
 
 /** A Storybook story rendered via the bare iframe. */
@@ -80,6 +88,13 @@ export interface StorybookSource {
    * when the whole viewport is being shot, which has no box to grow.
    */
   bleed?: number;
+  /**
+   * What the shot does with the paint BEHIND the node (default `transparent`).
+   * A browser screenshot composites its ancestors; Figma's node export never
+   * does, and cannot be made to. `keep` opts one side back into the composite.
+   * Element shots only — see `adapters/ground.ts`.
+   */
+  ground?: Ground;
 }
 
 /**
@@ -152,6 +167,13 @@ export interface LiveUrlSource {
    * when the whole viewport is being shot, which has no box to grow.
    */
   bleed?: number;
+  /**
+   * What the shot does with the paint BEHIND the node (default `transparent`).
+   * A browser screenshot composites its ancestors; Figma's node export never
+   * does, and cannot be made to. `keep` opts one side back into the composite.
+   * Element shots only — see `adapters/ground.ts`.
+   */
+  ground?: Ground;
 }
 
 export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource;

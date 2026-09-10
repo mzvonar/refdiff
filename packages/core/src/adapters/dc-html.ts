@@ -284,7 +284,7 @@ export async function captureDcHtml(
 
     // Settle the pixels first, then extract, so the element tree describes
     // exactly the state the screenshot shows.
-    const { png, bleed } = await shootElement(page, locator, source.bleed ?? 0)
+    const { png, bleed } = await shootElement(page, locator, source.bleed ?? 0, source.ground)
 
     const extraction = await extractElementTree(page, scope.selector)
     if (!extraction) {

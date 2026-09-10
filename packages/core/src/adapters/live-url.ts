@@ -223,7 +223,7 @@ export async function captureLiveUrl(
     if (source.selector) {
       const root = page.locator(source.selector).first()
       await root.scrollIntoViewIfNeeded()
-      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0))
+      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0, source.ground))
     } else {
       ;({ png } = await captureUntilStable(() =>
         page.screenshot({ fullPage: source.fullPage ?? false }),

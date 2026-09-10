@@ -294,5 +294,6 @@ export function variantSpec(
     impl: { ...entry.impl, selector: variant.selector },
     ...(entry.ignore ? { ignore: entry.ignore } : {}),
     ...(entry.bleed !== undefined ? { bleed: entry.bleed } : {}),
+    ...(entry.ground !== undefined ? { ground: entry.ground } : {}),
   }
 }

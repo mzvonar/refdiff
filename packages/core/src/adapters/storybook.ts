@@ -190,7 +190,7 @@ export async function captureStorybook(
       ;({ png } = await captureUntilStable(() => page.screenshot()))
     } else {
       const root = page.locator(rootSelector).first()
-      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0))
+      ;({ png, bleed } = await shootElement(page, root, source.bleed ?? 0, source.ground))
     }
 
     const extraction = await extractElementTree(page, rootSelector, { viewportOrigin })

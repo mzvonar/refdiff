@@ -1,8 +1,8 @@
-import type { Browser } from "playwright"
+import type { Browser, Locator, Page } from "playwright"
 
 import { describe, expect, it, vi } from "vitest"
 
-import { closeQuietly, openPage } from "./browser.js"
+import { closeQuietly, openPage, withGround } from "./browser.js"
 
 describe("openPage", () => {
   const asBrowser = (newContext: unknown): Browser => ({ newContext }) as unknown as Browser
@@ -99,3 +99,82 @@ describe("closeQuietly", () => {
   })
 })
 
+/**
+ * `withGround` marks the captured node's ancestry, shoots, and takes the
+ * marking back off. Verified end to end against a real Storybook on
+ * 2026-09-10 (the shot came back RGBA, 95.1% transparent, and every ancestor's
+ * computed `backgroundColor` was identical before and after) — what is worth
+ * unit-testing is the part a real browser makes hard to observe: that the
+ * revert happens on EVERY path.
+ */
+describe("withGround", () => {
+  const fakes = () => {
+    const calls: string[] = []
+    const page = {
+      evaluate: vi.fn(async () => {
+        calls.push("revert")
+      }),
+    } as unknown as Page
+    const locator = {
+      evaluate: vi.fn(async () => {
+        calls.push("apply")
+      }),
+    } as unknown as Locator
+    return { calls, page, locator }
+  }
+
+  it("leaves the page untouched and shoots the composite when ground is kept", async () => {
+    const { calls, page, locator } = fakes()
+    const png = await withGround(page, locator, "keep", async (omitBackground) => {
+      calls.push(`shoot(omitBackground=${omitBackground})`)
+      return "png"
+    })
+    expect(png).toBe("png")
+    expect(calls).toEqual(["shoot(omitBackground=false)"])
+  })
+
+  it("applies, shoots with an alpha channel, then reverts", async () => {
+    const { calls, page, locator } = fakes()
+    await withGround(page, locator, "transparent", async (omitBackground) => {
+      calls.push(`shoot(omitBackground=${omitBackground})`)
+      return "png"
+    })
+    expect(calls).toEqual(["apply", "shoot(omitBackground=true)", "revert"])
+  })
+
+  /**
+   * The regression this exists for. Every adapter extracts its element tree
+   * from the page AFTER the shot, so a `return await shoot()` that skips the
+   * revert on failure does not lose a screenshot — it writes
+   * `backgroundColor: transparent` onto every ancestor in `elements.json`,
+   * with no failure signature anywhere. The shot's own error must still be the
+   * one that reaches the adapter.
+   */
+  it("reverts even when the shot throws, and re-throws the shot's error", async () => {
+    const { calls, page, locator } = fakes()
+    await expect(
+      withGround(page, locator, "transparent", async () => {
+        calls.push("shoot")
+        throw new Error("Timeout 30000ms exceeded")
+      }),
+    ).rejects.toThrow("Timeout 30000ms exceeded")
+    expect(calls).toEqual(["apply", "shoot", "revert"])
+  })
+
+  /**
+   * And when the revert ITSELF fails, that is the error worth having: the page
+   * is left mutated and the extraction that follows would measure it. It
+   * outranks the shot's error deliberately.
+   */
+  it("surfaces a failed revert over the shot's own error", async () => {
+    const { page, locator } = fakes()
+    ;(page.evaluate as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Execution context was destroyed"),
+    )
+    await expect(
+      withGround(page, locator, "transparent", async () => {
+        throw new Error("Timeout 30000ms exceeded")
+      }),
+    ).rejects.toThrow("Execution context was destroyed")
+  })
+})

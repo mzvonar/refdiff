@@ -220,6 +220,7 @@ describe("variantSpec — what an entry hands down to its cells", () => {
     design,
     impl: { kind: "storybook", storyId: "ds-button--stroke" },
     bleed: 8,
+    ground: "keep",
     section: "Core components/Buttons",
     gallery: { columns: "State" },
     ignore: { textPatterns: ["^\\d+$"] },
@@ -233,6 +234,9 @@ describe("variantSpec — what an entry hands down to its cells", () => {
   it("carries the settings that describe the COMPONENT", () => {
     const out = variantSpec(entry, variant, design);
     expect(out.bleed).toBe(8);
+    // `ground` is the second setting to walk into this trap: entry-level, and
+    // silently absent on all 24 cells of a set if this builder forgets it.
+    expect(out.ground).toBe("keep");
     expect(out.ignore).toEqual(entry.ignore);
     expect(out.id).toBe("button-stroke--state-default");
     expect(out.title).toBe("DS · Button / Stroke — State=Default");
@@ -247,6 +251,15 @@ describe("variantSpec — what an entry hands down to its cells", () => {
     const out = variantSpec(entry, variant, design);
     expect(out.section).toBeUndefined();
     expect(out.gallery).toBeUndefined();
+  });
+
+  it("omits an absent ground rather than pinning the default onto the cell", () => {
+    const { ground, ...noGround } = entry;
+    void ground;
+    // Absent must stay absent, not become "transparent": the run-wide
+    // `--ground` tier resolves BELOW the entry, and a default written in here
+    // would shadow it on every cell of every set.
+    expect("ground" in variantSpec(noGround, variant, design)).toBe(false);
   });
 
   it("omits an absent bleed rather than writing a zero", () => {

@@ -35,6 +35,7 @@ import type {
 } from "./types.js"
 
 import { err, ok, type Result } from "./result.js"
+import { readGround, type Ground } from "./adapters/ground.js"
 import { readSteps } from "./adapters/steps.js"
 
 /**
@@ -90,6 +91,15 @@ export interface PairSpec {
    * Figma node paints a ring outside its frame now captures it.)
    */
   bleed?: number
+  /**
+   * What BOTH sides do with the paint behind their node — `transparent`
+   * (default) or `keep`. Per entry for the same reason as `bleed`: it is a
+   * property of the COMPONENT, and a pair that neutralises one side's ground
+   * and keeps the other's has re-created the asymmetry the option exists to
+   * remove. Figma needs nothing: its export is ancestry-free already, which is
+   * the behaviour this makes true of the browser sides. See `adapters/ground.ts`.
+   */
+  ground?: Ground
 }
 
 /**
@@ -618,6 +628,14 @@ export function parseManifest(
       })
     }
 
+    const ground = readGround(entry["ground"])
+    if (entry["ground"] !== undefined && ground === undefined) {
+      return err({
+        kind: "invalid-entry",
+        index,
+        detail: `${id}: ground must be "transparent" (default) or "keep"`,
+      })
+    }
 
     pairs.push({
       id,
@@ -625,6 +643,7 @@ export function parseManifest(
       design: d.value,
       impl: i.value,
       ...(bleed !== undefined ? { bleed } : {}),
+      ...(ground !== undefined ? { ground } : {}),
       ...(ignore ? { ignore } : {}),
       ...(section !== undefined ? { section } : {}),
       ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),

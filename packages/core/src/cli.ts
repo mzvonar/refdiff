@@ -49,6 +49,7 @@ import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
 import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks } from "./pixel/checks.js"
 import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
 import { hiddenMovement } from "./policy-audit.js"
+import { DEFAULT_GROUND, readGround, type Ground } from "./adapters/ground.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
@@ -119,6 +120,15 @@ Common to one pair:
                           own bleed overrides it. Figma ignores it (the /images
                           render is whatever the node's own bounds are); it
                           applies to every browser capture, single pair or set
+  --ground <mode>         what a browser capture does with the paint BEHIND its
+                          node: transparent (default) neutralises the captured
+                          node's ancestry and shoots with an alpha channel, so
+                          the shot holds the node's own subtree and nothing else
+                          — which is what a Figma /images render already is, and
+                          cannot be made not to be. keep restores the composite
+                          (the pre-2026-09-10 shot, byte for byte). Element shots
+                          only; a viewport or full-page shot keeps its ground.
+                          A manifest entry's own ground overrides it
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
 design { file, frame } or { kind: "figma", fileKey, nodeId, variants? }; app
@@ -251,6 +261,8 @@ interface RunOptions {
   designScale?: number | "auto"
   /** Run-wide margin captured around each node; a pair's own `bleed` wins. */
   bleed?: number
+  /** Run-wide ground mode; a pair's own `ground` wins. Default `transparent`. */
+  ground?: Ground
   outDir: string
   failThreshold: Severity
   maxGamma?: number
@@ -342,6 +354,20 @@ function bleedFor(
   return px !== undefined && px > 0 ? { bleed: px } : {}
 }
 
+/**
+ * What this capture does with the paint behind its node: the side's own
+ * `ground`, else the entry's, else the run's `--ground`, else transparent.
+ * Same three tiers as `bleedFor` and for the same reason — the need is per
+ * COMPONENT, the exception is per side.
+ *
+ * Unlike `bleedFor` this always returns a value, because the default is not
+ * "nothing": a capture with no `ground` anywhere is still a transparent-ground
+ * capture. `keep` is how a caller asks for the composite back.
+ */
+function groundFor(spec: PairSpec, own: Ground | undefined, o: RunOptions): { ground: Ground } {
+  return { ground: own ?? spec.ground ?? o.ground ?? DEFAULT_GROUND }
+}
+
 async function captureDesign(
   browser: Browser,
   spec: PairSpec,
@@ -383,6 +409,7 @@ async function captureDesign(
       dir: resolve(o.designDir),
       ...(scope !== undefined ? { scope } : {}),
       ...bleedFor(spec, spec.design.bleed, o),
+      ...groundFor(spec, spec.design.ground, o),
     },
     { pngPath },
   )
@@ -403,14 +430,25 @@ async function captureImpl(
     const auth = liveAuth(spec.impl, o.live, url.value)
     return captureLiveUrl(
       browser,
-      { ...rest, url: url.value, ...(auth ? { auth } : {}), ...bleedFor(spec, rest.bleed, o) },
+      {
+        ...rest,
+        url: url.value,
+        ...(auth ? { auth } : {}),
+        ...bleedFor(spec, rest.bleed, o),
+        ...groundFor(spec, rest.ground, o),
+      },
       { pngPath },
     )
   }
   console.log(`capturing impl: ${spec.impl.storyId}`)
   return captureStorybook(
     browser,
-    { ...spec.impl, url: o.storybookUrl, ...bleedFor(spec, spec.impl.bleed, o) },
+    {
+      ...spec.impl,
+      url: o.storybookUrl,
+      ...bleedFor(spec, spec.impl.bleed, o),
+      ...groundFor(spec, spec.impl.ground, o),
+    },
     { pngPath },
   )
 }
@@ -963,6 +1001,7 @@ async function compare(argv: string[]): Promise<void> {
       viewport: { type: "string" },
       "design-scale": { type: "string" },
       bleed: { type: "string" },
+      ground: { type: "string" },
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
@@ -1021,6 +1060,10 @@ async function compare(argv: string[]): Promise<void> {
     if (designScale !== "auto" && !(designScale >= 0.1 && designScale <= 10))
       fail(`--design-scale must be auto or 0.1..10`)
   }
+
+  const ground = readGround(values.ground)
+  if (values.ground !== undefined && ground === undefined)
+    fail('--ground must be "transparent" (default) or "keep"')
 
   let bleed: number | undefined
   if (values.bleed !== undefined) {
@@ -1258,6 +1301,7 @@ async function compare(argv: string[]): Promise<void> {
         ...(minDesignQuality !== undefined ? { minDesignQuality } : {}),
         ...(designScale !== undefined ? { designScale } : {}),
         ...(bleed !== undefined ? { bleed } : {}),
+        ...(ground !== undefined ? { ground } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

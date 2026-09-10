@@ -378,6 +378,26 @@ describe("readGallery — how a set's cells lay out", () => {
     }
   });
 
+  it("takes an entry-level ground, validates it, and REFUSES a bad one", async () => {
+    // Same row as `bleed` above, for the same reason, with one difference that
+    // matters: absent must stay ABSENT rather than become "transparent". The
+    // default lives in the CLI's three-tier resolver, so a default written here
+    // would shadow a run-wide `--ground` on every entry that never mentioned it.
+    const { parseManifest } = await import("./manifest.js");
+    for (const good of ["transparent", "keep"]) {
+      const r = parseManifest([{ ...entry, ground: good }]);
+      expect(r.ok, `ground: ${good} should parse`).toBe(true);
+      if (r.ok) expect(r.value.pairs[0]?.ground).toBe(good);
+    }
+    const none = parseManifest([entry]);
+    expect(none.ok).toBe(true);
+    if (none.ok) expect(none.value.pairs[0]?.ground).toBeUndefined();
+    for (const bad of ["Transparent", "none", "opaque", true, 0, null]) {
+      const r = parseManifest([{ ...entry, ground: bad }]);
+      expect(r.ok, `ground: ${JSON.stringify(bad)} should be refused`).toBe(false);
+    }
+  });
+
   it("carries an entry's section and gallery nowhere near the ignore policy", async () => {
     // Regression shape from `contentsOf`: core, policy and manifest were all
     // correct and five pairs of six did not move, because the parser dropped

@@ -5,6 +5,40 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-10 — the two sides were photographing different things, and the halfway fix reads as a fix
+
+A consuming repo asked why Figma cells have a transparent background in the annotator
+while the impl cells carry a dark rectangle. The answer is the capture depth: Figma's
+`/v1/images` renders a node's subtree onto transparency and takes no background
+parameter, while a browser screenshot is a composite of the page. Shipped as `ground`
+(default `transparent`, `keep` to opt out).
+
+- **pixelmatch 7 blends transparent pixels against a CHECKERBOARD, not white.**
+  `checkerboard: true` is the default and we pass only `threshold`/`includeAA`/`diffMask`,
+  so a transparent pixel is compared against a position-varying 48/207 pattern. The
+  consequence is counter-intuitive and expensive: making a page ground WHITE, so it
+  matches the "blend onto white" everyone remembers from pixelmatch 5, moves a 60.76%
+  frame residual to **59.66%**. Only real alpha on both sides collapses it (1.12%). Any
+  reasoning about what a transparent design pixel "compares as" must start by re-reading
+  that default — I asserted white from memory and was wrong in a way that would have sent
+  the consuming repo to edit 22 story wrappers for a 1-point gain.
+- **A revert that fails is worse than a shot that fails, because the tree is extracted
+  NEXT.** Every adapter screenshots and then calls `extractElementTree` on the same page.
+  A neutralisation left in place does not spoil a screenshot — it writes
+  `backgroundColor: transparent` onto every ancestor in `elements.json`, with no failure
+  signature. So the revert is not `closeQuietly` material: it runs on every path and its
+  own failure outranks the shot's error. The first prototype got this wrong in the most
+  ordinary way — inline styles with a saved value per element, `<body>` registered twice
+  by two loops, restored in forward order, and `body` came back `rgba(0,0,0,0)` from a
+  "successful" revert. One stylesheet plus a marker attribute has no such state.
+- **`variantSpec` is where an entry-level setting goes missing on every cell at once.**
+  Its own comment says so, `bleed` shipped with exactly that bug, and `ground` would have
+  been the second. The test file already had the row shape to copy. Read that comment
+  before adding any entry-level field.
+- **Candidate home:** the pixelmatch default belongs wherever the pixel channel is
+  described (it changes what a reader predicts a diff will do); the revert-ordering rule
+  belongs next to the capture adapters' "settle first, extract second" note.
+
 ## 2026-09-07 — "it stopped working" needs a CONTROL, and two of three were never working
 
 Three reports after a day of sheet changes. The instinct was that all three were mine.

@@ -15,6 +15,7 @@ import { chromium, type Browser, type BrowserContext, type Locator, type Page } 
 
 import { bleedClip, NO_BLEED } from "../geometry.js"
 import type { Bleed } from "../types.js"
+import { DEFAULT_GROUND, GROUND_ATTR, GROUND_CSS, GROUND_STYLE_ID, type Ground } from "./ground.js"
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -172,39 +173,105 @@ export async function captureUntilStable(
 }
 
 /**
+ * Mark the captured node's ANCESTRY so `GROUND_CSS` stops it painting, run the
+ * shot, then take the marking back off. See `ground.ts` for what this buys and
+ * why the halfway version buys nothing.
+ *
+ * Exported for its test: the case worth protecting is a shot that THROWS with
+ * the page still marked.
+ */
+export async function withGround<T>(
+  page: Page,
+  locator: Locator,
+  ground: Ground,
+  shoot: (omitBackground: boolean) => Promise<T>,
+): Promise<T> {
+  if (ground === "keep") return shoot(false)
+
+  await locator.evaluate(
+    (el, { attr, id, css }) => {
+      for (let p = el.parentElement; p; p = p.parentElement) p.setAttribute(attr, "")
+      const style = document.createElement("style")
+      style.id = id
+      style.textContent = css
+      document.head.append(style)
+    },
+    { attr: GROUND_ATTR, id: GROUND_STYLE_ID, css: GROUND_CSS },
+  )
+
+  let outcome: { ok: true; value: T } | { ok: false; error: unknown }
+  try {
+    outcome = { ok: true, value: await shoot(true) }
+  } catch (error) {
+    outcome = { ok: false, error }
+  }
+
+  // Deliberately NOT `closeQuietly`. Every adapter extracts its element tree
+  // from this page NEXT, so a revert that did not happen is not a spent
+  // cleanup — it is `backgroundColor: transparent` on every ancestor in
+  // `elements.json`, with a screenshot that looks perfect. That failure has to
+  // be loud, and it outranks the shot's own error when both go wrong.
+  await page.evaluate(
+    ({ attr, id }) => {
+      document.getElementById(id)?.remove()
+      for (const el of document.querySelectorAll(`[${attr}]`)) el.removeAttribute(attr)
+    },
+    { attr: GROUND_ATTR, id: GROUND_STYLE_ID },
+  )
+
+  if (!outcome.ok) throw outcome.error
+  return outcome.value
+}
+
+/**
  * Shoot one element, optionally keeping `bleed` px of whatever is painted around
  * it (a focus ring, an offset outline, a drop shadow) — the effectful half of
  * `--bleed`; `bleedClip` is the pure half and owns the clamping.
  *
- * With no bleed this is `locator.screenshot()`, byte for byte what it always
- * was. With bleed it becomes a CLIPPED page shot, which does not scroll for you,
+ * With no bleed this is `locator.screenshot()`; with bleed it becomes a CLIPPED
+ * page shot, which does not scroll for you,
  * so the element is scrolled into view and re-measured first. A locator with no
  * box (display:none, detached) falls back to the plain element shot rather than
  * inventing a clip — the caller's own blank-render check is what should speak.
+ *
+ * `ground` (default `transparent`) decides whether the paint BEHIND the node is
+ * in the picture. **It is `keep`, not the no-bleed path, that reproduces the
+ * pre-2026-09-10 shot byte for byte** — and it does so because `omitBackground`
+ * is then omitted from the call rather than passed as `false`, so the request is
+ * the one this adapter always made. (That sentence used to be attached to the
+ * no-bleed path, where it stopped being true the moment a default ground
+ * existed.)
  */
 export async function shootElement(
   page: Page,
   locator: Locator,
   requested = 0,
+  ground: Ground = DEFAULT_GROUND,
 ): Promise<{ png: Buffer; bleed: Bleed; stable: boolean }> {
-  if (requested > 0) {
-    await locator.scrollIntoViewIfNeeded().catch(() => undefined)
-    const box = await locator.boundingBox()
-    const size = page.viewportSize()
-    if (box && size) {
-      const { clip, bleed } = bleedClip(
-        { x: box.x, y: box.y, w: box.width, h: box.height },
-        requested,
-        size,
-      )
-      const { png, stable } = await captureUntilStable(() =>
-        page.screenshot({ clip: { x: clip.x, y: clip.y, width: clip.w, height: clip.h } }),
-      )
-      return { png, bleed, stable }
+  return withGround(page, locator, ground, async (omitBackground) => {
+    const clear = omitBackground ? { omitBackground: true } : {}
+    if (requested > 0) {
+      await locator.scrollIntoViewIfNeeded().catch(() => undefined)
+      const box = await locator.boundingBox()
+      const size = page.viewportSize()
+      if (box && size) {
+        const { clip, bleed } = bleedClip(
+          { x: box.x, y: box.y, w: box.width, h: box.height },
+          requested,
+          size,
+        )
+        const { png, stable } = await captureUntilStable(() =>
+          page.screenshot({
+            clip: { x: clip.x, y: clip.y, width: clip.w, height: clip.h },
+            ...clear,
+          }),
+        )
+        return { png, bleed, stable }
+      }
     }
-  }
-  const { png, stable } = await captureUntilStable(() => locator.screenshot())
-  return { png, bleed: NO_BLEED, stable }
+    const { png, stable } = await captureUntilStable(() => locator.screenshot({ ...clear }))
+    return { png, bleed: NO_BLEED, stable }
+  })
 }
 
 /** Waits for document.fonts.ready with a hard cap so a hung font fetch can't stall a run. */
