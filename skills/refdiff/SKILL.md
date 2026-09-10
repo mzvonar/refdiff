@@ -16,8 +16,13 @@ times, and stop on diminishing returns.
 
 ## Repo bindings
 
-This skill installs in one of two modes, and the difference decides whether it can
+This skill installs in one of three modes, and the difference decides whether it can
 go stale (`preflight.sh` reports which one you are in as `skill_mode`):
+
+- **plugin** — installed as `refdiff@claude-skills-public` (the normal case for a consumer).
+  The skill dir is `${CLAUDE_PLUGIN_ROOT}/skills/refdiff`, a read-only cache that moves only
+  with `claude plugin update`; nothing to sync, nothing to vendor. The engine is a separate
+  checkout (`REFDIFF_DIR`, the `refdiff` wrapper's path, or `setup-dev.sh`'s default).
 
 - **dev** — the skill dir is a SYMLINK into a refdiff checkout
   (`~/.claude/skills/refdiff` → `~/.claude-shared/skills/refdiff` → `<checkout>/skills/refdiff`;
@@ -64,7 +69,7 @@ things it checks make the numbers lie rather than merely being old, and both hav
 sessions real time.
 
 ```bash
-bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/preflight.sh" --port <annotator port>
+bash "${CLAUDE_PLUGIN_ROOT:-$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/../..}/skills/refdiff/preflight.sh" --port <annotator port>
 ```
 
 `--port` (or `--app-url`) is optional and adds the served-instance check; everything else runs
@@ -134,22 +139,24 @@ not on PATH, run the bundled script — it is idempotent and touches no
 consuming repo:
 
 ```bash
-bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/setup-dev.sh" --watch
-# options: --checkout <dir> (default ~/Development/refdiff, cloned from
+bash "${CLAUDE_PLUGIN_ROOT:-$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/../..}/skills/refdiff/setup-dev.sh" --watch
+# options: --checkout <dir> (default $REFDIFF_DIR, else ~/.local/share/refdiff; cloned from
 #          github.com/mzvonar/refdiff if missing)  --no-browser  (skip Playwright Chromium)
+#          --no-links  (skip the dev-mode skill symlinks; automatic under a plugin install)
 ```
 
 It makes these true, then verifies (`refdiff --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages
 built; wrapper scripts installed into the first writable dir already on PATH
 (`$PNPM_HOME/bin`, `$PNPM_HOME`, `~/.local/bin`, `~/bin` — it names the dir it
-chose, and the PATH line to add if none was on PATH); the skill is user-level — `~/.claude/skills/refdiff` (and
-`~/.claude-personal` if present) → the checkout, through
-`~/.claude-shared/skills` only when that dir already exists (a plain machine
-with just `~/.claude` links directly; nothing is created that was not in use);
+chose, and the PATH line to add if none was on PATH); in dev mode only, the skill is user-level —
+`~/.claude/skills/refdiff` (and `~/.claude-personal` if present) → the checkout, through
+`~/.claude-shared/skills` only when that dir already exists (under a plugin install the
+plugin is the skill and no link is made);
 with `--watch`, `pnpm dev` runs in the background (`<checkout>/.dev.log`) so
-edits to `packages/*/src` reach the linked CLIs without a manual build. Edits
-to `SKILL.md` are live immediately (symlink). Needs Node ≥22, pnpm, git, and
+edits to `packages/*/src` reach the linked CLIs without a manual build. In dev mode edits
+to `SKILL.md` are live immediately (symlink); under a plugin install change the skill upstream
+(`/dev-tools:update-skill`). Needs Node ≥22, pnpm, git, and
 network for the clone / Chromium download (in a sandboxed shell, run it with
 the sandbox off). Then the repo you are in needs only its manifest and a
 `refdiff.bindings.md` — write the bindings with the user if absent.

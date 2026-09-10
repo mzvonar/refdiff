@@ -1,0 +1,10 @@
+{
+  "name": "refdiff",
+  "description": "Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop.",
+  "version": "1.0.0",
+  "author": { "name": "Martin Zvonár", "url": "https://github.com/mzvonar" },
+  "homepage": "https://github.com/mzvonar/refdiff",
+  "repository": "https://github.com/mzvonar/refdiff",
+  "license": "MIT",
+  "keywords": ["design", "figma", "storybook", "visual-diff", "playwright"]
+}

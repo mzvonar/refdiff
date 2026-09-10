@@ -86,8 +86,14 @@ SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 
 say "[ refdiff pre-flight ]"
 
+# PLUGIN: the skill dir is inside a Claude Code plugin cache (installed from the
+#      claude-skills-public marketplace). The cache is a clone of this repo, but it is
+#      NOT the engine — it is never built — so the checkout is resolved like vendored mode.
+#      The skill text cannot drift by copy; it moves with `claude plugin update`.
 if [ -f "$SKILL_DIR/.skill-version" ]; then
   MODE="vendored"
+elif case "$SKILL_DIR" in */.claude/plugins/*) true ;; *) false ;; esac; then
+  MODE="plugin"
 elif [ -f "$SKILL_DIR/../../packages/core/package.json" ]; then
   MODE="dev"
 else
@@ -108,6 +114,9 @@ elif command -v refdiff >/dev/null 2>&1; then
   # Parse the wrapper setup-dev.sh wrote: exec node "<checkout>/packages/core/dist/cli.js" "$@"
   W=$(sed -n 's#.*exec node "\(.*\)/packages/core/dist/cli.js".*#\1#p' "$(command -v refdiff)" | head -1)
   [ -n "$W" ] && [ -f "$W/packages/core/package.json" ] && CO="$W"
+fi
+if [ -z "$CO" ] && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/refdiff/packages/core/package.json" ]; then
+  CO="${XDG_DATA_HOME:-$HOME/.local/share}/refdiff"      # setup-dev.sh's default checkout
 fi
 
 if [ -z "$CO" ]; then
