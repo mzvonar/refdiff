@@ -27,6 +27,14 @@ import {
   type FigmaVariablesResponse,
 } from "./figma-api.js";
 import { figmaRenderBleed, figmaTreeToElements, indexVariables } from "./figma-tree.js";
+import {
+  defaultFigmaCacheRoot,
+  imageCachePath,
+  isCacheable,
+  readCache,
+  variablesCachePath,
+  writeCache,
+} from "./figma-cache.js";
 
 export const FIGMA_DEFAULTS = { scale: 2, minQuality: 0.3 } as const;
 
@@ -48,6 +56,12 @@ export interface FigmaCaptureOptions {
     variables?: FigmaVariablesResponse | null;
     imageUrl?: string;
   };
+  /**
+   * Version-keyed on-disk cache for the rendered PNG and the variables map.
+   * `false` disables it. Never caches the node subtree — that call carries the
+   * version every key is built from. See `figma-cache.ts`.
+   */
+  cache?: { root?: string } | false;
 }
 
 function apiError(ref: string, e: FigmaApiError): CaptureError {
@@ -65,8 +79,16 @@ function apiError(ref: string, e: FigmaApiError): CaptureError {
 
 export async function captureFigma(
   source: FigmaSource,
-  { pngPath, ref, client: clientOptions = {}, skipQualityGate = false, prefetched = {} }: FigmaCaptureOptions,
+  {
+    pngPath,
+    ref,
+    client: clientOptions = {},
+    skipQualityGate = false,
+    prefetched = {},
+    cache = {},
+  }: FigmaCaptureOptions,
 ): Promise<Result<Capture, CaptureError>> {
+  const cacheRoot = cache === false ? undefined : (cache.root ?? defaultFigmaCacheRoot());
   const scale = source.scale ?? FIGMA_DEFAULTS.scale;
   const minQuality = source.minQuality ?? FIGMA_DEFAULTS.minQuality;
   let identity = ref ?? `${source.fileKey}#${source.nodeId}${source.version ? `@${source.version}` : ""}`;
@@ -96,9 +118,29 @@ export async function captureFigma(
     // 2. Variables — optional (Enterprise); absence is not an error.
     let variableIndex = indexVariables(undefined);
     if (prefetched.variables === undefined) {
-      const variables = await client.localVariables(source.fileKey);
-      if (!variables.ok) return err(apiError(identity, variables.error));
-      variableIndex = indexVariables(variables.value);
+      // Cacheable only alongside a version: without one there is no way to know
+      // the map still describes this file, and a variables map that has drifted
+      // silently re-colours every token in the report.
+      const varPath =
+        cacheRoot && isCacheable(version) ? variablesCachePath(cacheRoot, source.fileKey, version) : undefined;
+      const hit = varPath ? await readCache(varPath) : undefined;
+      if (hit) {
+        try {
+          // `null` means "looked, the file has none" — a cached answer, not a miss.
+          const parsed = JSON.parse(hit.toString("utf8")) as FigmaVariablesResponse | null;
+          variableIndex = indexVariables(parsed ?? undefined);
+        } catch {
+          // A truncated cache file is a miss, never a crash.
+          const variables = await client.localVariables(source.fileKey);
+          if (!variables.ok) return err(apiError(identity, variables.error));
+          variableIndex = indexVariables(variables.value);
+        }
+      } else {
+        const variables = await client.localVariables(source.fileKey);
+        if (!variables.ok) return err(apiError(identity, variables.error));
+        variableIndex = indexVariables(variables.value);
+        if (varPath) await writeCache(varPath, JSON.stringify(variables.value ?? null));
+      }
     } else if (prefetched.variables !== null) {
       variableIndex = indexVariables(prefetched.variables);
     }
@@ -132,20 +174,38 @@ export async function captureFigma(
     // gets 4 — recorded truthfully, because `bleed` describes the PICTURE and a
     // wrong one makes every crop through `toDesignNative` read the wrong bytes.
     const bleed = source.bleed !== undefined && source.bleed > 0 ? figmaRenderBleed(document) : undefined;
-    let url = prefetched.imageUrl;
-    if (url === undefined) {
-      const images = await client.renderImages(source.fileKey, [source.nodeId], scale, {
-        ...(source.version ? { version: source.version } : {}),
-        ...(bleed ? { absoluteBounds: false } : {}),
-      });
-      if (!images.ok) return err(apiError(identity, images.error));
-      url = images.value[source.nodeId] ?? undefined;
+    // The cache key carries `absoluteBounds`, because the same node renders to
+    // two different pictures under the two settings and a set can ask for both.
+    const imgPath =
+      cacheRoot && isCacheable(version)
+        ? imageCachePath(cacheRoot, {
+            fileKey: source.fileKey,
+            version,
+            nodeId: source.nodeId,
+            scale,
+            absoluteBounds: !bleed,
+          })
+        : undefined;
+    let bytes = imgPath ? await readCache(imgPath) : undefined;
+    if (!bytes) {
+      let url = prefetched.imageUrl;
+      if (url === undefined) {
+        const images = await client.renderImages(source.fileKey, [source.nodeId], scale, {
+          ...(source.version ? { version: source.version } : {}),
+          ...(bleed ? { absoluteBounds: false } : {}),
+        });
+        if (!images.ok) return err(apiError(identity, images.error));
+        url = images.value[source.nodeId] ?? undefined;
+      }
+      if (!url) {
+        return err({ kind: "figma-render-failed", ref: identity, detail: `images endpoint returned no URL for ${source.nodeId}` });
+      }
+      const downloaded = await client.download(url);
+      if (!downloaded.ok) return err(apiError(identity, downloaded.error));
+      bytes = downloaded.value;
+      if (imgPath) await writeCache(imgPath, bytes);
     }
-    if (!url) {
-      return err({ kind: "figma-render-failed", ref: identity, detail: `images endpoint returned no URL for ${source.nodeId}` });
-    }
-    const png = await client.download(url);
-    if (!png.ok) return err(apiError(identity, png.error));
+    const png = { ok: true as const, value: bytes };
 
     const meta = await sharp(png.value).metadata();
     // The PNG covers the mapping box PLUS the bleed — the render bounds when

@@ -32,7 +32,13 @@ import {
 } from "./accepted.js"
 import { launchBrowser } from "./adapters/browser.js"
 import { captureDcHtml } from "./adapters/dc-html.js"
-import { FigmaClient, parseFigmaRef, readToken } from "./adapters/figma-api.js"
+import {
+  FigmaClient,
+  parseFigmaRef,
+  readToken,
+  type FigmaApiError,
+  type FigmaVariablesResponse,
+} from "./adapters/figma-api.js"
 import { figmaRenderBleed } from "./adapters/figma-tree.js"
 import { expandVariants, variantAxes, variantSpec } from "./adapters/figma-variants.js"
 import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
@@ -50,6 +56,15 @@ import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks 
 import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
 import { hiddenMovement } from "./policy-audit.js"
 import { DEFAULT_GROUND, readGround, type Ground } from "./adapters/ground.js"
+import {
+  defaultFigmaCacheRoot,
+  imageCachePath,
+  isCacheable,
+  pruneOtherVersions,
+  readCache,
+  variablesCachePath,
+  writeCache,
+} from "./adapters/figma-cache.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
@@ -129,6 +144,14 @@ Common to one pair:
                           (the pre-2026-09-10 shot, byte for byte). Element shots
                           only; a viewport or full-page shot keeps its ground.
                           A manifest entry's own ground overrides it
+  --no-figma-cache        do not read or write the on-disk Figma cache. It is on
+                          by default and keyed by the FILE VERSION, so an edited
+                          file misses every key and refetches — it cannot serve
+                          stale bytes, and stale versions are pruned on sight.
+                          Caches the rendered PNGs and the variables map, never
+                          the node subtree: that call carries the version every
+                          key is built from. Measured on a 208-pair manifest:
+                          83 API calls cold, 14 warm
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
 design { file, frame } or { kind: "figma", fileKey, nodeId, variants? }; app
@@ -263,6 +286,8 @@ interface RunOptions {
   bleed?: number
   /** Run-wide ground mode; a pair's own `ground` wins. Default `transparent`. */
   ground?: Ground
+  /** Disable the version-keyed Figma cache for this run. */
+  noFigmaCache?: boolean
   outDir: string
   failThreshold: Severity
   maxGamma?: number
@@ -391,7 +416,11 @@ async function captureDesign(
         // entry-level `bleed` reaches BOTH sides of the pair or neither.
         ...bleedFor(spec, spec.design.bleed, o),
       },
-      { pngPath, ...(o.prefetched ? { prefetched: o.prefetched } : {}) },
+      {
+        pngPath,
+        ...(o.prefetched ? { prefetched: o.prefetched } : {}),
+        ...(o.noFigmaCache ? { cache: false as const } : {}),
+      },
     )
   }
   if (o.designDir === undefined) {
@@ -766,6 +795,7 @@ async function expandFigmaSet(
   figmaScale: number | undefined,
   outRoot: string,
   runBleed: number | undefined,
+  noFigmaCache = false,
 ): Promise<Result<{ specs: PairSpec[]; prefetched: Map<string, Prefetched> }, CaptureError>> {
   if (spec.design.kind !== "figma" || spec.design.variants === undefined) {
     // Not a set: no index. An entry with one pair has nothing to be the index OF.
@@ -858,7 +888,35 @@ async function expandFigmaSet(
   )
   if (expanded.value.pairs.length === 0) return ok({ specs: [], prefetched: new Map() })
 
-  const variables = await client.localVariables(design.fileKey)
+  // Resolved before the variables call, because that call is cacheable too —
+  // one per set, 14 of a 14-entry run's 83.
+  const cacheVersion = !noFigmaCache && isCacheable(version) ? version : undefined
+  const cacheRoot = cacheVersion ? defaultFigmaCacheRoot() : undefined
+  if (cacheRoot && cacheVersion) {
+    const dropped = await pruneOtherVersions(cacheRoot, design.fileKey, cacheVersion)
+    if (dropped > 0) console.log(`  figma cache: dropped ${dropped} stale version(s) of this file`)
+  }
+
+  const varPath =
+    cacheRoot && cacheVersion ? variablesCachePath(cacheRoot, design.fileKey, cacheVersion) : undefined
+  const cachedVars = varPath ? await readCache(varPath) : undefined
+  let variables: Result<FigmaVariablesResponse | undefined, FigmaApiError> | undefined
+  if (cachedVars) {
+    try {
+      // `null` is a CACHED ANSWER, not a miss: "looked, this file has none".
+      // Most files are not Enterprise, so the endpoint 403s and refdiff reads
+      // tokens off the node tree instead — without caching that, the 14 calls
+      // this is here to save go out on every run of every non-Enterprise file.
+      const parsed = JSON.parse(cachedVars.toString("utf8")) as FigmaVariablesResponse | null
+      variables = ok(parsed ?? undefined)
+    } catch {
+      variables = undefined // a truncated entry is a miss, never a crash
+    }
+  }
+  if (variables === undefined) {
+    variables = await client.localVariables(design.fileKey)
+    if (variables.ok && varPath) await writeCache(varPath, JSON.stringify(variables.value ?? null))
+  }
   if (!variables.ok) return err(apiErr(variables.error))
   const scale = design.scale ?? figmaScale ?? FIGMA_DEFAULTS.scale
   const byId = new Map(set.children?.map((c) => [c.id, c]) ?? [])
@@ -883,9 +941,37 @@ async function expandFigmaSet(
           .map((p) => p.nodeId)
       : [],
   )
+  // Nodes whose PNG is already cached AT THIS VERSION need no `/v1/images`
+  // request — that endpoint is the one that rate-limits, and it is 55 of a full
+  // run's 83 calls. The key includes `absoluteBounds`, so a cell cached under
+  // one setting does not satisfy the other. A new file version changes every
+  // key, so an edited file refetches without anyone clearing anything.
+  const cachedIds = new Set<string>()
+  if (cacheRoot && cacheVersion) {
+    const { access } = await import("node:fs/promises")
+    for (const pair of expanded.value.pairs) {
+      const path = imageCachePath(cacheRoot, {
+        fileKey: design.fileKey,
+        version: cacheVersion,
+        nodeId: pair.nodeId,
+        scale,
+        absoluteBounds: !bled.has(pair.nodeId),
+      })
+      const there = await access(path).then(() => true, () => false)
+      if (there) cachedIds.add(pair.nodeId)
+    }
+    if (cachedIds.size > 0) {
+      console.log(
+        `  figma cache: ${cachedIds.size}/${expanded.value.pairs.length} renders served from disk (version ${cacheVersion})`,
+      )
+    }
+  }
+
   const images: Record<string, string | null> = {}
   for (const absoluteBounds of [true, false]) {
-    const ids = expanded.value.pairs.map((p) => p.nodeId).filter((id) => bled.has(id) !== absoluteBounds)
+    const ids = expanded.value.pairs
+      .map((p) => p.nodeId)
+      .filter((id) => bled.has(id) !== absoluteBounds && !cachedIds.has(id))
     if (ids.length === 0) continue
     const r = await client.renderImages(design.fileKey, ids, scale, {
       ...(version ? { version } : {}),
@@ -1002,6 +1088,7 @@ async function compare(argv: string[]): Promise<void> {
       "design-scale": { type: "string" },
       bleed: { type: "string" },
       ground: { type: "string" },
+      "no-figma-cache": { type: "boolean" },
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
@@ -1061,6 +1148,7 @@ async function compare(argv: string[]): Promise<void> {
       fail(`--design-scale must be auto or 0.1..10`)
   }
 
+  const noFigmaCache = values["no-figma-cache"] === true
   const ground = readGround(values.ground)
   if (values.ground !== undefined && ground === undefined)
     fail('--ground must be "transparent" (default) or "keep"')
@@ -1243,7 +1331,7 @@ async function compare(argv: string[]): Promise<void> {
   {
     const expanded: PairSpec[] = []
     for (const spec of specs) {
-      const r = await expandFigmaSet(spec, figmaScale, outRoot ?? "out", bleed)
+      const r = await expandFigmaSet(spec, figmaScale, outRoot ?? "out", bleed, noFigmaCache)
       if (!r.ok) {
         anyError = true
         console.error(`\n${spec.id}: component-set expansion failed (typed error):`)
@@ -1302,6 +1390,7 @@ async function compare(argv: string[]): Promise<void> {
         ...(designScale !== undefined ? { designScale } : {}),
         ...(bleed !== undefined ? { bleed } : {}),
         ...(ground !== undefined ? { ground } : {}),
+        ...(noFigmaCache ? { noFigmaCache } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

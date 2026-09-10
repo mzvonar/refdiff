@@ -1264,6 +1264,23 @@ failure shapes that recur everywhere and impersonate product bugs.
   a re-run; confirm a color via the `color` finding, not the screenshot.
 - Live app: seeds present? auth working? A soft 404 compares "fine".
 - Figma: `$FIGMA_TOKEN`; a 429 writes a cooldown record and the CLI refuses
-  to burn budget until it passes (`figma-rate-limited`).
+  to burn budget until it passes (`figma-rate-limited`). **A cooldown is not a
+  cache** — it makes the failure cheap AFTER you are over the limit; it never
+  keeps you under it. **A full manifest run costs one API call per set for the
+  node subtree, one for the variables map, and one per five nodes for the image
+  renders** — measured at 83 for a 14-entry / 208-pair manifest — and TWO full
+  runs back to back exhausted the `high` limit-type mid-A/B, after which nine
+  entries failed to expand and the second arm silently covered 130 pairs
+  instead of 205. If you are A/B-ing anything, expect to pay twice.
+- **The Figma cache is on by default and keyed by the file VERSION**
+  (`--no-figma-cache` to disable). It stores the rendered PNGs and the variables
+  map under `~/.cache/refdiff/figma/<fileKey>/<version>/`, and **never the node
+  subtree**: that call is what returns the version every key is built from, so
+  caching it would cache the freshness probe itself. One live call per set buys
+  the guarantee — **an edited Figma file gets a new version, so every key misses
+  and the run refetches**, with stale version directories pruned on sight. Same
+  manifest: 83 calls cold, 14 warm. It is the opposite of a file-existence cache
+  (`does refs/foo.png exist?`), which cannot tell "cached" from "stale" and will
+  happily serve a render of a design nobody has seen for days.
 - The unit of a design-system comparison is one variant COMPONENT ↔ one
   story cell (`--selector`), never the whole sheet.

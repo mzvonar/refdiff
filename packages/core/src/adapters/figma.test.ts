@@ -56,7 +56,7 @@ describe("captureFigma", () => {
   it("produces a design Capture with dpr = scale, quality echoed and version in the ref", async () => {
     const r = await captureFigma(
       { ...source, scale: 2, minQuality: 0.1 },
-      { pngPath: join(dir, "design.png"), client: client(happyFetch(await png(480, 160))) },
+      { pngPath: join(dir, "design.png"), cache: false as const, client: client(happyFetch(await png(480, 160))) },
     );
     expect(r.ok, JSON.stringify(r)).toBe(true);
     if (!r.ok) return;
@@ -106,7 +106,7 @@ describe("captureFigma", () => {
       // 240x80 box + 4px each side = 248x88, at scale 2 = 496x176.
       const r = await captureFigma(
         { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
-        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(496, 176), seen)) },
+        { pngPath: join(dir, "d.png"), cache: false as const, client: client(ringFetch(withRing(4), await png(496, 176), seen)) },
       );
       expect(r.ok, JSON.stringify(r)).toBe(true);
       if (!r.ok) return;
@@ -123,7 +123,7 @@ describe("captureFigma", () => {
       const seen: string[] = [];
       const r = await captureFigma(
         { ...source, scale: 2, minQuality: 0.1 },
-        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(480, 160), seen)) },
+        { pngPath: join(dir, "d.png"), cache: false as const, client: client(ringFetch(withRing(4), await png(480, 160), seen)) },
       );
       expect(r.ok, JSON.stringify(r)).toBe(true);
       if (!r.ok) return;
@@ -135,7 +135,7 @@ describe("captureFigma", () => {
       const seen: string[] = [];
       const r = await captureFigma(
         { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
-        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(0), await png(480, 160), seen)) },
+        { pngPath: join(dir, "d.png"), cache: false as const, client: client(ringFetch(withRing(0), await png(480, 160), seen)) },
       );
       expect(r.ok, JSON.stringify(r)).toBe(true);
       if (!r.ok) return;
@@ -149,7 +149,7 @@ describe("captureFigma", () => {
       // read 4px off in both axes if this passed.
       const r = await captureFigma(
         { ...source, scale: 2, minQuality: 0.1, bleed: 8 },
-        { pngPath: join(dir, "d.png"), client: client(ringFetch(withRing(4), await png(480, 160), [])) },
+        { pngPath: join(dir, "d.png"), cache: false as const, client: client(ringFetch(withRing(4), await png(480, 160), [])) },
       );
       expect(r).toMatchObject({
         ok: false,
@@ -159,40 +159,42 @@ describe("captureFigma", () => {
   });
 
   it("fails the GIGO gate below --min-design-quality with the score in the error", async () => {
-    const r = await captureFigma(source, { pngPath: join(dir, "d.png"), client: client(happyFetch(await png(480, 160))) });
+    const r = await captureFigma(source, { pngPath: join(dir, "d.png"), cache: false as const, client: client(happyFetch(await png(480, 160))) });
     expect(r).toMatchObject({ ok: false, error: { kind: "figma-low-quality", minQuality: 0.3, quality: { score: 0.21 } } });
   });
 
   it("an empty or wrong token is figma-auth", async () => {
-    const none = await captureFigma(source, { pngPath: join(dir, "d.png"), client: { env: {}, cwd: dir, cooldownFile: join(dir, "cd.json") } });
+    const none = await captureFigma(source, { pngPath: join(dir, "d.png"), cache: false as const, client: { env: {}, cwd: dir, cooldownFile: join(dir, "cd.json") } });
     expect(none).toMatchObject({ ok: false, error: { kind: "figma-auth" } });
     const bad = await captureFigma(source, {
       pngPath: join(dir, "d.png"),
+      cache: false as const,
       client: client(async () => new Response("Invalid token", { status: 403 }), "x"),
     });
     expect(bad).toMatchObject({ ok: false, error: { kind: "figma-auth" } });
   });
 
   it("an unknown node is figma-node-not-found", async () => {
-    const r = await captureFigma({ ...source, nodeId: "1:999" }, { pngPath: join(dir, "d.png"), client: client(happyFetch(await png(1, 1))) });
+    const r = await captureFigma({ ...source, nodeId: "1:999" }, { pngPath: join(dir, "d.png"), cache: false as const, client: client(happyFetch(await png(1, 1))) });
     expect(r).toMatchObject({ ok: false, error: { kind: "figma-node-not-found", nodeId: "1:999" } });
   });
 
   it("a PNG that does not match the node bounds is figma-render-failed", async () => {
-    const r = await captureFigma({ ...source, minQuality: 0 }, { pngPath: join(dir, "d.png"), client: client(happyFetch(await png(300, 300))) });
+    const r = await captureFigma({ ...source, minQuality: 0 }, { pngPath: join(dir, "d.png"), cache: false as const, client: client(happyFetch(await png(300, 300))) });
     expect(r).toMatchObject({ ok: false, error: { kind: "figma-render-failed" } });
   });
 
   it("a 429 is figma-rate-limited with the reset time", async () => {
     const r = await captureFigma(source, {
       pngPath: join(dir, "d.png"),
+      cache: false as const,
       client: client(async () => new Response("", { status: 429, headers: { "retry-after": "600" } })),
     });
     expect(r).toMatchObject({ ok: false, error: { kind: "figma-rate-limited" } });
   });
 
   it("works without the variables API (non-Enterprise plan)", async () => {
-    const r = await captureFigma({ ...source, minQuality: 0 }, { pngPath: join(dir, "d.png"), client: client(happyFetch(await png(480, 160), { variables: 403 })) });
+    const r = await captureFigma({ ...source, minQuality: 0 }, { pngPath: join(dir, "d.png"), cache: false as const, client: client(happyFetch(await png(480, 160), { variables: 403 })) });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.elements.find((e) => e.text === "Save changes")!.token?.["color"]).toBe("VariableID:1:101");
   });
