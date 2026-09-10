@@ -1,27 +1,32 @@
 #!/usr/bin/env bash
 # refdiff — dev-mode setup for a new machine / VM. Idempotent; re-run any time.
 #
-#   bash ~/.claude-shared/skills/refdiff/setup-dev.sh [--checkout <dir>] [--watch] [--no-browser]
+#   bash "${CLAUDE_PLUGIN_ROOT}/skills/refdiff/setup-dev.sh" [--checkout <dir>] [--watch] [--no-browser] [--no-links]
+#   (from a dev-mode symlink: bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/setup-dev.sh")
 #
 # What it makes true:
-#   1. a refdiff checkout exists (default ~/Development/refdiff; cloned if missing)
+#   1. a refdiff checkout exists (default $REFDIFF_DIR, else ~/.local/share/refdiff; cloned if missing)
 #   2. deps installed, Playwright Chromium present, both packages built
 #   3. `refdiff` and `refdiff-annotator` on PATH as wrapper scripts (they exec dist/cli.js)
-#   4. the skill is USER-level: ~/.claude/skills/refdiff (and ~/.claude-personal if present) →
-#      <checkout>/skills/refdiff, via ~/.claude-shared/skills when that dir already exists
+#   4. dev-mode only: user-level skill symlinks ~/.claude/skills/refdiff → <checkout>/skills/refdiff
+#      (via ~/.claude-shared/skills when that dir already exists). Skipped automatically when this
+#      script runs from a Claude Code plugin cache (the plugin IS the skill), or with --no-links
 #   5. --watch: `pnpm dev` (tsc --watch, both packages) running in the background so dist follows edits
 # Nothing is written into consuming repos; they only carry a manifest + refdiff.bindings.md.
 set -euo pipefail
 
 REPO_URL="https://github.com/mzvonar/refdiff.git"
-CHECKOUT="${REFDIFF_DIR:-$HOME/Development/refdiff}"
+CHECKOUT="${REFDIFF_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/refdiff}"
 WATCH=0
 BROWSER=1
+LINKS=1
+case "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" in */.claude/plugins/*) LINKS=0 ;; esac
 while [ $# -gt 0 ]; do
   case "$1" in
     --checkout) CHECKOUT="$2"; shift 2 ;;
     --watch) WATCH=1; shift ;;
     --no-browser) BROWSER=0; shift ;;
+    --no-links) LINKS=0; shift ;;
     -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
@@ -114,32 +119,36 @@ else
     echo "note: $BIN_DIR is not on PATH in your profile — add it:  export PATH=\"$BIN_DIR:\$PATH\""
 fi
 
-# 4. user-level skill symlinks. With the two-profile setup (~/.claude-shared exists) follow its
+# 4. dev-mode user-level skill symlinks (skipped under a plugin install). With the two-profile setup (~/.claude-shared exists) follow its
 #    convention: shared → checkout, profiles → shared. On a plain machine (only ~/.claude) link the
 #    profile straight to the checkout — never create ~/.claude-shared where it is not in use.
-SKILL_SRC="$CHECKOUT/skills/refdiff"
-LINK_TARGET="$SKILL_SRC"
-if [ -d "$HOME/.claude-shared" ]; then
-  mkdir -p "$HOME/.claude-shared/skills"
-  ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/refdiff"
-  LINK_TARGET="$HOME/.claude-shared/skills/refdiff"
-fi
-linked=0
-for profile in "$HOME/.claude" "$HOME/.claude-personal"; do
-  [ -d "$profile" ] || continue
-  mkdir -p "$profile/skills"
-  if [ -e "$profile/skills/refdiff" ] && [ ! -L "$profile/skills/refdiff" ]; then
-    echo "note: $profile/skills/refdiff is a real directory, not replacing it (remove it to link the checkout)"
-    continue
+if [ "$LINKS" = 0 ]; then
+  say "skill links: skipped (plugin install, or --no-links)"
+else
+  SKILL_SRC="$CHECKOUT/skills/refdiff"
+  LINK_TARGET="$SKILL_SRC"
+  if [ -d "$HOME/.claude-shared" ]; then
+    mkdir -p "$HOME/.claude-shared/skills"
+    ln -sfn "$SKILL_SRC" "$HOME/.claude-shared/skills/refdiff"
+    LINK_TARGET="$HOME/.claude-shared/skills/refdiff"
   fi
-  ln -sfn "$LINK_TARGET" "$profile/skills/refdiff"
-  say "skill: $profile/skills/refdiff → $LINK_TARGET"
-  linked=1
-done
-if [ "$linked" = 0 ]; then
-  mkdir -p "$HOME/.claude/skills"
-  ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/refdiff"
-  say "skill: ~/.claude/skills/refdiff → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
+  linked=0
+  for profile in "$HOME/.claude" "$HOME/.claude-personal"; do
+    [ -d "$profile" ] || continue
+    mkdir -p "$profile/skills"
+    if [ -e "$profile/skills/refdiff" ] && [ ! -L "$profile/skills/refdiff" ]; then
+      echo "note: $profile/skills/refdiff is a real directory, not replacing it (remove it to link the checkout)"
+      continue
+    fi
+    ln -sfn "$LINK_TARGET" "$profile/skills/refdiff"
+    say "skill: $profile/skills/refdiff → $LINK_TARGET"
+    linked=1
+  done
+  if [ "$linked" = 0 ]; then
+    mkdir -p "$HOME/.claude/skills"
+    ln -sfn "$LINK_TARGET" "$HOME/.claude/skills/refdiff"
+    say "skill: ~/.claude/skills/refdiff → $LINK_TARGET (no profile dir existed; created ~/.claude/skills)"
+  fi
 fi
 
 # 5. watcher
