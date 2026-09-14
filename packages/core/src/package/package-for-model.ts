@@ -79,9 +79,17 @@ export async function packageForModel(
     ledger,
   }: PackageOptions,
 ): Promise<ComparisonReport> {
+  // Run dirs are reused across iterations and finding ids are POSITIONAL (f1, f2, ...),
+  // so a run with fewer findings than the last leaves crops behind under ids a later run
+  // reuses for something else entirely. Measured on one corpus before this line existed:
+  // 380 orphaned crop pairs and 134 older than the run they sat in, some of them predating
+  // a change in capture semantics and still carrying the retired ground. Nothing reads a
+  // crop by path today, which is the only reason that was harmless rather than wrong — so
+  // REBUILD the directory rather than writing this run's crops into the last run's.
+  await rm(join(outDir, "crops"), { force: true, recursive: true })
   await mkdir(join(outDir, "crops"), { recursive: true })
-  // Run dirs are reused across iterations: drop the overlay a pre-annotator
-  // version of this function wrote there, so nobody reads last week's marks.
+  // Same reasoning: drop the overlay a pre-annotator version of this function wrote
+  // there, so nobody reads last week's marks.
   await rm(join(outDir, "overlay.png"), { force: true })
 
   const rel = (p: string): string => relative(outDir, p)

@@ -69,7 +69,7 @@ import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
-import { alignmentNote, alignStructural } from "./structural/align.js"
+import { alignmentNote, alignStructural, rootSizeNote } from "./structural/align.js"
 import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
 import { matchElements } from "./structural/match.js"
 
@@ -548,6 +548,9 @@ async function runPair(
   const sameSize = d.scope?.fluid === true || Math.abs(d.width - i.width) < 1
   const identity = alignmentNote(aligned.alignment, sameSize)
   if (identity) console.log(`ALIGNMENT: ${identity.message}`)
+  // The captured root's own box, which the element channel structurally cannot reach.
+  const rootSize = rootSizeNote(d, i, aligned.alignment.basis)
+  if (rootSize) console.log(`ROOT SIZE: ${rootSize.message}`)
 
   const match = matchElements(
     aligned.design.elements,
@@ -632,7 +635,7 @@ async function runPair(
   // The impl elements come along because a `contentsOf` rule's container is an ELEMENT, not a
   // finding: it must fire whether or not that element is itself reported.
   const { kept, suppressed } = applyPolicy(
-    finalize([...structural, ...pixel, ...(identity ? [identity] : [])]),
+    finalize([...structural, ...pixel, ...(identity ? [identity] : []), ...(rootSize ? [rootSize] : [])]),
     policy,
     { implElements: aligned.impl.elements, frame: { w: i.width, h: i.height } },
   )
@@ -1212,6 +1215,11 @@ async function compare(argv: string[]): Promise<void> {
   }
 
   let specs: PairSpec[]
+  // Cell-level `--pair` selection (see the manifest branch below). Empty in every other
+  // mode, which is what keeps the post-expansion filter a no-op for them.
+  let cellSelectors: string[] = []
+  let wholeEntries = new Set<string>()
+  const entryOf = (id: string): string => id.split("--")[0] ?? id
   if (values.manifest !== undefined) {
     // These describe ONE pair's capture; in manifest mode each pair carries its own
     // in the entry, so the flag has nowhere to apply. Accepting and ignoring them
@@ -1246,7 +1254,15 @@ async function compare(argv: string[]): Promise<void> {
       ?.flatMap((v) => v.split(","))
       .map((s) => s.trim())
       .filter(Boolean)
-    specs = only ? all.filter((p) => only.includes(p.id)) : all
+    // A selector names an ENTRY (`button-ghost`) or ONE EXPANDED CELL
+    // (`button-ghost--state-hover_variant-primary_size-sm`). Only entries exist at this
+    // point — variants expand further down — so an entry is selected here and the
+    // cell-level selectors are kept for the post-expansion filter. Without it the only
+    // way to re-measure one cell of a 34-cell set was to re-run all 34, Figma calls
+    // included, which is the cost the fix loop pays most often.
+    specs = only ? all.filter((p) => only.some((sel) => entryOf(sel) === p.id)) : all
+    cellSelectors = only?.filter((sel) => sel.includes("--")) ?? []
+    wholeEntries = new Set(only?.filter((sel) => !sel.includes("--")) ?? [])
     if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`)
   } else {
     const viewport = parseViewport(values.viewport)
@@ -1342,6 +1358,16 @@ async function compare(argv: string[]): Promise<void> {
       for (const [k, v] of r.value.prefetched) prefetched.set(k, v)
     }
     specs = expanded
+    if (cellSelectors.length > 0) {
+      const wanted = new Set(cellSelectors)
+      // An entry named without `--` stays WHOLE, so `--pair alert,button-ghost--<cell>`
+      // means all of alert and one cell of button-ghost. A non-set entry never expands,
+      // so its id has no `--` and it matches through wholeEntries like any other.
+      specs = expanded.filter((p) => wanted.has(p.id) || wholeEntries.has(entryOf(p.id)))
+      if (specs.length === 0) {
+        fail(`no pair matched ${[...wanted].join(", ")} after variant expansion — check the cell id against <out-root>/<entry>.set.json`)
+      }
+    }
   }
 
   // Storybook: reuse a running one; otherwise start our own (no browser tab

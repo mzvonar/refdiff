@@ -291,6 +291,46 @@ const signed = (n: number): string => (n < 0 ? "−" : "") + Math.abs(n).toFixed
  * difference, not a scale — no note. Undefined when the fit is the identity
  * within epsilon, so the note disappears when the sizes are right.
  */
+/**
+ * Pure: the finding for the one box NOTHING else can report — the CAPTURED ROOT's own.
+ *
+ * Every other size finding comes from a matched element PAIR, and the captured root is
+ * never a leaf on either side, so its width and height are compared by no channel at all.
+ * On a component-set pair that box IS the component under test, which makes it the single
+ * most likely thing to be wrong and the single least likely to be noticed: measured on this
+ * corpus, a small button rendered 32px tall against a design's 24px on TEN of ten cells and
+ * produced zero findings, for four days, while the run reported PASS on some of them.
+ *
+ * Gated on `basis === "element-pair"` because that is exactly the case where the two roots
+ * are meant to BE the same thing. A page pair legitimately compares a 1440 design frame
+ * against a 1280 viewport; that is a layout difference the alignment already describes, and
+ * reporting a size finding for it would be noise on every such pair.
+ *
+ * Same tolerance and severity ladder as a per-element size finding, so a reader meets one
+ * rule rather than two: quiet within `sizeTolerance`, major past three times it. The numbers
+ * are the node's own, bleed excluded, so a pair whose sides bleed differently is unaffected.
+ */
+export function rootSizeNote(
+  design: { width: number; height: number },
+  impl: { width: number; height: number },
+  basis: Alignment["basis"],
+  sizeTolerance = 5,
+): RawFinding | undefined {
+  if (basis !== "element-pair") return undefined
+  const dw = impl.width - design.width
+  const dh = impl.height - design.height
+  if (Math.abs(dw) <= sizeTolerance && Math.abs(dh) <= sizeTolerance) return undefined
+  const worst = Math.max(Math.abs(dw), Math.abs(dh))
+  return {
+    type: "size",
+    role: "box",
+    severity: worst > 3 * sizeTolerance ? "major" : "minor",
+    expected: { w: round(design.width, 2), h: round(design.height, 2) },
+    actual: { w: round(impl.width, 2), h: round(impl.height, 2) },
+    message: `the captured element itself renders ${Math.round(impl.width)}×${Math.round(impl.height)}, design says ${Math.round(design.width)}×${Math.round(design.height)} — the captured root is a leaf on neither side, so no per-element finding covers it`,
+  }
+}
+
 export function alignmentNote(alignment: Alignment, sameSize: boolean): RawFinding | undefined {
   if (!sameSize) return undefined
   const { scale, offsetX, offsetY } = alignment

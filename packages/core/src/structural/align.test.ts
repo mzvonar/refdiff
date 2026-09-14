@@ -2,7 +2,7 @@ import type { ElementNode } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { alignmentNote, alignStructural, estimateTransform } from "./align.js"
+import { alignmentNote, alignStructural, estimateTransform, rootSizeNote } from "./align.js"
 
 const el = (
   id: string,
@@ -221,5 +221,39 @@ describe("alignmentNote — a non-identity fit on a same-size page is a finding"
 
   it("stays silent for a design frame of another size — that is layout, not scale", () => {
     expect(alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, false)).toBeUndefined()
+  })
+})
+
+describe("rootSizeNote", () => {
+  // The real corpus this was written from: a DS small button, ten cells, every one of
+  // them design 69x24 against impl 67x32 and NOT ONE finding about it, because the
+  // captured root is a leaf on neither side. The first row is the pre-fix shape and the
+  // second is the shipped one — the tolerance is what keeps the 2px text-metric width
+  // difference quiet while the 8px height is loud.
+  it("reports the captured root's own box when it differs beyond the tolerance", () => {
+    const note = rootSizeNote({ width: 69, height: 24 }, { width: 67, height: 32 }, "element-pair")
+    expect(note).toMatchObject({ type: "size", role: "box", severity: "minor" })
+    expect(note?.expected).toEqual({ w: 69, h: 24 })
+    expect(note?.actual).toEqual({ w: 67, h: 32 })
+    expect(note?.message).toContain("67×32")
+    expect(note?.message).toContain("69×24")
+  })
+
+  it("stays silent once the box matches, with a sub-tolerance width difference left", () => {
+    expect(rootSizeNote({ width: 69, height: 24 }, { width: 67, height: 24 }, "element-pair")).toBeUndefined()
+  })
+
+  it("goes major past three times the tolerance", () => {
+    const note = rootSizeNote({ width: 100, height: 40 }, { width: 100, height: 60 }, "element-pair")
+    expect(note?.severity).toBe("major")
+  })
+
+  // The gate, and the reason it is not just "sizes differ": a page pair legitimately
+  // compares a 1440 design frame against a 1280 viewport. That is layout, the alignment
+  // already describes it, and a size finding there would fire on every such pair forever.
+  it("stays silent on a pair that is not one element against one element", () => {
+    for (const basis of ["anchors", "offset", "none", undefined] as const) {
+      expect(rootSizeNote({ width: 1440, height: 900 }, { width: 1280, height: 800 }, basis)).toBeUndefined()
+    }
   })
 })
