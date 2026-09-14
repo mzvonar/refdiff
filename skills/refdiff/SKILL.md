@@ -106,6 +106,21 @@ offering as a choice.
 When both fire, the exit code is `1` and **both are printed**: a pull usually fixes the build
 too, so the user meets one decision instead of solving a halt and being asked a question after it.
 
+**`+0/−0` has a THIRD cause the pre-flight cannot see, and it is the benign one: the property
+you changed is covered by no finding.** A stale build and a stale server make the harness
+measure the wrong thing; this one means the harness measured the right thing and has nothing
+to say about it. Two shapes produce it. The first is a box no channel compares — that was the
+captured ROOT's own box until `rootSizeNote` landed, and it is still true of anything the
+element model cannot reach (a `box-shadow` focus ring reports as `missing-element`, never as
+a geometry difference). The second is a FORCED-state gallery whose state classes are a hand
+copy of the component's: fix the component, forget the copy, and the picture never changes,
+so a correct fix reports `+0/−0` and reads as a failed one. **Do not treat `+0/−0` as proof
+of anything on its own — read the artifact.** `report.impl` / `report.design` carry the node's
+own width and height, and `elements.json` carries every box; on a fix whose delta is zero,
+quote those instead. (Anchor: a small button 8px too tall on ten of ten cells, reported by
+nothing for four days, then fixed with a delta of exactly `+0/−0` — the proof was
+`impl.height` moving 32 → 24 and the icon's `y` moving 8 → 4 to meet the design's.)
+
 `REFDIFF_SKIP_FRESHNESS=1` skips every network fetch (the two upstream checks report
 `skipped-opt-out`, so nothing asks; the build and server checks are local and still run). `REFDIFF_DIR` names the
 checkout explicitly. `bash preflight-selftest.sh` falsifies every row against synthetic offender
