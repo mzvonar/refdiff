@@ -470,6 +470,7 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .causerow:hover { background:var(--bg2); }
 /* Pink, per the comp: --acc means SELECTION everywhere else in this app, and a
    lit cause is not a selection — you can have one of each at once. */
+.causerow.sel { background:var(--bg2); }
 .causerow.lit { background:rgba(255,92,208,.12); box-shadow:inset 2px 0 0 var(--diff); }
 .causerow.lit .ccount { color:#fff; background:var(--diff); border-radius:999px; padding:1px 7px; }
 .chead { display:flex; align-items:center; gap:8px; }
@@ -596,7 +597,21 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 /* touch-action on the WHOLE canvas area, not just the panes: the floating pills sit over it as
    siblings, and a pinch finger landing on one must not hand the gesture to the browser. */
 .panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); touch-action:none; }
-.pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }
+/* The canvas is CHECKERED, the way an image editor's is, and for the same reason: a capture
+   is transparent wherever its node did not paint — the bleed margin, and since the transparent
+   ground everything the node's ancestry used to contribute — and without a checker a reader
+   cannot tell "transparent here" from "the canvas colour here". They are the same pixels, which
+   is exactly how a shadow artefact came to read as a grey rectangle baked into a capture.
+
+   On the CANVAS rather than on the images, which is the difference between showing it and
+   showing it usefully. Per-image it appears only where a capture HAS a transparent margin, so a
+   Figma design rendered at its own bounds (no bleed, opaque edge to edge) showed none at all and
+   the two panes disagreed about a property neither capture had. Here every pane is checkered,
+   each picture floats on it, and see-through means see-through on both sides. It is also fixed
+   to the viewport rather than scaled with the picture, so it stays a calm field at 300 percent
+   instead of turning into large squares. */
+.pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas);
+  background-image:repeating-conic-gradient(rgba(127,127,127,.085) 0% 25%, transparent 0% 50%); background-size:16px 16px; }
 .pane + .pane { border-left:1px solid var(--line); }
 .pane.dragging { cursor:grabbing; }
 .pane.focusing, .pane.annotating { cursor:crosshair; }
@@ -725,6 +740,7 @@ body.single .align-wrap { bottom:58px; }
    does not reach it, and on a pair it is empty. */
 body.is-sheet .shot { display:none; }
 .cellshot { position:absolute; image-rendering:auto; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+
 /* The cell's slot, drawn under its screenshot so a cell with nothing to show is
    still a place on the sheet rather than a hole. Only for cells the DESIGN
    defines: k-absent has no rule any more because no absent slot is created —
@@ -1743,7 +1759,20 @@ function setView(v) { state.view = v; state.viewD = v; }
 // world), so they are multiplied by dpr to land on screen at the comp's size. Only the two page
 // images take it: the ghost is the design SUPERIMPOSED and the mask is a diff overlay, and a shadow
 // on either would darken the pane it is drawn over.
-function pageShadow(dpr) { return '0 ' + 4 * dpr + 'px ' + 30 * dpr + 'px rgba(0,0,0,0.35)'; }
+// A capture's margin is TRANSPARENT — the bleed, and since the transparent ground every
+// element shot's surround — and a box-shadow is painted from the BORDER BOX, clipped to
+// the outside of it. So it darkened the pane all the way around the picture and painted
+// nothing INSIDE, leaving the undarkened pane showing through the margin as a crisp-edged
+// rectangle around the component: 35,36,39 inside the box against 32,33,36 just outside it.
+// Reported as "the impl has a gray rectangle around the button"; it was never the capture.
+// It showed on the impl and not the design because a Figma node that paints nothing outside
+// its box gets no bleed, so there the box IS the component and the edge coincides with it.
+// A sheet never showed it either: its cells are cellslot divs and .shot is display:none.
+// drop-shadow follows the ALPHA, so a transparent margin casts nothing and the silhouette
+// gets the shadow. Blur is halved because drop-shadow's radius is a true Gaussian where
+// box-shadow's is the wider spread form.
+// (No backticks in this comment: the whole block is a template literal.)
+function pageShadow(dpr) { return 'drop-shadow(0 ' + 4 * dpr + 'px ' + 15 * dpr + 'px rgba(0,0,0,0.35))'; }
 
 function applyView() {
   const v = state.view, vd = viewOf('design');
@@ -1753,9 +1782,9 @@ function applyView() {
   // composes to exactly the transform it had before the flag existed.
   const bD = bleedOf(report.design), bI = bleedOf(report.impl);
   imgs.design.style.transform = designImageTransform(vd, projection(), state.dprD, bD);
-  imgs.design.style.boxShadow = pageShadow(state.dprD);
+  imgs.design.style.filter = pageShadow(state.dprD);
   imgs.impl.style.transform = implImageTransform(v, state.dprI, bI);
-  imgs.impl.style.boxShadow = pageShadow(state.dprI);
+  imgs.impl.style.filter = pageShadow(state.dprI);
   // The ghost is the design drawn with the FULL alignment — per-axis stretch
   // included. The design PANE refuses that distortion on purpose (you cannot
   // judge type against a stretched reference); superimposing needs the opposite
@@ -1969,7 +1998,13 @@ function triageActionsHtml(f) {
 // is what tells you whether to fix a token or a variant.
 function causeRowHtml(c, oneOff) {
   const lit = state.cause === c.key;
-  let h = '<div class="causerow' + (lit ? ' lit' : '') + '" data-cause="' + esc(c.key) + '" title="' +
+  // A sheet's rail has no per-finding row, so selecting a finding on the canvas has
+  // nothing to highlight unless the CAUSE carrying it stands in for it. A separate class
+  // from the lit one: lighting is a canvas-wide filter the reader chose, selection is one
+  // finding, and holding one of each is the documented behaviour of the two.
+  // (No backticks in this comment: the whole block is a template literal.)
+  const sel = !!state.selected && (c.findingIds || []).indexOf(state.selected) >= 0;
+  let h = '<div class="causerow' + (lit ? ' lit' : '') + (sel ? ' sel' : '') + '" data-cause="' + esc(c.key) + '" title="' +
     esc(c.type + (c.role ? ' \u00b7 ' + c.role : '') + ' \u00b7 ' + c.severity + ' \u2014 click to light up every cell with this cause') + '">';
   h += '<div class="chead"><span class="cdot ' + c.severity + '"></span><span class="ctitle">' + esc(c.sample || c.type) + '</span>' +
     '<span class="ccount' + (oneOff ? ' one' : '') + '">' + esc(cellCountLabel(c.cells.length)) + '</span></div>';
@@ -2253,7 +2288,10 @@ function select(id, focus) {
   // what tells you why the canvas looks empty.
   const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);
   if (focus && box) { setView(focusView(box, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }
-  const row = $('side').querySelector('.frow.sel'); if (row) row.scrollIntoView({ block: 'nearest' });
+  // A sheet lists CAUSES, a pair lists findings — ask for the row that exists here.
+  // Asking only for .frow made canvas selection a no-op on every sheet.
+  const row = $('side').querySelector(sheet ? '.causerow.sel' : '.frow.sel');
+  if (row) row.scrollIntoView({ block: 'nearest' });
 }
 
 // ---- marks --------------------------------------------------------------

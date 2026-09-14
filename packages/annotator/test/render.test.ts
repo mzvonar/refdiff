@@ -172,15 +172,39 @@ describe("renderReport", () => {
     expect(html).toContain(".delta-strip .review + .dismiss { margin-left:0; }")
   })
 
-  it("floats the page: the two page images take the comps' artboard shadow, the ghost and the mask do not", () => {
+  it("floats the page with a DROP-shadow, so a transparent capture casts none — ghost and mask take neither", () => {
     // parts/Artboard *.dc.html carry box-shadow 0 4px 30px rgba(0,0,0,0.35) on their root, and a
     // PNG of that page cannot contain the shadow its own element casts. WORLD units × dpr because
     // the img is scaled by z/dpr, not z.
-    expect(html).toContain("function pageShadow(dpr) { return '0 ' + 4 * dpr + 'px ' + 30 * dpr + 'px rgba(0,0,0,0.35)'; }")
-    expect(html).toContain("imgs.design.style.boxShadow = pageShadow(state.dprD);")
-    expect(html).toContain("imgs.impl.style.boxShadow = pageShadow(state.dprI);")
-    expect(html).not.toContain("imgs.ghost.style.boxShadow")
-    expect(html).not.toContain("imgs.mask.style.boxShadow")
+    //
+    // It is `filter: drop-shadow`, NOT `box-shadow`, and the difference is the whole point: a
+    // box-shadow is cast from the BORDER BOX and clipped to the outside of it, so on a capture
+    // with a transparent margin it darkened the pane all round the picture and painted nothing
+    // inside — leaving the undarkened pane showing through the margin as a crisp-edged rectangle
+    // around the component, which reads as a background baked into the capture and is not one.
+    // drop-shadow follows the ALPHA, so the silhouette casts and the empty margin does not.
+    // Blur is halved because drop-shadow's radius is a true Gaussian, box-shadow's is wider.
+    expect(html).toContain("function pageShadow(dpr) { return 'drop-shadow(0 ' + 4 * dpr + 'px ' + 15 * dpr + 'px rgba(0,0,0,0.35))'; }")
+    expect(html).toContain("imgs.design.style.filter = pageShadow(state.dprD);")
+    expect(html).toContain("imgs.impl.style.filter = pageShadow(state.dprI);")
+    expect(html).not.toContain("imgs.ghost.style.filter")
+    expect(html).not.toContain("imgs.mask.style.filter")
+    // The regression guard proper: a box-shadow on a capture is the defect above.
+    expect(html).not.toContain("style.boxShadow = pageShadow")
+  })
+
+  it("checkers the CANVAS, so transparency reads the same on a design and an implementation", () => {
+    // A capture is transparent wherever its node did not paint, and without a checker that is
+    // indistinguishable from the canvas colour — the confusion that made a shadow artefact read
+    // as a background baked into a capture.
+    //
+    // On the pane, NOT on the images. Per-image it only appeared where a capture HAD a
+    // transparent margin, so a Figma design rendered at its own bounds showed none and the two
+    // panes disagreed about a property neither capture had. Asserted on the pane rule itself so
+    // moving it back to the images fails here.
+    expect(html).toMatch(/\.pane \{[^}]*background-image:repeating-conic-gradient/u)
+    expect(html).not.toMatch(/\.shot[^{]*\{[^}]*repeating-conic-gradient/u)
+    expect(html).not.toMatch(/\.cellshot[^{]*\{[^}]*repeating-conic-gradient/u)
   })
 
   it("gives the strip's Review button the comps' own line-height, because on the phone it IS the second row", () => {
@@ -739,7 +763,11 @@ describe("renderReport", () => {
     for (const gone of ["#0b1020", "#111a2e", "#60a5fa", "var(--panel)", "var(--ink)", "var(--muted)", "var(--accent)"]) {
       expect(html).not.toContain(gone)
     }
-    expect(html).toContain(".pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas); }")
+    // The canvas token stays var(--canvas); the checker rides ON it as a background-image,
+    // so this row pins the token and the transparency row below pins the checker.
+    expect(html).toContain(
+      ".pane { flex:1; position:relative; overflow:hidden; min-width:0; touch-action:none; cursor:grab; background:var(--canvas);",
+    )
   })
 
   it("orders the tool strip as both comps do: pan, comment, focus, highlight, dim, strobe (Focus moved after Comment on 2026-08-29)", () => {
