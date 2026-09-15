@@ -816,6 +816,39 @@ describe("groupRow — the comp's six columns", () => {
     expect(html).toContain('class="caret-gap"')
   })
 
+  // ...but it still has to be REACHABLE. A lone item is never foldable, so
+  // `libraryTable` renders no cellRow for it, and it is not a set, so it gets no
+  // sheet — which left it with no link at all. Measured before the fix on a
+  // four-pair root: four rows, zero hrefs, no way into a single comparison.
+  it("makes a lone item's WHOLE row the link to its comparison", () => {
+    const g = groupEntries([cell("refdiff-library-desktop")])[0] as LibraryGroup
+    const html = groupRow(g, false, "desktop", NOW, "refdiff-library-desktop", "#/pair/refdiff-library-desktop")
+    expect(html).toMatch(/^<a class="lrow flat lrow-link"/)
+    expect(html).toContain('href="#/pair/refdiff-library-desktop"')
+    expect(html).toContain("Compare")
+    expect(html.trimEnd().endsWith("</a>")).toBe(true)
+  })
+
+  // The row IS the anchor, so its Compare affordance must not be one: an <a>
+  // inside an <a> is invalid HTML that browsers silently un-nest, which would
+  // drop the row's own link on the floor.
+  it("keeps the lone row's Compare affordance out of a nested anchor", () => {
+    const g = groupEntries([cell("solo")])[0] as LibraryGroup
+    const html = groupRow(g, false, "desktop", NOW, "solo", "#/pair/solo")
+    expect(html.match(/<a /g)).toHaveLength(1)
+    expect(html).toContain('<span class="lsheet">')
+    expect(html).not.toContain("role=\"button\"")
+  })
+
+  // A foldable group's row still TOGGLES, so it stays a div — the Open-sheet
+  // anchor nests inside it legally, exactly as the comp draws it.
+  it("leaves a set's row a toggling div, never a link", () => {
+    const html = groupRow(grp("ds-button-fill"), false, "desktop", NOW, "ds-button-fill", "#/pair/x")
+    expect(html).not.toContain("lrow-link")
+    expect(html).toContain('role="button"')
+    expect(html).toContain('href="#/set/ds-button-fill"')
+  })
+
   // Chunk 1 rotated ONE glyph because chevron_right was not in the icon subset;
   // re-running icon-subset.mjs for these comps put it there (101 -> 112).
   it("swaps the caret GLYPH rather than rotating one", () => {
@@ -888,6 +921,27 @@ describe("libraryTable", () => {
       "Measured",
       "",
     ])
+  })
+
+  // THE REGRESSION THIS GUARDS: a root of lone items had no way into any pair.
+  // `Compare` lives on a cellRow, cellRows render only inside an OPEN group,
+  // and a lone item can never be open — so every row was a dead end. Measured
+  // before the fix on a four-pair root: four rows, zero hrefs.
+  it("gives every lone item a way into its own comparison", () => {
+    const groups = groupEntries(["a-desktop", "a-mobile", "b-desktop"].map((d) => cell(d)))
+    const html = libraryTable(groups, href, "desktop", NOW)
+    expect([...html.matchAll(/<a class="lrow[^"]*"[^>]*href="([^"]+)"/g)].map((m) => m[1])).toEqual([
+      "#/a-desktop",
+      "#/a-mobile",
+      "#/b-desktop",
+    ])
+  })
+
+  // A broken cell has no report to open, so its row stays a plain div rather
+  // than linking somewhere that cannot be read.
+  it("leaves an unreadable lone item unlinked", () => {
+    const html = libraryTable(groupEntries([broken]), href, "desktop", NOW)
+    expect(html).not.toContain("lrow-link")
   })
 
   // The same decision chunk 1 made for the card grid: on a 194-cell root a

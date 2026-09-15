@@ -1086,6 +1086,15 @@ export function groupRow(
    * caller that forgets it degrades to the full name rather than to a blank.
    */
   label: string = g.id,
+  /**
+   * A LONE item's way into its own comparison. A set is reached through its cells (expand the
+   * group) or its sheet; a lone item has neither — it is never foldable, so `libraryTable` renders
+   * no `cellRow` for it, and it is not a set, so it gets no sheet button. Before this it rendered
+   * with NO link at all, which on a root of lone items meant the Library could not open a single
+   * pair (measured: four lone items, zero hrefs in the whole table). Empty for a set, whose cells
+   * carry their own links.
+   */
+  pairHref: string = "",
 ): string {
   const id = escapeHtml(g.id)
   const name = escapeHtml(label)
@@ -1120,7 +1129,13 @@ export function groupRow(
       name +
       ' as a variant sheet"><span class="msi" aria-hidden="true">grid_view</span>' +
       '<span class="lsheet-label">Open sheet</span></a>'
-    : ""
+    : pairHref === ""
+      ? ""
+      : // NOT an anchor: the whole row already is one (see `head`), and an <a> inside an <a> is
+        // invalid HTML that browsers silently un-nest. This is the same affordance a cell row
+        // carries, rendered as the row's own trailing chevron.
+        '<span class="lsheet"><span class="lsheet-label">Compare</span>' +
+        '<span class="msi" aria-hidden="true">chevron_right</span></span>'
   // The comp swaps GLYPHS; chunk 1 rotated ONE because `chevron_right` was not
   // in the icon subset. Re-running icon-subset.mjs for these comps put it there
   // (101 -> 112 glyphs), so the rotation goes. It was never only cosmetic: a
@@ -1131,15 +1146,30 @@ export function groupRow(
       (open ? "expand_more" : "chevron_right") +
       "</span>"
     : '<span class="caret-gap" aria-hidden="true"></span>'
-  const head =
-    '<div class="lrow' +
-    (open ? " open" : "") +
-    (expandable ? "" : " flat") +
-    '" data-group="' +
-    id +
-    '"' +
-    (expandable ? ' role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '"' : "") +
-    ">"
+  // A foldable group's whole row TOGGLES, so it stays a div with role=button. A lone item's whole
+  // row NAVIGATES, so it is a real anchor: the hit target is the row rather than a small trailing
+  // link, and middle-click, cmd-click, "copy link" and keyboard focus all come for free — none of
+  // which a click handler on a div would give.
+  const rowIsLink = !expandable && pairHref !== ""
+  const head = rowIsLink
+    ? '<a class="lrow flat lrow-link" data-group="' +
+      id +
+      '" data-pair="' +
+      id +
+      '" href="' +
+      escapeHtml(pairHref) +
+      '" title="Compare ' +
+      name +
+      '">'
+    : '<div class="lrow' +
+      (open ? " open" : "") +
+      (expandable ? "" : " flat") +
+      '" data-group="' +
+      id +
+      '"' +
+      (expandable ? ' role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '"' : "") +
+      ">"
+  const headClose = rowIsLink ? "</a>" : "</div>"
   if (layout === "mobile")
     return (
       head +
@@ -1158,7 +1188,8 @@ export function groupRow(
       measuredGroup(g, now) +
       "</div></div>" +
       sheet +
-      "</div></div>"
+      "</div>" +
+      headClose
     )
   return (
     head +
@@ -1177,7 +1208,8 @@ export function groupRow(
     measuredGroup(g, now) +
     '</div><div class="lact">' +
     sheet +
-    "</div></div>"
+    "</div>" +
+    headClose
   )
 }
 
@@ -1211,7 +1243,18 @@ export function libraryTable(
   let out = ""
   for (const g of groups) {
     const isOpen = open.has(g.id) && isFoldable(g)
-    let body = groupRow(g, isOpen, layout, now, groupLabel(g.id, prefix))
+    // A lone item is one comparison sitting in the group table: nothing to expand and no sheet, so
+    // the row itself has to carry the link or the pair is unreachable. A group with cells is left
+    // alone — its cells carry their own.
+    const lone = !g.set && g.cells.length === 1 ? g.cells[0] : undefined
+    let body = groupRow(
+      g,
+      isOpen,
+      layout,
+      now,
+      groupLabel(g.id, prefix),
+      lone === undefined || isBroken(lone) ? "" : href(lone),
+    )
     if (isOpen) {
       const cap = more.has(g.id) ? g.cells.length : ROW_CAP
       const shown = g.cells.slice(0, cap)

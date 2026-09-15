@@ -671,6 +671,12 @@ a.card:hover { border-color:var(--acc); }
 .lrow.open { background:var(--bg2); }
 .lrow.flat { cursor:default; }
 .lrow:not(.flat):not(.open):hover { background:var(--bg2); }
+/* A LONE item's row is an anchor, not a div: it navigates to its own comparison rather than
+   toggling, so it needs the link reset .lcell already carries, and it takes back the pointer and
+   the hover that .lrow.flat turns off — a row that is clickable everywhere has to look it. */
+.lrow-link { color:var(--txt); text-decoration:none; cursor:pointer; }
+.lrow-link:hover { background:var(--bg2); }
+.lrow-link:focus-visible { outline:2px solid var(--acc); outline-offset:-2px; }
 .lset { display:flex; align-items:center; gap:8px; min-width:0; }
 /* TWO glyphs, as the comp draws them — not one rotated. The chevron-right glyph
    is in the icon subset since these comps landed; before that it was not, which
