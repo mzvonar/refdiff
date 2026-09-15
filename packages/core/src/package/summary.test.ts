@@ -169,14 +169,22 @@ describe("summarizeReports", () => {
 describe("the align column — the transform beside the confidence", () => {
   it("prints the identity as `1 / 0,0` and a non-identity fit to the digit that matters", () => {
     expect(formatAlignment({ scale: 1, offsetX: 0, offsetY: 0 })).toBe("1 / 0,0")
-    expect(formatAlignment({ scale: 1.00175, offsetX: -0.54, offsetY: -1.98 })).toBe("1.002 / −0.5,−2.0")
-    expect(formatAlignment({ scale: 1, scaleY: 0.9966, offsetX: 0, offsetY: 0.24 })).toBe("1×0.997 / 0,0.2")
+    expect(formatAlignment({ scale: 1.00175, offsetX: -0.54, offsetY: -1.98 })).toBe(
+      "1.002 / −0.5,−2.0",
+    )
+    expect(formatAlignment({ scale: 1, scaleY: 0.9966, offsetX: 0, offsetY: 0.24 })).toBe(
+      "1×0.997 / 0,0.2",
+    )
     expect(formatAlignment({ scale: 1.0003, offsetX: 0.04, offsetY: -0.04 })).toBe("1 / 0,0")
   })
 
   it("carries the transform into summary.json and the table, and groups the identity note as ONE cause across pairs", () => {
     const note = (id: string): Finding => {
-      const { designBox: _b, role: _r, ...boxless } = finding(id, {
+      const {
+        designBox: _b,
+        role: _r,
+        ...boxless
+      } = finding(id, {
         type: "alignment",
         severity: "minor",
         expected: { scale: 1, offsetX: 0, offsetY: 0 },
@@ -194,9 +202,13 @@ describe("the align column — the transform beside the confidence", () => {
       },
       {
         dir: "b",
-        report: report("b", [{ ...note("f1"), actual: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 } }], {
-          alignment: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52, confidence: 0.9 },
-        }),
+        report: report(
+          "b",
+          [{ ...note("f1"), actual: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 } }],
+          {
+            alignment: { scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52, confidence: 0.9 },
+          },
+        ),
       },
     ]
     const s = summarizeReports(reports)

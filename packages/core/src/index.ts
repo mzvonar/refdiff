@@ -28,7 +28,13 @@ export type {
 } from "./types.js"
 
 export { hiddenMovement, movementPx, type HiddenMovement } from "./policy-audit.js"
-export { applyPolicy, explainFindings, mergePolicies, suppressionFor, type PolicyResult } from "./policy.js"
+export {
+  applyPolicy,
+  explainFindings,
+  mergePolicies,
+  suppressionFor,
+  type PolicyResult,
+} from "./policy.js"
 export {
   acceptedFor,
   acceptedFromFinding,
@@ -161,7 +167,13 @@ export {
   type StorybookServerOptions,
 } from "./adapters/storybook-server.js"
 
-export { alignmentNote, alignStructural, estimateTransform, rootSizeNote, type TransformEstimate } from "./structural/align.js"
+export {
+  alignmentNote,
+  alignStructural,
+  estimateTransform,
+  rootSizeNote,
+  type TransformEstimate,
+} from "./structural/align.js"
 export {
   DEFAULT_MAX_GAMMA,
   DEFAULT_SLOT_MAX_GAMMA,

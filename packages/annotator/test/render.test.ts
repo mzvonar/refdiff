@@ -111,10 +111,19 @@ describe("renderReport", () => {
 
   it("carries the diff lab: highlight/dim/strobe tools, region layers on both panes, a ghost over the impl", () => {
     // The comps' tool strip: pan · focus · comment · highlight (difference) · dim (tonality) · strobe (flare).
-    for (const id of ["move-toggle", "focus-toggle", "ann-draw", "diff-toggle", "dim-toggle", "strobe-toggle"]) {
+    for (const id of [
+      "move-toggle",
+      "focus-toggle",
+      "ann-draw",
+      "diff-toggle",
+      "dim-toggle",
+      "strobe-toggle",
+    ]) {
       expect(html).toContain(`id="${id}" class="tool`)
     }
-    expect(html).toContain('id="diff-toggle" class="tool" aria-pressed="false" title="Highlight changed parts (d)')
+    expect(html).toContain(
+      'id="diff-toggle" class="tool" aria-pressed="false" title="Highlight changed parts (d)',
+    )
     expect(html).toContain('<span class="msi" aria-hidden="true">flare</span>')
     expect(html).toContain('id="diffs-design"')
     expect(html).toContain('id="diffs-impl"')
@@ -145,7 +154,9 @@ describe("renderReport", () => {
 
   it("Fit centres in the visible canvas — the phone sheet is an inset, and the phone hides the highlight count", () => {
     // Fit measured the whole pane and centred the frame under the phone's bottom sheet (2026-08-28).
-    expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
+    expect(html).toContain(
+      "fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())",
+    )
     // The minimal layout's view panel joined them: it stays open across canvas gestures now, so a
     // fit that ignored it would centre the frame half under it (2026-08-29).
     expect(html).toContain("paneInsets(pane, [$('side'), $('tools'), $('view-panel')].map(")
@@ -156,7 +167,9 @@ describe("renderReport", () => {
     // The sheet animates its height: re-fit when it has settled, only if the reader has not moved the view.
     expect(html).toContain("if (e.propertyName === 'height' && !state.userMoved) fit();")
     // The "N highlighted differences" pill sits under the phone's zoom / align pills — gone there; the warning stays.
-    expect(html).toMatch(/@media \(max-width: 759px\) \{[\s\S]*\.lab-note:not\(\.warn\) \{ display:none; \}/)
+    expect(html).toMatch(
+      /@media \(max-width: 759px\) \{[\s\S]*\.lab-note:not\(\.warn\) \{ display:none; \}/,
+    )
   })
 
   it("the delta strip is closable in both states — the × sits beside Review when a regression is in it", () => {
@@ -184,7 +197,9 @@ describe("renderReport", () => {
     // around the component, which reads as a background baked into the capture and is not one.
     // drop-shadow follows the ALPHA, so the silhouette casts and the empty margin does not.
     // Blur is halved because drop-shadow's radius is a true Gaussian, box-shadow's is wider.
-    expect(html).toContain("function pageShadow(dpr) { return 'drop-shadow(0 ' + 4 * dpr + 'px ' + 15 * dpr + 'px rgba(0,0,0,0.35))'; }")
+    expect(html).toContain(
+      "function pageShadow(dpr) { return 'drop-shadow(0 ' + 4 * dpr + 'px ' + 15 * dpr + 'px rgba(0,0,0,0.35))'; }",
+    )
     expect(html).toContain("imgs.design.style.filter = pageShadow(state.dprD);")
     expect(html).toContain("imgs.impl.style.filter = pageShadow(state.dprI);")
     expect(html).not.toContain("imgs.ghost.style.filter")
@@ -217,7 +232,13 @@ describe("renderReport", () => {
 
   it("puts the overlay segment in the topbar: Off / Wipe / Onion / Blink / Diff, with the opacity pill and a wipe handle", () => {
     expect(html).toContain('id="seg-variant"')
-    for (const [mode, label] of [["none", "Off"], ["swipe", "Wipe"], ["onion", "Onion"], ["blink", "Blink"], ["difference", "Diff"]]) {
+    for (const [mode, label] of [
+      ["none", "Off"],
+      ["swipe", "Wipe"],
+      ["onion", "Onion"],
+      ["blink", "Blink"],
+      ["difference", "Diff"],
+    ]) {
       expect(html).toContain(`data-lab="${mode}"`)
       expect(html).toContain(`>${label}</button>`)
     }
@@ -226,11 +247,15 @@ describe("renderReport", () => {
     expect(html).toContain('id="op-pill"')
     expect(html).toContain('id="lab-amount"')
     expect(html).toContain("labAmount: { onion: 55, difference: 100 }")
-    expect(html).toContain("else if (state.lab === 'difference') { setOpacity(state.labAmount.difference / 100); }")
+    expect(html).toContain(
+      "else if (state.lab === 'difference') { setOpacity(state.labAmount.difference / 100); }",
+    )
     // The wipe is a curtain at a WORLD x with the comps' sync_alt knob, not a percentage of the pane.
     expect(html).toContain('id="wipe"')
     expect(html).toContain(">sync_alt</span>")
-    expect(html).toContain("$('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)'")
+    expect(html).toContain(
+      "$('ghost-wrap').style.clipPath = 'inset(0 0 0 ' + Math.max(0, sx) + 'px)'",
+    )
     // Pane labels go while an overlay is on (the panes no longer show one side each).
     expect(html).toContain("body.lab-on .pane-label { display:none; }")
   })
@@ -253,7 +278,9 @@ describe("renderReport", () => {
     expect(html).toContain("#cells-ghost .cellshot { transition:none; }")
     // A lit cause dims it like the other two, or the overlay would show every cell
     // while the panes under it show one.
-    expect(html).toContain("for (const host of [$('cells-design'), $('cells-impl'), $('cells-ghost')]) {")
+    expect(html).toContain(
+      "for (const host of [$('cells-design'), $('cells-impl'), $('cells-ghost')]) {",
+    )
   })
 
   it("keeps the lockstep lock in every view — with one pane and an overlay on, the registration is exactly what needs changing (2026-08-29)", () => {
@@ -261,7 +288,9 @@ describe("renderReport", () => {
     // ONTO the impl, so unlocking or picking another anchor mode is what fixes a bad landing.
     expect(html).not.toContain("$('align-lock').hidden = single();")
     expect(html).not.toContain("no-lock")
-    expect(html).toContain("function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }")
+    expect(html).toContain(
+      "function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }",
+    )
   })
 
   it("offers the align modes as the comps' pill + dropdown, with the lock and the confidence warning", () => {
@@ -277,9 +306,13 @@ describe("renderReport", () => {
     expect(html).toContain("displayAlignment(state.align")
     // Confidence is a warning STATE under the gate, on the Anchors mode only — never a number on the chrome (gap 2).
     expect(html).toContain("const CONF_MIN = 0.5;")
-    expect(html).toContain("function confWarn() { return anchorLow() && state.lock && state.align === 'anchors'; }")
+    expect(html).toContain(
+      "function confWarn() { return anchorLow() && state.lock && state.align === 'anchors'; }",
+    )
     // The lock (gap 22): off, the design pane has its own view; on, it snaps back to the shared one.
-    expect(html).toContain("function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }")
+    expect(html).toContain(
+      "function viewOf(side) { return side === 'design' && !state.lock ? state.viewD : state.view; }",
+    )
     expect(html).toContain("if (on) state.viewD = state.view;")
   })
 
@@ -303,10 +336,16 @@ describe("renderReport", () => {
     // Constant screen size, capped like the comps' scale(min(2.4, 1/s)), through one custom property per layer.
     expect(html).toContain("cs = Math.min(2.4, 1 / z)")
     expect(html).toContain("markLayers[side].style.setProperty('--cs', cs)")
-    expect(html).toContain(".vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%;")
+    expect(html).toContain(
+      ".vmark { position:absolute; box-sizing:content-box; width:24px; height:24px; border-radius:50%;",
+    )
     // Comment badges: the 22px rounded square in the status colour.
-    expect(html).toContain(".vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }")
-    expect(html).toContain("d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : '') + (outside ? ' outside' : ''); d.dataset.ann = a.id;")
+    expect(html).toContain(
+      ".vmark.ann { width:22px; height:22px; border-radius:6px; font-size:11px; }",
+    )
+    expect(html).toContain(
+      "d.className = 'vmark ann ' + a.status + (ann.saveError && ann.unsaved.has(a.id) ? ' unsaved' : '') + (outside ? ' outside' : ''); d.dataset.ann = a.id;",
+    )
     expect(html).not.toContain("g.lbl")
     // The comps mark the primary instance only by default: a ×15 aggregate must not carpet the artboard (gap 12).
     expect(html).toContain("layer: 'all', showMarks: true, showMembers: false,")
@@ -326,11 +365,17 @@ describe("renderReport", () => {
     // .gfoot, never .ghost: that class is the diff lab's superimposed design image at opacity:0,
     // which painted the footprint invisible — and no channel measures an SVG rect, so only a crop
     // of the frame showed it (2026-09-02).
-    expect(html).toContain("function ghostRect(box, f, cls) { return rect(pad(box, 4), 'gfoot ' + f.severity + cls, f.id, 6); }")
+    expect(html).toContain(
+      "function ghostRect(box, f, cls) { return rect(pad(box, 4), 'gfoot ' + f.severity + cls, f.id, 6); }",
+    )
     expect(html).not.toContain(".marks rect.ghost")
-    expect(html).toContain('<pattern id="hatch-critical" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch critical" width="2" height="9"></rect></pattern>')
+    expect(html).toContain(
+      '<pattern id="hatch-critical" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect class="hatch critical" width="2" height="9"></rect></pattern>',
+    )
     expect(html).toContain("#hatch-defs .hatch { fill-opacity:.18; }")
-    expect(html).toContain(".marks rect.gfoot.critical { stroke:var(--critical); fill:url(#hatch-critical); }")
+    expect(html).toContain(
+      ".marks rect.gfoot.critical { stroke:var(--critical); fill:url(#hatch-critical); }",
+    )
     // The defs cannot live in a mark layer: renderMarks() replaceChildren()s those every render.
     expect(html).toContain('<svg id="hatch-defs" width="0" height="0" aria-hidden="true">')
     expect(html).toContain("layer.replaceChildren();")
@@ -338,10 +383,16 @@ describe("renderReport", () => {
     expect(html).toContain("blayer.querySelectorAll('.vmark:not(.ann), .gpill')")
     // The pill: the comp's translateY(calc(-100% - 7px)) scale(cs) about 0 100%, anchored on the
     // footprint's own top-left corner — 7 WORLD px of gap, which measured 10.2 at 146%.
-    expect(html).toContain("transform-origin:0 100%; transform:translateY(calc(-100% - 7px)) scale(var(--cs));")
+    expect(html).toContain(
+      "transform-origin:0 100%; transform:translateY(calc(-100% - 7px)) scale(var(--cs));",
+    )
     expect(html).toContain("d.style.left = (box.x - 4) + 'px'; d.style.top = (box.y - 4) + 'px';")
-    expect(html).toContain("lab.textContent = only === 'design' ? 'Missing here — exists in design' : 'Only in impl — nothing here in design';")
-    expect(html).toContain(".gpill .gnum { box-sizing:border-box; width:18px; height:18px; border-radius:50%;")
+    expect(html).toContain(
+      "lab.textContent = only === 'design' ? 'Missing here — exists in design' : 'Only in impl — nothing here in design';",
+    )
+    expect(html).toContain(
+      ".gpill .gnum { box-sizing:border-box; width:18px; height:18px; border-radius:50%;",
+    )
     expect(html).toContain(".gpill .glab { font-size:11px; font-weight:600; color:var(--txt); }")
     // Only the selected finding gets a ghost, and it replaces the badge on that pane rather than
     // adding to it: mark density must not double.
@@ -370,7 +421,9 @@ describe("renderReport", () => {
     expect(html).toContain("swlab.textContent = 'View ' + only;")
     expect(html).toContain("sw.append(swlab);")
     expect(html).not.toContain("sw.append('View ' + only);")
-    expect(html).toContain("closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }")
+    expect(html).toContain(
+      "closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }",
+    )
     // Selecting a row still never swaps the pane by itself (rejected 2026-09-02).
     expect(html).not.toContain("setSide(onlySide)")
     expect(html).not.toContain("if (only) setSide(only)")
@@ -393,9 +446,13 @@ describe("renderReport", () => {
     // The rail is the comps' bottom sheet: 44px of handle over the canvas, 52% when open, the
     // tabs and lists hidden while it is down. The page itself never scrolls.
     // 44px is the comp's CONTENT height; its 1px top border makes the sheet 45 (phase 5: the sheet sat 1px low).
-    expect(rules).toContain(".rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:calc(44px + 1px);")
+    expect(rules).toContain(
+      ".rail { position:absolute; left:0; right:0; bottom:0; width:auto; height:calc(44px + 1px);",
+    )
     expect(rules).toContain("body.rail-open .rail { height:52%; }")
-    expect(rules).toContain("body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }")
+    expect(rules).toContain(
+      "body:not(.rail-open) .rail-tabs, body:not(.rail-open) .rail-panels { display:none; }",
+    )
     expect(rules).not.toContain("position:sticky")
     expect(html).not.toContain("html, body { height:auto; }")
     expect(html).toContain('id="rail-toggle" aria-expanded="false" aria-controls="rail-panels"')
@@ -403,24 +460,38 @@ describe("renderReport", () => {
 
   it("puts the review rail on the RIGHT at the comps' 320px, with tabs, chips, prop lines and a collapse chip", () => {
     // Phase 4: the 340px left aside is gone; the rail follows the viewer in the DOM and the flex row.
-    expect(html.indexOf('<section id="viewer">')).toBeLessThan(html.indexOf('<aside id="side" class="rail">'))
-    expect(html).toContain(".rail { width:calc(320px + 1px); flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }")
+    expect(html.indexOf('<section id="viewer">')).toBeLessThan(
+      html.indexOf('<aside id="side" class="rail">'),
+    )
+    expect(html).toContain(
+      ".rail { width:calc(320px + 1px); flex-shrink:0; display:flex; flex-direction:column; min-height:0; background:var(--bg1); border-left:1px solid var(--line); line-height:normal; }",
+    )
     // The comp's inline boxes are content-box: its 320px rail, 44px tool strip, 46px topbar and 38px delta
     // strip are each that PLUS the border. Phase 5 measured the rail badges 4px right of the comp's: 1px of
     // this and a 3px left edge the comp's finding rows never had (its comment rows do — .irow keeps it).
     expect(html).toContain(".tools { width:calc(44px + 1px);")
-    expect(html).toContain(".topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px);")
+    expect(html).toContain(
+      ".topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px);",
+    )
     expect(html).toContain("min-height:calc(38px + 1px);")
-    expect(html).toContain(".frow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent; }")
-    expect(html).toContain(".irow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; }")
+    expect(html).toContain(
+      ".frow { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent; }",
+    )
+    expect(html).toContain(
+      ".irow { padding:10px 12px; border-bottom:1px solid var(--line); border-left:3px solid transparent; cursor:pointer; }",
+    )
     // A failed triage save keeps its 3px red edge (section C) without shifting the row: inset, not border.
-    expect(html).toContain(".frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }")
+    expect(html).toContain(
+      ".frow.unsaved { background:rgba(229,72,77,.09); box-shadow:inset 3px 0 0 var(--critical); }",
+    )
     expect(html).not.toContain("grid-template-columns:340px 1fr")
     expect(html).toContain('<span class="rail-title">Review</span>')
     expect(html).toContain(">right_panel_close</span>")
     expect(html).toContain('id="rail-expand"')
     expect(html).toContain(">right_panel_open</span>")
-    expect(html).toContain('data-tab="findings" role="tab">Findings · <span id="tab-f-count"></span>')
+    expect(html).toContain(
+      'data-tab="findings" role="tab">Findings · <span id="tab-f-count"></span>',
+    )
     expect(html).toContain('data-tab="items" role="tab">Comments · <span id="tab-i-count"></span>')
     // Severity chips with dots, counted; the instance chip; the suppressed disclosure.
     expect(html).toContain("SEV_CHIP_LABELS[s] + ' ' + sevCount(s)")
@@ -428,26 +499,36 @@ describe("renderReport", () => {
     // focus and triage. Counting report.findings raw put "critical 4" next to a list with
     // none of them in it (all four hidden by one snooze, 2026-09-02), and the triage chips
     // counted triage ENTRIES so a stale key advertised "Snoozed 1" with nothing to reveal.
-    expect(html).toContain("const sevCount = (sev) => report.findings.filter((f) => f.severity === sev && passesExceptSeverity(f)).length;")
-    expect(html).toContain("const triCount = (v) => report.findings.filter((f) => triageStateOf(f) === v && inFocus(f)).length;")
+    expect(html).toContain(
+      "const sevCount = (sev) => report.findings.filter((f) => f.severity === sev && passesExceptSeverity(f)).length;",
+    )
+    expect(html).toContain(
+      "const triCount = (v) => report.findings.filter((f) => triageStateOf(f) === v && inFocus(f)).length;",
+    )
     // A one-sided finding (missing-element has no implBox, extra-element no designBox)
     // centres on the CURRENT side's box when it has one. It must NOT switch sides:
     // a pane that swaps itself is a change the viewer may not notice, and they then
     // read the other side's canvas as this one's (rejected 2026-09-02). The pane can
     // still be swapped BY PRESSING the ghost pill's button, which is the difference.
-    expect(html).not.toContain("setSide(onlySide)");
-    expect(html).toContain("const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);")
+    expect(html).not.toContain("setSide(onlySide)")
+    expect(html).toContain(
+      "const box = f && (boxForSide(f, state.side) || f.implBox || f.designBox);",
+    )
     expect(html).toContain("function sideOf(f) {")
     // The row's chip, measured off the comp's sideStyle: the location glyph, the severity colour,
     // dashed, and the caps left to text-transform (the extractor compares the RENDERED text).
     expect(html).toContain("(only === 'design' ? 'add_location_alt' : 'wrong_location')")
     expect(html).toContain("(only === 'design' ? 'Design only' : 'Impl only')")
-    expect(html).toContain(".fside.critical { border-color:var(--critical); color:var(--critical); }")
+    expect(html).toContain(
+      ".fside.critical { border-color:var(--critical); color:var(--critical); }",
+    )
     expect(html).toContain("text-transform:uppercase")
     expect(html).toContain('id="inst-row"')
     expect(html).toContain("SUPPRESSED_LABEL(sup.length)")
     // A row: badge, title, ×N, the Regression tag, the mono prop line with the actual in red.
-    expect(html).toContain("'<span class=\"fgroup\" title=\"one cause in ' + f.instances + ' places")
+    expect(html).toContain(
+      "'<span class=\"fgroup\" title=\"one cause in ' + f.instances + ' places",
+    )
     expect(html).toContain(">undo</span><span>Regression</span></span>")
     // A comment is drawn ONLY on the pane it was made on (Mato, 2026-09-03), which REVERSES the
     // 2026-08-28 mirror this assertion used to pin. A finding is a pair and speaks about both panes;
@@ -465,15 +546,21 @@ describe("renderReport", () => {
     // Selecting ZOOMS TO the element now (the comps' rule: 70px of context, a
     // 60px floor so a point does not blow up, a 2.2× ceiling) instead of
     // re-centring at whatever zoom you were at — which never magnified anything.
-    expect(html).toContain("if (focus && box) { setView(focusView(box, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }")
+    expect(html).toContain(
+      "if (focus && box) { setView(focusView(box, paneSize(), paneInsetsNow())); state.userMoved = true; applyView(); }",
+    )
     // The comments tab: composer, rows with the status label and the model's reply (gap 19).
     expect(html).toContain('placeholder="Instruction for the model…"')
     expect(html).toContain(">Send to model</button>")
     expect(html).toContain('placeholder="Add another instruction…"')
-    expect(html).toContain("if (a.reply) h += '<div class=\"ireply\"")
-    expect(html).toContain("const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };")
+    expect(html).toContain('if (a.reply) h += \'<div class="ireply"')
+    expect(html).toContain(
+      "const STATUS_LABELS = { open: 'Open', implemented: 'Implemented', done: 'Done' };",
+    )
     // A failed save (section C): the row, the endpoint, Retry, the halo on the canvas badge, the summary.
-    expect(html).toContain("ann.saveError = saveErrorText(!!page.readOnly, page.annotationsUrl, e.message);")
+    expect(html).toContain(
+      "ann.saveError = saveErrorText(!!page.readOnly, page.annotationsUrl, e.message);",
+    )
     expect(html).toContain('<span class="t">Not saved</span>')
     expect(html).toContain(".vmark.ann.unsaved { box-shadow:0 0 0 3px rgba(229,72,77,.6)")
     expect(html).toContain("railSummary(kept, items, ann.saveError ? ann.unsaved.size : 0)")
@@ -482,7 +569,9 @@ describe("renderReport", () => {
     expect(html).toContain("applyTriage(tri.dataset.triage === cur ? null : tri.dataset.triage")
     // The text filter kept, off the drawn chrome (gap 31): `/` opens it.
     expect(html).toContain('<div class="fsearch" id="fsearch" hidden>')
-    expect(html).toContain("if (e.key === '/') { e.preventDefault(); setTab('findings'); openSearch(); return; }")
+    expect(html).toContain(
+      "if (e.key === '/') { e.preventDefault(); setTab('findings'); openSearch(); return; }",
+    )
   })
 
   it("makes one-side-at-a-time a mode, not a breakpoint: the Split / Full segment drives body.single", () => {
@@ -517,16 +606,25 @@ describe("renderReport", () => {
     // that carries it, 0.18 on the rest. --diff and not --acc, because --acc is SELECTION
     // and a lit cause can hold a selected cell.
     expect(html).toContain("function causeCellKeys() {")
-    expect(html).toContain("for (const f of report.findings) if (f.cell && ids.has(f.id)) keys.add(f.cell);")
+    expect(html).toContain(
+      "for (const f of report.findings) if (f.cell && ids.has(f.id)) keys.add(f.cell);",
+    )
     expect(html).toContain("host.classList.toggle('has-cause', !!keys);")
     expect(html).toContain("el.classList.toggle('cell-lit', !!keys && keys.has(el.dataset.cell));")
     // Runs on every mark render, which is what keeps it in step with the rail.
     expect(html).toContain("function renderMarks() {\n  applyCauseCells();")
-    expect(html).toContain(".cellshots.has-cause .cellslot:not(.cell-lit), .cellshots.has-cause .cellshot:not(.cell-lit) { opacity:.18; }")
-    expect(html).toContain(".cellslot.cell-lit { outline:2px solid var(--diff); outline-offset:2px; }")
-    expect(html).toContain(".causerow.lit { background:rgba(255,92,208,.12); box-shadow:inset 2px 0 0 var(--diff); }")
+    expect(html).toContain(
+      ".cellshots.has-cause .cellslot:not(.cell-lit), .cellshots.has-cause .cellshot:not(.cell-lit) { opacity:.18; }",
+    )
+    expect(html).toContain(
+      ".cellslot.cell-lit { outline:2px solid var(--diff); outline-offset:2px; }",
+    )
+    expect(html).toContain(
+      ".causerow.lit { background:rgba(255,92,208,.12); box-shadow:inset 2px 0 0 var(--diff); }",
+    )
     // Every element the dimming and the outline address has to carry its cell key.
-    for (const el of ["slot", "impl", "design"]) expect(html).toContain(el + ".dataset.cell = cell.key;")
+    for (const el of ["slot", "impl", "design"])
+      expect(html).toContain(el + ".dataset.cell = cell.key;")
   })
 
   it("draws a measured cell at its OWN side's capture box, and draws no border on it", () => {
@@ -534,7 +632,9 @@ describe("renderReport", () => {
     // impl's box past the impl's picture on every cell whose design is wider (128 vs 109 on
     // this repo's stroke buttons). With a border on it that dead strip WAS the "extended
     // canvas"; it is also the strip the removed finding-count badge used to sit in.
-    expect(html).toContain("const t = cell.report ? sideBox(cell, side) : (cell.track || cell.rect);")
+    expect(html).toContain(
+      "const t = cell.report ? sideBox(cell, side) : (cell.track || cell.rect);",
+    )
     // The slot takes the ELEMENT box and the picture is placed by placeCellImg,
     // both off ONE registration call, so neither can register a cell differently
     // from the other. A browser clips a screenshot to whole DEVICE px, so the
@@ -552,9 +652,15 @@ describe("renderReport", () => {
     expect(html).not.toContain("impl.style.left = cell.rect.x + 'px';")
     expect(html).not.toContain("design.style.left = (cell.rect.x + (a.offsetX || 0)) + 'px';")
     // A measured cell is transparent, as the comp's is; only the unmeasured kinds draw.
-    expect(html).toContain(".cellslot { position:absolute; box-sizing:border-box; border:1px solid transparent;")
-    expect(html).toContain(".cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-color:var(--line); border-style:dashed;")
-    expect(html).not.toContain(".cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line);")
+    expect(html).toContain(
+      ".cellslot { position:absolute; box-sizing:border-box; border:1px solid transparent;",
+    )
+    expect(html).toContain(
+      ".cellslot.k-unmapped, .cellslot.k-filtered, .cellslot.k-pending { border-color:var(--line); border-style:dashed;",
+    )
+    expect(html).not.toContain(
+      ".cellslot { position:absolute; box-sizing:border-box; border:1px solid var(--line);",
+    )
   })
 
   it("ellipsises the pair title instead of running it under the toolbar, and keeps the full string as a tooltip", () => {
@@ -598,13 +704,17 @@ describe("renderReport", () => {
     // the correct half cost a read of the pill before every click. Both halves — and the group's
     // own padding — now flip, which is why the listener is on the group with no [data-side] hit
     // test. The minimal layout's pane-swap is the same switch under another skin.
-    expect(html).toContain("function toggleSide() { setSide(state.side === 'design' ? 'impl' : 'design'); }")
+    expect(html).toContain(
+      "function toggleSide() { setSide(state.side === 'design' ? 'impl' : 'design'); }",
+    )
     expect(html).toContain("$('side-switch').addEventListener('click', toggleSide);")
     expect(html).toContain("$('pane-swap').addEventListener('click', toggleSide);")
     expect(html).not.toContain("closest('[data-side]'); if (b) setSide(b.dataset.side)")
     // setSide stays TARGETED for the callers that mean one specific side, so it keeps its
     // same-side early return: a ghost badge says "go there", never "go to the other one".
-    expect(html).toContain("closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }")
+    expect(html).toContain(
+      "closest('[data-ghost-side]'); if (g) { setSide(g.dataset.ghostSide); return; }",
+    )
     expect(html).toContain("if (state.side === side) return;")
     // The pill still reports which side is live; only the click semantics changed.
     expect(html).toContain('<button type="button" data-side="design">Design</button>')
@@ -617,11 +727,14 @@ describe("renderReport", () => {
     expect(html).toContain('id="hdr-left"')
     expect(html).toContain('<span class="brand-name">RefDiff</span>')
     expect(html).toContain('id="seg-layer"')
-    for (const label of ["Findings", "Comments", "All", "Clean"]) expect(html).toContain(`>${label}</button>`)
+    for (const label of ["Findings", "Comments", "All", "Clean"])
+      expect(html).toContain(`>${label}</button>`)
     // The layer segment generalises the old marks checkbox; Comments off hides the shapes, never the focus region.
     expect(html).not.toContain('id="marks"')
     expect(html).toContain("state.showMarks = state.layer === 'findings' || state.layer === 'all';")
-    expect(html).toContain("body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann")
+    expect(html).toContain(
+      "body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann",
+    )
     // The verdict pill, counts and alignment numbers are gone from the chrome.
     expect(html).not.toContain("hdr-more")
     expect(html).not.toContain("' · threshold '")
@@ -646,7 +759,9 @@ describe("renderReport", () => {
     // Adjusting shows what the region EXCLUDES, muted, so the corner drag is not made blind.
     expect(html).toContain("const adjusting = state.focusEdit && !!state.focus;")
     expect(html).toContain(".vmarks .vmark.outside { opacity:.3; }")
-    expect(html).toContain("$('focus-edit').addEventListener('click', () => setFocusEdit(!state.focusEdit));")
+    expect(html).toContain(
+      "$('focus-edit').addEventListener('click', () => setFocusEdit(!state.focusEdit));",
+    )
     // Inverted: the surround is dimmed, nothing is painted over the region itself.
     expect(html).toContain("rect.focus-scrim")
     expect(html).toContain("rect.focus-rect { fill:none;")
@@ -659,9 +774,15 @@ describe("renderReport", () => {
    * exactly the modes where the registration is what you are questioning.
    */
   it("draws the superimposed ghost with the design pane's own view once the lockstep is off", () => {
-    expect(html).toContain("function ghostView() { return state.lock ? state.view : viewOf('design'); }")
-    expect(html).toContain("function ghostRegistered() { return state.lock && state.align === 'anchors'; }")
-    expect(html).toContain("imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD, bD);")
+    expect(html).toContain(
+      "function ghostView() { return state.lock ? state.view : viewOf('design'); }",
+    )
+    expect(html).toContain(
+      "function ghostRegistered() { return state.lock && state.align === 'anchors'; }",
+    )
+    expect(html).toContain(
+      "imgs.ghost.style.transform = designImageTransform(ghostView(), ghostAlignment(), state.dprD, bD);",
+    )
     // The stretch note describes the registration, so it goes with it.
     expect(html).toContain("const off = Math.abs(stretch - 1) >= 0.02 && ghostRegistered();")
   })
@@ -676,7 +797,9 @@ describe("renderReport", () => {
     expect(html).toContain("state.wipeX = Math.min(w.x + w.w, Math.max(w.x, x));")
     expect(html).not.toContain("Math.min(report.impl.width - 20, Math.max(20, x))")
     // The minimal layout keeps ONE button; its lock state shows on the pill instead.
-    expect(html).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
+    expect(html).toContain(
+      "body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }",
+    )
   })
 
   /**
@@ -718,7 +841,9 @@ describe("renderReport", () => {
 
   it("refuses an embedded module source that would close the module script", () => {
     for (const key of Object.keys(sources) as (keyof typeof sources)[]) {
-      expect(() => renderReport(report, { ...sources, [key]: "</script><script>alert(1)" })).toThrow()
+      expect(() =>
+        renderReport(report, { ...sources, [key]: "</script><script>alert(1)" }),
+      ).toThrow()
     }
   })
 
@@ -742,10 +867,16 @@ describe("renderReport", () => {
 
   it("self-hosts the comps' type: IBM Plex + the icon subset via relative @font-face, no system-ui first", () => {
     // Phase 1 of the redesign: the family mismatch was the top `typography` cause.
-    expect(html).toContain("@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:100 700;")
-    expect(html).toContain("@font-face { font-family:'IBM Plex Mono'; font-style:normal; font-weight:400;")
+    expect(html).toContain(
+      "@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:100 700;",
+    )
+    expect(html).toContain(
+      "@font-face { font-family:'IBM Plex Mono'; font-style:normal; font-weight:400;",
+    )
     expect(html).toContain("@font-face { font-family:'Material Symbols Outlined';")
-    expect(html).toMatch(/src:url\(fonts\/[a-z0-9]+\/ibm-plex-sans-latin\.woff2\) format\('woff2'\)/)
+    expect(html).toMatch(
+      /src:url\(fonts\/[a-z0-9]+\/ibm-plex-sans-latin\.woff2\) format\('woff2'\)/,
+    )
     expect(html).toContain("font:13px/1.4 var(--font-sans)")
     expect(html).toContain("--font-sans:'IBM Plex Sans',system-ui")
     // Icons are ligatures in the comps' face, so the rule must match theirs verbatim.
@@ -756,11 +887,21 @@ describe("renderReport", () => {
   })
 
   it("carries the comps' tokens under the comps' names, dark by default, light as a body override", () => {
-    expect(html).toContain("--bg0:#2a2b2e; --bg1:#333438; --bg2:#3c3d42; --bg3:#46474d; --line:#4c4d54; --txt:#e7e9ec; --txt2:#a6abb3; --acc:#5b8def; --canvas:#232427;")
+    expect(html).toContain(
+      "--bg0:#2a2b2e; --bg1:#333438; --bg2:#3c3d42; --bg3:#46474d; --line:#4c4d54; --txt:#e7e9ec; --txt2:#a6abb3; --acc:#5b8def; --canvas:#232427;",
+    )
     expect(html).toContain("body.cc-theme-light { --bg0:#dfe1e4;")
     expect(html).toContain("--critical:#e5484d; --major:#f5a623; --minor:#4c9aff;")
     // The old navy palette and its names are gone, not aliased: one vocabulary.
-    for (const gone of ["#0b1020", "#111a2e", "#60a5fa", "var(--panel)", "var(--ink)", "var(--muted)", "var(--accent)"]) {
+    for (const gone of [
+      "#0b1020",
+      "#111a2e",
+      "#60a5fa",
+      "var(--panel)",
+      "var(--ink)",
+      "var(--muted)",
+      "var(--accent)",
+    ]) {
       expect(html).not.toContain(gone)
     }
     // The canvas token stays var(--canvas); the checker rides ON it as a background-image,
@@ -771,14 +912,23 @@ describe("renderReport", () => {
   })
 
   it("orders the tool strip as both comps do: pan, comment, focus, highlight, dim, strobe (Focus moved after Comment on 2026-08-29)", () => {
-    const ids = ["move-toggle", "ann-draw", "focus-toggle", "diff-toggle", "dim-toggle", "strobe-toggle"].map((id) => html.indexOf('id="' + id + '"'))
+    const ids = [
+      "move-toggle",
+      "ann-draw",
+      "focus-toggle",
+      "diff-toggle",
+      "dim-toggle",
+      "strobe-toggle",
+    ].map((id) => html.indexOf('id="' + id + '"'))
     expect(ids.every((i) => i > 0)).toBe(true)
     expect([...ids].sort((a, b) => a - b)).toEqual(ids)
   })
 
   it("trades the theme toggle for a settings popover on the phone: Layout (Minimal / Default) over Theme (Dark / Light)", () => {
     const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)![1]!
-    expect(html).toContain('id="settings-toggle" aria-expanded="false" aria-controls="settings-menu" title="Settings"')
+    expect(html).toContain(
+      'id="settings-toggle" aria-expanded="false" aria-controls="settings-menu" title="Settings"',
+    )
     expect(html).toContain('data-mlayout="minimal"')
     expect(html).toContain('data-theme="light"')
     // Desktop never shows it; the phone swaps it in for the toggle.
@@ -788,7 +938,9 @@ describe("renderReport", () => {
     expect(mobile).toContain(".delta-strip .review + .dismiss { margin-left:auto; }")
     expect(mobile).toContain(".settings-wrap { display:block; }")
     // The comp's header: equal flex shares on desktop (the groups centre on the SCREEN), hugging on the phone.
-    expect(html).toContain(".tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }")
+    expect(html).toContain(
+      ".tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }",
+    )
     expect(mobile).toContain(".tb-left, .tb-right { flex:0 0 auto; }")
     expect(html).not.toContain("tb-spacer")
     // The theme persists; the PHONE LAYOUT DOES NOT (2026-09-03). There is one phone layout, so a
@@ -808,21 +960,34 @@ describe("renderReport", () => {
 
   it("carries the minimal phone layout (the Mobile Minimal comp): 44px header with tune + settings, the segments in a panel over the canvas, tools + Fit bottom-left, swap + rail button bottom-right, icon-only align, no zoom pill / layer strip (the delta strip stays), a 58% sheet off screen while closed", () => {
     const mobile = /@media \(max-width: 759px\) \{([\s\S]*?)\n\}/.exec(html)![1]!
-    expect(mobile).toContain("body.layout-minimal .topbar { height:calc(44px + 1px); padding:0 8px; gap:7px; }")
+    expect(mobile).toContain(
+      "body.layout-minimal .topbar { height:calc(44px + 1px); padding:0 8px; gap:7px; }",
+    )
     expect(html).toContain('id="view-panel" hidden')
     expect(html).toContain('id="seg-variant-m"')
     expect(html).toContain('id="seg-layer-p"')
-    expect(mobile).toContain("body.layout-minimal #seg-variant, body.layout-minimal .layer-strip, body.layout-minimal .zoom-pill, body.layout-minimal .side-fab { display:none; }")
-    expect(mobile).toContain("body.layout-minimal .tools { left:8px; bottom:9px; padding:3px; gap:1px; }")
-    for (const id of ["fit-m", "pane-swap", "rail-btn", "rail-count"]) expect(html).toContain('id="' + id + '"')
+    expect(mobile).toContain(
+      "body.layout-minimal #seg-variant, body.layout-minimal .layer-strip, body.layout-minimal .zoom-pill, body.layout-minimal .side-fab { display:none; }",
+    )
+    expect(mobile).toContain(
+      "body.layout-minimal .tools { left:8px; bottom:9px; padding:3px; gap:1px; }",
+    )
+    for (const id of ["fit-m", "pane-swap", "rail-btn", "rail-count"])
+      expect(html).toContain('id="' + id + '"')
     expect(html).toContain(".pane-swap { right:calc(8px + 38px + 6px);")
-    expect(mobile).toContain("body.layout-minimal .align-pill { position:relative; width:calc(34px + 2px); height:calc(34px + 2px);")
+    expect(mobile).toContain(
+      "body.layout-minimal .align-pill { position:relative; width:calc(34px + 2px); height:calc(34px + 2px);",
+    )
     expect(html).toContain('id="conf-bang" hidden>!</span>')
-    expect(mobile).toContain("body.layout-minimal .rail { display:none; height:58%; transition:none; }")
+    expect(mobile).toContain(
+      "body.layout-minimal .rail { display:none; height:58%; transition:none; }",
+    )
     expect(mobile).toContain("body.layout-minimal.rail-open .rail { display:flex; }")
     // The icon-only button has no lock, so the menu carries the comp's lockstep row — and the
     // button itself goes accent while the lock is on, so the state reads without opening it.
-    expect(mobile).toContain("body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }")
+    expect(mobile).toContain(
+      "body.layout-minimal .align-pill.locked { background:var(--acc); border-color:var(--acc); }",
+    )
     expect(html).toContain("$('align-pill').classList.toggle('locked', state.lock);")
     expect(html).toContain("const lockRow = minimalOn()")
     // Off the phone the class never applies, whatever the preference says. The TOOLBAR layout is
@@ -832,9 +997,13 @@ describe("renderReport", () => {
       "function minimalOn() { return narrow.matches && (state.mlayout === 'minimal' || state.mlayout === 'toolbar'); }",
     )
     // The Minimal comp fits with a 16px margin where the Tool comp uses 24.
-    expect(html).toContain("fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())")
+    expect(html).toContain(
+      "fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())",
+    )
     // The overlay segment in the panel drives the same state as the topbar's.
-    expect(html).toContain("for (const b of document.querySelectorAll('[data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);")
+    expect(html).toContain(
+      "for (const b of document.querySelectorAll('[data-lab]')) b.classList.toggle('on', b.dataset.lab === mode);",
+    )
   })
 
   it("carries the toolbar phone layout (the Mobile Toolbar comp): Compare in the header, the Show row under it, the tool strip STILL at the bottom, no tune/settings, theme toggle back", () => {
@@ -846,10 +1015,14 @@ describe("renderReport", () => {
     // (the manifest's minimal and default pairs each pin their own).
     expect(html).toContain("const PHONE_LAYOUTS = ['toolbar', 'minimal', 'default'];")
     expect(html).toContain("PHONE_LAYOUTS.includes(v) ? v : null")
-    expect(html).toContain("function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }")
+    expect(html).toContain(
+      "function toolbarOn() { return narrow.matches && state.mlayout === 'toolbar'; }",
+    )
     expect(html).toContain("document.body.classList.toggle('layout-toolbar', toolbarOn());")
     // The comp drops BOTH glyphs and puts the dark/light toggle in the header.
-    expect(mobile).toContain("body.layout-toolbar .settings-wrap, body.layout-toolbar .view-toggle { display:none; }")
+    expect(mobile).toContain(
+      "body.layout-toolbar .settings-wrap, body.layout-toolbar .view-toggle { display:none; }",
+    )
     expect(mobile).toContain("body.layout-toolbar .topbar .theme-toggle { display:inline-flex; }")
     // Compare in the header at 11px (12px accumulated ~5px per item across the row), the Show
     // segment its own left-aligned row with no caption, and no pair title.
@@ -868,7 +1041,9 @@ describe("renderReport", () => {
     // border-radius:0 is load-bearing, not tidiness: a container that paints ONLY a radius is
     // still a surface to the extractor, so the flattened .seg kept reporting as an extra
     // 215x21 element at the pill's content box (12,123) that the comp does not draw.
-    expect(mobile).toContain("body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; border-radius:0; gap:2px; }")
+    expect(mobile).toContain(
+      "body.layout-toolbar .view-panel .seg.seg-p { border:0; padding:0; background:transparent; border-radius:0; gap:2px; }",
+    )
     expect(html).toContain("if (toolbarOn() && !state.viewOpen) setViewOpen(true);")
     // The -28px align lift is gone: it compensated for the 35px row this layout never had.
     expect(mobile).not.toMatch(/body\.layout-toolbar \.align-wrap \{[^}]*top:-28px/)
@@ -879,7 +1054,9 @@ describe("renderReport", () => {
     // 9px horizontal centres the segment at 97; 3px vertical + line-height 15 is its HEIGHT --
     // the comp's segment is 219x27 and .seg button's 5px/16px made it 32, which also read as a
     // 7px gap to the strip below where the design has 9.5px.
-    expect(mobile).toContain("body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }")
+    expect(mobile).toContain(
+      "body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }",
+    )
     // THE TOOL STRIP STAYS AT THE BOTTOM. The comp draws it at y=807; an early stub read the
     // "top floating toolbar" as this strip, moved it to top:8px and measured y=127 against the
     // comp's y=807. The floating toolbar is the Show ROW, not the tools.
@@ -892,9 +1069,10 @@ describe("renderReport", () => {
     expect(html).toContain("applyTheme(readControls().theme)")
     expect(html).toContain("theme: currentTheme(),")
     // On the index route no report is open; a full saveControls() there would persist unloaded defaults.
-    expect(html).toContain("function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }")
+    expect(html).toContain(
+      "function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }",
+    )
   })
-
 })
 
 describe("embedJson", () => {

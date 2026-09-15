@@ -39,23 +39,6 @@ import {
   type FigmaApiError,
   type FigmaVariablesResponse,
 } from "./adapters/figma-api.js"
-import { figmaRenderBleed } from "./adapters/figma-tree.js"
-import { expandVariants, variantAxes, variantSpec } from "./adapters/figma-variants.js"
-import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
-import { captureLiveUrl } from "./adapters/live-url.js"
-import { ensureStorybook } from "./adapters/storybook-server.js"
-import { captureStorybook } from "./adapters/storybook.js"
-import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
-import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
-import { packageForModel } from "./package/package-for-model.js"
-import { describeRegions } from "./package/regions.js"
-import { buildSetIndex, setIndexFileName, type SetIndex } from "./package/set-index.js"
-import { renderSummary, summarizeReports } from "./package/summary.js"
-import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
-import { lowConfidenceFinding, PIXEL_DEFAULTS, remainderFinding, runPixelChecks } from "./pixel/checks.js"
-import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
-import { hiddenMovement } from "./policy-audit.js"
-import { DEFAULT_GROUND, readGround, type Ground } from "./adapters/ground.js"
 import {
   defaultFigmaCacheRoot,
   imageCachePath,
@@ -65,7 +48,29 @@ import {
   variablesCachePath,
   writeCache,
 } from "./adapters/figma-cache.js"
+import { figmaRenderBleed } from "./adapters/figma-tree.js"
+import { expandVariants, variantAxes, variantSpec } from "./adapters/figma-variants.js"
+import { captureFigma, FIGMA_DEFAULTS, type FigmaCaptureOptions } from "./adapters/figma.js"
+import { DEFAULT_GROUND, readGround, type Ground } from "./adapters/ground.js"
+import { captureLiveUrl } from "./adapters/live-url.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
+import { ensureStorybook } from "./adapters/storybook-server.js"
+import { captureStorybook } from "./adapters/storybook.js"
+import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
+import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
+import { packageForModel } from "./package/package-for-model.js"
+import { describeRegions } from "./package/regions.js"
+import { buildSetIndex, setIndexFileName, type SetIndex } from "./package/set-index.js"
+import { renderSummary, summarizeReports } from "./package/summary.js"
+import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
+import {
+  lowConfidenceFinding,
+  PIXEL_DEFAULTS,
+  remainderFinding,
+  runPixelChecks,
+} from "./pixel/checks.js"
+import { diffMatches, diffRemainder, writeDiffMask } from "./pixel/diff.js"
+import { hiddenMovement } from "./policy-audit.js"
 import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./policy.js"
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
@@ -370,11 +375,7 @@ function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undef
  * Omitted entirely when nothing asked, so a capture with no bleed is byte-for-
  * byte the shot it was before the flag existed.
  */
-function bleedFor(
-  spec: PairSpec,
-  own: number | undefined,
-  o: RunOptions,
-): { bleed?: number } {
+function bleedFor(spec: PairSpec, own: number | undefined, o: RunOptions): { bleed?: number } {
   const px = own ?? spec.bleed ?? o.bleed
   return px !== undefined && px > 0 ? { bleed: px } : {}
 }
@@ -583,7 +584,10 @@ async function runPair(
     )
   }
   for (const st of [...(dSteps ?? []), ...(aSteps ?? [])]) {
-    if ("clickText" in st) { console.log(`  note: ${stepHint}`); break }
+    if ("clickText" in st) {
+      console.log(`  note: ${stepHint}`)
+      break
+    }
   }
 
   const structural = runTypedChecks(match)
@@ -635,7 +639,12 @@ async function runPair(
   // The impl elements come along because a `contentsOf` rule's container is an ELEMENT, not a
   // finding: it must fire whether or not that element is itself reported.
   const { kept, suppressed } = applyPolicy(
-    finalize([...structural, ...pixel, ...(identity ? [identity] : []), ...(rootSize ? [rootSize] : [])]),
+    finalize([
+      ...structural,
+      ...pixel,
+      ...(identity ? [identity] : []),
+      ...(rootSize ? [rootSize] : []),
+    ]),
     policy,
     { implElements: aligned.impl.elements, frame: { w: i.width, h: i.height } },
   )
@@ -655,7 +664,8 @@ async function runPair(
   // something would otherwise be missed.
   const causeCounts = (fs: readonly { explained?: { cause: string } }[]): Map<string, number> => {
     const m = new Map<string, number>()
-    for (const f of fs) if (f.explained) m.set(f.explained.cause, (m.get(f.explained.cause) ?? 0) + 1)
+    for (const f of fs)
+      if (f.explained) m.set(f.explained.cause, (m.get(f.explained.cause) ?? 0) + 1)
     return m
   }
   // A rule that matches nothing on THIS pair is not news — the rules are shared across pairs and a
@@ -705,7 +715,8 @@ function printReport(report: ComparisonReport): void {
   // and are printed under it, never hidden.
   if (explained.length > 0) {
     const byCause = new Map<string, number>()
-    for (const f of explained) byCause.set(f.explained!.cause, (byCause.get(f.explained!.cause) ?? 0) + 1)
+    for (const f of explained)
+      byCause.set(f.explained!.cause, (byCause.get(f.explained!.cause) ?? 0) + 1)
     console.log(
       `  ${openN} unexplained · ${explained.length} explained: ${[...byCause]
         .sort((a, b) => b[1] - a[1])
@@ -720,7 +731,9 @@ function printReport(report: ComparisonReport): void {
   for (const f of ordered.slice(0, 40)) {
     const times = f.instances !== undefined ? ` ×${f.instances}` : ""
     const why = f.explained ? ` [${f.explained.cause}]` : ""
-    console.log(`  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}${why}`)
+    console.log(
+      `  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}${why}`,
+    )
   }
   if (report.findings.length > 40) console.log(`  … ${report.findings.length - 40} more`)
   if (report.suppressed.length > 0) {
@@ -736,7 +749,9 @@ function printReport(report: ComparisonReport): void {
     // quiet about the size of what it hid.
     const hidden = hiddenMovement(report.suppressed)
     if (hidden.length > 0) {
-      console.log(`  ⚠ ${hidden.length} suppressed finding(s) moved ≥8px — a rule is hiding geometry:`)
+      console.log(
+        `  ⚠ ${hidden.length} suppressed finding(s) moved ≥8px — a rule is hiding geometry:`,
+      )
       for (const h of hidden.slice(0, 5))
         console.log(`      ${h.px}px  [${h.suppressedBy} ${h.rule}] ${h.message.slice(0, 90)}`)
       const advice = hidden.find((h) => h.advice)?.advice
@@ -748,7 +763,10 @@ function printReport(report: ComparisonReport): void {
     const { introduced, resolved, previousRun, previousRunNumber, regressions = [] } = report.delta
     // Name the runs when they are numbered; the timestamp stays the fallback for a
     // report written before runs carried an ordinal.
-    const vs = previousRunNumber === undefined ? previousRun : `run ${previousRunNumber} (run ${report.run} now)`
+    const vs =
+      previousRunNumber === undefined
+        ? previousRun
+        : `run ${previousRunNumber} (run ${report.run} now)`
     console.log(
       `delta vs ${vs}: +${introduced.length} introduced / −${resolved.length} resolved${
         introduced.length > 0 ? ` (introduced: ${introduced.join(", ")})` : ""
@@ -881,9 +899,7 @@ async function expandFigmaSet(
     pinned.length > 0 ? `order pinned for ${pinned.join(",")}` : "",
   ].filter(Boolean)
   const galleryNote =
-    index.gallery === undefined
-      ? ""
-      : `, gallery ${galleryAxes.join(" ") || "labels/order only"}`
+    index.gallery === undefined ? "" : `, gallery ${galleryAxes.join(" ") || "labels/order only"}`
   console.log(
     wrote.ok
       ? `  set index: ${wrote.value} (${index.pairs.length} pairs, ${index.skipped.length} skipped, axes from ${index.axes.source}${galleryNote})`
@@ -901,7 +917,9 @@ async function expandFigmaSet(
   }
 
   const varPath =
-    cacheRoot && cacheVersion ? variablesCachePath(cacheRoot, design.fileKey, cacheVersion) : undefined
+    cacheRoot && cacheVersion
+      ? variablesCachePath(cacheRoot, design.fileKey, cacheVersion)
+      : undefined
   const cachedVars = varPath ? await readCache(varPath) : undefined
   let variables: Result<FigmaVariablesResponse | undefined, FigmaApiError> | undefined
   if (cachedVars) {
@@ -960,7 +978,10 @@ async function expandFigmaSet(
         scale,
         absoluteBounds: !bled.has(pair.nodeId),
       })
-      const there = await access(path).then(() => true, () => false)
+      const there = await access(path).then(
+        () => true,
+        () => false,
+      )
       if (there) cachedIds.add(pair.nodeId)
     }
     if (cachedIds.size > 0) {
@@ -984,7 +1005,9 @@ async function expandFigmaSet(
     Object.assign(images, r.value)
   }
   if (bled.size > 0) {
-    console.log(`  design bleed: ${bled.size}/${expanded.value.pairs.length} cells paint outside their box — rendered at their render bounds`)
+    console.log(
+      `  design bleed: ${bled.size}/${expanded.value.pairs.length} cells paint outside their box — rendered at their render bounds`,
+    )
   }
   const prefetched = new Map<string, Prefetched>()
   const specs: PairSpec[] = expanded.value.pairs.map((p) => {
@@ -1022,7 +1045,9 @@ async function expandFigmaSet(
 async function writeSetIndex(
   root: string,
   index: SetIndex,
-): Promise<Result<string, { kind: "set-index-write"; entryId: string; path: string; detail: string }>> {
+): Promise<
+  Result<string, { kind: "set-index-write"; entryId: string; path: string; detail: string }>
+> {
   const path = resolve(join(root, setIndexFileName(index.entryId)))
   try {
     await mkdir(dirname(path), { recursive: true })
@@ -1314,7 +1339,9 @@ async function compare(argv: string[]): Promise<void> {
     // Outside manifest mode `--pair` NAMES the one pair, so several is a
     // contradiction rather than a selection — say so instead of picking one.
     if (values.pair && values.pair.length > 1)
-      fail("--pair names the single pair's identity here; pass it once (a manifest run selects many with --pair a,b)")
+      fail(
+        "--pair names the single pair's identity here; pass it once (a manifest run selects many with --pair a,b)",
+      )
     specs = [{ id: values.pair?.[0] ?? `${designId}--${implId}`, design, impl }]
   }
 
@@ -1365,7 +1392,9 @@ async function compare(argv: string[]): Promise<void> {
       // so its id has no `--` and it matches through wholeEntries like any other.
       specs = expanded.filter((p) => wanted.has(p.id) || wholeEntries.has(entryOf(p.id)))
       if (specs.length === 0) {
-        fail(`no pair matched ${[...wanted].join(", ")} after variant expansion — check the cell id against <out-root>/<entry>.set.json`)
+        fail(
+          `no pair matched ${[...wanted].join(", ")} after variant expansion — check the cell id against <out-root>/<entry>.set.json`,
+        )
       }
     }
   }

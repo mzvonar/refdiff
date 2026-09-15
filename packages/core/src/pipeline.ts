@@ -6,13 +6,13 @@
  * docs/architecture.md "Pipeline".
  */
 
-import type { Ground } from "./adapters/ground.js";
-import type { CaptureStep } from "./adapters/steps.js";
-import type { Alignment, Bleed, Box, CaptureScope, ElementNode } from "./types.js";
+import type { Ground } from "./adapters/ground.js"
+import type { CaptureStep } from "./adapters/steps.js"
+import type { Alignment, Bleed, Box, CaptureScope, ElementNode } from "./types.js"
 
 export interface Viewport {
-  width: number;
-  height: number;
+  width: number
+  height: number
 }
 
 /** Claude Design `.dc.html` canvas served from a local directory. */
@@ -23,38 +23,38 @@ export interface DcHtmlSource {
    * A step whose target is missing FAILS the capture — photographing the
    * default state instead would go green while measuring the wrong state.
    */
-  steps?: CaptureStep[];
-  kind: "dc-html";
+  steps?: CaptureStep[]
+  kind: "dc-html"
   /** Directory containing the comp; served over http (the dc-runtime's
    *  fetch of React from unpkg breaks under file://). */
-  dir: string;
+  dir: string
   /** File name within `dir`, e.g. "doc-detail-modal.dc.html". */
-  file: string;
+  file: string
   /** Frame address inside the canvas: element id, falling back to
    *  data-screen-label (some comps ship label-only frames). */
-  frame: string;
+  frame: string
   /**
    * CSS selector (relative to the frame) of the node to compare — the
    * component, not the artboard chrome around it. When absent the adapter
    * falls back to the frame's largest child by area and records that in
    * `Capture.scope`.
    */
-  scope?: string;
-  viewport?: Viewport;
+  scope?: string
+  viewport?: Viewport
   /**
    * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
    * — a focus ring, an offset outline, a drop shadow — is in the picture. It
    * changes no measurement: element boxes stay relative to the node's own
    * origin, and the recorded `bleed` says where the PNG's (0, 0) landed.
    */
-  bleed?: number;
+  bleed?: number
   /**
    * What the shot does with the paint BEHIND the node (default `transparent`).
    * A browser screenshot composites its ancestors; Figma's node export never
    * does, and cannot be made to. `keep` opts one side back into the composite.
    * Element shots only — see `adapters/ground.ts`.
    */
-  ground?: Ground;
+  ground?: Ground
 }
 
 /** A Storybook story rendered via the bare iframe. */
@@ -65,21 +65,21 @@ export interface StorybookSource {
    * A step whose target is missing FAILS the capture — photographing the
    * default state instead would go green while measuring the wrong state.
    */
-  steps?: CaptureStep[];
-  kind: "storybook";
+  steps?: CaptureStep[]
+  kind: "storybook"
   /** Storybook origin, e.g. http://localhost:6006 */
-  url: string;
-  storyId: string;
-  viewport?: Viewport;
+  url: string
+  storyId: string
+  viewport?: Viewport
   /** Dialog/sheet stories portal their content to <body>, outside
    *  #storybook-root — capture the whole viewport instead of the root. */
-  overlay?: boolean;
+  overlay?: boolean
   /**
    * Capture this node inside the story instead of `#storybook-root` — one
    * cell of a variant matrix (`[data-rowkey=…][data-col=…]`) against one
    * Figma variant COMPONENT. Missing → typed `selector-not-found`.
    */
-  selector?: string;
+  selector?: string
   /**
    * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
    * — a focus ring, an offset outline, a drop shadow — is in the picture. It
@@ -87,14 +87,14 @@ export interface StorybookSource {
    * origin, and the recorded `bleed` says where the PNG's (0, 0) landed. Ignored
    * when the whole viewport is being shot, which has no box to grow.
    */
-  bleed?: number;
+  bleed?: number
   /**
    * What the shot does with the paint BEHIND the node (default `transparent`).
    * A browser screenshot composites its ancestors; Figma's node export never
    * does, and cannot be made to. `keep` opts one side back into the composite.
    * Element shots only — see `adapters/ground.ts`.
    */
-  ground?: Ground;
+  ground?: Ground
 }
 
 /**
@@ -102,19 +102,19 @@ export interface StorybookSource {
  * px at scale 1; the PNG is rendered at `scale`× → `Capture.dpr = scale`.
  */
 export interface FigmaSource {
-  kind: "figma";
-  fileKey: string;
+  kind: "figma"
+  fileKey: string
   /** Node id as the API spells it ("123:456"; URLs use "123-456"). */
-  nodeId: string;
+  nodeId: string
   /** Render scale (1–4). Default 2. */
-  scale?: number;
+  scale?: number
   /** Pin a file version id; default = current. */
-  version?: string;
+  version?: string
   /**
    * GIGO gate: minimum design-quality score (share of leaves whose color /
    * typography is bound to a variable or shared style). Default 0.3.
    */
-  minQuality?: number;
+  minQuality?: number
   /**
    * Capture the paint OUTSIDE the node's box — a focus ring, an offset
    * outline, a drop shadow — instead of stopping at it.
@@ -127,7 +127,7 @@ export interface FigmaSource {
    * `use_absolute_bounds`, which is what stops Figma cropping a TEXT node to
    * its glyph ink.
    */
-  bleed?: number;
+  bleed?: number
 }
 
 /** How a live-URL capture authenticates before navigating. */
@@ -138,7 +138,7 @@ export type LiveAuth =
    * POST a JSON body to a session endpoint inside the browser context (the
    * uctoinak `/api/test/session` pattern). Non-2xx → `auth-failed`.
    */
-  | { kind: "post"; url: string; headers?: Record<string, string>; body?: Record<string, unknown> };
+  | { kind: "post"; url: string; headers?: Record<string, string>; body?: Record<string, unknown> }
 
 /** A page of the running application. */
 export interface LiveUrlSource {
@@ -148,17 +148,17 @@ export interface LiveUrlSource {
    * A step whose target is missing FAILS the capture — photographing the
    * default state instead would go green while measuring the wrong state.
    */
-  steps?: CaptureStep[];
-  kind: "live-url";
-  url: string;
-  viewport?: Viewport;
+  steps?: CaptureStep[]
+  kind: "live-url"
+  url: string
+  viewport?: Viewport
   /** CSS selector to capture instead of the viewport; must exist. */
-  selector?: string;
+  selector?: string
   /** Wait for this selector before capturing (content that streams in). */
-  waitFor?: string;
-  auth?: LiveAuth;
+  waitFor?: string
+  auth?: LiveAuth
   /** Full-page screenshot (document height) instead of the viewport. */
-  fullPage?: boolean;
+  fullPage?: boolean
   /**
    * Capture this many CSS px of margin around the node, so paint OUTSIDE its box
    * — a focus ring, an offset outline, a drop shadow — is in the picture. It
@@ -166,36 +166,36 @@ export interface LiveUrlSource {
    * origin, and the recorded `bleed` says where the PNG's (0, 0) landed. Ignored
    * when the whole viewport is being shot, which has no box to grow.
    */
-  bleed?: number;
+  bleed?: number
   /**
    * What the shot does with the paint BEHIND the node (default `transparent`).
    * A browser screenshot composites its ancestors; Figma's node export never
    * does, and cannot be made to. `keep` opts one side back into the composite.
    * Element shots only — see `adapters/ground.ts`.
    */
-  ground?: Ground;
+  ground?: Ground
 }
 
-export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource;
+export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource
 
 /** Design-quality score of a design capture (Figma GIGO gate). */
 export interface DesignQuality {
   /** 0..1 — share of leaves bound to variables/styles, penalized for detached instances. */
-  score: number;
-  leaves: number;
+  score: number
+  leaves: number
   /** Leaves whose color or typography comes from a variable or shared style. */
-  bound: number;
-  instances: number;
+  bound: number
+  instances: number
   /** INSTANCE nodes without a component id (detached from their library). */
-  detached: number;
+  detached: number
 }
 
 /** One concrete thing to capture, with provenance. */
 export interface RefDescriptor {
-  side: "design" | "impl";
-  source: SourceConfig;
+  side: "design" | "impl"
+  source: SourceConfig
   /** Human-readable identity, e.g. "doc-detail-modal.dc.html#1a". */
-  ref: string;
+  ref: string
 }
 
 /**
@@ -205,31 +205,31 @@ export interface RefDescriptor {
  * Capture.
  */
 export interface Capture {
-  side: "design" | "impl";
-  source: SourceConfig["kind"];
-  ref: string;
-  pngPath: string;
+  side: "design" | "impl"
+  source: SourceConfig["kind"]
+  ref: string
+  pngPath: string
   /** CSS px of the captured region (the PNG is width*dpr × height*dpr). */
-  width: number;
-  height: number;
-  dpr: number;
+  width: number
+  height: number
+  dpr: number
   /** Leaf element tree, boxes in CSS px relative to the capture origin. */
-  elements: ElementNode[];
+  elements: ElementNode[]
   /**
    * Which node was captured, and why. Design: the frame's scope (explicit /
    * largest-child / frame). Impl: `explicit` when a `selector` narrowed the
    * capture to one node — together with an explicit design scope that makes
    * the pair an ELEMENT pair (origins coincide → identity alignment).
    */
-  scope?: CaptureScope;
+  scope?: CaptureScope
   /**
    * Margin actually captured around the node, in this capture's own CSS px.
    * Absent = none. It is the ASKED-FOR bleed clamped to the page, so a node at
    * the viewport edge keeps the margins that fit and loses the ones that do not.
    */
-  bleed?: Bleed;
+  bleed?: Bleed
   /** Figma only: the GIGO quality score, echoed even when the gate passed. */
-  quality?: DesignQuality;
+  quality?: DesignQuality
 }
 
 /** Typed capture failures — data, not exceptions. */
@@ -260,7 +260,13 @@ export type CaptureError =
   /** The images endpoint returned no URL, the download failed or the PNG is not what the node says. */
   | { kind: "figma-render-failed"; ref: string; detail: string }
   /** GIGO gate: quality score below the threshold. */
-  | { kind: "figma-low-quality"; ref: string; quality: DesignQuality; minQuality: number; detail: string }
+  | {
+      kind: "figma-low-quality"
+      ref: string
+      quality: DesignQuality
+      minQuality: number
+      detail: string
+    }
   /** Any other API failure (network, 5xx, malformed body). */
   | { kind: "figma-api"; ref: string; detail: string }
   // Live URL
@@ -273,13 +279,13 @@ export type CaptureError =
   /** The page rendered an error/not-found page with a 2xx status. */
   | { kind: "error-page"; ref: string; url: string; detail: string }
   /** `selector` / `waitFor` never appeared. */
-  | { kind: "selector-not-found"; ref: string; selector: string };
+  | { kind: "selector-not-found"; ref: string; selector: string }
 
 /** Both sides captured, nothing derived yet. */
 export interface Pair {
-  id: string;
-  design: Capture;
-  impl: Capture;
+  id: string
+  design: Capture
+  impl: Capture
 }
 
 /**
@@ -289,64 +295,64 @@ export interface Pair {
  * viewports, which the report should surface, not hide.
  */
 export interface NormalizedPair {
-  id: string;
+  id: string
   /** Design capture with element boxes and dimensions multiplied by designScale. */
-  design: Capture;
-  impl: Capture;
+  design: Capture
+  impl: Capture
   /** impl.width / original design.width; 1 when the sides already agree. */
-  designScale: number;
+  designScale: number
 }
 
 /** NormalizedPair after pixel-level alignment (pixel channel only). */
 export interface AlignedPair extends NormalizedPair {
-  alignment: Alignment;
+  alignment: Alignment
 }
 
 /** One design element geometrically matched to one impl element. */
 export interface ElementMatch {
-  design: ElementNode;
-  impl: ElementNode;
+  design: ElementNode
+  impl: ElementNode
   /** γ = |Δx|+|Δy|+|Δw|+|Δh| in normalized CSS px (GVT). */
-  gamma: number;
+  gamma: number
   /**
    * How the pair was formed: identical unique text, GVT geometry, or the
    * width-blind slot pass (same anchor and height, different text — a
    * value slot showing different data).
    */
-  via: "text" | "geometry" | "slot";
+  via: "text" | "geometry" | "slot"
 }
 
 /** A pass-2 candidate the unrelated-text veto refused, for the run log. */
 export interface VetoedPairing {
-  designText: string;
-  implText: string;
-  gamma: number;
+  designText: string
+  implText: string
+  gamma: number
 }
 
 /** Output of matchElements — unmatched boxes become missing/extra findings. */
 export interface MatchResult {
-  matches: ElementMatch[];
+  matches: ElementMatch[]
   /** Design elements with no impl counterpart (→ missing-element). */
-  designOnly: ElementNode[];
+  designOnly: ElementNode[]
   /** Impl elements with no design counterpart (→ extra-element). */
-  implOnly: ElementNode[];
+  implOnly: ElementNode[]
   /**
    * Candidate pairs the unrelated-text veto refused (see `unrelatedPairing`):
    * both elements had a same-text counterpart elsewhere, so this pairing was
    * provably wrong and both sides are reported missing/extra instead. Absent
    * when none were — the run log names the count.
    */
-  vetoed?: VetoedPairing[];
+  vetoed?: VetoedPairing[]
 }
 
 export function pairRefs(id: string, design: Capture, impl: Capture): Pair {
-  return { id, design, impl };
+  return { id, design, impl }
 }
 
-const SCALE_EPSILON = 0.005;
+const SCALE_EPSILON = 0.005
 
 function scaleBox(box: Box, s: number): Box {
-  return { x: box.x * s, y: box.y * s, w: box.w * s, h: box.h * s };
+  return { x: box.x * s, y: box.y * s, w: box.w * s, h: box.h * s }
 }
 
 export interface NormalizeOptions {
@@ -356,16 +362,20 @@ export interface NormalizeOptions {
    * already ARE CSS px, so a frame wider than the impl is a LAYOUT difference
    * (a variant sheet vs a grid), not a scale to normalize away.
    */
-  designScale?: number | "auto";
+  designScale?: number | "auto"
 }
 
 /** The default scale policy per design source: Figma units are CSS px. */
-export const defaultDesignScale = (design: Capture): number | "auto" => (design.source === "figma" ? 1 : "auto");
+export const defaultDesignScale = (design: Capture): number | "auto" =>
+  design.source === "figma" ? 1 : "auto"
 
 /** Pure: rescales design-side geometry into impl CSS-px space. */
-export function normalize(pair: Pair, { designScale: wanted = defaultDesignScale(pair.design) }: NormalizeOptions = {}): NormalizedPair {
-  const raw = wanted === "auto" ? pair.impl.width / pair.design.width : wanted;
-  const designScale = Math.abs(raw - 1) < SCALE_EPSILON ? 1 : raw;
+export function normalize(
+  pair: Pair,
+  { designScale: wanted = defaultDesignScale(pair.design) }: NormalizeOptions = {},
+): NormalizedPair {
+  const raw = wanted === "auto" ? pair.impl.width / pair.design.width : wanted
+  const designScale = Math.abs(raw - 1) < SCALE_EPSILON ? 1 : raw
   // `bleed` rides the spread UNSCALED, and must: it is in RAW design CSS px,
   // which is the space `toDesignNative` lands in after dividing by the total
   // design→impl scale. Scaling it here would double-count that division.
@@ -380,6 +390,6 @@ export function normalize(pair: Pair, { designScale: wanted = defaultDesignScale
             ...el,
             box: scaleBox(el.box, designScale),
           })),
-        };
-  return { id: pair.id, design, impl: pair.impl, designScale };
+        }
+  return { id: pair.id, design, impl: pair.impl, designScale }
 }
