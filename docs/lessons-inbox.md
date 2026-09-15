@@ -5,6 +5,46 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-15 — an AGGREGATE score answers the question it was built for, not the one you are asking
+
+`alignment.confidence` is the fraction of anchors the fitted transform explains **on both axes at
+once**, and it is right that way: it gates the pixel channel, and diffing pixels needs both axes.
+Step 4 then reached for it to answer a different question — "do these two surfaces correspond well
+enough for element-wise findings?" — and it gave a confidently wrong answer.
+`tx-picker-owner-mobile` rests on 17 anchors: 14 agree on X, 1 on Y, **0 on both**. Joint score
+0.00, `confidenceX` 0.82, match rate 0.91. Both rules the plan proposed read the joint score, so
+both would have labelled the corpus's best-corresponding component pairs "go reconcile the
+structure" — the exact harm the plan was written to prevent.
+
+**The tell was already in the codebase.** `Alignment.confidenceX`'s own doc comment says the
+collapse happens, says what it means, and says the pixel gate stays on the joint score *because
+pixels need both axes*. Nobody had asked whether the NEW consumer had that requirement. It did not.
+
+So: before reusing a score, read what it AGGREGATES and ask whether your question needs the same
+aggregation. A number in range and a number that means what you want are different things, and a
+plausible-looking 0.00 is the easiest of all to take on trust. (The plan said "do not take the
+arithmetic on trust" and it was right, but it guessed the wrong cause — it expected a broken fitter,
+and the fitter was fine.)
+
+Corollary, same pair: `fitAxis` bails to the identity when its median |residual| exceeds
+`AXIS_RESIDUAL_MAX` = 12 px. That pair's Y residual is **12.10**. A 0.8% miss silently replaces a
+fit worth 8 of 17 anchors with "no transform", taking `confidenceY` 0.47 → 0.06. Threshold cliffs
+in a reported score need to say they fired; this one does not, and `basis` still reads `anchors`.
+
+## 2026-09-15 — a 307 is not proof the server is up; probe the route that actually failed
+
+The handoff already documents that an OOM-killed dev server leaves a poisoned Turbopack dist dir
+where "every page and API route answers 500 while middleware-level redirects still answer 307". The
+documented probe is `curl` on a page route expecting **307** — which is the redirect, i.e. exactly
+the response the poisoned state still produces. It reported READY on a server that could not serve a
+single page, and the corpus run then died on all 31 pairs with `auth-failed: POST /api/test/session
+→ HTTP 500`.
+
+**Probe the thing the work needs, past the first layer that can answer without it.** Here that is
+`POST /api/test/session`: a **404** (no such user) proves the route compiled and ran, where a 500
+proves nothing had. Then `rm -rf .next-design` and restart, per the existing note — the fix was
+already written down; only the readiness check was wrong.
+
 ## 2026-09-15 — a measurement was wrong for a whole day because the IMPL process predated `dist`
 
 The corpus's `refdiff` half is the annotator serving `fixtures/demo-root`, run as a long-lived

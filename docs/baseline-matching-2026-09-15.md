@@ -1,7 +1,7 @@
 # Matching baseline — 2026-09-15
 
 The before-picture for `docs/plan-divergent-matching.md` steps 3–5, produced by
-`node scripts/baseline-matching.ts` at refdiff `a830c38` (WORKING TREE DIRTY — the numbers below are not a committed state).
+`node scripts/baseline-matching.ts` at refdiff `8c5e565` (WORKING TREE DIRTY — the numbers below are not a committed state).
 
 **How to read it.** The *Matching* table is the instrument. Steps 3–5 all make the matcher
 refuse more pairs, and a refusal moves one element out of `matched` and adds one to BOTH
@@ -20,7 +20,7 @@ Regenerate with the same command; it rewrites this file for today's date.
 
 the annotator's own redesign comps against the annotator serving `fixtures/demo-root` — self-contained in this repo.
 
-**The numbers below were measured 2026-09-15T20:52:49.339Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: svc up annotator (it may land on another port — pass --app-url or REFDIFF_APP_URL), then `node scripts/baseline-matching.ts --only refdiff`.
+**The numbers below were measured 2026-09-15T22:10:24.539Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: svc up annotator (it may land on another port — pass --app-url or REFDIFF_APP_URL), then `node scripts/baseline-matching.ts --only refdiff`.
 
 ```
 cd /root/refdiff
@@ -33,38 +33,41 @@ Not in the tables below:
 - `refdiff-library-desktop` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 489 findings at confidence 0.14
 - `refdiff-library-mobile` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 335 findings at confidence 0.67
 
-9 pairs: 1 PASS / 8 FAIL — 2232 findings covering 3579 instances, 356 suppressed; delta +582 / −971
+9 pairs: 1 PASS / 8 FAIL — 2232 findings covering 3579 instances, 356 suppressed; delta +0 / −0
 80 of 2232 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 221 by text, 34 by slot, 651 by geometry, 1326 resting on no pair
 2038 unexplained · 194 explained: 138 comp rail row order, 37 comp mark numbering, 19 canvas zoom divergence
 
 | pair                                 | verdict | findings (c/M/m) | inst | supp | unver | conf | align         | delta |
 |--------------------------------------|---------|------------------|------|------|-------|------|---------------|-------|
-| refdiff-compare-desktop              | FAIL    |     69 (20/43/6) |  103 |   66 |     0 | 0.72 | 1 / 0,0       | +18/−44 |
-| refdiff-library-groups-desktop       | FAIL    | 560 (200/229/131) |  774 |    5 |     0 | 0.56 | 1 / 0,0       | +246/−482 |
-| refdiff-library-groups-mobile        | FAIL    | 520 (130/247/143) |  722 |    2 |     0 | 0.85 | 1 / −1.0,−1.0 | +304/−347 |
-| refdiff-compare-mobile               | FAIL    |       13 (3/8/2) |   25 |   29 |     0 | 0.97 | 1 / 0,0       | +10/−16 |
-| refdiff-compare-mobile-toolbar       | PASS    |        4 (3/0/1) |    4 |   29 |     0 | 1.00 | 1 / 0,0       | +4/−82 |
-| refdiff-compare-mobile-toolbar-ghost | FAIL    |    90 (21/56/13) |  174 |   40 |     5 | 0.46 | 1 / 0,0       | -     |
-| refdiff-gallery-desktop              | FAIL    | 621 (152/328/141) | 1240 |   93 |    75 | 0.40 | 1 / 0,0       | -     |
-| refdiff-gallery-mobile               | FAIL    |  246 (91/120/35) |  357 |   32 |     0 | 0.78 | 1 / 0,0       | -     |
-| refdiff-compare-desktop-ghost        | FAIL    |   109 (37/54/18) |  180 |   60 |     0 | 0.56 | 1 / 0,0       | -     |
+| refdiff-compare-desktop              | FAIL    |     69 (20/43/6) |  103 |   66 |     0 | 0.72 | 1 / 0,0       | +0/−0 |
+| refdiff-library-groups-desktop       | FAIL    | 560 (200/229/131) |  774 |    5 |     0 | 0.56 | 1 / 0,0       | +0/−0 |
+| refdiff-library-groups-mobile        | FAIL    | 520 (130/247/143) |  722 |    2 |     0 | 0.85 | 1 / −1.0,−1.0 | +0/−0 |
+| refdiff-compare-mobile               | FAIL    |       13 (3/8/2) |   25 |   29 |     0 | 0.97 | 1 / 0,0       | +0/−0 |
+| refdiff-compare-mobile-toolbar       | PASS    |        4 (3/0/1) |    4 |   29 |     0 | 1.00 | 1 / 0,0       | +0/−0 |
+| refdiff-compare-mobile-toolbar-ghost | FAIL    |    90 (21/56/13) |  174 |   40 |     5 | 0.46 | 1 / 0,0       | +0/−0 |
+| refdiff-gallery-desktop              | FAIL    | 621 (152/328/141) | 1240 |   93 |    75 | 0.40 | 1 / 0,0       | +0/−0 |
+| refdiff-gallery-mobile               | FAIL    |  246 (91/120/35) |  357 |   32 |     0 | 0.78 | 1 / 0,0       | +0/−0 |
+| refdiff-compare-desktop-ghost        | FAIL    |   109 (37/54/18) |  180 |   60 |     0 | 0.56 | 1 / 0,0       | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
+`phase` reads `rate` (matched / min leaves) and `axis` (the BETTER-fitting axis, not the
+joint `conf`); `share` is reported and does not gate. On a `reconcile` pair a matched
+collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.
 
-| pair                                 | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf |
-|--------------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|
-| refdiff-compare-desktop              |    263 |  194 |     179 |  150 |    1 |   28 |     84 |     15 |      1 | 0.72 |
-| refdiff-library-groups-desktop       |    487 |  303 |     197 |   60 |    2 |  135 |    290 |    106 |     30 | 0.56 |
-| refdiff-library-groups-mobile        |    432 |  297 |     232 |   45 |    0 |  187 |    200 |     65 |     26 | 0.85 |
-| refdiff-compare-mobile               |     98 |   64 |      64 |   47 |    1 |   16 |     34 |      0 |      0 | 0.97 |
-| refdiff-compare-mobile-toolbar       |     89 |   55 |      55 |   41 |    0 |   14 |     34 |      0 |      0 | 1.00 |
-| refdiff-compare-mobile-toolbar-ghost |    220 |  185 |     170 |  136 |    1 |   33 |     50 |     15 |      2 | 0.46 |
-| refdiff-gallery-desktop              |    648 |  389 |     345 |   85 |    9 |  251 |    303 |     44 |      0 | 0.40 |
-| refdiff-gallery-mobile               |    311 |  137 |     135 |   36 |    0 |   99 |    176 |      2 |      0 | 0.78 |
-| refdiff-compare-desktop-ghost        |    273 |  204 |     179 |  146 |    2 |   31 |     94 |     25 |      8 | 0.56 |
-| TOTAL (9)                            |   2821 | 1828 |    1556 |  746 |   16 |  794 |   1265 |    272 |     67 |      |
+| pair                                 | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf | axis | rate | share |     phase |
+|--------------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|------|------|-------|-----------|
+| refdiff-compare-desktop              |    263 |  194 |     179 |  150 |    1 |   28 |     84 |     15 |      1 | 0.72 | 1.00 | 0.92 |  0.84 |    polish |
+| refdiff-library-groups-desktop       |    487 |  303 |     197 |   60 |    2 |  135 |    290 |    106 |     30 | 0.56 | 0.89 | 0.65 |  0.30 | reconcile |
+| refdiff-library-groups-mobile        |    432 |  297 |     232 |   45 |    0 |  187 |    200 |     65 |     26 | 0.85 | 1.00 | 0.78 |  0.19 |    polish |
+| refdiff-compare-mobile               |     98 |   64 |      64 |   47 |    1 |   16 |     34 |      0 |      0 | 0.97 | 1.00 | 1.00 |  0.73 |    polish |
+| refdiff-compare-mobile-toolbar       |     89 |   55 |      55 |   41 |    0 |   14 |     34 |      0 |      0 | 1.00 | 1.00 | 1.00 |  0.75 |    polish |
+| refdiff-compare-mobile-toolbar-ghost |    220 |  185 |     170 |  136 |    1 |   33 |     50 |     15 |      2 | 0.46 | 0.99 | 0.92 |  0.80 |    polish |
+| refdiff-gallery-desktop              |    648 |  389 |     345 |   85 |    9 |  251 |    303 |     44 |      0 | 0.40 | 0.64 | 0.89 |  0.25 |    polish |
+| refdiff-gallery-mobile               |    311 |  137 |     135 |   36 |    0 |   99 |    176 |      2 |      0 | 0.78 | 1.00 | 0.99 |  0.27 |    polish |
+| refdiff-compare-desktop-ghost        |    273 |  204 |     179 |  146 |    2 |   31 |     94 |     25 |      8 | 0.56 | 1.00 | 0.88 |  0.82 |    polish |
+| TOTAL (9)                            |   2821 | 1828 |    1556 |  746 |   16 |  794 |   1265 |    272 |     67 |      |      |      |       |     8P/1R |
 
 Findings by type:
 
@@ -271,11 +274,11 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 
 
 
-## uctoinak2
+## uctoinak2 — NOT RE-MEASURED IN THIS RUN
 
 the Uctoinak app's 31 whole-PAGE pairs on its own dev server, including the witness `messages-accountant-desktop`.
 
-Measured 2026-09-15T21:05:43.245Z.
+**The numbers below were measured 2026-09-15T22:28:02.952Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: start that worktree's `design-live` svc unit (APP_ENV=test, NEXT_DIST_DIR=.next-design, its own DB) — see docs/plan-divergent-matching.md §Repro, then `node scripts/baseline-matching.ts --only uctoinak2`.
 
 ```
 cd /root/uctoinak2/.claude/worktrees/messages-redesign
@@ -289,15 +292,13 @@ Not in the tables below:
 - `docs-owner-desktop` — **impl capture failed** (`error-page`), so it produced no report at all.
 - `docs-owner-mobile` — **impl capture failed** (`error-page`), so it produced no report at all.
 
-> **1 pair(s) below captured only on a SECOND attempt**: `messages-owner-desktop`. Their numbers are this run's, not carried over — a first capture pays a cold server's compile out of its navigation budget. A pair that needs this every run is a slow server or a flaky pair, not a measurement.
-
-29 pairs: 0 PASS / 29 FAIL — 3652 findings covering 4218 instances, 8 suppressed; delta +66 / −49, 65 REGRESSION(S)
+29 pairs: 0 PASS / 29 FAIL — 3652 findings covering 4218 instances, 8 suppressed; delta +0 / −0
 495 of 3652 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 724 by text, 77 by slot, 1081 by geometry, 1770 resting on no pair
 
 | pair                                    | verdict | findings (c/M/m) | inst | supp | unver | conf | align                     | delta |
 |-----------------------------------------|---------|------------------|------|------|-------|------|---------------------------|-------|
-| docs-accountant-desktop                 | FAIL    |  221 (106/80/35) |  256 |    0 |    12 | 0.00 | 1.173×1.162 / −15.3,0     | +66/−49 R65 |
+| docs-accountant-desktop                 | FAIL    |  221 (106/80/35) |  256 |    0 |    12 | 0.00 | 1.173×1.162 / −15.3,0     | +0/−0 |
 | docs-accountant-mobile                  | FAIL    |   174 (65/64/45) |  184 |    0 |    28 | 0.10 | 1.026 / 0,0               | +0/−0 |
 | today-owner-desktop                     | FAIL    |    78 (25/38/15) |   82 |    0 |     0 | 0.50 | 1.101×1.032 / −263.8,−9.8 | +0/−0 |
 | portfolio-accountant-desktop            | FAIL    |   192 (37/98/57) |  279 |    0 |    22 | 0.29 | 1.141×1.097 / −43.7,−9.3  | +0/−0 |
@@ -320,48 +321,51 @@ pairing evidence across the set: 724 by text, 77 by slot, 1081 by geometry, 1770
 | invite-firm-mobile                      | FAIL    |      30 (16/5/9) |   30 |    0 |     1 | 0.00 | 1.026 / 0,0               | +0/−0 |
 | client-settings-accountant-desktop      | FAIL    |    113 (9/54/50) |  142 |    0 |     0 | 0.50 | 1.017×1.125 / 4.8,5.5     | +0/−0 |
 | client-settings-accountant-mobile       | FAIL    |     89 (9/42/38) |   98 |    0 |    13 | 0.33 | 1.061×1.406 / −3.0,32.3   | +0/−0 |
+| messages-owner-desktop                  | FAIL    |  189 (18/103/68) |  220 |    0 |    33 | 0.07 | 1 / 0,0                   | +0/−0 |
 | messages-owner-mobile                   | FAIL    |   117 (16/65/36) |  138 |    0 |    13 | 0.00 | 0.990×0.995 / 18.5,0      | +0/−0 |
 | messages-accountant-desktop             | FAIL    |  225 (35/127/63) |  262 |    0 |    34 | 0.07 | 1.091×1 / −10.5,0         | +0/−0 |
 | messages-accountant-mobile              | FAIL    |   145 (17/86/42) |  154 |    0 |    29 | 0.00 | 0.834×0.995 / 35.8,0      | +0/−0 |
 | client-members-accountant-desktop       | FAIL    |   129 (20/68/41) |  142 |    0 |    21 | 0.00 | 1.162 / 0,0               | +0/−0 |
 | client-members-accountant-mobile        | FAIL    |    98 (11/46/41) |  109 |    0 |    23 | 0.25 | 1.065×1.469 / −3.2,−40.6  | +0/−0 |
-| messages-owner-desktop                  | FAIL    |  189 (18/103/68) |  220 |    0 |    33 | 0.07 | 1 / 0,0                   | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
+`phase` reads `rate` (matched / min leaves) and `axis` (the BETTER-fitting axis, not the
+joint `conf`); `share` is reported and does not gate. On a `reconcile` pair a matched
+collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.
 
-| pair                                    | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf |
-|-----------------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|
-| docs-accountant-desktop                 |    160 |   57 |      30 |   16 |    1 |   13 |    130 |     27 |      0 | 0.00 |
-| docs-accountant-mobile                  |    114 |   48 |      31 |   13 |    2 |   16 |     83 |     17 |      0 | 0.10 |
-| today-owner-desktop                     |     42 |   36 |      11 |    4 |    1 |    6 |     31 |     25 |      0 | 0.50 |
-| portfolio-accountant-desktop            |    114 |  102 |      66 |   37 |    0 |   29 |     48 |     36 |      1 | 0.29 |
-| portfolio-accountant-mobile             |     76 |   73 |      44 |   15 |    0 |   29 |     32 |     29 |      0 | 0.10 |
-| client-detail-chrome-accountant-desktop |     48 |   57 |      26 |   11 |    2 |   13 |     22 |     31 |      0 | 0.00 |
-| client-detail-chrome-accountant-mobile  |     31 |   48 |      22 |   10 |    0 |   12 |      9 |     26 |      0 | 0.38 |
-| client-overview-accountant-desktop      |    194 |   90 |      57 |   23 |    1 |   33 |    137 |     33 |      0 | 0.08 |
-| client-overview-accountant-mobile       |    103 |   82 |      45 |   12 |    2 |   31 |     58 |     37 |      0 | 0.13 |
-| client-pending-accountant-desktop       |    124 |   44 |      19 |   12 |    1 |    6 |    105 |     25 |      0 | 0.38 |
-| client-pending-accountant-mobile        |    103 |   36 |      26 |    9 |    1 |   16 |     77 |     10 |      1 | 0.38 |
-| settings-owner-desktop                  |     46 |   31 |      20 |    9 |    1 |   10 |     26 |     11 |      1 | 0.13 |
-| settings-owner-mobile                   |     42 |   28 |      21 |    9 |    0 |   12 |     21 |      7 |      0 | 0.25 |
-| settings-accountant-desktop             |     36 |   23 |      18 |    5 |    2 |   11 |     18 |      5 |      0 | 0.38 |
-| settings-accountant-mobile              |     45 |   28 |      21 |    7 |    0 |   14 |     24 |      7 |      0 | 0.38 |
-| settings-members-owner-desktop          |     46 |   46 |      17 |    8 |    1 |    8 |     29 |     29 |      0 | 0.13 |
-| settings-team-accountant-desktop        |     36 |   44 |      20 |    5 |    1 |   14 |     16 |     24 |      0 | 0.38 |
-| invite-org-desktop                      |     25 |    8 |       4 |    4 |    0 |    0 |     21 |      4 |      0 | 0.00 |
-| invite-org-mobile                       |     23 |    8 |       4 |    3 |    0 |    1 |     19 |      4 |      0 | 0.00 |
-| invite-firm-desktop                     |     25 |    8 |       4 |    4 |    0 |    0 |     21 |      4 |      0 | 0.13 |
-| invite-firm-mobile                      |     23 |    8 |       4 |    3 |    0 |    1 |     19 |      4 |      0 | 0.00 |
-| client-settings-accountant-desktop      |     47 |   54 |      36 |   18 |    0 |   18 |     11 |     18 |      0 | 0.50 |
-| client-settings-accountant-mobile       |     27 |   46 |      18 |   10 |    1 |    7 |      9 |     28 |      0 | 0.33 |
-| messages-owner-mobile                   |     43 |   61 |      24 |   17 |    0 |    7 |     19 |     37 |      0 | 0.00 |
-| messages-accountant-desktop             |     80 |  106 |      42 |   19 |    1 |   22 |     38 |     64 |      0 | 0.07 |
-| messages-accountant-mobile              |     45 |   68 |      26 |   11 |    0 |   15 |     19 |     42 |      0 | 0.00 |
-| client-members-accountant-desktop       |     51 |   55 |      29 |   12 |    0 |   17 |     22 |     26 |      0 | 0.00 |
-| client-members-accountant-mobile        |     29 |   47 |      18 |    4 |    1 |   13 |     11 |     29 |      0 | 0.25 |
-| messages-owner-desktop                  |     65 |   77 |      44 |   21 |    0 |   23 |     21 |     33 |      0 | 0.07 |
-| TOTAL (29)                              |   1843 | 1419 |     747 |  331 |   19 |  397 |   1096 |    672 |      3 |      |
+| pair                                    | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf | axis | rate | share |     phase |
+|-----------------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|------|------|-------|-----------|
+| docs-accountant-desktop                 |    160 |   57 |      30 |   16 |    1 |   13 |    130 |     27 |      0 | 0.00 | 0.50 | 0.53 |  0.53 | reconcile |
+| docs-accountant-mobile                  |    114 |   48 |      31 |   13 |    2 |   16 |     83 |     17 |      0 | 0.10 | 0.30 | 0.65 |  0.42 | reconcile |
+| today-owner-desktop                     |     42 |   36 |      11 |    4 |    1 |    6 |     31 |     25 |      0 | 0.50 | 0.50 | 0.31 |  0.36 | reconcile |
+| portfolio-accountant-desktop            |    114 |  102 |      66 |   37 |    0 |   29 |     48 |     36 |      1 | 0.29 | 0.59 | 0.65 |  0.56 | reconcile |
+| portfolio-accountant-mobile             |     76 |   73 |      44 |   15 |    0 |   29 |     32 |     29 |      0 | 0.10 | 0.60 | 0.60 |  0.34 | reconcile |
+| client-detail-chrome-accountant-desktop |     48 |   57 |      26 |   11 |    2 |   13 |     22 |     31 |      0 | 0.00 | 0.38 | 0.54 |  0.42 | reconcile |
+| client-detail-chrome-accountant-mobile  |     31 |   48 |      22 |   10 |    0 |   12 |      9 |     26 |      0 | 0.38 | 0.63 | 0.71 |  0.45 |    polish |
+| client-overview-accountant-desktop      |    194 |   90 |      57 |   23 |    1 |   33 |    137 |     33 |      0 | 0.08 | 0.50 | 0.63 |  0.40 | reconcile |
+| client-overview-accountant-mobile       |    103 |   82 |      45 |   12 |    2 |   31 |     58 |     37 |      0 | 0.13 | 0.13 | 0.55 |  0.27 | reconcile |
+| client-pending-accountant-desktop       |    124 |   44 |      19 |   12 |    1 |    6 |    105 |     25 |      0 | 0.38 | 0.63 | 0.43 |  0.63 | reconcile |
+| client-pending-accountant-mobile        |    103 |   36 |      26 |    9 |    1 |   16 |     77 |     10 |      1 | 0.38 | 0.50 | 0.72 |  0.35 |    polish |
+| settings-owner-desktop                  |     46 |   31 |      20 |    9 |    1 |   10 |     26 |     11 |      1 | 0.13 | 0.50 | 0.65 |  0.45 | reconcile |
+| settings-owner-mobile                   |     42 |   28 |      21 |    9 |    0 |   12 |     21 |      7 |      0 | 0.25 | 0.88 | 0.75 |  0.43 |    polish |
+| settings-accountant-desktop             |     36 |   23 |      18 |    5 |    2 |   11 |     18 |      5 |      0 | 0.38 | 0.63 | 0.78 |  0.28 |    polish |
+| settings-accountant-mobile              |     45 |   28 |      21 |    7 |    0 |   14 |     24 |      7 |      0 | 0.38 | 0.75 | 0.75 |  0.33 |    polish |
+| settings-members-owner-desktop          |     46 |   46 |      17 |    8 |    1 |    8 |     29 |     29 |      0 | 0.13 | 0.38 | 0.37 |  0.47 | reconcile |
+| settings-team-accountant-desktop        |     36 |   44 |      20 |    5 |    1 |   14 |     16 |     24 |      0 | 0.38 | 0.50 | 0.56 |  0.25 | reconcile |
+| invite-org-desktop                      |     25 |    8 |       4 |    4 |    0 |    0 |     21 |      4 |      0 | 0.00 | 0.38 | 0.50 |  1.00 | reconcile |
+| invite-org-mobile                       |     23 |    8 |       4 |    3 |    0 |    1 |     19 |      4 |      0 | 0.00 | 0.00 | 0.50 |  0.75 | reconcile |
+| invite-firm-desktop                     |     25 |    8 |       4 |    4 |    0 |    0 |     21 |      4 |      0 | 0.13 | 0.25 | 0.50 |  1.00 | reconcile |
+| invite-firm-mobile                      |     23 |    8 |       4 |    3 |    0 |    1 |     19 |      4 |      0 | 0.00 | 0.00 | 0.50 |  0.75 | reconcile |
+| client-settings-accountant-desktop      |     47 |   54 |      36 |   18 |    0 |   18 |     11 |     18 |      0 | 0.50 | 0.56 | 0.77 |  0.50 |    polish |
+| client-settings-accountant-mobile       |     27 |   46 |      18 |   10 |    1 |    7 |      9 |     28 |      0 | 0.33 | 0.56 | 0.67 |  0.56 | reconcile |
+| messages-owner-desktop                  |     65 |   77 |      44 |   21 |    0 |   23 |     21 |     33 |      0 | 0.07 | 0.07 | 0.68 |  0.48 | reconcile |
+| messages-owner-mobile                   |     43 |   61 |      24 |   17 |    0 |    7 |     19 |     37 |      0 | 0.00 | 0.64 | 0.56 |  0.71 | reconcile |
+| messages-accountant-desktop             |     80 |  106 |      42 |   19 |    1 |   22 |     38 |     64 |      0 | 0.07 | 0.50 | 0.53 |  0.45 | reconcile |
+| messages-accountant-mobile              |     45 |   68 |      26 |   11 |    0 |   15 |     19 |     42 |      0 | 0.00 | 0.70 | 0.58 |  0.42 | reconcile |
+| client-members-accountant-desktop       |     51 |   55 |      29 |   12 |    0 |   17 |     22 |     26 |      0 | 0.00 | 0.00 | 0.57 |  0.41 | reconcile |
+| client-members-accountant-mobile        |     29 |   47 |      18 |    4 |    1 |   13 |     11 |     29 |      0 | 0.25 | 0.38 | 0.62 |  0.22 | reconcile |
+| TOTAL (29)                              |   1843 | 1419 |     747 |  331 |   19 |  397 |   1096 |    672 |      3 |      |      |      |       |    6P/23R |
 
 Findings by type:
 
@@ -390,12 +394,12 @@ Findings by type:
 | invite-firm-mobile                      |   19 |     4 |    0 |   1 |    2 |     0 |     1 |    2 |    0 |   0 |     1 |     0 |   30 |
 | client-settings-accountant-desktop      |   11 |    18 |   10 |  27 |   10 |     6 |    11 |    9 |    2 |   8 |     1 |     0 |  113 |
 | client-settings-accountant-mobile       |    9 |    28 |    5 |  13 |   10 |     2 |     7 |    9 |    2 |   3 |     1 |     0 |   89 |
+| messages-owner-desktop                  |   20 |    33 |   17 |  42 |   12 |     9 |    16 |   18 |    7 |  14 |     1 |     0 |  189 |
 | messages-owner-mobile                   |   18 |    36 |    3 |  20 |   10 |     2 |    10 |    8 |    2 |   7 |     1 |     0 |  117 |
 | messages-accountant-desktop             |   37 |    64 |   16 |  34 |   10 |     6 |    18 |   16 |    8 |  15 |     1 |     0 |  225 |
 | messages-accountant-mobile              |   17 |    41 |    9 |  26 |   10 |     2 |    15 |   12 |    5 |   7 |     1 |     0 |  145 |
 | client-members-accountant-desktop       |   21 |    26 |   13 |  28 |    6 |     4 |    10 |   10 |    1 |   9 |     1 |     0 |  129 |
 | client-members-accountant-mobile        |   11 |    29 |   15 |  13 |    3 |     1 |    10 |   10 |    1 |   4 |     1 |     0 |   98 |
-| messages-owner-desktop                  |   20 |    33 |   17 |  42 |   12 |     9 |    16 |   18 |    7 |  14 |     1 |     0 |  189 |
 | TOTAL (29)                              | 1069 |   668 |  240 | 586 |  207 |   116 |   251 |  272 |   62 | 148 |    30 |     3 | 3652 |
 
 Across pairs (one row = one cause; `pairs` = how many cells show it):
@@ -433,10 +437,10 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | missing-element | icon | 5/29 | 6 |  | design icon at (1087, 37) (22×21) has no counterpart in the implementation |
 | major | border-radius | icon | 5/29 | 5 | borderRadius=0 → borderRadius=19 | icon at (1208, 38) border-radius is 19px, design says 0px |
 | major | border | text | 5/29 | 5 (×7) | borderWidth=1 borderColor=rgb(224, 213, 196) → borderWidth=0 | "⛭" border differs: no border, design has one |
-| major | color | text | 4/29 | 7 (×9) | color=rgb(184, 92, 36) → color=rgb(44, 36, 25) | "Žiadosť o doklad" text color is rgb(44, 36, 25), design says rgb(184, 92, 36) (ΔE2000 34.7) |
+| major | color | text | 4/29 | 7 (×9) | color=rgb(184, 92, 36) → color=rgb(44, 36, 25) | "Žiadosť o doklad" text color is rgb(44, 36, 25), design says rgb(184, 92, 36) (ΔE2000 34.7) ×3 |
 | major | color | text | 4/29 | 6 | color=rgb(185, 171, 151) → color=rgb(44, 36, 25) | "ÚČTOVNÉ PARAMETRE" text color is rgb(44, 36, 25), design says rgb(185, 171, 151) (ΔE2000 51.2) |
 | major | spacing | surface | 4/29 | 5 | vertical gap 19.9..41.8→23..51.7 | vertical gap between surface at (346, 17) and "Viac" is 23px, design says 20.5px |
-| major | color | text | 4/29 | 5 (×14) | color=rgb(185, 171, 151) → color=rgb(138, 125, 108) | "VYŽADUJE AKCIU" text color is rgb(138, 125, 108), design says rgb(185, 171, 151) (ΔE2000 15) |
+| major | color | text | 4/29 | 5 (×14) | color=rgb(185, 171, 151) → color=rgb(138, 125, 108) | "VYŽADUJE AKCIU" text color is rgb(138, 125, 108), design says rgb(185, 171, 151) (ΔE2000 15) ×6 |
 | major | color | text | 4/29 | 4 | color=rgb(138, 125, 108) → color=rgb(184, 92, 36) | "Exportovať" text color is rgb(184, 92, 36), design says rgb(138, 125, 108) (ΔE2000 20.6) |
 | major | border | surface | 4/29 | 4 | borderWidth=1 borderColor=rgb(232, 223, 210) → borderWidth=0 | surface at (346, 17) border differs: no border, design has one |
 | major | border-radius | icon | 4/29 | 4 (×7) | borderRadius=0 → borderRadius=18 | icon at (356, 28) border-radius is 18px, design says 0px ×4 |
@@ -458,8 +462,8 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | typography | text | 2/29 | 3 | fontSize=10 → fontSize=14 | "ČAKÁ NA VLASTNÍKA" typography differs: size 14px vs 10px |
 | major | typography | text | 2/29 | 3 | fontFamily=Public Sans fontSize=11 fontWeight=600 → fontFamily=Newsreader fontSize=18 fontWeight=500 | "ÚČTOVNÉ PARAMETRE" typography differs: family "Newsreader" vs "Public Sans", size 18px vs 11px, weight 500 vs 600 |
 | major | typography | text | 2/29 | 3 | fontFamily=Public Sans fontSize=12 fontWeight=600 → fontFamily=Newsreader fontSize=18 fontWeight=500 | "ÚČTOVNÉ PARAMETRE" typography differs: family "Newsreader" vs "Public Sans", size 18px vs 12px, weight 500 vs 600 |
+| major | border | text | 2/29 | 3 | borderWidth=1 borderColor=rgb(184, 92, 36) → borderWidth=0 | "Bloček mám odfotený v mobile, nahrám ho …" border differs: no border, design has one |
 | major | border | text | 2/29 | 3 | borderWidth=1 borderColor=rgb(232, 223, 210) → borderWidth=0 | "Dobrý deň, poslali sme zálohu 1 200 € na…" border differs: no border, design has one |
-| major | border | text | 2/29 | 3 | borderWidth=1 borderColor=rgb(184, 92, 36) → borderWidth=0 | "Stačí zálohová faktúra alebo potvrdenie …" border differs: no border, design has one |
 | major | color | text | 2/29 | 2 | backgroundColor=rgb(178, 60, 46) → backgroundColor=rgb(255, 253, 249) | "2" background is rgb(255, 253, 249), design says rgb(178, 60, 46) (ΔE2000 50.4) |
 | major | border-radius | text | 2/29 | 2 | borderRadius=0 → borderRadius=10 | "Exportovať" border-radius is 10px, design says 0px |
 | major | color | text | 2/29 | 2 | color=rgb(95, 85, 70) → color=rgb(255, 253, 249) | "ZK" text color is rgb(255, 253, 249), design says rgb(95, 85, 70) (ΔE2000 50.1) |
@@ -487,12 +491,12 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | typography | text | 2/29 | 2 | fontFamily=Newsreader fontSize=16 → fontFamily=Public Sans fontSize=14 | "Nastavenia" typography differs: family "Public Sans" vs "Newsreader", size 14px vs 16px |
 | major | color | surface | 2/29 | 2 | backgroundColor=rgb(78, 122, 90) → backgroundColor=rgb(184, 92, 36) | surface at (982, 163) background is rgb(184, 92, 36), design says rgb(78, 122, 90) (ΔE2000 40.7) |
 | major | color | text | 2/29 | 2 (×6) | backgroundColor=rgb(95, 85, 70) → backgroundColor=rgb(244, 237, 226) | "MH" background is rgb(244, 237, 226), design says rgb(95, 85, 70) (ΔE2000 47) ×3 |
+| major | border-radius | text | 2/29 | 2 | borderRadius=18 → borderRadius=0 | "MH" border-radius is 0px, design says 18px |
+| major | border-radius | text | 2/29 | 2 (×4) | borderRadius=17 → borderRadius=0 | "Preposlať e-mailom" border-radius is 0px, design says 17px |
+| major | border-radius | text | 2/29 | 2 (×5) | borderRadius=16 → borderRadius=0 | "Bloček mám odfotený v mobile, nahrám ho …" border-radius is 0px, design says 16px |
 | major | border-radius | text | 2/29 | 2 | borderRadius=19 → borderRadius=0 | "MH" border-radius is 0px, design says 19px |
-| major | border-radius | text | 2/29 | 2 (×4) | borderRadius=17 → borderRadius=0 | "ZK" border-radius is 0px, design says 17px ×3 |
-| major | border-radius | text | 2/29 | 2 (×5) | borderRadius=16 → borderRadius=0 | "Dobrý deň, poslali sme zálohu 1 200 € na…" border-radius is 0px, design says 16px ×4 |
 | major | typography | text | 2/29 | 2 | fontFamily=Newsreader fontSize=16 fontWeight=600 → fontFamily=Public Sans fontSize=12 fontWeight=400 | "Kaviareň Prameň" typography differs: family "Public Sans" vs "Newsreader", size 12px vs 16px, weight 400 vs 600 |
 | major | typography | text | 2/29 | 2 | fontFamily=Public Sans fontSize=10 fontWeight=400 → fontFamily=Newsreader fontSize=14 fontWeight=600 | "klient · Hrubá & Co." typography differs: family "Newsreader" vs "Public Sans", size 14px vs 10px, weight 600 vs 400 |
-| major | border-radius | text | 2/29 | 2 | borderRadius=18 → borderRadius=0 | "ZK" border-radius is 0px, design says 18px |
 | major | color | text | 1/29 | 2 | color=rgb(44, 36, 25) → color=rgba(44, 36, 25, 0.5) | "Pripomenúť" text color is rgba(44, 36, 25, 0.5), design says rgb(44, 36, 25) (ΔE2000 39.2) |
 | major | spacing | box | 1/29 | 2 | vertical gap 39.5→53 | vertical gap between box at (62, 405) and box at (62, 456) is 53px, design says 39.5px |
 | major | typography | text | 1/29 | 2 | fontFamily=Newsreader fontSize=24 fontWeight=500 → fontFamily=Public Sans fontSize=14 fontWeight=600 | "7" typography differs: family "Public Sans" vs "Newsreader", size 14px vs 24px, weight 600 vs 500 |
@@ -552,18 +556,6 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 1/29 | 1 | color=rgb(168, 154, 133) → color=rgb(255, 253, 249) | "▾" text color is rgb(255, 253, 249), design says rgb(168, 154, 133) (ΔE2000 25.2) |
 | major | border-radius | text | 1/29 | 1 | borderRadius=0 → borderRadius=9.6 | "DIČ" border-radius is 9.6px, design says 0px |
 | major | typography | text | 1/29 | 1 | fontSize=16 fontWeight=600 → fontSize=26 fontWeight=500 | "Nastavenia" typography differs: size 26px vs 16px, weight 500 vs 600 |
-| major | typography | text | 1/29 | 1 | fontFamily=Newsreader fontSize=28 fontWeight=500 → fontFamily=Public Sans fontSize=22 fontWeight=700 | "Správy" typography differs: family "Public Sans" vs "Newsreader", size 22px vs 28px, weight 700 vs 500 |
-| major | typography | text | 1/29 | 1 | fontSize=9.5 fontWeight=600 → fontSize=12 fontWeight=500 | "Nahrať" typography differs: size 12px vs 9.5px, weight 500 vs 600 |
-| major | color | text | 1/29 | 1 | color=rgb(184, 92, 36) → color=rgb(95, 85, 70) | "Otázka" text color is rgb(95, 85, 70), design says rgb(184, 92, 36) (ΔE2000 24) |
-| major | color | text | 1/29 | 1 | color=rgb(138, 125, 108) → color=rgba(138, 125, 108, 0.7) | "＋" text color is rgba(138, 125, 108, 0.7), design says rgb(138, 125, 108) (ΔE2000 13.1) |
-| major | typography | text | 1/29 | 1 | fontSize=9 fontWeight=600 → fontSize=14 fontWeight=400 | "ZK" typography differs: size 14px vs 9px, weight 400 vs 600 |
-| major | typography | text | 1/29 | 1 | fontSize=16 → fontSize=11 | "＋" typography differs: size 11px vs 16px |
-| major | border-radius | text | 1/29 | 1 | borderRadius=20 → borderRadius=0 | "＋" border-radius is 0px, design says 20px |
-| major | color | text | 1/29 | 1 | backgroundColor=rgb(255, 253, 249) → backgroundColor=rgb(184, 92, 36) | "‹" background is rgb(184, 92, 36), design says rgb(255, 253, 249) (ΔE2000 44.2) |
-| major | color | text | 1/29 | 1 | color=rgb(255, 253, 249) → color=rgb(95, 85, 70) | "ZK" text color is rgb(95, 85, 70), design says rgb(255, 253, 249) (ΔE2000 50.1) |
-| major | color | text | 1/29 | 1 | color=rgb(255, 253, 249) → color=rgb(44, 36, 25) | "ZK" text color is rgb(44, 36, 25), design says rgb(255, 253, 249) (ΔE2000 77.8) |
-| major | border-radius | text | 1/29 | 1 | borderRadius=10 → borderRadius=0 | "＋ Pozvať člena" border-radius is 0px, design says 10px |
-| major | color | text | 1/29 | 1 | backgroundColor=rgb(44, 36, 25) → backgroundColor=rgb(78, 122, 90) | "PK" background is rgb(78, 122, 90), design says rgb(44, 36, 25) (ΔE2000 33.2) |
 | major | color | text | 1/29 | 1 | color=rgb(248, 243, 236) → color=rgb(95, 85, 70) | "Všetky" text color is rgb(95, 85, 70), design says rgb(248, 243, 236) (ΔE2000 48.2) |
 | major | color | text | 1/29 | 1 | backgroundColor=rgb(44, 36, 25) → backgroundColor=rgb(255, 253, 249) | "Všetky" background is rgb(255, 253, 249), design says rgb(44, 36, 25) (ΔE2000 77.8) |
 | major | color | text | 1/29 | 1 | color=rgb(184, 92, 36) → color=rgb(138, 125, 108) | "Žiadosť o doklad" text color is rgb(138, 125, 108), design says rgb(184, 92, 36) (ΔE2000 20.6) |
@@ -578,6 +570,18 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | typography | text | 1/29 | 1 | fontFamily=Newsreader fontSize=21 lineHeight=25.2 fontWeight=500 → fontFamily=Public Sans fontSize=18 lineHeight=27 fontWeight=600 | "Slovnaft, a.s. — chýba doklad" typography differs: family "Public Sans" vs "Newsreader", size 18px vs 21px, line-height 27px vs 25.2px, weight 600 vs 500 |
 | major | typography | text | 1/29 | 1 | fontSize=12.5 lineHeight=19.38 → fontSize=16 lineHeight=24 | "Dobrý deň, k platbe Slovnaft, a.s. z 8. …" typography differs: size 16px vs 12.5px, line-height 24px vs 19.38px |
 | major | typography | text | 1/29 | 1 | fontSize=11 fontWeight=500 → fontSize=14 fontWeight=400 | "⇄" typography differs: size 14px vs 11px, weight 400 vs 500 |
+| major | typography | text | 1/29 | 1 | fontFamily=Newsreader fontSize=28 fontWeight=500 → fontFamily=Public Sans fontSize=22 fontWeight=700 | "Správy" typography differs: family "Public Sans" vs "Newsreader", size 22px vs 28px, weight 700 vs 500 |
+| major | typography | text | 1/29 | 1 | fontSize=9.5 fontWeight=600 → fontSize=12 fontWeight=500 | "Nahrať" typography differs: size 12px vs 9.5px, weight 500 vs 600 |
+| major | color | text | 1/29 | 1 | color=rgb(184, 92, 36) → color=rgb(95, 85, 70) | "Otázka" text color is rgb(95, 85, 70), design says rgb(184, 92, 36) (ΔE2000 24) |
+| major | color | text | 1/29 | 1 | color=rgb(138, 125, 108) → color=rgba(138, 125, 108, 0.7) | "＋" text color is rgba(138, 125, 108, 0.7), design says rgb(138, 125, 108) (ΔE2000 13.1) |
+| major | typography | text | 1/29 | 1 | fontSize=9 fontWeight=600 → fontSize=14 fontWeight=400 | "ZK" typography differs: size 14px vs 9px, weight 400 vs 600 |
+| major | typography | text | 1/29 | 1 | fontSize=16 → fontSize=11 | "＋" typography differs: size 11px vs 16px |
+| major | border-radius | text | 1/29 | 1 | borderRadius=20 → borderRadius=0 | "＋" border-radius is 0px, design says 20px |
+| major | color | text | 1/29 | 1 | backgroundColor=rgb(255, 253, 249) → backgroundColor=rgb(184, 92, 36) | "‹" background is rgb(184, 92, 36), design says rgb(255, 253, 249) (ΔE2000 44.2) |
+| major | color | text | 1/29 | 1 | color=rgb(255, 253, 249) → color=rgb(95, 85, 70) | "ZK" text color is rgb(95, 85, 70), design says rgb(255, 253, 249) (ΔE2000 50.1) |
+| major | color | text | 1/29 | 1 | color=rgb(255, 253, 249) → color=rgb(44, 36, 25) | "ZK" text color is rgb(44, 36, 25), design says rgb(255, 253, 249) (ΔE2000 77.8) |
+| major | border-radius | text | 1/29 | 1 | borderRadius=10 → borderRadius=0 | "＋ Pozvať člena" border-radius is 0px, design says 10px |
+| major | color | text | 1/29 | 1 | backgroundColor=rgb(44, 36, 25) → backgroundColor=rgb(78, 122, 90) | "PK" background is rgb(78, 122, 90), design says rgb(44, 36, 25) (ΔE2000 33.2) |
 | minor | extra-element | icon | 28/29 | 110 |  | implementation renders icon at (972, 202) (14×14) that the design does not have |
 | minor | pixel-region |  | 27/29 | 27 | alignmentConfidence 0.5→0..0.4 | pixel channel skipped: alignment confidence 0.00 is below 0.5 — element geometry did not line up well enough to compare pixels |
 | minor | text-content | text | 25/29 | 240 |  | text reads "Kaviareň Prameň · s.r.o. · DPH mesačne", design says "3 na vybavenie · DPH termín o 11 dní" |
@@ -613,7 +617,7 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | alignment |  | 3/29 | 3 | scale=1 offsetX=0 offsetY=0 → scale=0.99028 scaleY=1 offsetX=7.75 offsetY=0 | alignment is not the identity on a same-size page: the fit absorbed scale 0.99028 × 1.00000 (x × y), offset (7.75, 0.00)px — a systematic size difference in the chrome above or beside the anchors (box model?); fix the sizes and the transform snaps to scale 1, offset 0 |
 | minor | typography | text | 3/29 | 3 | fontSize=10.5 fontWeight=400 → fontSize=12 fontWeight=600 | "DPH mesačne" typography differs: size 12px vs 10.5px, weight 600 vs 400 |
 | minor | border-radius | text | 3/29 | 3 | borderRadius=7 → borderRadius=9.6 | "KP" border-radius is 9.6px, design says 7px |
-| minor | typography | text | 3/29 | 3 | fontSize=10.5 fontWeight=400 → fontSize=12 fontWeight=500 | "Včera" typography differs: size 12px vs 10.5px, weight 500 vs 400 |
+| minor | typography | text | 3/29 | 3 | fontSize=10.5 fontWeight=400 → fontSize=12 fontWeight=500 | "Martin Hruška" typography differs: size 12px vs 10.5px, weight 500 vs 400 |
 | minor | typography | text | 2/29 | 4 | fontSize=18 → fontSize=19 | "účtoinak" typography differs: size 19px vs 18px |
 | minor | border | text | 2/29 | 3 | borderWidth=1 borderColor=rgb(224, 213, 196) → borderWidth=1 borderColor=rgba(232, 223, 210, 0.5) | "Pripomenúť" border differs: color rgba(232, 223, 210, 0.5) vs rgb(224, 213, 196) (ΔE2000 7.3) |
 | minor | typography | text | 2/29 | 3 | fontSize=13.5 fontWeight=600 → fontSize=12 fontWeight=400 | "Autoservis Turňa" typography differs: size 12px vs 13.5px, weight 400 vs 600 |
@@ -636,9 +640,9 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 2/29 | 2 | fontSize=25 → fontSize=24 | "Predvoľby portfólia" typography differs: size 24px vs 25px |
 | minor | color | box | 2/29 | 2 | backgroundColor=rgb(255, 253, 249) → backgroundColor=rgb(248, 243, 236) | box at (1004, 167) background is rgb(248, 243, 236), design says rgb(255, 253, 249) (ΔE2000 2.6) |
 | minor | typography | text | 2/29 | 2 | fontSize=10.5 fontWeight=600 → fontSize=13 fontWeight=500 | "KAVIAREŇ PRAMEŇ" typography differs: size 13px vs 10.5px, weight 500 vs 600 |
+| minor | border-radius | text | 2/29 | 2 (×4) | borderRadius=18 → borderRadius=16 | "MH" border-radius is 16px, design says 18px ×3 |
 | minor | typography | text | 2/29 | 2 | fontSize=11.5 fontWeight=600 → fontSize=14 fontWeight=400 | "ZK" typography differs: size 14px vs 11.5px, weight 400 vs 600 |
 | minor | border-radius | text | 2/29 | 2 | borderRadius=14 → borderRadius=10 | "Vybavené" border-radius is 10px, design says 14px |
-| minor | border-radius | text | 2/29 | 2 (×4) | borderRadius=18 → borderRadius=16 | "ZK" border-radius is 16px, design says 18px |
 | minor | typography | text | 1/29 | 2 | fontSize=14 fontWeight=400 → fontSize=12 fontWeight=600 | "⇄" typography differs: size 12px vs 14px, weight 600 vs 400 |
 | minor | typography | text | 1/29 | 2 | fontSize=13 fontWeight=400 → fontSize=14 fontWeight=600 | "⇄" typography differs: size 14px vs 13px, weight 600 vs 400 |
 | minor | typography | text | 1/29 | 2 | fontSize=12 fontWeight=500 → fontSize=13 fontWeight=600 | "IČO" typography differs: size 13px vs 12px, weight 600 vs 500 |
@@ -677,6 +681,13 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 1/29 | 1 | fontSize=12 → fontSize=12.8 | "DIČ" typography differs: size 12.8px vs 12px |
 | minor | typography | text | 1/29 | 1 | fontSize=13 fontWeight=600 → fontSize=11 fontWeight=400 | "Pripomenúť pred termínom" typography differs: size 11px vs 13px, weight 400 vs 600 |
 | minor | typography | text | 1/29 | 1 | fontSize=11 lineHeight=15.95 → fontSize=12 lineHeight=18 | "Registrovaný platiteľ DPH." typography differs: size 12px vs 11px, line-height 18px vs 15.95px |
+| minor | color | text | 1/29 | 1 | backgroundColor=rgb(244, 237, 226) → backgroundColor=rgb(255, 253, 249) | "ZK" background is rgb(255, 253, 249), design says rgb(244, 237, 226) (ΔE2000 4.7) |
+| minor | border-radius | text | 1/29 | 1 | borderRadius=0 → borderRadius=7.5 | "Dnes" border-radius is 7.5px, design says 0px |
+| minor | typography | text | 1/29 | 1 | fontSize=14 lineHeight=21 → fontSize=12 lineHeight=18 | "Vlákna s vaším účtovníkom — Hrubá & Co." typography differs: size 12px vs 14px, line-height 18px vs 21px |
+| minor | border-radius | text | 1/29 | 1 (×3) | borderRadius=15 → borderRadius=18 | "Všetky" border-radius is 18px, design says 15px ×3 |
+| minor | border-radius | text | 1/29 | 1 | borderRadius=15 → borderRadius=10 | "Vybavené" border-radius is 10px, design says 15px |
+| minor | border-radius | text | 1/29 | 1 | borderRadius=10 → borderRadius=14 | "⇄" border-radius is 14px, design says 10px |
+| minor | typography | text | 1/29 | 1 | fontSize=13 lineHeight=19.5 → fontSize=16 lineHeight=24 | "Bloček mám odfotený v mobile, nahrám ho …" typography differs: size 16px vs 13px, line-height 24px vs 19.5px |
 | minor | border-radius | icon | 1/29 | 1 | borderRadius=20 → borderRadius=18 | icon at (312, 34) border-radius is 18px, design says 20px |
 | minor | border-radius | text | 1/29 | 1 | borderRadius=16 → borderRadius=10 | "Vybavené" border-radius is 10px, design says 16px |
 | minor | border-radius | text | 1/29 | 1 (×3) | borderRadius=19 → borderRadius=16 | "MH" border-radius is 16px, design says 19px ×3 |
@@ -690,21 +701,14 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | border | text | 1/29 | 1 | borderWidth=1 borderColor=rgb(213, 200, 180) → borderWidth=1 borderColor=rgb(232, 223, 210) | "✉" border differs: color rgb(232, 223, 210) vs rgb(213, 200, 180) (ΔE2000 6) |
 | minor | typography | text | 1/29 | 1 | fontSize=11 fontWeight=400 → fontSize=13 fontWeight=600 | "peter@pramen.sk" typography differs: size 13px vs 11px, weight 600 vs 400 |
 | minor | border-radius | text | 1/29 | 1 | borderRadius=18 → borderRadius=21.6 | "✉" border-radius is 21.6px, design says 18px |
-| minor | color | text | 1/29 | 1 | backgroundColor=rgb(244, 237, 226) → backgroundColor=rgb(255, 253, 249) | "ZK" background is rgb(255, 253, 249), design says rgb(244, 237, 226) (ΔE2000 4.7) |
-| minor | border-radius | text | 1/29 | 1 | borderRadius=0 → borderRadius=7.5 | "Dnes" border-radius is 7.5px, design says 0px |
-| minor | typography | text | 1/29 | 1 | fontSize=14 lineHeight=21 → fontSize=12 lineHeight=18 | "Vlákna s vaším účtovníkom — Hrubá & Co." typography differs: size 12px vs 14px, line-height 18px vs 21px |
-| minor | border-radius | text | 1/29 | 1 (×3) | borderRadius=15 → borderRadius=18 | "Všetky" border-radius is 18px, design says 15px ×3 |
-| minor | border-radius | text | 1/29 | 1 | borderRadius=15 → borderRadius=10 | "Vybavené" border-radius is 10px, design says 15px |
-| minor | border-radius | text | 1/29 | 1 | borderRadius=10 → borderRadius=14 | "⇄" border-radius is 14px, design says 10px |
-| minor | typography | text | 1/29 | 1 | fontSize=13 lineHeight=19.5 → fontSize=16 lineHeight=24 | "Bloček mám odfotený v mobile, nahrám ho …" typography differs: size 16px vs 13px, line-height 24px vs 19.5px |
 
 
 
-## uctoinak2-storybook — NOT RE-MEASURED IN THIS RUN
+## uctoinak2-storybook
 
 the Uctoinak app's 14 COMPONENT pairs — dialogs, pickers and action cards captured from Storybook, which no route can reach.
 
-**The numbers below were measured 2026-09-15T20:43:15.328Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: `svc down design-live` in that worktree, then `svc up storybook` there (it lands on the worktree's own port — pass DC_STORYBOOK_URL), then `node scripts/baseline-matching.ts --only uctoinak2-storybook`.
+Measured 2026-09-15T22:32:32.051Z.
 
 ```
 cd /root/uctoinak2/.claude/worktrees/messages-redesign
@@ -713,16 +717,20 @@ node /root/refdiff/packages/core/dist/cli.js compare --manifest tools/design-com
   --storybook-url http://localhost:6006 --pair doc-detail-owner-desktop,doc-detail-owner-mobile,doc-detail-accountant-desktop,doc-detail-accountant-mobile,tx-picker-owner-desktop,tx-picker-owner-mobile,tx-picker-accountant-desktop,tx-picker-accountant-mobile,tx-picker-all-requested-desktop,tx-picker-all-requested-mobile,card-unidentified-doc-desktop,card-unidentified-doc-mobile,card-not-a-statement-desktop,card-not-a-statement-mobile
 ```
 
+> **12 pair(s) below captured only on a SECOND attempt**: `doc-detail-owner-desktop`, `doc-detail-owner-mobile`, `doc-detail-accountant-desktop`, `doc-detail-accountant-mobile`, `tx-picker-owner-desktop`, `tx-picker-owner-mobile`, `tx-picker-accountant-desktop`, `tx-picker-accountant-mobile`, `tx-picker-all-requested-desktop`, `tx-picker-all-requested-mobile`, `card-unidentified-doc-desktop`, `card-unidentified-doc-mobile`. Their numbers are this run's, not carried over — a first capture pays a cold server's compile out of its navigation budget. A pair that needs this every run is a slow server or a flaky pair, not a measurement.
+
 14 pairs: 0 PASS / 14 FAIL — 1317 findings covering 1969 instances, 1 suppressed; delta +0 / −0
 89 of 1317 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 484 by text, 55 by slot, 545 by geometry, 233 resting on no pair
 
 | pair                            | verdict | findings (c/M/m) | inst | supp | unver | conf | align                     | delta |
 |---------------------------------|---------|------------------|------|------|-------|------|---------------------------|-------|
-| doc-detail-owner-desktop        | FAIL    |     85 (4/29/52) |  156 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | -     |
-| doc-detail-owner-mobile         | FAIL    |     90 (4/30/56) |  159 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | -     |
-| doc-detail-accountant-desktop   | FAIL    |     89 (4/31/54) |  160 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | -     |
-| doc-detail-accountant-mobile    | FAIL    |     91 (4/31/56) |  160 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | -     |
+| card-not-a-statement-desktop    | FAIL    |     63 (2/30/31) |   68 |    0 |     0 | 0.64 | 1.053×0.990 / −10.2,−27.4 | +0/−0 |
+| card-not-a-statement-mobile     | FAIL    |     69 (2/34/33) |   79 |    0 |     0 | 0.73 | 0.714×1.066 / 39.7,−16.3  | +0/−0 |
+| doc-detail-owner-desktop        | FAIL    |     85 (4/29/52) |  156 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | +0/−0 |
+| doc-detail-owner-mobile         | FAIL    |     90 (4/30/56) |  159 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +0/−0 |
+| doc-detail-accountant-desktop   | FAIL    |     89 (4/31/54) |  160 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | +0/−0 |
+| doc-detail-accountant-mobile    | FAIL    |     91 (4/31/56) |  160 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +0/−0 |
 | tx-picker-owner-desktop         | FAIL    |    105 (9/38/58) |  204 |    0 |     0 | 0.52 | 1.008×1.053 / 70.0,56.0   | +0/−0 |
 | tx-picker-owner-mobile          | FAIL    |   136 (20/69/47) |  207 |    0 |    29 | 0.00 | 1.060×1.031 / −5.8,0      | +0/−0 |
 | tx-picker-accountant-desktop    | FAIL    |   140 (21/57/62) |  207 |    0 |    24 | 0.42 | 1.006×1.112 / 69.3,68.3   | +0/−0 |
@@ -731,34 +739,37 @@ pairing evidence across the set: 484 by text, 55 by slot, 545 by geometry, 233 r
 | tx-picker-all-requested-mobile  | FAIL    |     88 (3/37/48) |  128 |    0 |     0 | 0.75 | 1.052×1 / −5.2,−24.1      | +0/−0 |
 | card-unidentified-doc-desktop   | FAIL    |     59 (2/27/30) |   65 |    0 |     0 | 0.55 | 1.031×1.064 / 6.6,−32.6   | +0/−0 |
 | card-unidentified-doc-mobile    | FAIL    |     64 (3/39/22) |   66 |    0 |     0 | 0.60 | 0.726×1.172 / 37.5,−17.2  | +0/−0 |
-| card-not-a-statement-desktop    | FAIL    |     63 (2/30/31) |   68 |    0 |     0 | 0.64 | 1.053×0.990 / −10.2,−27.4 | +0/−0 |
-| card-not-a-statement-mobile     | FAIL    |     69 (2/34/33) |   79 |    0 |     0 | 0.73 | 0.714×1.066 / 39.7,−16.3  | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
+`phase` reads `rate` (matched / min leaves) and `axis` (the BETTER-fitting axis, not the
+joint `conf`); `share` is reported and does not gate. On a `reconcile` pair a matched
+collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.
 
-| pair                            | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf |
-|---------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|
-| doc-detail-owner-desktop        |     70 |   65 |      62 |   40 |    1 |   21 |      8 |      3 |      0 | 0.84 |
-| doc-detail-owner-mobile         |     68 |   66 |      61 |   38 |    1 |   22 |      7 |      5 |      0 | 0.83 |
-| doc-detail-accountant-desktop   |     70 |   66 |      63 |   40 |    1 |   22 |      7 |      3 |      0 | 0.84 |
-| doc-detail-accountant-mobile    |     68 |   67 |      61 |   38 |    1 |   22 |      7 |      6 |      0 | 0.83 |
-| tx-picker-owner-desktop         |     93 |   96 |      86 |   33 |    6 |   47 |      7 |     10 |      0 | 0.52 |
-| tx-picker-owner-mobile          |     97 |   78 |      71 |   27 |    3 |   41 |     26 |      7 |      0 | 0.00 |
-| tx-picker-accountant-desktop    |     97 |   83 |      71 |   30 |    3 |   38 |     26 |     12 |      0 | 0.42 |
-| tx-picker-accountant-mobile     |     93 |   81 |      70 |   27 |    3 |   40 |     23 |     11 |      0 | 0.00 |
-| tx-picker-all-requested-desktop |     43 |   48 |      42 |   17 |    2 |   23 |      1 |      6 |      0 | 0.73 |
-| tx-picker-all-requested-mobile  |     43 |   48 |      40 |   14 |    2 |   24 |      3 |      8 |      0 | 0.75 |
-| card-unidentified-doc-desktop   |     21 |   21 |      18 |   11 |    0 |    7 |      3 |      3 |      0 | 0.55 |
-| card-unidentified-doc-mobile    |     21 |   21 |      16 |   10 |    0 |    6 |      5 |      5 |      0 | 0.60 |
-| card-not-a-statement-desktop    |     26 |   20 |      20 |   11 |    0 |    9 |      6 |      0 |      0 | 0.64 |
-| card-not-a-statement-mobile     |     26 |   20 |      19 |   11 |    0 |    8 |      7 |      1 |      0 | 0.73 |
-| TOTAL (14)                      |    836 |  780 |     700 |  347 |   23 |  330 |    136 |     80 |      0 |      |
+| pair                            | design | impl | matched | text | slot | geom | d-only | i-only | vetoed | conf | axis | rate | share |  phase |
+|---------------------------------|--------|------|---------|------|------|------|--------|--------|--------|------|------|------|-------|--------|
+| card-not-a-statement-desktop    |     26 |   20 |      20 |   11 |    0 |    9 |      6 |      0 |      0 | 0.64 | 0.91 | 1.00 |  0.55 | polish |
+| card-not-a-statement-mobile     |     26 |   20 |      19 |   11 |    0 |    8 |      7 |      1 |      0 | 0.73 | 0.91 | 0.95 |  0.58 | polish |
+| doc-detail-owner-desktop        |     70 |   65 |      62 |   40 |    1 |   21 |      8 |      3 |      0 | 0.84 | 0.94 | 0.95 |  0.65 | polish |
+| doc-detail-owner-mobile         |     68 |   66 |      61 |   38 |    1 |   22 |      7 |      5 |      0 | 0.83 | 0.93 | 0.92 |  0.62 | polish |
+| doc-detail-accountant-desktop   |     70 |   66 |      63 |   40 |    1 |   22 |      7 |      3 |      0 | 0.84 | 0.94 | 0.95 |  0.63 | polish |
+| doc-detail-accountant-mobile    |     68 |   67 |      61 |   38 |    1 |   22 |      7 |      6 |      0 | 0.83 | 0.93 | 0.91 |  0.62 | polish |
+| tx-picker-owner-desktop         |     93 |   96 |      86 |   33 |    6 |   47 |      7 |     10 |      0 | 0.52 | 0.81 | 0.92 |  0.38 | polish |
+| tx-picker-owner-mobile          |     97 |   78 |      71 |   27 |    3 |   41 |     26 |      7 |      0 | 0.00 | 0.82 | 0.91 |  0.38 | polish |
+| tx-picker-accountant-desktop    |     97 |   83 |      71 |   30 |    3 |   38 |     26 |     12 |      0 | 0.42 | 0.74 | 0.86 |  0.42 | polish |
+| tx-picker-accountant-mobile     |     93 |   81 |      70 |   27 |    3 |   40 |     23 |     11 |      0 | 0.00 | 0.80 | 0.86 |  0.39 | polish |
+| tx-picker-all-requested-desktop |     43 |   48 |      42 |   17 |    2 |   23 |      1 |      6 |      0 | 0.73 | 1.00 | 0.98 |  0.40 | polish |
+| tx-picker-all-requested-mobile  |     43 |   48 |      40 |   14 |    2 |   24 |      3 |      8 |      0 | 0.75 | 0.83 | 0.93 |  0.35 | polish |
+| card-unidentified-doc-desktop   |     21 |   21 |      18 |   11 |    0 |    7 |      3 |      3 |      0 | 0.55 | 0.82 | 0.86 |  0.61 | polish |
+| card-unidentified-doc-mobile    |     21 |   21 |      16 |   10 |    0 |    6 |      5 |      5 |      0 | 0.60 | 1.00 | 0.76 |  0.63 | polish |
+| TOTAL (14)                      |    836 |  780 |     700 |  347 |   23 |  330 |    136 |     80 |      0 |      |      |      |       | 14P/0R |
 
 Findings by type:
 
 | pair                            | miss | extra | text | pos | size | space | color | typo | bord | rad | pixel |  all |
 |---------------------------------|------|-------|------|-----|------|-------|-------|------|------|-----|-------|------|
+| card-not-a-statement-desktop    |    6 |     0 |    2 |  13 |   11 |     7 |     5 |    9 |    3 |   6 |     1 |   63 |
+| card-not-a-statement-mobile     |    4 |     1 |    3 |  12 |   14 |     8 |     7 |    9 |    4 |   6 |     1 |   69 |
 | doc-detail-owner-desktop        |    7 |     3 |   14 |  25 |    8 |     4 |     8 |    8 |    1 |   4 |     3 |   85 |
 | doc-detail-owner-mobile         |    7 |     5 |   15 |  21 |    5 |    12 |     9 |    9 |    1 |   4 |     2 |   90 |
 | doc-detail-accountant-desktop   |    7 |     3 |   15 |  26 |    9 |     4 |     8 |    9 |    1 |   4 |     3 |   89 |
@@ -771,42 +782,48 @@ Findings by type:
 | tx-picker-all-requested-mobile  |    3 |     8 |   12 |  16 |   10 |     4 |    18 |    6 |    6 |   5 |     0 |   88 |
 | card-unidentified-doc-desktop   |    3 |     2 |    2 |  14 |    8 |     6 |     5 |   10 |    2 |   6 |     1 |   59 |
 | card-unidentified-doc-mobile    |    5 |     4 |    2 |  16 |   12 |     5 |     4 |    8 |    2 |   5 |     1 |   64 |
-| card-not-a-statement-desktop    |    6 |     0 |    2 |  13 |   11 |     7 |     5 |    9 |    3 |   6 |     1 |   63 |
-| card-not-a-statement-mobile     |    4 |     1 |    3 |  12 |   14 |     8 |     7 |    9 |    4 |   6 |     1 |   69 |
 | TOTAL (14)                      |  132 |    78 |  155 | 297 |  135 |    87 |   182 |  116 |   52 |  60 |    23 | 1317 |
 
 Across pairs (one row = one cause; `pairs` = how many cells show it):
 
 | severity | type | role | pairs | findings | values | sample |
 |----------|------|------|-------|----------|--------|--------|
-| critical | missing-element | text | 13/14 | 73 |  | design "Služby" (36×14) has no counterpart in the implementation |
-| critical | missing-element | surface | 13/14 | 32 |  | design surface at (44, 25) (678×939) has no counterpart in the implementation |
-| critical | missing-element | box | 10/14 | 24 |  | design box at (86, 688) (8×9) has no counterpart in the implementation |
+| critical | missing-element | text | 13/14 | 73 |  | design "D2 · MOŽNO TO NIE JE VÝPIS · DESKTOP" (240×12) has no counterpart in the implementation |
+| critical | missing-element | surface | 13/14 | 32 |  | design surface at (639, 208) (282×46) has no counterpart in the implementation |
+| critical | missing-element | box | 10/14 | 24 |  | design box at (44, 95) (4×12) has no counterpart in the implementation |
 | critical | pixel-region | surface | 5/14 | 5 (×8) | shape diffRatio 0→0.2..0.7 | 21.1% of pixels differ in surface at (80, 623): shape differs (edges do not line up — a different glyph or drawing) (3 regions, 18×18px; design 19×19 resampled onto 18×18) |
 | critical | pixel-region | surface | 1/14 | 1 | color diffRatio 0→0.9 | 91% of pixels differ in surface at (93, 833): recolored (same shape, darker) (1 region, 514×11px; design 518×58 resampled onto 514×63) |
-| major | position | text | 14/14 | 235 (×360) | x 14.7..899.5→18..865, y 30.1..1085.8→27.1..1019.1 | "ZÚČT. OBDOBIE" is offset by (-2.3, 22.1)px from the design position |
-| major | size | text | 14/14 | 93 (×157) | w 4.2..529.6→12..556, h 9.7..76.1→11..110.4 | "Nákup notebooku Lenovo ThinkPad pre kanc…" renders 466×15, design says 417×15 |
-| major | spacing | text | 14/14 | 46 (×185) | vertical gap 1.1..63.1→4..53.3 | vertical gap between "Faktúra — Alza.sk" and "FA-2026-0341 · prijatá e-mailom" is 4px, design says 1.9px ×19 |
-| major | spacing | text | 13/14 | 32 (×38) | horizontal gap 9.4..58.6→8..75.6 | horizontal gap between "Ignorovať" and "·" is 12px, design says 9.4px |
-| major | pixel-region | frame | 10/14 | 10 | unexplainedDiffRatio 0→0..0.4 | 17.13% of the frame differs OUTSIDE every matched element — nothing in the element model covers it, so no per-element finding can. 141 region(s); largest: 760×740 at (0, 0); 637×5 at (62, 122); 22×17 at (188, 98). A container's background, border, radius or width is the usual cause: containers are not leaf elements, so they are never matched and never diffed. |
+| major | position | text | 14/14 | 235 (×360) | x 14.7..899.5→18..865, y 30.1..1085.8→27.1..1019.1 | "✉" is offset by (44.1, -1.1)px from the design position |
+| major | size | text | 14/14 | 93 (×157) | w 4.2..529.6→12..556, h 9.7..76.1→11..110.4 | "BANKOVÝ VÝPIS" renders 117×16, design says 101×12 |
+| major | spacing | text | 14/14 | 46 (×185) | vertical gap 1.1..63.1→4..53.3 | vertical gap between "2 dni" and "Je toto naozaj bankový výpis?" is 41px, design says 58.4px |
+| major | spacing | text | 13/14 | 32 (×38) | horizontal gap 9.4..58.6→8..75.6 | horizontal gap between "Nie sme si istí" and "✉" is 24px, design says 29.4px |
+| major | pixel-region | frame | 10/14 | 10 | unexplainedDiffRatio 0→0..0.4 | 1.87% of the frame differs OUTSIDE every matched element — nothing in the element model covers it, so no per-element finding can. 22 region(s); largest: 107×52 at (921, 25); 106×45 at (921, 209); 92×45 at (935, 87). A container's background, border, radius or width is the usual cause: containers are not leaf elements, so they are never matched and never diffed. |
 | major | extra-element | text | 9/14 | 27 |  | implementation renders "Dodávateľská faktúra" (126×14) that the design does not have |
-| major | position | box | 9/14 | 18 (×40) | x 14.7..826.1→18..834, y 77.7..847.8→64.8..858 | box at (180, 136) is offset by (1.2, -71.3)px from the design position ×3 |
+| major | position | box | 9/14 | 18 (×40) | x 14.7..826.1→18..834, y 77.7..847.8→64.8..858 | box at (42, 110) is offset by (43.6, 11.3)px from the design position |
 | major | position | surface | 8/14 | 38 (×92) | x -4.7..106.3→0..106, y 115.4..979.6→60.8..1008.3 | surface at (66, 607) is offset by (-3.2, -27.1)px from the design position |
 | major | size | surface | 8/14 | 22 (×40) | w 21.1..632.6→16..634, h 20.6..731.3→16..736 | surface at (66, 607) renders 634×63, design says 633×51 |
 | major | extra-element | surface | 8/14 | 17 |  | implementation renders surface at (40, 24) (680×692) that the design does not have |
 | major | color | text | 8/14 | 12 (×30) | color=rgb(185, 171, 151) → color=rgb(138, 125, 108) | "ČÍSLO FAKTÚRY" text color is rgb(138, 125, 108), design says rgb(185, 171, 151) (ΔE2000 15) ×10 |
 | major | color | text | 7/14 | 9 | color=rgb(95, 85, 70) → color=rgb(138, 125, 108) | "Bez dokladu" text color is rgb(138, 125, 108), design says rgb(95, 85, 70) (ΔE2000 15.6) |
-| major | size | box | 6/14 | 12 | w 8..94.8→12..101.5, h 1.1..32→1..20 | box at (112, 921) renders 18×18, design says 9×9 |
-| major | size | backdrop | 6/14 | 8 | w 410.1..968.6→402..920, h 310.3..820.1→306.3..800 | backdrop at (70, 80) renders 560×680, design says 565×758 |
+| major | size | box | 6/14 | 12 | w 8..94.8→12..101.5, h 1.1..32→1..20 | box at (42, 89) renders 20×20, design says 21×3 |
+| major | size | backdrop | 6/14 | 8 | w 410.1..968.6→402..920, h 310.3..820.1→306.3..800 | backdrop at (-10, -8) renders 920×306, design says 969×325 |
 | major | color | text | 6/14 | 8 | color=rgb(138, 125, 108) → color=rgba(138, 125, 108, 0.8) | "Prevod · 24. 6." text color is rgba(138, 125, 108, 0.8), design says rgb(138, 125, 108) (ΔE2000 9.1) |
 | major | color | text | 6/14 | 7 (×12) | color=rgb(138, 125, 108) → color=rgb(44, 36, 25) | "ZÚČT. OBDOBIE" text color is rgb(44, 36, 25), design says rgb(138, 125, 108) (ΔE2000 31.2) |
+| major | position | backdrop | 6/14 | 6 (×23) | x -10.2..70→0..70, y -23.1..80.2→0..90 | backdrop at (-10, -8) is offset by (10.2, 7.5)px from the design position |
 | major | color | text | 6/14 | 6 | backgroundColor=rgb(221, 210, 193) → backgroundColor=rgba(184, 92, 36, 0.5) | "Priradiť k dokladu" background is rgba(184, 92, 36, 0.5), design says rgb(221, 210, 193) (ΔE2000 14.3) |
-| major | position | backdrop | 6/14 | 6 (×23) | x -10.2..70→0..70, y -23.1..80.2→0..90 | backdrop at (70, 80) is offset by (0, 9.8)px from the design position ×4 |
+| major | border | text | 5/14 | 5 | borderWidth=0 → borderWidth=1 borderColor=rgb(224, 213, 196) | "Vyberte správny typ" border differs: border the design does not have |
 | major | border-radius | text | 5/14 | 5 | borderRadius=0 → borderRadius=12.25 | "Návrh" border-radius is 12.25px, design says 0px |
-| major | border | text | 5/14 | 5 | borderWidth=0 → borderWidth=1 borderColor=rgb(224, 213, 196) | "účtovník" border differs: border the design does not have |
 | major | color | text | 4/14 | 6 | color=rgb(44, 36, 25) → color=rgba(138, 125, 108, 0.8) | "−96,30 €" text color is rgba(138, 125, 108, 0.8), design says rgb(44, 36, 25) (ΔE2000 41.8) |
+| major | spacing | box | 4/14 | 5 (×21) | vertical gap 30..58.4→38..45.2 | vertical gap between box at (42, 110) and "Je toto naozaj bankový výpis?" is 41.6px, design says 58.4px |
 | major | color | text | 4/14 | 5 (×13) | color=rgb(44, 36, 25) → color=rgb(138, 125, 108) | "Prevod · Alza.sk s.r.o." text color is rgb(138, 125, 108), design says rgb(44, 36, 25) (ΔE2000 31.2) ×4 |
-| major | spacing | box | 4/14 | 5 (×21) | vertical gap 30..58.4→38..45.2 | vertical gap between box at (180, 136) and "Vybrať transakciu k dokladu" is 38px, design says 33px ×10 |
+| major | color | text | 4/14 | 4 | color=rgb(138, 125, 108) → color=oklch(0.473 0.137 46.201) | "2 dni" text color is oklch(0.473 0.137 46.201), design says rgb(138, 125, 108) (ΔE2000 25.9) |
+| major | border | text | 4/14 | 4 | borderWidth=0 → borderWidth=1 borderColor=rgb(184, 92, 36) | "Áno, je to výpis" border differs: border the design does not have |
+| major | typography | text | 4/14 | 4 | fontSize=10.5 fontWeight=600 → fontSize=14 fontWeight=500 | "BANKOVÝ VÝPIS" typography differs: size 14px vs 10.5px, weight 500 vs 600 |
+| major | typography | text | 4/14 | 4 | fontSize=10 fontWeight=600 → fontSize=14 fontWeight=500 | "ALEBO JE TO" typography differs: size 14px vs 10px, weight 500 vs 600 |
+| major | border-radius | text | 4/14 | 4 | borderRadius=0 → borderRadius=16 | "Vyberte správny typ" border-radius is 16px, design says 0px |
+| major | typography | text | 4/14 | 4 | fontSize=11 → fontSize=14 | "▾" typography differs: size 14px vs 11px |
+| major | border-radius | text | 4/14 | 4 | borderRadius=0 → borderRadius=12 | "Odložiť na neskôr" border-radius is 12px, design says 0px |
+| major | color | text | 4/14 | 4 | color=rgb(248, 243, 236) → color=rgb(138, 125, 108) | "↗" text color is rgb(138, 125, 108), design says rgb(248, 243, 236) (ΔE2000 32) |
 | major | color | text | 4/14 | 4 (×72) | color=rgb(26, 26, 26) → color=rgb(44, 36, 25) | "Detail" text color is rgb(44, 36, 25), design says rgb(26, 26, 26) (ΔE2000 8.4) ×18 |
 | major | color | text | 4/14 | 4 | color=rgb(163, 128, 31) → color=rgb(78, 122, 90) | "Návrh" text color is rgb(78, 122, 90), design says rgb(163, 128, 31) (ΔE2000 27.8) |
 | major | color | box | 4/14 | 4 | backgroundColor=rgb(163, 128, 31) → backgroundColor=rgb(78, 122, 90) | box at (650, 145) background is rgb(78, 122, 90), design says rgb(163, 128, 31) (ΔE2000 27.8) |
@@ -814,14 +831,6 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 4/14 | 4 | color=rgb(160, 111, 20) → color=rgb(78, 122, 90) | "71 % zhoda" text color is rgb(78, 122, 90), design says rgb(160, 111, 20) (ΔE2000 30.4) |
 | major | spacing | surface | 4/14 | 4 (×13) | vertical gap 15.6..24.2→21..37.8 | vertical gap between surface at (18, 781) and "Zobraziť 1 ďalší návrh" is 21px, design says 23.1px |
 | major | border | surface | 4/14 | 4 | borderWidth=1 borderColor=rgb(207, 196, 178) → borderWidth=1 borderColor=oklab(0.596632 0.00792834 0.0285945 / 0.2) | surface at (106, 915) border differs: color oklab(0.596632 0.00792834 0.0285945 / 0.2) vs rgb(207, 196, 178) (ΔE2000 10) |
-| major | color | text | 4/14 | 4 | color=rgb(248, 243, 236) → color=rgb(138, 125, 108) | "Všetky" text color is rgb(138, 125, 108), design says rgb(248, 243, 236) (ΔE2000 32) |
-| major | color | text | 4/14 | 4 | color=rgb(138, 125, 108) → color=oklch(0.473 0.137 46.201) | "2 dni" text color is oklch(0.473 0.137 46.201), design says rgb(138, 125, 108) (ΔE2000 25.9) |
-| major | border | text | 4/14 | 4 | borderWidth=0 → borderWidth=1 borderColor=rgb(184, 92, 36) | "Zaradiť medzi doklady" border differs: border the design does not have |
-| major | typography | text | 4/14 | 4 | fontSize=10.5 fontWeight=600 → fontSize=14 fontWeight=500 | "NOVÝ DOKUMENT" typography differs: size 14px vs 10.5px, weight 500 vs 600 |
-| major | typography | text | 4/14 | 4 | fontSize=10 fontWeight=600 → fontSize=14 fontWeight=500 | "ALEBO JE TO" typography differs: size 14px vs 10px, weight 500 vs 600 |
-| major | border-radius | text | 4/14 | 4 | borderRadius=0 → borderRadius=16 | "Vyberte správny typ" border-radius is 16px, design says 0px |
-| major | typography | text | 4/14 | 4 | fontSize=11 → fontSize=14 | "▾" typography differs: size 14px vs 11px |
-| major | border-radius | text | 4/14 | 4 | borderRadius=0 → borderRadius=12 | "Odložiť na neskôr" border-radius is 12px, design says 0px |
 | major | color | text | 3/14 | 3 | color=rgb(138, 125, 108) → color=rgba(184, 92, 36, 0.8) | "netreba doklad" text color is rgba(184, 92, 36, 0.8), design says rgb(138, 125, 108) (ΔE2000 17.6) |
 | major | color | text | 3/14 | 3 | backgroundColor=rgb(44, 36, 25) → backgroundColor=rgb(255, 253, 249) | "Všetky" background is rgb(255, 253, 249), design says rgb(44, 36, 25) (ΔE2000 77.8) |
 | major | color | text | 3/14 | 3 | color=rgb(95, 85, 70) → color=rgb(248, 243, 236) | "Bez dokladu" text color is rgb(248, 243, 236), design says rgb(95, 85, 70) (ΔE2000 48.2) |
@@ -839,6 +848,7 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | border | box | 2/14 | 4 | borderWidth=0 → borderWidth=1 borderColor=oklab(0.596632 0.00792834 0.0285945 / 0.2) | box at (97, 431) border differs: border the design does not have |
 | major | border | surface | 2/14 | 4 | borderWidth=1 borderColor=rgb(221, 210, 193) → borderWidth=0 | surface at (97, 432) border differs: no border, design has one |
 | major | border-radius | surface | 2/14 | 3 | borderRadius=10 → borderRadius=0 | surface at (27, 796) border-radius is 0px, design says 10px |
+| major | color | box | 2/14 | 2 | backgroundColor=rgb(185, 171, 151) → backgroundColor=oklab(0.523251 0.135163 0.077823 / 0.05) | box at (42, 89) background is oklab(0.523251 0.135163 0.077823 / 0.05), design says rgb(185, 171, 151) (ΔE2000 19.7) |
 | major | color | text | 2/14 | 2 | color=rgb(138, 125, 108) → color=oklch(0.432 0.095 166.913) | "ÚČT. KATEGÓRIA" text color is oklch(0.432 0.095 166.913), design says rgb(138, 125, 108) (ΔE2000 30.2) |
 | major | typography | text | 2/14 | 2 | fontFamily=ui-monospace fontSize=10 fontWeight=400 → fontFamily=Public Sans fontSize=11 fontWeight=600 | "sken dokladu" typography differs: family "Public Sans" vs "ui-monospace", size 11px vs 10px, weight 600 vs 400 |
 | major | typography | text | 2/14 | 2 | fontSize=9.5 fontWeight=600 → fontSize=12 fontWeight=500 | "ÚČT. KATEGÓRIA" typography differs: size 12px vs 9.5px, weight 500 vs 600 |
@@ -848,10 +858,12 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 2/14 | 2 | color=rgb(44, 36, 25) → color=rgb(78, 122, 90) | "−148,90 €" text color is rgb(78, 122, 90), design says rgb(44, 36, 25) (ΔE2000 33.2) |
 | major | color | text | 2/14 | 2 | color=rgb(95, 85, 70) → color=rgb(44, 36, 25) | "Každá transakcia bez dokladu už má otvor…" text color is rgb(44, 36, 25), design says rgb(95, 85, 70) (ΔE2000 16.2) |
 | major | border | text | 2/14 | 2 | borderWidth=0 → borderWidth=1 borderColor=rgb(232, 223, 210) | "Každá transakcia bez dokladu už má otvor…" border differs: border the design does not have |
-| major | color | box | 2/14 | 2 | backgroundColor=rgb(185, 171, 151) → backgroundColor=oklab(0.523251 0.135163 0.077823 / 0.05) | box at (42, 89) background is oklab(0.523251 0.135163 0.077823 / 0.05), design says rgb(185, 171, 151) (ΔE2000 19.7) |
 | major | border-radius | box | 1/14 | 2 | borderRadius=0 → borderRadius=8 | box at (97, 431) border-radius is 8px, design says 0px |
 | major | border-radius | surface | 1/14 | 2 | borderRadius=9 → borderRadius=0 | surface at (97, 432) border-radius is 0px, design says 9px |
 | major | border-radius | box | 1/14 | 2 | borderRadius=0 → borderRadius=9 | box at (27, 442) border-radius is 9px, design says 0px |
+| major | color | box | 1/14 | 1 | backgroundColor=rgb(185, 171, 151) → backgroundColor=rgb(44, 36, 25) | box at (64, 117) background is rgb(44, 36, 25), design says rgb(185, 171, 151) (ΔE2000 51.2) |
+| major | border | text | 1/14 | 1 | borderWidth=2 borderColor=rgb(255, 253, 249) → borderWidth=0 | "↗" border differs: no border, design has one |
+| major | border-radius | text | 1/14 | 1 | borderRadius=13 → borderRadius=0 | "↗" border-radius is 0px, design says 13px |
 | major | typography | text | 1/14 | 1 | fontSize=8 fontWeight=600 → fontSize=12 fontWeight=500 | "▾" typography differs: size 12px vs 8px, weight 500 vs 600 |
 | major | color | backdrop | 1/14 | 1 | backgroundColor=rgb(251, 248, 242) → backgroundColor=rgba(44, 36, 25, 0.42) | backdrop at (-6, 24) background is rgba(44, 36, 25, 0.42), design says rgb(251, 248, 242) (ΔE2000 20.6) |
 | major | color | text | 1/14 | 1 | color=rgb(44, 36, 25) → color=rgba(184, 92, 36, 0.8) | "Prevod · Slovnaft a.s." text color is rgba(184, 92, 36, 0.8), design says rgb(44, 36, 25) (ΔE2000 41.4) |
@@ -867,36 +879,33 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | border-radius | text | 1/14 | 1 | borderRadius=0 → borderRadius=11 | "Každá transakcia bez dokladu už má otvor…" border-radius is 11px, design says 0px |
 | major | border-radius | text | 1/14 | 1 | borderRadius=10 → borderRadius=21.14 | "Nepotrebuje párovanie" border-radius is 21.14px, design says 10px |
 | major | typography | text | 1/14 | 1 | fontSize=12.5 lineHeight=19.38 → fontSize=16 lineHeight=22.86 | "Nevyzerá to ako faktúra ani pokladničný …" typography differs: size 16px vs 12.5px, line-height 22.86px vs 19.38px |
-| major | color | box | 1/14 | 1 | backgroundColor=rgb(185, 171, 151) → backgroundColor=rgb(44, 36, 25) | box at (64, 117) background is rgb(44, 36, 25), design says rgb(185, 171, 151) (ΔE2000 51.2) |
-| major | border | text | 1/14 | 1 | borderWidth=2 borderColor=rgb(255, 253, 249) → borderWidth=0 | "↗" border differs: no border, design has one |
-| major | border-radius | text | 1/14 | 1 | borderRadius=13 → borderRadius=0 | "↗" border-radius is 0px, design says 13px |
-| minor | text-content | text | 14/14 | 155 |  | text reads "faktúra", design says "sken dokladu" |
-| minor | extra-element | backdrop | 10/14 | 19 |  | implementation renders backdrop at (0, 0) (760×740) that the design does not have |
+| minor | text-content | text | 14/14 | 155 |  | text reads "Obdobie neuvedené", design says "Nahrané 7. 7. 2026" |
+| minor | extra-element | backdrop | 10/14 | 19 |  | implementation renders backdrop at (0, 0) (358×509) that the design does not have |
 | minor | extra-element | icon | 7/14 | 11 |  | implementation renders icon at (105, 278) (16×16) that the design does not have |
 | minor | typography | text | 6/14 | 8 (×34) | fontWeight=600 → fontWeight=400 | "i" typography differs: weight 400 vs 600 |
-| minor | color | text | 6/14 | 7 (×9) | color=rgb(185, 171, 151) → color=oklab(0.596632 0.00792834 0.0285945 / 0.7) | "nedostupné — žiadosti už bežia" text color is oklab(0.596632 0.00792834 0.0285945 / 0.7), design says rgb(185, 171, 151) (ΔE2000 4) |
-| minor | border | text | 5/14 | 5 | borderWidth=1 borderColor=rgb(224, 213, 196) → borderWidth=1 borderColor=rgb(232, 223, 210) | "Zrušiť" border differs: color rgb(232, 223, 210) vs rgb(224, 213, 196) (ΔE2000 2.8) |
+| minor | color | text | 6/14 | 7 (×9) | color=rgb(185, 171, 151) → color=oklab(0.596632 0.00792834 0.0285945 / 0.7) | "ALEBO JE TO" text color is oklab(0.596632 0.00792834 0.0285945 / 0.7), design says rgb(185, 171, 151) (ΔE2000 4) |
+| minor | border | text | 5/14 | 5 | borderWidth=1 borderColor=rgb(224, 213, 196) → borderWidth=1 borderColor=rgb(232, 223, 210) | "Nie, je to iný dokument" border differs: color rgb(232, 223, 210) vs rgb(224, 213, 196) (ΔE2000 2.8) |
 | minor | color | surface | 4/14 | 8 | backgroundColor=rgb(255, 253, 249) → backgroundColor=oklab(0.537988 -0.0618201 0.0327166 / 0.08) | surface at (93, 389) background is oklab(0.537988 -0.0618201 0.0327166 / 0.08), design says rgb(255, 253, 249) (ΔE2000 3.3) |
 | minor | color | text | 4/14 | 6 | color=rgb(78, 138, 90) → color=rgb(78, 122, 90) | "+1 240,50 €" text color is rgb(78, 122, 90), design says rgb(78, 138, 90) (ΔE2000 6.8) |
 | minor | typography | text | 4/14 | 6 | fontWeight=600 → fontWeight=500 | "Všetky" typography differs: weight 500 vs 600 |
+| minor | color | text | 4/14 | 4 | backgroundColor=rgb(244, 237, 226) → backgroundColor=oklch(0.987 0.022 95.277) | "2 dni" background is oklch(0.987 0.022 95.277), design says rgb(244, 237, 226) (ΔE2000 4.1) |
+| minor | typography | text | 4/14 | 4 | fontSize=10.5 → fontSize=12 | "Nie sme si istí" typography differs: size 12px vs 10.5px |
+| minor | typography | text | 4/14 | 4 | fontSize=10 fontWeight=600 → fontSize=12 fontWeight=500 | "2 dni" typography differs: size 12px vs 10px, weight 500 vs 600 |
+| minor | border-radius | text | 4/14 | 4 | borderRadius=8 → borderRadius=10 | "2 dni" border-radius is 10px, design says 8px |
+| minor | border-radius | text | 4/14 | 4 (×8) | borderRadius=12 → borderRadius=16.8 | "Je toto naozaj bankový výpis?" border-radius is 16.8px, design says 12px |
 | minor | color | text | 4/14 | 4 | color=rgb(138, 125, 108) → color=rgb(154, 140, 118) | "sken dokladu" text color is rgb(154, 140, 118), design says rgb(138, 125, 108) (ΔE2000 5.7) |
 | minor | border | text | 4/14 | 4 | borderWidth=1 borderColor=rgb(236, 211, 189) → borderWidth=1 borderColor=rgb(224, 213, 196) | "Spárovať manuálne" border differs: color rgb(224, 213, 196) vs rgb(236, 211, 189) (ΔE2000 5.6) |
 | minor | typography | text | 4/14 | 4 | fontSize=12.5 fontWeight=500 → fontSize=9.5 fontWeight=600 | "07/2026" typography differs: size 9.5px vs 12.5px, weight 600 vs 500 |
 | minor | extra-element | box | 4/14 | 4 |  | implementation renders box at (181, 62) (40×4) that the design does not have |
-| minor | border-radius | text | 4/14 | 4 (×8) | borderRadius=12 → borderRadius=16.8 | "←" border-radius is 16.8px, design says 12px ×3 |
 | minor | border | surface | 4/14 | 4 (×25) | borderWidth=1 borderColor=rgb(207, 196, 178) → borderWidth=1 borderColor=oklab(0.596632 0.00792834 0.0285945 / 0.5) | surface at (106, 407) border differs: color oklab(0.596632 0.00792834 0.0285945 / 0.5) vs rgb(207, 196, 178) (ΔE2000 4.3) ×8 |
-| minor | color | text | 4/14 | 4 | backgroundColor=rgb(244, 237, 226) → backgroundColor=oklch(0.987 0.022 95.277) | "2 dni" background is oklch(0.987 0.022 95.277), design says rgb(244, 237, 226) (ΔE2000 4.1) |
-| minor | typography | text | 4/14 | 4 | fontSize=10.5 → fontSize=12 | "Nepotrebuje párovanie" typography differs: size 12px vs 10.5px |
-| minor | typography | text | 4/14 | 4 | fontSize=10 fontWeight=600 → fontSize=12 fontWeight=500 | "2 dni" typography differs: size 12px vs 10px, weight 500 vs 600 |
-| minor | border-radius | text | 4/14 | 4 | borderRadius=8 → borderRadius=10 | "2 dni" border-radius is 10px, design says 8px |
+| minor | border-radius | text | 3/14 | 3 | borderRadius=10 → borderRadius=12.57 | "Nie sme si istí" border-radius is 12.57px, design says 10px |
+| minor | border-radius | text | 3/14 | 3 | borderRadius=13 → borderRadius=11 | "↗" border-radius is 11px, design says 13px |
+| minor | missing-element | backdrop | 3/14 | 3 |  | design backdrop at (40, 5) (279×498) has no counterpart in the implementation |
+| minor | typography | text | 3/14 | 3 | fontSize=12.5 → fontSize=14 | "Vyberte správny typ" typography differs: size 14px vs 12.5px |
 | minor | border-radius | text | 3/14 | 3 (×7) | borderRadius=8 → borderRadius=12 | "⋯" border-radius is 12px, design says 8px ×3 |
 | minor | typography | text | 3/14 | 3 | fontSize=10.5 → fontSize=9.5 | "EXTRAHOVANÉ ÚDAJE" typography differs: size 9.5px vs 10.5px |
-| minor | typography | text | 3/14 | 3 | fontSize=12.5 → fontSize=14 | "Zrušiť" typography differs: size 14px vs 12.5px |
 | minor | pixel-region |  | 3/14 | 3 | alignmentConfidence 0.5→0..0.4 | pixel channel skipped: alignment confidence 0.00 is below 0.5 — element geometry did not line up well enough to compare pixels |
-| minor | border-radius | text | 3/14 | 3 | borderRadius=13 → borderRadius=11 | "▼" border-radius is 11px, design says 13px |
 | minor | typography | text | 3/14 | 3 | fontWeight=500 → fontWeight=600 | "Bez dokladu" typography differs: weight 600 vs 500 |
-| minor | missing-element | backdrop | 3/14 | 3 |  | design backdrop at (69, 94) (563×801) has no counterpart in the implementation |
-| minor | border-radius | text | 3/14 | 3 | borderRadius=10 → borderRadius=12.57 | "Nepotrebuje párovanie" border-radius is 12.57px, design says 10px |
 | minor | typography | text | 2/14 | 4 | fontSize=13 fontWeight=600 → fontSize=12 fontWeight=400 | "i" typography differs: size 12px vs 13px, weight 400 vs 600 |
 | minor | border-radius | text | 2/14 | 4 | borderRadius=16 → borderRadius=13 | "i" border-radius is 13px, design says 16px |
 | minor | color | text | 2/14 | 4 | backgroundColor=rgb(220, 236, 223) → backgroundColor=oklab(0.537988 -0.0618201 0.0327166 / 0.15) | "91 %" background is oklab(0.537988 -0.0618201 0.0327166 / 0.15), design says rgb(220, 236, 223) (ΔE2000 5.4) |
@@ -904,6 +913,12 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | color | text | 2/14 | 4 | backgroundColor=rgb(241, 228, 216) → backgroundColor=oklab(0.57685 0.0910033 0.101805 / 0.096) | "má otvorenú žiadosť" background is oklab(0.57685 0.0910033 0.101805 / 0.096), design says rgb(241, 228, 216) (ΔE2000 3.8) |
 | minor | typography | text | 2/14 | 3 | fontSize=11.5 → fontSize=10.5 | "Doklad klienta sa pripojí k vybranej tra…" typography differs: size 10.5px vs 11.5px |
 | minor | typography | text | 2/14 | 3 | fontSize=11.5 lineHeight=17.83 → fontSize=10.5 lineHeight=15.23 | "Každá transakcia bez dokladu už má otvor…" typography differs: size 10.5px vs 11.5px, line-height 15.23px vs 17.83px |
+| minor | color | text | 2/14 | 2 | backgroundColor=rgb(249, 239, 219) → backgroundColor=oklab(0.578224 0.0272613 0.111881 / 0.12) | "Nie sme si istí" background is oklab(0.578224 0.0272613 0.111881 / 0.12), design says rgb(249, 239, 219) (ΔE2000 3.6) |
+| minor | typography | text | 2/14 | 2 | fontSize=20 lineHeight=26 → fontSize=16 lineHeight=19.2 | "vypis_TB_jun_2026.pdf" typography differs: size 16px vs 20px, line-height 19.2px vs 26px |
+| minor | typography | text | 2/14 | 2 | fontSize=13.5 → fontSize=12 | "Nahrané 7. 7. 2026" typography differs: size 12px vs 13.5px |
+| minor | border-radius | text | 2/14 | 2 | borderRadius=14 → borderRadius=16.8 | "Je toto naozaj bankový výpis?" border-radius is 16.8px, design says 14px |
+| minor | typography | text | 2/14 | 2 | fontSize=13 → fontSize=14 | "Vyberte správny typ" typography differs: size 14px vs 13px |
+| minor | typography | text | 2/14 | 2 | lineHeight=20.8 → lineHeight=19.2 | "vypis_TB_jun_2026.pdf" typography differs: line-height 19.2px vs 20.8px |
 | minor | typography | text | 2/14 | 2 | fontSize=17 → fontSize=16 | "Faktúra — Alza.sk" typography differs: size 16px vs 17px |
 | minor | border-radius | text | 2/14 | 2 | borderRadius=12 → borderRadius=9.6 | "sken dokladu" border-radius is 9.6px, design says 12px |
 | minor | pixel-region | surface | 2/14 | 2 | stroke diffRatio 0→0.1 | 5% of pixels differ in surface at (80, 682): outline/stroke differs (the difference hugs the perimeter) (1 region, 18×13px; design 19×19 resampled onto 18×18) |
@@ -918,16 +933,13 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 2/14 | 2 | fontSize=12 fontWeight=600 → fontSize=14 fontWeight=500 | "Priradiť k dokladu" typography differs: size 14px vs 12px, weight 500 vs 600 |
 | minor | color | text | 2/14 | 2 (×8) | color=rgb(162, 149, 127) → color=rgba(138, 125, 108, 0.8) | "Slovnaft, a.s." text color is rgba(138, 125, 108, 0.8), design says rgb(162, 149, 127) (ΔE2000 3.4) ×4 |
 | minor | border | surface | 2/14 | 2 | borderWidth=1 borderColor=rgb(207, 196, 178) → borderWidth=1 borderColor=rgb(224, 213, 196) | surface at (99, 348) border differs: color rgb(224, 213, 196) vs rgb(207, 196, 178) (ΔE2000 4.2) |
-| minor | typography | text | 2/14 | 2 | fontSize=20 lineHeight=26 → fontSize=16 lineHeight=19.2 | "Stavrek s.r.o." typography differs: size 16px vs 20px, line-height 19.2px vs 26px |
-| minor | typography | text | 2/14 | 2 | fontSize=13.5 → fontSize=12 | "Iný dokument · 7. 7. 2026" typography differs: size 12px vs 13.5px |
-| minor | typography | text | 2/14 | 2 | fontSize=13 → fontSize=14 | "Vyberte správny typ" typography differs: size 14px vs 13px |
-| minor | border-radius | text | 2/14 | 2 | borderRadius=14 → borderRadius=16.8 | "Nevyzerá to ako faktúra ani pokladničný …" border-radius is 16.8px, design says 14px |
-| minor | typography | text | 2/14 | 2 | lineHeight=20.8 → lineHeight=19.2 | "Stavrek s.r.o." typography differs: line-height 19.2px vs 20.8px |
-| minor | color | text | 2/14 | 2 | backgroundColor=rgb(249, 239, 219) → backgroundColor=oklab(0.578224 0.0272613 0.111881 / 0.12) | "Nie sme si istí" background is oklab(0.578224 0.0272613 0.111881 / 0.12), design says rgb(249, 239, 219) (ΔE2000 3.6) |
 | minor | typography | text | 1/14 | 2 | fontSize=11.5 fontWeight=400 → fontSize=14 fontWeight=500 | "Prevod · 9. 7." typography differs: size 14px vs 11.5px, weight 500 vs 400 |
 | minor | border-radius | text | 1/14 | 2 | borderRadius=7.5 → borderRadius=9.5 | "má doklad" border-radius is 9.5px, design says 7.5px |
 | minor | typography | text | 1/14 | 2 | fontSize=13 fontWeight=500 → fontSize=10.5 fontWeight=400 | "Platba kartou ·· 4412 · METRO" typography differs: size 10.5px vs 13px, weight 400 vs 500 |
 | minor | typography | text | 1/14 | 2 | fontSize=12 → fontSize=11 | "Bez dokladu" typography differs: size 11px vs 12px |
+| minor | typography | text | 1/14 | 1 | lineHeight=25.2 → lineHeight=28 | "Je toto naozaj bankový výpis?" typography differs: line-height 28px vs 25.2px |
+| minor | typography | text | 1/14 | 1 | fontSize=11 fontWeight=600 → fontSize=12 fontWeight=400 | "↗" typography differs: size 12px vs 11px, weight 400 vs 600 |
+| minor | typography | text | 1/14 | 1 | fontSize=16 lineHeight=22.4 → fontSize=18 lineHeight=28 | "Je toto naozaj bankový výpis?" typography differs: size 18px vs 16px, line-height 28px vs 22.4px |
 | minor | typography | text | 1/14 | 1 (×4) | fontSize=13.5 fontWeight=500 → fontSize=11.5 fontWeight=400 | "Prevod · Alza.sk s.r.o." typography differs: size 11.5px vs 13.5px, weight 400 vs 500 ×4 |
 | minor | typography | text | 1/14 | 1 (×5) | fontSize=11.5 fontWeight=400 → fontSize=13.5 fontWeight=500 | "Prevod · 9. 7." typography differs: size 13.5px vs 11.5px, weight 500 vs 400 ×5 |
 | minor | typography | text | 1/14 | 1 | fontSize=13 fontWeight=600 → fontSize=14 fontWeight=500 | "Priradiť k dokladu" typography differs: size 14px vs 13px, weight 500 vs 600 |
@@ -947,8 +959,5 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 1/14 | 1 | fontSize=12 lineHeight=18 → fontSize=10.5 lineHeight=15.75 | "Dobrý deň, prosím nahrajte nám doklad — …" typography differs: size 10.5px vs 12px, line-height 15.75px vs 18px |
 | minor | typography | text | 1/14 | 1 | fontSize=13 lineHeight=20.15 → fontSize=12 lineHeight=16.8 | "Zmluva o dielo na rekonštrukciu skladový…" typography differs: size 12px vs 13px, line-height 16.8px vs 20.15px |
 | minor | typography | text | 1/14 | 1 | fontSize=13 lineHeight=20.15 → fontSize=16 lineHeight=22.86 | "Nevyzerá to ako faktúra ani pokladničný …" typography differs: size 16px vs 13px, line-height 22.86px vs 20.15px |
-| minor | typography | text | 1/14 | 1 | lineHeight=25.2 → lineHeight=28 | "Je toto naozaj bankový výpis?" typography differs: line-height 28px vs 25.2px |
-| minor | typography | text | 1/14 | 1 | fontSize=11 fontWeight=600 → fontSize=12 fontWeight=400 | "↗" typography differs: size 12px vs 11px, weight 400 vs 600 |
-| minor | typography | text | 1/14 | 1 | fontSize=16 lineHeight=22.4 → fontSize=18 lineHeight=28 | "Je toto naozaj bankový výpis?" typography differs: size 18px vs 16px, line-height 28px vs 22.4px |
 
 
