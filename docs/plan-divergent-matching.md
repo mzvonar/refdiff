@@ -6,6 +6,11 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
+> **STATUS (2026-09-15).** Nothing implemented yet.
+> **DO NEXT: step 0** (revert the veto widening — it is sitting uncommitted in the tree), then
+> **step 1** (per-finding provenance + confidence-gated value findings). Those two are "phase 1".
+> Session state: [`handoff-2026-09-15.md`](handoff-2026-09-15.md).
+
 ---
 
 ## The problem, stated as a measurement
