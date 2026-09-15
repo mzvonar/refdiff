@@ -33,7 +33,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { parseArgs } from "node:util"
 
-import { parseManifest } from "../packages/core/dist/index.js"
+import { parseManifest, type PairSpec } from "../packages/core/dist/index.js"
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const CLI = join(REPO, "packages", "core", "dist", "cli.js")
@@ -54,6 +54,18 @@ interface Corpus {
   extraArgs: readonly string[]
   /** Printed when the corpus is skipped, so the reader can bring it back. */
   howToStart: string
+  /**
+   * Which of the manifest's pairs this corpus measures, resolved against the
+   * manifest at run time into `--pair` ids. Absent ⇒ every pair.
+   *
+   * ONE manifest can declare pairs served by two different servers: uctoinak2's
+   * 45 are 31 routes on its Next dev server and 14 Storybook stories on
+   * another, and this box cannot hold both beside a capture browser. Splitting
+   * on the impl SHAPE rather than on a hand-written id list means a pair added
+   * to the manifest later lands in the corpus whose server can serve it,
+   * instead of being reported as a capture failure in the other one.
+   */
+  implKind?: "route" | "story"
 }
 
 /**
@@ -87,33 +99,56 @@ const CORPORA: readonly Corpus[] = [
   {
     name: "uctoinak2",
     describe:
-      "the Uctoinak app's 45 page and component pairs, including the witness `messages-accountant-desktop`",
+      "the Uctoinak app's 31 whole-PAGE pairs on its own dev server, including the witness `messages-accountant-desktop`",
     cwd: process.env["U2_ROOT"] ?? "/root/uctoinak2/.claude/worktrees/messages-redesign",
     manifest: "tools/design-compare/manifest.mjs",
     designDir: "tools/design-compare/design-reference",
     appUrl: process.env["DC_APP_URL"] ?? `http://localhost:${process.env["DC_PORT"] ?? "3210"}`,
     outRoot: join(REPO, "out", "baseline", "uctoinak2"),
+    implKind: "route",
     extraArgs: [
       "--auth-post",
       "/api/test/session",
       "--auth-header",
       `x-test-secret: ${process.env["DC_TEST_SECRET"] ?? "playwright-local-placeholder-secret-min-32chars"}`,
-      // 14 of this corpus's 45 pairs capture a Storybook story, not a route.
-      // Named explicitly rather than left to `VC_STORYBOOK_URL`, so the
-      // reproduction command printed in the document is the whole command.
-      //
-      // Those 14 are NOT in the committed baseline, and it is a resource limit
-      // rather than an oversight: running Storybook beside the app's own dev
-      // server and a Chromium capture run OOM-killed the app server on the
-      // 7 GB devbox mid-corpus (`dmesg`: `Killed process … next-server`,
-      // 2026-09-15), which cost the other 31 pairs as well. Give the box more
-      // memory, or measure them in a pass of their own with the app server
-      // down; do not simply start both and hope.
-      "--storybook-url",
-      process.env["DC_STORYBOOK_URL"] ?? "http://localhost:6006",
     ],
     howToStart:
       "start that worktree's `design-live` svc unit (APP_ENV=test, NEXT_DIST_DIR=.next-design, its own DB) — see docs/plan-divergent-matching.md §Repro",
+  },
+  {
+    // The SAME manifest as above, split off by `implKind` rather than declared
+    // as a second pair set, because the split is about which SERVER answers,
+    // not about which pairs belong together.
+    //
+    // It is also the corpus the guard was missing. The other two are whole
+    // pages against page comps, where structural divergence dominates and only
+    // 5 of 34 pairs cleared alignment confidence 0.5 — so the guard could
+    // barely see harm done to the fine-detail polish loop, which is the harm
+    // that matters most (`docs/plan-divergent-matching.md` step 3). A dialog or
+    // a card captured from its own story is the polish loop's home ground: one
+    // component, drawn once, against the comp of that component.
+    //
+    // Measured separately because Storybook beside the app's own dev server and
+    // a Chromium capture run OOM-killed the app server on this 7 GB box
+    // mid-corpus (`dmesg`: `Killed process … next-server`, 2026-09-15), costing
+    // the other 31 pairs as well. Bring `design-live` down first; do not start
+    // both and hope.
+    name: "uctoinak2-storybook",
+    describe:
+      "the Uctoinak app's 14 COMPONENT pairs — dialogs, pickers and action cards captured from Storybook, which no route can reach",
+    cwd: process.env["U2_ROOT"] ?? "/root/uctoinak2/.claude/worktrees/messages-redesign",
+    manifest: "tools/design-compare/manifest.mjs",
+    designDir: "tools/design-compare/design-reference",
+    // The storybook origin IS this corpus's impl server, so it is what gets
+    // probed for reachability. `--app-url` is unused by a story pair (it
+    // resolves relative LIVE routes) and no auth is passed: a story renders the
+    // component with its own fixtures, with no session to establish.
+    appUrl: process.env["DC_STORYBOOK_URL"] ?? "http://localhost:6006",
+    outRoot: join(REPO, "out", "baseline", "uctoinak2-storybook"),
+    implKind: "story",
+    extraArgs: ["--storybook-url", process.env["DC_STORYBOOK_URL"] ?? "http://localhost:6006"],
+    howToStart:
+      "`svc down design-live` in that worktree, then `svc up storybook` there (it lands on the worktree's own port — pass DC_STORYBOOK_URL)",
   },
 ]
 
@@ -164,8 +199,14 @@ function run(
  * the difference between "these 5 pairs are the corpus" and "these 5 are the
  * ones that still work".
  */
-function captureFailures(log: string): { pair: string; side: string; kind: string }[] {
-  const out: { pair: string; side: string; kind: string }[] = []
+interface CaptureFailure {
+  pair: string
+  side: string
+  kind: string
+}
+
+function captureFailures(log: string): CaptureFailure[] {
+  const out: CaptureFailure[] = []
   const re = /^(\S+): (design|impl) capture failed[^\n]*\n\{\n\s*"kind": "([^"]+)"/gm
   for (const m of log.matchAll(re)) out.push({ pair: m[1]!, side: m[2]!, kind: m[3]! })
   return out
@@ -211,6 +252,101 @@ async function carriedOver(outRoot: string, since: string): Promise<string[]> {
   return stale
 }
 
+/** The `compare` argv for this corpus, minus whichever pairs the caller wants. */
+function compareArgs(c: Corpus): string[] {
+  return [
+    CLI,
+    "compare",
+    "--manifest",
+    c.manifest,
+    "--design-dir",
+    c.designDir,
+    "--app-url",
+    c.appUrl,
+    "--out",
+    c.outRoot,
+    ...c.extraArgs,
+  ]
+}
+
+/**
+ * Run the pairs that failed to CAPTURE a second time, once, and believe the
+ * second answer.
+ *
+ * Not flakiness tolerance — a measured asymmetry between the two kinds of impl
+ * server. `warm()` above pre-compiles a ROUTE, and that is why the route corpus
+ * loses no pairs to a cold start any more. It cannot pre-compile a STORY: every
+ * story is behind one static `iframe.html`, so the fetch that warms a route
+ * warms nothing here and the first capture of each story pays the compile out
+ * of its 30 s navigation budget. Measured: the first uctoinak2-storybook pass
+ * reported 8 of 14 pairs as `navigation-failed`/`unreachable`, and on the next
+ * invocation 4 of those 8 captured unchanged — the other 4 were a genuinely
+ * broken story and said so, louder (`story-error`).
+ *
+ * That last clause is what makes this safe. A retry cannot turn a real failure
+ * into a pass; it can only stop the guard from silently shrinking by four pairs
+ * because Vite was cold. What it CAN hide is a pair that fails half the time,
+ * so the pairs that needed a second attempt are recorded and printed — a
+ * corpus that needs retrying every run is telling you something.
+ */
+async function retryFailed(
+  c: Corpus,
+  failed: readonly CaptureFailure[],
+): Promise<{ attempted: string[]; failed: CaptureFailure[] } | undefined> {
+  const attempted = [...new Set(failed.map((f) => f.pair))]
+  if (attempted.length === 0) return undefined
+  console.log(
+    `\nretrying ${attempted.length} pair(s) that failed to capture: ${attempted.join(", ")}`,
+  )
+  const again = await run("node", [...compareArgs(c), "--pair", attempted.join(",")], {
+    cwd: c.cwd,
+    tee: true,
+  })
+  // The retried set IS every pair that had failed, so the second run's failures
+  // are the whole surviving list — no merge with the first run's, which would
+  // only risk re-adding a pair that has since captured.
+  return { attempted, failed: captureFailures(again.stdout) }
+}
+
+/**
+ * The manifest pairs THIS corpus measures: every pair whose impl shape matches
+ * its `implKind`, or all of them when it declares none.
+ *
+ * `undefined` means the manifest could not be READ, which is a different thing
+ * from "this corpus has no pairs" and must not be flattened into it: the
+ * callers then warm nothing and pass no `--pair`, leaving `compare` to load the
+ * same file and fail with its own message. This helper is not allowed to be the
+ * thing that decides a corpus is empty.
+ */
+async function pairsOf(c: Corpus): Promise<PairSpec[] | undefined> {
+  let mod: Record<string, unknown>
+  try {
+    mod = (await import(pathToFileURL(resolve(c.cwd, c.manifest)).href)) as Record<string, unknown>
+  } catch {
+    return undefined
+  }
+  const parsed = parseManifest(mod["manifest"] ?? mod["default"], mod["sections"])
+  if (!parsed.ok) return undefined
+  if (c.implKind === undefined) return parsed.value.pairs
+  const wantStory = c.implKind === "story"
+  return parsed.value.pairs.filter((p) => "storyId" in p.impl === wantStory)
+}
+
+/**
+ * The `--pair` filter that restricts `compare` to this corpus's own pairs, and
+ * an empty list for a corpus that takes the whole manifest.
+ *
+ * It goes into the command the document PRINTS as well as the one it runs. A
+ * reproduction command that quietly measured a different set than the table
+ * above it is the exact failure this harness exists to catch, one level up.
+ */
+async function pairArgs(c: Corpus): Promise<string[]> {
+  if (c.implKind === undefined) return []
+  const pairs = await pairsOf(c)
+  if (pairs === undefined || pairs.length === 0) return []
+  return ["--pair", pairs.map((p) => p.id).join(",")]
+}
+
 /**
  * GET every URL the corpus is about to capture, once, sequentially, before the
  * run — and ignore every answer.
@@ -225,31 +361,40 @@ async function carriedOver(outRoot: string, since: string): Promise<string[]> {
  *
  * Warming cannot mask a real failure: a route that 404s or errors does so just
  * as loudly on the second request.
+ *
+ * **It does nothing at all for a STORY pair, and that is not fixable here.**
+ * Every story lives behind the same `iframe.html`, which is served as a static
+ * shell; the story's own module is compiled when the BROWSER asks for it, so a
+ * `fetch` of that URL returns 200 having compiled nothing. Measured: the first
+ * uctoinak2-storybook pass lost 8 of 14 pairs to a cold Vite, warmed or not,
+ * and the four that were not genuinely broken captured on the next invocation.
+ * The URLs are still requested — it costs a second and proves the server is
+ * answering — but the pairs this actually saves are `retryFailed`'s, below.
  */
-async function warm(c: Corpus): Promise<number> {
-  let mod: Record<string, unknown>
-  try {
-    mod = (await import(pathToFileURL(resolve(c.cwd, c.manifest)).href)) as Record<string, unknown>
-  } catch {
-    return 0
-  }
-  const parsed = parseManifest(mod["manifest"] ?? mod["default"], mod["sections"])
-  if (!parsed.ok) return 0
+/** Every distinct impl URL this corpus will capture, in manifest order. */
+async function implUrls(c: Corpus): Promise<string[]> {
+  const pairs = await pairsOf(c)
+  if (pairs === undefined) return []
   const storybookUrl = c.extraArgs[c.extraArgs.indexOf("--storybook-url") + 1]
   const urls = new Set<string>()
-  for (const p of parsed.value.pairs) {
+  for (const p of pairs) {
     if ("storyId" in p.impl) {
       if (storybookUrl !== undefined)
         urls.add(`${storybookUrl}/iframe.html?id=${encodeURIComponent(p.impl.storyId)}`)
     } else if (p.impl.route.startsWith("http")) urls.add(p.impl.route)
     else urls.add(new URL(p.impl.route, c.appUrl).href)
   }
+  return [...urls]
+}
+
+async function warm(c: Corpus): Promise<number> {
+  const urls = await implUrls(c)
   for (const u of urls) {
     // One at a time: a dev server compiling twenty routes at once is slower
     // than one compiling them in turn, and nothing here is in a hurry.
     await fetch(u, { signal: AbortSignal.timeout(180_000), redirect: "manual" }).catch(() => {})
   }
-  return urls.size
+  return urls.length
 }
 
 /**
@@ -268,9 +413,16 @@ interface CorpusNotes {
   measuredAt: string
   appUrl: string
   command: string
-  failed: { pair: string; side: string; kind: string }[]
+  failed: CaptureFailure[]
   disabled: { pair: string; why: string }[]
   carriedOver: string[]
+  /**
+   * Pairs that failed to capture on the first attempt and were run again. The
+   * ones NOT also in `failed` are the ones a second attempt recovered, and they
+   * are recorded rather than quietly absorbed: a corpus that needs the retry
+   * every run has a slow server or a flaky pair, and only this list says so.
+   */
+  retried?: string[]
   /** Set when the notes were reconstructed from the reports, so the lists above are incomplete. */
   partial?: string
 }
@@ -293,7 +445,7 @@ async function readNotes(c: Corpus): Promise<CorpusNotes | undefined> {
       corpus: c.name,
       measuredAt: newest,
       appUrl: c.appUrl,
-      command: compareCommand(c),
+      command: await compareCommand(c),
       failed: [],
       disabled: [],
       carriedOver: [],
@@ -327,11 +479,10 @@ async function newestReport(root: string): Promise<string | undefined> {
 }
 
 /** The compare invocation, verbatim, so the document carries its own reproduction. */
-function compareCommand(c: Corpus): string {
+async function compareCommand(c: Corpus): Promise<string> {
+  const args = [...c.extraArgs, ...(await pairArgs(c))]
   const extra =
-    c.extraArgs.length > 0
-      ? " \\\n  " + c.extraArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ")
-      : ""
+    args.length > 0 ? " \\\n  " + args.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ") : ""
   return (
     `cd ${c.cwd}\nnode ${CLI} compare --manifest ${c.manifest} --design-dir ${c.designDir} \\\n` +
     `  --app-url ${c.appUrl} --out ${c.outRoot}${extra}`
@@ -354,8 +505,20 @@ function notMeasuredList(n: CorpusNotes): string {
         `their pair did not capture and \`summary\` reads every run dir under the root: ` +
         `${n.carriedOver.map((s) => `\`${s}\``).join(", ")}. Read them as history, not as this baseline.\n`
   const partial = n.partial === undefined ? "" : `\n> Incomplete record: ${n.partial}.\n`
+  // The recovered pairs are in the tables and look like every other row, so the
+  // only place a reader can learn that they needed two attempts is here.
+  const stillFailing = new Set(n.failed.map((f) => f.pair))
+  const recovered = (n.retried ?? []).filter((p) => !stillFailing.has(p))
+  const retried =
+    recovered.length === 0
+      ? ""
+      : `\n> **${recovered.length} pair(s) below captured only on a SECOND attempt**: ` +
+        `${recovered.map((p) => `\`${p}\``).join(", ")}. Their numbers are this run's, not carried over — ` +
+        `a first capture pays a cold server's compile out of its navigation budget. A pair that needs ` +
+        `this every run is a slow server or a flaky pair, not a measurement.\n`
   return (
     (lines.length === 0 ? "" : `\nNot in the tables below:\n\n${lines.join("\n")}\n`) +
+    retried +
     stale +
     partial
   )
@@ -404,11 +567,21 @@ async function carriedSection(
   )
 }
 
-/** Is anything answering there? A GET, because some dev servers 404 a HEAD. */
-async function reachable(url: string): Promise<string | undefined> {
+/**
+ * Is this corpus's impl server answering? A GET, because some dev servers 404 a
+ * HEAD — and against a URL the corpus ACTUALLY CAPTURES, not the bare origin.
+ *
+ * Probing `/` skipped the whole uctoinak2 corpus once: that app has no unlocalised
+ * root, so `/` 500s while every one of its 31 routes answers 307 and captures
+ * fine. A probe that can reject a server on a path no pair visits is not
+ * measuring the precondition it claims to — and the cost of getting it wrong is
+ * 29 pairs silently replaced by yesterday's numbers.
+ */
+async function reachable(c: Corpus): Promise<string | undefined> {
+  const url = (await implUrls(c))[0] ?? c.appUrl
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(120_000), redirect: "manual" })
-    return res.status >= 500 ? `answered ${res.status}` : undefined
+    return res.status >= 500 ? `answered ${res.status} for ${url}` : undefined
   } catch (e) {
     return e instanceof Error ? e.message : String(e)
   }
@@ -483,7 +656,7 @@ async function main(): Promise<void> {
       continue
     }
     console.log(`\n=== corpus ${c.name} — ${c.appUrl} ===`)
-    const why = await reachable(c.appUrl)
+    const why = await reachable(c)
     if (why !== undefined) {
       console.error(`SKIPPED ${c.name}: ${c.appUrl} not reachable (${why})`)
       sections.push(
@@ -499,36 +672,26 @@ async function main(): Promise<void> {
     const warmed = await warm(c)
     if (warmed > 0) console.log(`warmed ${warmed} impl URL(s) before measuring`)
     const startedAt = new Date().toISOString()
-    const compare = await run(
-      "node",
-      [
-        CLI,
-        "compare",
-        "--manifest",
-        c.manifest,
-        "--design-dir",
-        c.designDir,
-        "--app-url",
-        c.appUrl,
-        "--out",
-        c.outRoot,
-        ...c.extraArgs,
-      ],
-      { cwd: c.cwd, tee: true },
-    )
+    const compare = await run("node", [...compareArgs(c), ...(await pairArgs(c))], {
+      cwd: c.cwd,
+      tee: true,
+    })
     // Exit 1 is "some pair FAILED its verdict", which is the normal state of a
     // drifted corpus and exactly what a baseline records. Exit 2 is a capture
     // error on at least one pair: the run still produced every other pair's
     // report, so those are kept and the rest are NAMED — a pair that never
     // captured leaves no run dir, so the table below cannot show it missing.
+    const firstFailed = captureFailures(compare.stdout)
+    const retried = await retryFailed(c, firstFailed)
     const notes: CorpusNotes = {
       corpus: c.name,
       measuredAt: startedAt,
       appUrl: c.appUrl,
-      command: compareCommand(c),
-      failed: captureFailures(compare.stdout),
+      command: await compareCommand(c),
+      failed: retried?.failed ?? firstFailed,
       disabled: skippedPairs(compare.stdout),
       carriedOver: await carriedOver(c.outRoot, startedAt),
+      ...(retried === undefined ? {} : { retried: retried.attempted }),
     }
     await writeFile(join(c.outRoot, NOTES_FILE), JSON.stringify(notes, null, 2))
     sections.push(await measuredSection(c, notes))

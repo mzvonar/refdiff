@@ -391,6 +391,92 @@ matters most.
 **Done.** The corpus carries ≥ 10 pairs at confidence ≥ 0.5, at least 4 of them repeated-content, and
 `docs/baseline-matching-<date>.md` is regenerated as the new before-picture.
 
+**DONE 2026-09-15 — measured. The bar is met roughly fourfold, and TWO of this step's own premises
+turned out to be wrong.**
+
+- **20 pairs now sit at confidence ≥ 0.5, up from 5**, and the quantity that actually matters —
+  what a ratio test or container scoping would re-decide on a pair the polish loop runs on — went
+  from **219 geometric matches of 463** to **745 of 1576**. That 3.4× is the guard step 5 and the
+  parked steps are evaluated against.
+- **The "≥ 4 repeated-content" half, stated as a measurement rather than asserted.** The signature
+  of the case a ratio test is hostile to is that GEOMETRY, not text, forms most of the matches on a
+  pair that is otherwise well aligned. **Seven** of the 20 are in that state — `library-groups-mobile`
+  0.81 geometric, `gallery-mobile` 0.73, `library-groups-desktop` 0.69, `tx-picker-all-requested-mobile`
+  0.60, and `today-owner-desktop` / `tx-picker-owner-desktop` / `tx-picker-all-requested-desktop` at
+  0.55. By construction the same seven are the repeated-content layouts: one variant SHEET
+  (`gallery-mobile`, a grid of button cells — the literal "variant-sheet pair" this step asked for),
+  two card grids, three transaction lists. *Note the cruder text-share proxy (`< 0.35`) counts only
+  3 of them, because a tx-picker row carries a real merchant string; geometric share is the signal
+  that matches the mechanism, and both are in the census either way.*
+- **Two pairs sit EXACTLY on the floor** (`today-owner-desktop` and `client-settings-accountant-desktop`,
+  both 0.50) and one of them has the worst match rate in the corpus (0.31). The over-floor count is
+  20 with them and 18 without; nothing in this step's conclusion depends on which side they fall.
+- **The corpus is three corpora now, split by impl SHAPE, not by hand.** `uctoinak2` keeps its 31
+  route pairs; the 14 Storybook pairs became `uctoinak2-storybook` with its own out root and its
+  own impl server. `Corpus.implKind` resolves the `--pair` list from the manifest at run time, so a
+  pair added later lands in the corpus whose server can serve it instead of being reported as a
+  capture failure in the other one. This is what lets the two be measured in separate passes
+  without either one's section decaying into carried-over history.
+- **All 14 Storybook pairs capture, and they are the best pairs in the corpus.** The four
+  `doc-detail-*` dialogs come in at **confidence 0.83–0.84 with 61–63 of ~70 design leaves
+  matched** — nothing else measured here is that well aligned. `700 of 836` design leaves matched
+  across the 14, against 42% on the page corpora, which is the regime difference the whole step was
+  after.
+
+**Premise 1 that was wrong: the four refdiff pairs were never "annotator-surface drift".** That
+diagnosis is written in this step's own bullet above and in the handoff, and it was never tested.
+The annotator `svc` unit was running a process older than `dist`: `cli.ts` does
+`import { renderAppShell } from "./app-shell.js"`, so it holds the compiled module from the moment
+it started, and the served shell had no `#view-gallery` at all while the source declares one.
+`svc restart annotator` fixed all four. **The damage was not the four.** The five pairs that HAD
+been capturing were measuring the same stale build, so every refdiff number in the previous
+baseline described an implementation nobody has:
+
+| pair | findings | matched | confidence |
+| --- | --- | --- | --- |
+| refdiff-compare-desktop | 95 → 69 | 171 → 179 | 0.68 → 0.72 |
+| refdiff-library-groups-desktop | 796 → 560 | 120 → 197 | 0.30 → **0.56** |
+| refdiff-library-groups-mobile | 563 → 520 | 178 → 232 | 0.70 → **0.85** |
+| refdiff-compare-mobile | 19 → 13 | 67 → 64 | 0.91 → 0.97 |
+| refdiff-compare-mobile-toolbar | 82 → **4, PASS** | 53 → 55 | 0.36 → **1.00** |
+
+`matched` rose on four of five and the fifth shed 7 unmatched impl leaves, so this is an impl that
+corresponds better, not a matcher that got looser — no matcher code changed in this step.
+
+**Premise 2 that was wrong, and it is this step's own motivation: "only 5 of 34 pairs clear 0.5"
+was partly an artefact of that stale server.** Two refdiff pairs cross the floor on the restart
+alone (`library-groups-desktop` 0.30 → 0.56, `compare-mobile-toolbar` 0.36 → 1.00). The step was
+still worth doing — 11 of the 15 new over-floor pairs are the Storybook ones, which did not exist
+in the guard at all — but **the corpus was never as uniformly divergent as the REFRAME's headline
+number said**, and any argument that leans on "29 of 34 pairs are below the floor" must be
+re-derived from the new baseline rather than quoted.
+
+**Consequence for THE REFRAME's measured claims.** Its direction survives and is strengthened; its
+numbers do not. `refdiff-library-groups-mobile`, the named casualty of a ratio test, now reads
+**confidence 0.85, 232 matched, 187 geometric, text share 0.19** (was 0.70 / 178 / 150 / 0.13) —
+more exposure, at higher confidence, not less. Re-read the section with those figures before step 5.
+
+**Two harness defects fixed, both the same shape as the bug this plan is about — a report that
+looks complete.**
+
+- **`warm()` cannot warm a story, and used to claim it had.** Every Storybook story sits behind one
+  static `iframe.html`, so a `fetch` of it returns 200 having compiled nothing. The first pass lost
+  8 of 14 pairs to a cold Vite despite "warmed 14 impl URL(s)". `retryFailed` now re-runs the pairs
+  that failed to capture, once, and records which needed it. It cannot launder a real failure: the
+  4 genuinely broken stories reported *louder* on the second attempt (`story-error` naming a
+  missing export where the cold run said `unreachable`).
+- **`reachable()` probed the bare origin**, and the uctoinak2 app has no unlocalised root — `/`
+  500s while all 31 of its routes answer. That skipped the entire route corpus once, silently
+  substituting three-hour-old numbers. It now probes the corpus's first real impl URL.
+
+**Still open, filed rather than fixed.** The 4 `doc-detail-*` pairs needed a one-line fix in
+uctoinak2: `src/features/document/boundary/__mocks__/actions.ts` was one export behind its real
+boundary file (`reprocessDocumentAction`), which broke the story at module load. The same drift
+exists in 5 other `sb.mock`-ed twins — 12 more missing exports across messaging, banking,
+notification, organization and firm — and none of them block a corpus pair, so they are named here
+and left alone. The edit is UNCOMMITTED in that worktree and joins the standing "uctoinak2 commits
+— needs Mato" question.
+
 ### Step 4 — say which PHASE a pair is in, and stop comparing when the answer is A
 
 **Goal.** The most valuable thing refdiff can do for a divergent pair is decline to report on it in

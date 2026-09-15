@@ -5,6 +5,90 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-15 — a measurement was wrong for a whole day because the IMPL process predated `dist`
+
+The corpus's `refdiff` half is the annotator serving `fixtures/demo-root`, run as a long-lived
+`svc` unit. Four of its nine pairs had been failing to capture (`selector-not-found` on
+`#cells-impl .cellslot`, `step-failed` on `.frow:has(.fside)`), and both the plan and the handoff
+recorded that as **annotator-surface drift, pre-existing, not the matcher**. That diagnosis was
+wrong, and it had been written down twice.
+
+Driving the failing route in a browser showed `#view-gallery` absent from the DOM entirely —
+while `packages/annotator/src/app-shell.ts` declares it — plus a 404 for
+`/set/ds-button/findings.json`. The served shell was not the shell in the source. `svc restart
+annotator` fixed all four pairs, and the mechanism is one line: `cli.ts` does
+`import { renderAppShell } from "./app-shell.js"`, so the process holds the compiled module
+**from the moment it started**. A rebuilt `dist` is invisible to it until it is restarted.
+
+The cost was not four pairs. The five pairs that DID capture were also measuring the stale build,
+so every number the committed baseline recorded for this corpus was against an implementation
+that did not correspond to the committed source. On the restart all five moved, all in the same
+direction:
+
+| pair | findings | matched | confidence |
+| --- | --- | --- | --- |
+| refdiff-compare-desktop | 95 → 69 | 171 → 179 | 0.68 → 0.72 |
+| refdiff-library-groups-desktop | 796 → 560 | 120 → 197 | 0.30 → 0.56 |
+| refdiff-library-groups-mobile | 563 → 520 | 178 → 232 | 0.70 → 0.85 |
+| refdiff-compare-mobile | 19 → 13 | 67 → 64 | 0.91 → 0.97 |
+| refdiff-compare-mobile-toolbar | 82 → **4, PASS** | 53 → 55 | 0.36 → **1.00** |
+
+**`pnpm -r build` before a compare is necessary and not sufficient.** The repo rule exists because
+the CLIs run from `dist`; it says nothing about a SERVER that loaded `dist` hours ago, and the
+`refdiff` skill's `preflight.sh` already knows this ("an annotator process older than dist reports
+as +0/−0"). The rule to state once and obey: **before a measurement, every process on both sides
+of the pair must be newer than the `dist` it runs.** A stale impl does not fail loudly — it
+reports confident findings about a build nobody has.
+
+Second-order lesson, and the sharper one: **a capture failure is evidence about the harness's
+environment, not a diagnosis.** "Annotator-surface drift" was a plausible story that fit the
+symptom, survived two write-ups, and was never tested — the test was one browser visit.
+
+## 2026-09-15 — warming a URL cannot warm a Storybook story, and the retry that fixes it
+
+The baseline harness GETs every impl URL before measuring, because a cold Next route can exceed
+the capture adapter's 30 s navigation budget and die `navigation-failed` — a measurement of the
+bundler, not of the matcher. That works for routes and is worth the minute it costs.
+
+It does nothing for a story. **Every Storybook story lives behind the same `iframe.html`**, which
+is served as a static shell; the story's own module is compiled when the BROWSER asks for it, so
+`fetch('/iframe.html?id=X')` returns 200 having compiled nothing, identically for every id.
+Measured: the first `uctoinak2-storybook` pass reported 8 of 14 pairs as
+`navigation-failed`/`unreachable` despite warming all 14 — and on the next invocation 4 of those 8
+captured unchanged, because the failed attempt had done the compiling.
+
+The harness now **retries the pairs that failed to capture, once, and believes the second answer**
+(`retryFailed`). What makes that safe rather than flakiness-tolerance is the other 4 of the 8:
+they were a genuinely broken story and said so on both attempts, and *louder* the second time
+(`story-error` naming a missing export, where the cold run had said `unreachable`). A retry cannot
+turn a real failure into a pass. What it can hide is a pair that fails half the time, so the pairs
+that needed a second attempt are recorded in the notes and printed above the tables.
+
+## 2026-09-15 — a liveness probe must hit a URL the job actually uses
+
+The harness skipped a corpus if its impl server did not answer, and probed the bare origin. The
+uctoinak2 app has no unlocalised root: `/` 500s, `/sk/...` answers. So the probe rejected a server
+whose 31 routes were all fine, and the document silently fell back to three-hour-old numbers for
+the whole corpus — dated and labelled, which is the only reason it was caught.
+
+`reachable()` now probes the corpus's FIRST impl URL and falls back to the origin only when there
+are none. A precondition check that can reject on a path the job never visits is not checking the
+precondition it claims to, and here the cost of the false negative was 29 pairs.
+
+## 2026-09-15 — two devbox traps that present as application bugs
+
+**A Turbopack dist dir that was OOM-killed mid-compile serves server-wide 500s with no usable
+error.** After the app server was OOM-killed, every restart answered 500 for every page and API
+route while middleware-level redirects still returned 307 — and the only thing in the log was
+1362 repetitions of an `Edge Instrumentation` warning that had ALSO been there during the last
+run that worked, so it read like a cause and was not. `rm -rf .next-design` and a restart fixed
+it. Before log-archaeology on a dev server that was killed rather than stopped, clear its dist.
+
+**`pnpm storybook` hardcodes `-p 6006`, so `svc`'s `$PORT` is ignored.** `svc status` reported the
+unit on 6007, nothing was listening there, and Storybook was on 6006 — a port `svc` believes
+belongs to a different worktree's unit. A service whose command ignores `$PORT` makes `svc status`
+report a port that is not where the service is.
+
 ## 2026-09-15 — widening the corpus by starting a second server killed the first one
 
 14 of the uctoinak2 corpus's 45 pairs capture a Storybook story rather than a route, and they
