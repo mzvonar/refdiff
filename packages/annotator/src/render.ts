@@ -1068,6 +1068,17 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
      sits at y=15 before and after -- the 5px comes off the container, which then centres in
      the 45px header at 8.5..35.5, the comp's own. */
   body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }
+  /* This layout is the one where the Show control FLOATS over the canvas at (8, 8), 29px tall
+     (3px padding + 1px border + a 21px button row) at z-index 25 — so the focus chip's phone
+     default of top:12px put it UNDER the panel: invisible and untappable, Edit and Clear with it.
+     The other two phone layouts keep the 12px — default renders the Show strip in the document
+     flow, minimal folds it behind the tune button. Drop the chip to the next row (8 panel top +
+     29 panel + 8 gap), which also clears the align pill (top:8px, 36px tall), so the width cap
+     that kept the chip out of that pill's way is not needed here either. The warn note stacks
+     under the chip exactly as the base rule stacks it under the 12px one. */
+  body.layout-toolbar .focus-chip { top:calc(8px + 29px + 8px); max-width:calc(100% - 16px); }
+  body.layout-toolbar .lab-note { top:calc(8px + 29px + 8px); }
+  body.layout-toolbar .focus-chip:not([hidden]) ~ .lab-note { top:calc(8px + 29px + 8px + 32px + 8px); }
   /* The align pill keeps the minimal layout's top:8px: an earlier pass lifted it by -28px to
      reach the comp's hub y=125, but that was compensating for the 35px full-width strip row
      this layout should never have had. With the Show control floating, .work starts where the
