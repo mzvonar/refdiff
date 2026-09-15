@@ -76,7 +76,7 @@ import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
 import { alignmentNote, alignStructural, rootSizeNote } from "./structural/align.js"
 import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
-import { matchElements } from "./structural/match.js"
+import { matchElements, matchingStats } from "./structural/match.js"
 
 const USAGE = `Usage: refdiff compare [options]
        refdiff summary <out-root> [--json]
@@ -692,6 +692,9 @@ async function runPair(
     suppressed,
     policy,
     ...(diffMaskPath !== undefined ? { diffMaskPath } : {}),
+    // The matcher's own counts ride into the report: a finding total cannot tell a
+    // matcher that got stricter from one that fell apart (see `MatchingStats`).
+    matching: matchingStats(match),
     ...(previous !== undefined ? { previous, ledger } : {}),
   })
   // The ledger remembers every fix across runs, so a finding that comes back

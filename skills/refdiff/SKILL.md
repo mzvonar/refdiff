@@ -399,13 +399,44 @@ page: it is flat, then steps by the missing pixels at ONE element per
 repeat, and that element (its `height` + border, in the comp's box model) is
 the fix.
 
+### 1a-ii. Then ask what PAIRED the two elements a finding is about
+
+A finding is only ever as good as its pairing. Every finding that rests on a
+pair carries **`via`** — how those two elements were put together — and
+**`gamma`**, the pair's γ = |Δx|+|Δy|+|Δw|+|Δh| in normalized CSS px. The
+console prints it after each line (`[geometry γ98.7]`) and sums it up
+(`pairing evidence: 49 text, 3 slot, 71 geometry (102 rest on no pair)`):
+
+| `via` | what formed the pair | how much to believe its values |
+| --- | --- | --- |
+| `text` | both elements carry the SAME string | the transform played no part — trustworthy at any confidence |
+| `slot` | same anchor and line height, different text (a value slot) | geometry formed it, but position-only |
+| `geometry` | nothing but γ | only as good as `alignment.confidence` |
+| absent | the finding rests on no pair (`missing-element`, `extra-element`, `alignment`) | — |
+
+**`unverified: true` means: do not read this finding's VALUES as drift.** It is
+set on `color` / `typography` / `border` / `border-radius` / `size` findings
+whose pair was formed by geometry alone while `alignment.confidence` is below
+0.5 — i.e. a colour delta between two elements that may well not be the same
+element. They are flagged, never suppressed: a deleted finding cannot be told
+from "no difference here". `position` and `spacing` are deliberately NOT
+flagged — a position finding IS the transform's claim and states its own
+evidence ("offset by (−70.7, 0.5)px" is visibly not drift).
+
+The shape to recognise: a comp label with no counterpart in the implementation
+pairs with whatever sits nearest, and emits five findings that read as
+actionable plus, LAST, the `text-content` one that gives it away. When a pair's
+`geometry` share is large and its confidence low, **read the `text-content`
+findings first** and fix the alignment (§1a) before believing anything else.
+
 ### 1b. Sets — a component set or a whole manifest is ONE loop
 
 A manifest entry with `design.variants` expands into one pair per variant
 cell (Alert 23, Button 41). Do not read 41 `findings.json`. A multi-pair run
 ends with the set summary (also `refdiff summary <out-root>`, written
 to `<out-root>/summary.md` + `summary.json`): one row per pair (verdict,
-counts, alignment confidence + `align` transform, delta) and — the part you
+counts, `unver`, alignment confidence + `align` transform, delta), then a
+**Matching** table and a **Findings by type** table, and — the part you
 read first — **one
 row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
 
@@ -424,6 +455,16 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   human` with those numbers attached, not a fix you commit.
 - Sets share one out root; `summary.md` there always covers every run dir
   under it (all sets), the console shows the set just run.
+- **The `Matching` table is how you tell "more precise" from "failed
+  differently".** It reports what the MATCHER did per pair — `design` / `impl`
+  leaves offered, `matched` (split `text` / `slot` / `geom`), `d-only`,
+  `i-only`, `vetoed` — from `findings.json`'s own `matching` block. It matters
+  because refusing a pair moves one element out of `matched` and adds one to
+  BOTH one-sided columns: a matcher that got stricter and a matcher that fell
+  apart move the FINDING count the same way. So after any change that could
+  affect pairing (a fixture that now renders the comp's data, a `scope`, a
+  `--max-gamma`), **a large `matched` drop is a REGRESSION** unless the
+  `Findings by type` table shows the property types falling with it.
 - **What a set CONTAINS is an artifact, not a console line: `<out-root>/<entryId>.set.json`.**
   Written at expansion time, before any capture, so it lands even when the
   captures or the Figma render fail. It carries the set's `axes.properties`,

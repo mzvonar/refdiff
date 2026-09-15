@@ -5,6 +5,76 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-15 — widening the corpus by starting a second server killed the first one
+
+14 of the uctoinak2 corpus's 45 pairs capture a Storybook story rather than a route, and they
+were failing `unreachable` because no Storybook was running. Starting one (`svc up storybook`)
+looked free: a component dev server, already declared as a unit, nothing shared with the app
+server on another port.
+
+Twenty minutes into the next corpus run the app server vanished mid-capture, and the harness —
+correctly — recorded the whole corpus as NOT MEASURED. `dmesg -T` named it without ambiguity:
+`Out of memory: Killed process … (next-server (v1)) … anon-rss:2905944kB`, inside the
+`svc-adhoc-design-live` slice. The devbox has 7 GB, of which a stray `tsserver` held 1.5 GB and
+Storybook 640 MB; Next dev plus a Chromium capture run does not fit in what was left.
+
+Two things worth keeping:
+
+- **A capture corpus is a memory workload, not just a wall-clock one.** Every extra server is
+  competing with the browser that has to render 45 pages. Check `free -g` and the biggest RSS
+  before adding one, and expect the victim to be the LONG-lived process, not the new arrival.
+- **`dmesg -T | grep -i oom` belongs in the first three commands after any mass run dies
+  strangely**, before any theory about the code. The tell here was perfect — a `fetch failed`
+  on a server that had been answering for hours — and it still took a detour through "did the
+  harness break?" to get there.
+
+The resolution was to give up the 14 pairs rather than the 31: Storybook stopped, app server
+restarted, and the component pairs recorded in the baseline document as not measured with this
+as the reason. A guard that covers 31 pairs and says so beats one that covers 45 on a machine
+where the run cannot finish.
+
+## 2026-09-15 — a corpus can shrink without the summary ever saying so
+
+Building the step-2 baseline harness, the refdiff corpus reported five pairs. The manifest
+declares eleven: two are `disabled`, and **four fail to CAPTURE** — the two Gallery pairs on
+`selector-not-found` (`#cells-impl .cellslot` never appears at `/#/set/ds-button`) and the
+two ghost pairs on `step-failed` (`#pane-swap` is `display:none` outside
+`body.layout-minimal`, and `.frow:has(.fside)` matches nothing on the opened pair).
+
+The structural point is not the four breakages, it is how they present. **A pair that fails
+to capture leaves no run dir**, and `refdiff summary` reads run dirs — so the set summary
+renders a complete-looking table over 5 of 9 runnable pairs, with nothing anywhere saying
+that four are missing. Every per-pair number in it is correct. Only the corpus is wrong,
+and only against a manifest nobody re-reads.
+
+Same shape as the `set.json` rule already in the skill ("what a set CONTAINS is an artifact,
+not a console line"), one level up: **a run root structurally cannot report what was never
+measured.** The baseline harness now parses the run log for `capture failed` and `skipping …
+disabled` and names both lists in the document beside the tables. The four failures are
+pre-existing (annotator-redesign surface drift, not the matcher) and are not fixed here;
+they are now at least visible in the artifact rather than only in a scrollback.
+
+## 2026-09-15 — "the skill ships with the code" fails silently, and phase 1 proved it
+
+`CLAUDE.md` opens with a hard rule: a change to what the tool does updates
+`skills/refdiff/SKILL.md` in the SAME change. Phase 1 (`164828a`) added `via`, `gamma`,
+`unverified` and `unverifiedReason` to every finding, a provenance tag to every console
+line, an `unver` column to the set summary and a chip to the annotator's finding row — and
+touched ten files, none of them `SKILL.md`. `grep -n "unverified" skills/` came back empty a
+session later.
+
+Nothing failed. Typecheck passed, 837 tests passed, the commit message was thorough, and the
+handoff recorded the work accurately — for a reader of the handoff. The only reader who
+matters reads the skill, and the skill still described a report with no notion of how much
+to believe a finding.
+
+Why this one is easy to miss specifically: the rule's own table is keyed on visible surface
+changes ("a CLI flag", "a default", "the manifest shape"). An ADDITIVE field changes no flag,
+breaks no caller, and renames nothing — so the grep the rule prescribes has nothing to hunt
+for, and the check never fires. **Add the reverse check to the gate: before committing, grep
+the skill for the name of anything NEW the report now carries; zero hits is a finding, not a
+pass.** Fixed here, for step 1 and step 2 together (`§1a-ii` and the `Matching` table).
+
 ## 2026-09-10 — the two sides were photographing different things, and the halfway fix reads as a fix
 
 A consuming repo asked why Figma cells have a transparent background in the annotator

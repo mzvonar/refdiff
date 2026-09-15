@@ -122,6 +122,36 @@ export type Severity = "critical" | "major" | "minor"
  */
 export type MatchVia = "text" | "geometry" | "slot"
 
+/**
+ * What the matcher DID on one pair, as counts — the numbers a change to the
+ * matcher is judged by, carried in the report rather than only printed.
+ *
+ * The finding count cannot do that job on its own. Every refusal to pair
+ * converts one match into one `missing-element` plus one `extra-element`, so a
+ * matcher that got stricter and a matcher that fell apart move the total the
+ * SAME WAY; only `matched` against `designOnly`/`implOnly` tells them apart.
+ * That is the whole reason this rides in `findings.json` (see
+ * `docs/plan-divergent-matching.md`, step 2).
+ */
+export interface MatchingStats {
+  /** Leaves the matcher was offered, after normalization. Equals `matched + designOnly`. */
+  designLeaves: number
+  /** Equals `matched + implOnly`. */
+  implLeaves: number
+  matched: number
+  /** `matched` split by the evidence that formed each pair — pairs, NOT findings. */
+  matchedVia: { text: number; slot: number; geometry: number }
+  /** Design leaves left with no partner (→ `missing-element`, before any policy). */
+  designOnly: number
+  /** Impl leaves left with no partner (→ `extra-element`, before any policy). */
+  implOnly: number
+  /**
+   * Candidate pairings the unrelated-text veto refused AND that changed the
+   * outcome — `MatchResult.vetoed` is already filtered to those.
+   */
+  vetoed: number
+}
+
 /** One localized, typed, measured difference. */
 export interface Finding {
   id: string
@@ -587,6 +617,15 @@ export interface ComparisonReport {
     bleed?: Bleed
   }
   alignment: Alignment
+  /**
+   * What the matcher did to get here (see `MatchingStats`). OPTIONAL for the
+   * same reason `run` is: it is absent from every report written before the
+   * matcher reported itself, and those are exactly the reports on disk.
+   * A reader that needs it must say so when it is missing rather than
+   * substitute a zero — `0 matched` and `we did not record it` are different
+   * claims, and this field exists to stop the second being read as the first.
+   */
+  matching?: MatchingStats
   findings: Finding[]
   /** Findings the ignore policy removed — visible, never silently dropped. */
   suppressed: SuppressedFinding[]

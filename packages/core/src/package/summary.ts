@@ -15,7 +15,7 @@
  * is the index into them.
  */
 
-import type { ComparisonReport, Finding, FindingType, Severity } from "../types.js"
+import type { ComparisonReport, Finding, FindingType, MatchingStats, Severity } from "../types.js"
 
 export interface RunRow {
   /** Run directory name (relative to the summarized root). */
@@ -45,6 +45,19 @@ export interface RunRow {
   unverified: number
   /** How the pairings behind `findings` were formed; the rest rest on no pair. */
   via: { text: number; slot: number; geometry: number }
+  /**
+   * What the MATCHER did — pairs, not findings (`MatchingStats`). Absent on a
+   * report written before the matcher reported itself; rendered as `-` rather
+   * than 0, because "not recorded" is not "matched nothing".
+   */
+  matching?: MatchingStats
+  /**
+   * Findings by type. The severity split above says how loud the report is; this
+   * says what it is MADE OF, which is the half that moves when matching changes:
+   * a refused pair leaves one `missing-element` and one `extra-element` where a
+   * `color` or `position` finding used to be.
+   */
+  types: Partial<Record<FindingType, number>>
   /** The structural fit (design → impl); `1 / 0,0` in the table when it is the identity. */
   alignment: { scale: number; scaleY?: number; offsetX: number; offsetY: number }
   delta?: { introduced: number; resolved: number; regressions: number }
@@ -87,6 +100,13 @@ export interface SetSummary {
     resolved: number
     regressions: number
   }
+  /**
+   * The matcher's own totals, over the rows that RECORDED them (`pairs`) —
+   * never over all of them. A corpus half of whose reports predate
+   * `ComparisonReport.matching` would otherwise read as a corpus that matched
+   * half as much. Absent when no row recorded any.
+   */
+  matching?: MatchingStats & { pairs: number }
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
@@ -138,6 +158,11 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
       slot: r.findings.filter((f) => f.via === "slot").length,
       geometry: r.findings.filter((f) => f.via === "geometry").length,
     },
+    ...(r.matching !== undefined ? { matching: r.matching } : {}),
+    types: r.findings.reduce<Partial<Record<FindingType, number>>>((acc, f) => {
+      acc[f.type] = (acc[f.type] ?? 0) + 1
+      return acc
+    }, {}),
     alignment: {
       scale: r.alignment.scale,
       ...(r.alignment.scaleY !== undefined ? { scaleY: r.alignment.scaleY } : {}),
@@ -266,9 +291,43 @@ export function summarizeReports(
   )
 
   const sum = (pick: (r: RunRow) => number): number => runs.reduce((n, r) => n + pick(r), 0)
+  const withMatching = runs.filter((r) => r.matching !== undefined)
+  const matchingTotals =
+    withMatching.length === 0
+      ? undefined
+      : withMatching.reduce(
+          (acc, r) => {
+            const m = r.matching!
+            return {
+              pairs: acc.pairs + 1,
+              designLeaves: acc.designLeaves + m.designLeaves,
+              implLeaves: acc.implLeaves + m.implLeaves,
+              matched: acc.matched + m.matched,
+              matchedVia: {
+                text: acc.matchedVia.text + m.matchedVia.text,
+                slot: acc.matchedVia.slot + m.matchedVia.slot,
+                geometry: acc.matchedVia.geometry + m.matchedVia.geometry,
+              },
+              designOnly: acc.designOnly + m.designOnly,
+              implOnly: acc.implOnly + m.implOnly,
+              vetoed: acc.vetoed + m.vetoed,
+            }
+          },
+          {
+            pairs: 0,
+            designLeaves: 0,
+            implLeaves: 0,
+            matched: 0,
+            matchedVia: { text: 0, slot: 0, geometry: 0 },
+            designOnly: 0,
+            implOnly: 0,
+            vetoed: 0,
+          },
+        )
   return {
     runs,
     groups: setGroups,
+    ...(matchingTotals !== undefined ? { matching: matchingTotals } : {}),
     totals: {
       pairs: runs.length,
       pass: runs.filter((r) => r.pass).length,
@@ -286,6 +345,129 @@ export function summarizeReports(
 
 const pad = (s: string, n: number): string => (s.length >= n ? s : s + " ".repeat(n - s.length))
 const lpad = (s: string, n: number): string => (s.length >= n ? s : " ".repeat(n - s.length) + s)
+
+/**
+ * Per-pair type columns, in the order `FindingType` declares them, with the
+ * presence types first: those are the ones a matching change moves, and a
+ * reader scanning for "did this pair stop pairing things" should not have to
+ * hunt for them. Short labels, because the table is read as a matrix.
+ */
+const TYPE_COLUMNS: readonly (readonly [FindingType, string])[] = [
+  ["missing-element", "miss"],
+  ["extra-element", "extra"],
+  ["text-content", "text"],
+  ["position", "pos"],
+  ["size", "size"],
+  ["spacing", "space"],
+  ["color", "color"],
+  ["typography", "typo"],
+  ["border", "bord"],
+  ["border-radius", "rad"],
+  ["pixel-region", "pixel"],
+  ["alignment", "align"],
+]
+
+/** Pure: the rows of a markdown table, column-padded from its own cells. */
+function table(header: readonly string[], rows: readonly (readonly string[])[]): string[] {
+  const widths = header.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)))
+  // The first column is a name (left), every other one a number (right).
+  const cell = (v: string, i: number): string =>
+    i === 0 ? pad(v, widths[i]!) : lpad(v, widths[i]!)
+  return [
+    `| ${header.map(cell).join(" | ")} |`,
+    `|${widths.map((w) => "-".repeat(w + 2)).join("|")}|`,
+    ...rows.map((r) => `| ${header.map((_, i) => cell(r[i] ?? "", i)).join(" | ")} |`),
+  ]
+}
+
+/**
+ * What the MATCHER did, per pair. This is the table a change to matching is
+ * judged by: refusing a pair moves one element out of `matched` and into
+ * `d-only` AND `i-only` at once, so a `matched` column that fell while those
+ * two rose is a regression wearing a precision change's clothes. `text`/`slot`
+ * /`geom` say what formed the pairs that survived — geometry being the share
+ * that only the alignment vouches for.
+ */
+function matchingTable(s: SetSummary): string[] {
+  const rows = s.runs.filter((r) => r.matching !== undefined)
+  if (rows.length === 0) return []
+  const m = s.matching
+  const header = [
+    "pair",
+    "design",
+    "impl",
+    "matched",
+    "text",
+    "slot",
+    "geom",
+    "d-only",
+    "i-only",
+    "vetoed",
+    "conf",
+  ]
+  const body = rows.map((r) => {
+    const x = r.matching!
+    return [
+      r.dir,
+      String(x.designLeaves),
+      String(x.implLeaves),
+      String(x.matched),
+      String(x.matchedVia.text),
+      String(x.matchedVia.slot),
+      String(x.matchedVia.geometry),
+      String(x.designOnly),
+      String(x.implOnly),
+      String(x.vetoed),
+      r.confidence.toFixed(2),
+    ]
+  })
+  if (m !== undefined && m.pairs > 1) {
+    body.push([
+      `TOTAL (${m.pairs})`,
+      String(m.designLeaves),
+      String(m.implLeaves),
+      String(m.matched),
+      String(m.matchedVia.text),
+      String(m.matchedVia.slot),
+      String(m.matchedVia.geometry),
+      String(m.designOnly),
+      String(m.implOnly),
+      String(m.vetoed),
+      "",
+    ])
+  }
+  const unrecorded = s.runs.length - rows.length
+  return [
+    "Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while",
+    "`d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way." +
+      (unrecorded > 0
+        ? ` ${unrecorded} of ${s.runs.length} pair(s) predate this record and are omitted.`
+        : ""),
+    "",
+    ...table(header, body),
+    "",
+  ]
+}
+
+/** Findings by type, per pair — what the report is MADE OF, beside how loud it is. */
+function typeTable(s: SetSummary): string[] {
+  const present = TYPE_COLUMNS.filter(([t]) => s.runs.some((r) => (r.types?.[t] ?? 0) > 0))
+  if (present.length === 0) return []
+  const header = ["pair", ...present.map(([, label]) => label), "all"]
+  const body = s.runs.map((r) => [
+    r.dir,
+    ...present.map(([t]) => String(r.types?.[t] ?? 0)),
+    String(r.findings),
+  ])
+  if (s.runs.length > 1) {
+    body.push([
+      `TOTAL (${s.runs.length})`,
+      ...present.map(([t]) => String(s.runs.reduce((n, r) => n + (r.types?.[t] ?? 0), 0))),
+      String(s.totals.findings),
+    ])
+  }
+  return ["Findings by type:", "", ...table(header, body), ""]
+}
 
 /** Pure: the summary as plain text (Markdown-compatible tables). */
 export function renderSummary(s: SetSummary, options: { title?: string } = {}): string {
@@ -364,6 +546,8 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
     )
   })
   lines.push("")
+  lines.push(...matchingTable(s))
+  lines.push(...typeTable(s))
 
   if (s.groups.length > 0) {
     lines.push(`Across pairs (one row = one cause; \`pairs\` = how many cells show it):`, "")

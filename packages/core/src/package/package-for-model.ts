@@ -12,13 +12,13 @@
  * impl-only snapshot of the same numbers had no reader.
  */
 
-import { verdictOf } from "./verdict.js"
 import type { AlignedPair } from "../pipeline.js"
 import type {
   Box,
   ComparisonReport,
   Finding,
   IgnorePolicy,
+  MatchingStats,
   Severity,
   SuppressedFinding,
 } from "../types.js"
@@ -30,6 +30,7 @@ import sharp from "sharp"
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
 import { containersOf, groupByRegion } from "./regions.js"
+import { verdictOf } from "./verdict.js"
 
 export interface PackageOptions {
   /** Run directory: findings.json, crops and element trees land here. */
@@ -44,6 +45,8 @@ export interface PackageOptions {
   policy?: IgnorePolicy
   /** Absolute path of the pixel channel's diff mask PNG, when it ran. */
   diffMaskPath?: string
+  /** What the matcher did (`matchingStats`) → `report.matching`. */
+  matching?: MatchingStats
   /** The previous run's report of this pair, when one exists → `delta`. */
   previous?: ComparisonReport
   /** What earlier runs resolved → `delta.regressions` (needs `previous`). */
@@ -75,6 +78,7 @@ export async function packageForModel(
     suppressed = [],
     policy = {},
     diffMaskPath,
+    matching,
     previous,
     ledger,
   }: PackageOptions,
@@ -168,6 +172,7 @@ export async function packageForModel(
       ...(impl.bleed ? { bleed: impl.bleed } : {}),
     },
     alignment,
+    ...(matching !== undefined ? { matching } : {}),
     findings: withKeys,
     suppressed: suppressedWithKeys,
     policy,

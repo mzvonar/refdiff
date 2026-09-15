@@ -8,9 +8,32 @@
  */
 
 import type { ElementMatch, MatchResult, VetoedPairing } from "../pipeline.js"
-import type { ElementNode } from "../types.js"
+import type { ElementNode, MatchingStats } from "../types.js"
 
 import { normalizeForMatching } from "./text.js"
+
+/**
+ * The matcher's own report on what it did — pure projection of a `MatchResult`.
+ *
+ * It lives here, beside `matchElements`, because it is a claim ABOUT this
+ * function: when the matcher learns to refuse more pairs (plan steps 3–5) the
+ * thing that says whether it got more precise or merely quieter is this row,
+ * not the finding count. Derived, never stored twice: the leaf totals are
+ * `matched + designOnly` / `matched + implOnly`, because every leaf offered is
+ * either paired or on one of those two lists.
+ */
+export function matchingStats(result: MatchResult): MatchingStats {
+  const by = (v: ElementMatch["via"]): number => result.matches.filter((m) => m.via === v).length
+  return {
+    designLeaves: result.matches.length + result.designOnly.length,
+    implLeaves: result.matches.length + result.implOnly.length,
+    matched: result.matches.length,
+    matchedVia: { text: by("text"), slot: by("slot"), geometry: by("geometry") },
+    designOnly: result.designOnly.length,
+    implOnly: result.implOnly.length,
+    vetoed: result.vetoed?.length ?? 0,
+  }
+}
 
 export interface MatchOptions {
   /**

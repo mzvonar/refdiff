@@ -2,7 +2,13 @@ import type { ElementNode } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_UNRELATED_MIN_GAMMA, gamma, matchElements, unrelatedPairing } from "./match.js"
+import {
+  DEFAULT_UNRELATED_MIN_GAMMA,
+  gamma,
+  matchElements,
+  matchingStats,
+  unrelatedPairing,
+} from "./match.js"
 
 const el = (
   id: string,
@@ -271,5 +277,50 @@ describe("matchElements", () => {
       )
       expect(oneWay).toBe(false)
     })
+  })
+})
+
+describe("matchingStats", () => {
+  it("counts the pairs and both leftover sides, split by what formed each pair", () => {
+    // Two text-proven pairs, one geometric, one design leaf with no partner and
+    // two impl leaves with none — the shape a divergent implementation produces.
+    const design = [
+      el("d1", 0, 0, 100, 20, "Doklady"),
+      el("d2", 0, 40, 100, 20, "Správy"),
+      el("d3", 0, 80, 100, 20),
+      el("d4", 0, 500, 40, 40, "Včera"),
+    ]
+    const impl = [
+      el("i1", 1, 1, 100, 20, "Doklady"),
+      el("i2", 1, 41, 100, 20, "Správy"),
+      el("i3", 1, 81, 100, 20),
+      el("i4", 0, 900, 40, 40, "Otázky · 1"),
+      el("i5", 0, 940, 40, 40, "Faktúry"),
+    ]
+
+    const stats = matchingStats(matchElements(design, impl, { maxGamma: 50 }))
+
+    expect(stats).toEqual({
+      designLeaves: 4,
+      implLeaves: 5,
+      matched: 3,
+      matchedVia: { text: 2, slot: 0, geometry: 1 },
+      designOnly: 1,
+      implOnly: 2,
+      vetoed: 0,
+    })
+    // The invariant the corpus table rests on: every leaf offered is either
+    // paired or on exactly one of the two one-sided lists, so refusing a pair
+    // moves ONE out of `matched` and adds ONE to each side.
+    expect(stats.matched + stats.designOnly).toBe(design.length)
+    expect(stats.matched + stats.implOnly).toBe(impl.length)
+  })
+
+  it("reports no vetoes as 0, not as absent", () => {
+    // `MatchResult.vetoed` is omitted when nothing consequential was refused. A
+    // row in the corpus table needs a number there either way — an empty cell
+    // would read as "not measured" beside pairs where it is.
+    const stats = matchingStats(matchElements([el("d1", 0, 0, 10, 10)], [el("i1", 1, 1, 10, 10)]))
+    expect(stats.vetoed).toBe(0)
   })
 })

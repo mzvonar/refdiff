@@ -1,0 +1,6 @@
+{
+  "name": "refdiff-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Repo-local operator scripts run directly with node (see each file's header)"
+}

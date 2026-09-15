@@ -20,6 +20,7 @@ export type {
   FindingMember,
   FindingType,
   IgnorePolicy,
+  MatchingStats,
   MatchVia,
   Severity,
   SuppressedFinding,
@@ -181,6 +182,7 @@ export {
   gamma,
   slotGamma,
   matchElements,
+  matchingStats,
   type MatchOptions,
 } from "./structural/match.js"
 export {

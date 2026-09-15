@@ -1,4 +1,4 @@
-import type { ComparisonReport, Finding } from "../types.js"
+import type { ComparisonReport, Finding, MatchingStats } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
@@ -199,6 +199,69 @@ describe("summarizeReports", () => {
 
   it("says nothing about provenance when no finding is flagged", () => {
     expect(renderSummary(summarizeReports(reports))).not.toContain("UNVERIFIED")
+  })
+})
+
+describe("the matching table — the corpus baseline's own instrument", () => {
+  const matching = (over: Partial<MatchingStats> = {}): MatchingStats => ({
+    designLeaves: 80,
+    implLeaves: 106,
+    matched: 42,
+    matchedVia: { text: 33, slot: 1, geometry: 8 },
+    designOnly: 38,
+    implOnly: 64,
+    vetoed: 0,
+    ...over,
+  })
+
+  it("carries the matcher's counts per pair and totals only the pairs that recorded them", () => {
+    // The second pair predates `ComparisonReport.matching`. Folding it in as
+    // zeros would say the corpus matched nothing there, which is a different
+    // claim from not having measured it — the reason the field is optional.
+    const s = summarizeReports([
+      { dir: "witness", report: report("witness", [], { matching: matching() }) },
+      { dir: "old", report: report("old", []) },
+    ])
+    expect(s.runs[0]!.matching).toEqual(matching())
+    expect(s.runs[1]!.matching).toBeUndefined()
+    expect(s.matching).toEqual({ ...matching(), pairs: 1 })
+
+    const text = renderSummary(s)
+    expect(text).toContain("| pair    | design | impl | matched | text | slot | geom |")
+    expect(text).toMatch(/\| witness \|\s+80 \|\s+106 \|\s+42 \|\s+33 \|\s+1 \|\s+8 \|\s+38 \|/)
+    expect(text).toContain("1 of 2 pair(s) predate this record and are omitted")
+    // `old` keeps its row in the RUN table above — it is a real pair with real
+    // findings. It is only the matching table it has nothing to say in.
+    expect(text).toMatch(/^\| old /m)
+    expect(text.slice(text.indexOf("Matching —"))).not.toMatch(/^\| old /m)
+  })
+
+  it("is absent entirely when no report recorded any matching", () => {
+    const s = summarizeReports([{ dir: "old", report: report("old", [finding("f1")]) }])
+    expect(s.matching).toBeUndefined()
+    expect(renderSummary(s)).not.toContain("| matched |")
+  })
+
+  it("breaks each pair's findings down by type, with the presence types first", () => {
+    // What a matching change MOVES: refusing a pair replaces one property
+    // finding with one missing-element and one extra-element, so the severity
+    // split alone cannot see it happen.
+    const s = summarizeReports([
+      {
+        dir: "witness",
+        report: report("witness", [
+          finding("f1"),
+          finding("f2", { type: "missing-element", severity: "critical" }),
+          finding("f3", { type: "extra-element", severity: "critical" }),
+          finding("f4", { type: "missing-element", severity: "critical" }),
+        ]),
+      },
+    ])
+    expect(s.runs[0]!.types).toEqual({ color: 1, "missing-element": 2, "extra-element": 1 })
+    const text = renderSummary(s)
+    expect(text).toContain("Findings by type:")
+    expect(text).toContain("| pair    | miss | extra | color | all |")
+    expect(text).toMatch(/\| witness \|\s+2 \|\s+1 \|\s+1 \|\s+4 \|/)
   })
 })
 
