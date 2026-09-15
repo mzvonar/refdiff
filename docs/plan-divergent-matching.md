@@ -364,7 +364,7 @@ them unverified, 34 still standing. A change that cannot move any pair in the co
 evaluated by it, and it would buy a silent asymmetry (a finding that is reported but can never
 fail) for nothing measured.
 
-**Re-ask it at step 5, and not before.** Per-container confidence is what makes the flag fire on a
+**Re-ask it at step 6 (per-container confidence), and not before.** Per-container confidence is what makes the flag fire on a
 well-aligned page's ONE bad container — a pair whose only gating findings sit inside it becomes
 possible, and that is the first configuration where the two answers are distinguishable. Recorded
 here rather than in the code because nothing in the code changes.
