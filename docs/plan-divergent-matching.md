@@ -469,13 +469,20 @@ looks complete.**
   500s while all 31 of its routes answer. That skipped the entire route corpus once, silently
   substituting three-hour-old numbers. It now probes the corpus's first real impl URL.
 
-**Still open, filed rather than fixed.** The 4 `doc-detail-*` pairs needed a one-line fix in
-uctoinak2: `src/features/document/boundary/__mocks__/actions.ts` was one export behind its real
-boundary file (`reprocessDocumentAction`), which broke the story at module load. The same drift
-exists in 5 other `sb.mock`-ed twins — 12 more missing exports across messaging, banking,
-notification, organization and firm — and none of them block a corpus pair, so they are named here
-and left alone. The edit is UNCOMMITTED in that worktree and joins the standing "uctoinak2 commits
-— needs Mato" question.
+**Fixed in uctoinak2, `19565b5f`.** The 4 `doc-detail-*` pairs were blocked by a drifted Storybook
+mock: `src/features/document/boundary/__mocks__/actions.ts` was one export behind its real boundary
+module (`reprocessDocumentAction`), and `sb.mock` swaps the twin in, so the story died at module
+load behind Storybook's generic "failed to render properly" panel. The same drift existed in 5
+other twins — 13 exports in total across document, messaging, notification, banking, organization
+and firm. All added, and pinned by `src/test/code-style/storybook-mock-parity.integration.test.ts`,
+which reads the mocked-module list out of `.storybook/preview.tsx` rather than restating it and
+carries a guard case so a change to the `sb.mock(...)` spelling cannot make every other case
+vacuously pass. Verified red before green.
+
+*Correction while doing it: earlier handoffs called that worktree's uncommitted work "someone
+else's" and treated it as untouchable. It is OURS — this workstream's own WIP from earlier
+sessions. The rule that survives is narrower and still right: never destroy uncommitted work,
+whoever wrote it.*
 
 ### Step 4 — say which PHASE a pair is in, and stop comparing when the answer is A
 
