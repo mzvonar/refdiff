@@ -341,6 +341,38 @@ lists every place), `message`, `expected`, `actual`, `role`, the boxes
 (impl CSS px, world space). Skim `suppressed` once per run so you know what
 the policy is hiding and why.
 
+### 1a-0. Read the PHASE first — it says whether the findings are worth reading at all
+
+`report.phase` answers one question before any other: **is this a surface to POLISH, or two
+surfaces to RECONCILE?**
+
+| phase | what it means | what to do |
+| --- | --- | --- |
+| `polish` | the two sides already correspond | the normal loop below. This is what refdiff is for: the 2 px offset and the ΔE 3 delta you cannot see |
+| `reconcile` | they are different structures | **stop reading findings one by one.** Read the comp and the implementation as wholes, work out which regions correspond and which exist on one side only, and fix the structure. Then re-run |
+
+On a `reconcile` pair the run leads with the **inventory** — how many design elements have no
+counterpart, how many impl elements are unaccounted for, and how many of the pairings that DID form
+rest on position alone. That inventory is the deliverable; the 200 element-wise findings under it
+are mostly describing two structures being forced onto each other. Enumerating it by hand from the
+two sources is the thing a model reliably gets wrong, which is why it is measured for you.
+
+**It is a label, not a gate.** Every finding is emitted on a `reconcile` pair exactly as on a
+`polish` one, and the verdict is unchanged — so you can still work one if you have a reason to.
+Nothing downstream branches on it.
+
+Two signals decide it, both in the run headline: `rate` (`matched / min(designLeaves, implLeaves)`
+— do the two sides contain the same things) and `axis` (how well the BETTER-fitting axis is
+explained). `share` (`matchedVia.text / matched`) is printed beside them and deliberately does not
+gate — it tells you whether correspondence was PROVEN by text or assumed from position, which is
+worth knowing and is not what decides the phase.
+
+**`axis` is not `conf`, and the gap between them is information.** `alignment.confidence` counts an
+anchor only when it agrees on BOTH axes, so a surface that lines up one way and packs differently
+the other collapses it to near zero while an axis fits nearly perfectly — `tx-picker-owner-mobile`
+reads `conf 0.00 / axis 0.82 / rate 0.91`. A big `conf`-vs-`axis` gap means *"one axis disagrees"*,
+not *"this capture is unusable"*; §1a's table below says which axis and what causes it.
+
 ### 1a. Read the ALIGNMENT before you read a single finding
 
 `alignment.confidence` decides whether any of the findings mean anything.

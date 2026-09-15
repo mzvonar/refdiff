@@ -152,6 +152,43 @@ export interface MatchingStats {
   vetoed: number
 }
 
+/**
+ * Which kind of work this pair is asking for.
+ *
+ *  - `polish` — the two surfaces already correspond, so the element-wise findings mean
+ *    what they say and the bounded fix loop is the right tool. This is phase B, the case
+ *    refdiff was built for: the 2 px offset and the ΔE 3 colour delta a model cannot see.
+ *  - `reconcile` — they do not. The comp and the implementation are different structures,
+ *    and the hard part is NOT invisible to a model; it is a judgement no measurement
+ *    supplies. Read both sides and reconcile them before reading findings one by one.
+ *
+ * Reported, never enforced — see `pairPhase` in `structural/phase.ts` for the rule, the
+ * corpus it was derived from, and why a gate on it would be the bug it warns about.
+ */
+export type PhaseName = "reconcile" | "polish"
+
+/** The phase verdict plus the three signals it was read from. */
+export interface PairPhase {
+  phase: PhaseName
+  /** `matched / min(designLeaves, implLeaves)` — do the two sides contain the same things. */
+  matchRate: number
+  /**
+   * `matchedVia.text / matched` — is correspondence PROVEN or assumed from position.
+   * Carried for the reader; it does NOT decide the phase (`phase.ts` says why, with the
+   * measurement that killed it as a threshold).
+   */
+  textShare: number
+  /**
+   * `max(confidenceX, confidenceY)` — how well the BETTER-fitting axis is explained.
+   * Deliberately not the joint `Alignment.confidence`, which requires an anchor to agree
+   * on both axes and so collapses to 0 on a surface that lines up one way and packs
+   * differently the other. That collapse is correct for the pixel gate and wrong here.
+   */
+  axisConfidence: number
+  /** The verdict in words, with its numbers — what the run headline prints. */
+  reason: string
+}
+
 /** One localized, typed, measured difference. */
 export interface Finding {
   id: string
@@ -546,11 +583,17 @@ export interface Alignment {
   /** 0..1 — low confidence means the pixel channel is unreliable. */
   confidence: number
   /**
-   * The same score per axis — diagnosis only, nothing gates on them.
-   * `confidence` needs an anchor to agree on BOTH axes, so a low joint score
-   * alongside a high `confidenceY` says the sides line up vertically and
-   * disagree horizontally (rows packed to different widths, a control that
-   * moved side to side) rather than "this capture is unusable".
+   * The same score per axis. `confidence` needs an anchor to agree on BOTH
+   * axes, so a low joint score alongside a high `confidenceY` says the sides
+   * line up vertically and disagree horizontally (rows packed to different
+   * widths, a control that moved side to side) rather than "this capture is
+   * unusable".
+   *
+   * Nothing in the comparison PIPELINE gates on them — the pixel channel and
+   * the `unverified` flag both stay on the joint score, because each needs
+   * both axes right. `PairPhase.axisConfidence` reads them, and reads
+   * `max(confidenceX, confidenceY)` precisely because the phase does not:
+   * a surface that corresponds along one axis still corresponds.
    */
   confidenceX?: number
   confidenceY?: number
@@ -626,6 +669,17 @@ export interface ComparisonReport {
    * claims, and this field exists to stop the second being read as the first.
    */
   matching?: MatchingStats
+  /**
+   * Which kind of work this pair is asking for, and the signals behind the call.
+   * OPTIONAL for the same reason `matching` is — it is derived FROM `matching`, so a
+   * report written before the matcher reported itself cannot carry one, and a reader
+   * must say "not recorded" rather than assume either phase.
+   *
+   * **Nothing reads this to decide what to do.** Every finding on a `reconcile` pair is
+   * emitted exactly as on a `polish` one; the label is advice to the human or model at
+   * the top of the loop about which loop to be in.
+   */
+  phase?: PairPhase
   findings: Finding[]
   /** Findings the ignore policy removed — visible, never silently dropped. */
   suppressed: SuppressedFinding[]

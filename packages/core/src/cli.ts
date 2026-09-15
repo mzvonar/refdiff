@@ -741,7 +741,33 @@ function reportProvenance(findings: readonly Finding[]): void {
   console.log(`pairing evidence: ${parts} (${findings.length - paired} rest on no pair)${tail}`)
 }
 
+/**
+ * The phase verdict, FIRST — before the findings, because it says how to read them.
+ *
+ * On a `reconcile` pair the missing/extra inventory is the headline and the per-element
+ * findings are not: enumerating which comp elements have no counterpart and which impl
+ * elements are unaccounted for is the picture a model building it by hand gets wrong, and
+ * it is exactly what a structural reconciliation needs. The findings are still all there,
+ * printed below and written to `findings.json` unchanged — this only changes what a reader
+ * meets first.
+ */
+function printPhase(report: ComparisonReport): void {
+  const p = report.phase
+  if (p === undefined) return
+  console.log(`\nPHASE: ${p.phase} — ${p.reason}`)
+  console.log(
+    `  signals: match rate ${p.matchRate.toFixed(2)} · best axis ${p.axisConfidence.toFixed(2)} (joint ${report.alignment.confidence.toFixed(2)}) · text share ${p.textShare.toFixed(2)}`,
+  )
+  if (p.phase === "reconcile" && report.matching) {
+    const m = report.matching
+    console.log(
+      `  inventory: ${m.designOnly} design element(s) with no counterpart, ${m.implOnly} impl element(s) unaccounted for; of ${m.matched} pairings ${m.matchedVia.text} are text-proven and ${m.matchedVia.geometry} rest on position alone`,
+    )
+  }
+}
+
 function printReport(report: ComparisonReport): void {
+  printPhase(report)
   const counts = { critical: 0, major: 0, minor: 0 }
   for (const f of report.findings) counts[f.severity]++
   const instances = report.findings.reduce((n, f) => n + (f.instances ?? 1), 0)

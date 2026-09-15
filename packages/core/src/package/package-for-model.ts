@@ -28,6 +28,7 @@ import { join, relative } from "node:path"
 import sharp from "sharp"
 
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
+import { pairPhase } from "../structural/phase.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
 import { containersOf, groupByRegion } from "./regions.js"
 import { verdictOf } from "./verdict.js"
@@ -173,6 +174,10 @@ export async function packageForModel(
     },
     alignment,
     ...(matching !== undefined ? { matching } : {}),
+    // Derived here rather than passed in, because it is a pure projection of two fields
+    // the report already carries — and deriving it at the one place the report is built is
+    // what stops a caller writing a `phase` that disagrees with its own numbers.
+    ...(matching !== undefined ? { phase: pairPhase(alignment, matching) } : {}),
     findings: withKeys,
     suppressed: suppressedWithKeys,
     policy,

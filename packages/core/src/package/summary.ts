@@ -15,7 +15,14 @@
  * is the index into them.
  */
 
-import type { ComparisonReport, Finding, FindingType, MatchingStats, Severity } from "../types.js"
+import type {
+  ComparisonReport,
+  Finding,
+  FindingType,
+  MatchingStats,
+  PairPhase,
+  Severity,
+} from "../types.js"
 
 export interface RunRow {
   /** Run directory name (relative to the summarized root). */
@@ -51,6 +58,11 @@ export interface RunRow {
    * than 0, because "not recorded" is not "matched nothing".
    */
   matching?: MatchingStats
+  /**
+   * Which kind of work the pair is asking for (`PairPhase`), derived from `matching` and
+   * the alignment. Absent exactly when `matching` is, and for the same reason.
+   */
+  phase?: PairPhase
   /**
    * Findings by type. The severity split above says how loud the report is; this
    * says what it is MADE OF, which is the half that moves when matching changes:
@@ -159,6 +171,7 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
       geometry: r.findings.filter((f) => f.via === "geometry").length,
     },
     ...(r.matching !== undefined ? { matching: r.matching } : {}),
+    ...(r.phase !== undefined ? { phase: r.phase } : {}),
     types: r.findings.reduce<Partial<Record<FindingType, number>>>((acc, f) => {
       acc[f.type] = (acc[f.type] ?? 0) + 1
       return acc
@@ -392,6 +405,7 @@ function matchingTable(s: SetSummary): string[] {
   const rows = s.runs.filter((r) => r.matching !== undefined)
   if (rows.length === 0) return []
   const m = s.matching
+  const phased = rows.filter((r) => r.phase !== undefined)
   const header = [
     "pair",
     "design",
@@ -404,9 +418,14 @@ function matchingTable(s: SetSummary): string[] {
     "i-only",
     "vetoed",
     "conf",
+    "axis",
+    "rate",
+    "share",
+    "phase",
   ]
   const body = rows.map((r) => {
     const x = r.matching!
+    const p = r.phase
     return [
       r.dir,
       String(x.designLeaves),
@@ -419,6 +438,10 @@ function matchingTable(s: SetSummary): string[] {
       String(x.implOnly),
       String(x.vetoed),
       r.confidence.toFixed(2),
+      p ? p.axisConfidence.toFixed(2) : "-",
+      p ? p.matchRate.toFixed(2) : "-",
+      p ? p.textShare.toFixed(2) : "-",
+      p ? p.phase : "-",
     ]
   })
   if (m !== undefined && m.pairs > 1) {
@@ -434,6 +457,12 @@ function matchingTable(s: SetSummary): string[] {
       String(m.implOnly),
       String(m.vetoed),
       "",
+      "",
+      "",
+      "",
+      phased.length > 0
+        ? `${phased.filter((r) => r.phase!.phase === "polish").length}P/${phased.filter((r) => r.phase!.phase === "reconcile").length}R`
+        : "",
     ])
   }
   const unrecorded = s.runs.length - rows.length
@@ -443,6 +472,11 @@ function matchingTable(s: SetSummary): string[] {
       (unrecorded > 0
         ? ` ${unrecorded} of ${s.runs.length} pair(s) predate this record and are omitted.`
         : ""),
+    // A `matched` collapse means opposite things in the two phases, which is the whole
+    // reason the label rides in this table rather than only in the per-pair report.
+    "`phase` reads `rate` (matched / min leaves) and `axis` (the BETTER-fitting axis, not the",
+    "joint `conf`); `share` is reported and does not gate. On a `reconcile` pair a matched",
+    "collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.",
     "",
     ...table(header, body),
     "",
