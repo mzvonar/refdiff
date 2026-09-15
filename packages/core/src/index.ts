@@ -20,6 +20,7 @@ export type {
   FindingMember,
   FindingType,
   IgnorePolicy,
+  MatchVia,
   Severity,
   SuppressedFinding,
   Explanation,
@@ -184,7 +185,10 @@ export {
 } from "./structural/match.js"
 export {
   finalize,
+  isUnverified,
   runTypedChecks,
+  DEFAULT_MIN_ALIGNMENT_CONFIDENCE,
+  VALUE_FINDING_TYPES,
   type CheckOptions,
   type RawFinding,
 } from "./structural/checks.js"

@@ -517,6 +517,11 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .freg { display:flex; align-items:center; gap:3px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:999px; background:var(--critical); color:#fff; flex-shrink:0; }
 .freg .msi { font-size:12px; }
 .fsuptag { font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px dashed var(--line); color:var(--txt2); flex-shrink:0; }
+/* Pairing provenance — it QUALIFIES the finding rather than being one, so it stays
+   muted until the gate flags the pair, when it takes the warning colour. */
+.fvia { display:flex; align-items:center; gap:3px; font-size:10px; font-weight:600; letter-spacing:.04em; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--txt2); flex-shrink:0; font-variant-numeric:tabular-nums; }
+.fvia.unver { border-style:dashed; border-color:var(--major); color:var(--major); }
+.fvia .msi { font-size:12px; }
 .ftag { font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:999px; color:var(--txt2); background:var(--bg3); margin-left:auto; flex-shrink:0; white-space:nowrap; }
 .ftag.fix { color:#fff; background:var(--acc); }
 .frule { display:flex; align-items:center; gap:5px; margin:5px 0 0 28px; font-size:11px; color:var(--txt2); min-width:0; }
@@ -2086,6 +2091,23 @@ function causeIds() {
   return causeCache.ids;
 }
 
+// What paired the two elements this finding is about — the evidence behind it.
+// A finding is never better than its pairing, and a reader cannot tell a colour
+// delta between the SAME element from one between two unrelated elements by
+// reading it, so the row has to say. The unverified flag is core's gate (a value
+// finding on a geometry-formed pair under a weak alignment); nothing is hidden.
+const VIA_LABEL = { text: 'Matched by text', slot: 'Matched as a value slot', geometry: 'Matched by geometry alone' };
+const VIA_ICON = { text: 'match_case', slot: 'data_object', geometry: 'straighten' };
+function viaChipHtml(f) {
+  if (!f.via) return '';
+  const g = typeof f.gamma === 'number' ? ' γ' + f.gamma : '';
+  const title = (VIA_LABEL[f.via] || f.via) + (typeof f.gamma === 'number' ? ' — γ ' + f.gamma + 'px apart' : '') +
+    (f.unverified ? '. UNVERIFIED: the alignment is too weak to vouch for this pairing, so these values are not evidence of drift.' : '');
+  return '<span class="fvia' + (f.unverified ? ' unver' : '') + '" title="' + esc(title) + '">' +
+    '<span class="msi" aria-hidden="true">' + (VIA_ICON[f.via] || 'straighten') + '</span>' +
+    '<span>' + esc((f.unverified ? 'unverified · ' : '') + f.via + g) + '</span></span>';
+}
+
 function findingRowHtml(f, suppressed) {
   const sel = state.selected === f.id;
   const verdict = suppressed ? undefined : triageStateOf(f);
@@ -2098,6 +2120,7 @@ function findingRowHtml(f, suppressed) {
   if (agg) h += '<span class="fgroup" title="one cause in ' + f.instances + ' places — every one is in members[]">×' + f.instances + '</span>';
   if (isReg) h += '<span class="freg" title="fixed in an earlier run, back in this one"><span class="msi" aria-hidden="true">undo</span><span>Regression</span></span>';
   if (suppressed) h += '<span class="fsuptag"><span>Suppressed</span></span>';
+  h += viaChipHtml(f);
   // Which side the element is on, when it is on only one — and, since the ghost, where to look on
   // the other pane: the chip's glyph is the same add_location_alt / wrong_location the ghost's
   // reading uses. In SPLIT mode both panes are on screen and the ghost is on the counterpart one;

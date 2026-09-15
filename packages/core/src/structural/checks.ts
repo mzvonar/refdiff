@@ -8,7 +8,7 @@
  */
 
 import type { ElementMatch, MatchResult } from "../pipeline.js"
-import type { Box, ElementNode, Finding, FindingType, Severity } from "../types.js"
+import type { Box, ElementNode, Finding, FindingType, MatchVia, Severity } from "../types.js"
 
 import { differenceCiede2000, parse, rgb, type Rgb } from "culori"
 
@@ -33,7 +33,24 @@ export interface CheckOptions {
   spacingMaxGap?: number
   /** Elements smaller than this (either dimension) never report alone. */
   minElementSize?: number
+  /**
+   * The run's alignment confidence (0..1), used to mark value findings
+   * `unverified` — see `isUnverified`. Defaults to 1 ("trust the pairing"),
+   * so a caller that does not pass it gets today's ungated behaviour; the CLI
+   * always passes the real number.
+   */
+  alignmentConfidence?: number
+  /** Alignment confidence below which value findings are marked unverified. */
+  minAlignmentConfidence?: number
 }
+
+/**
+ * Same floor as the pixel channel's (`pixel/checks.ts` `PIXEL_DEFAULTS`).
+ * Deliberately duplicated rather than imported: the structural channel does not
+ * depend on the pixel one, and the two floors answer different questions that
+ * happen to share a number today.
+ */
+export const DEFAULT_MIN_ALIGNMENT_CONFIDENCE = 0.5
 
 const DEFAULTS: Required<CheckOptions> = {
   positionTolerance: 5,
@@ -48,13 +65,95 @@ const DEFAULTS: Required<CheckOptions> = {
   spacingMajor: 8,
   spacingMaxGap: 64,
   minElementSize: 4,
+  alignmentConfidence: 1,
+  minAlignmentConfidence: DEFAULT_MIN_ALIGNMENT_CONFIDENCE,
 }
 
 export type RawFinding = Omit<Finding, "id" | "mark">
 
+/**
+ * Finding types whose claim is a pair of VALUES read off two elements — the ones
+ * that say nothing at all unless those two elements really are the same element.
+ * (`position` and `spacing` are excluded on purpose; see `isUnverified`.)
+ */
+export const VALUE_FINDING_TYPES: ReadonlySet<FindingType> = new Set<FindingType>([
+  "color",
+  "typography",
+  "border",
+  "border-radius",
+  "size",
+])
+
+/**
+ * Should this finding be marked `unverified` — reported, but flagged as resting
+ * on a pairing we cannot vouch for?
+ *
+ * Until 2026-09-15 only the PIXEL channel was confidence-gated; `color`,
+ * `typography`, `border`, `border-radius` and `size` were emitted whatever the
+ * alignment confidence. That is how a reader came to believe 51 findings in one
+ * focus region were actionable when the pairs beneath them were not.
+ *
+ * Two decisions are encoded here, both settled on real output from
+ * `messages-accountant-desktop` (alignment confidence 0.07):
+ *
+ * 1. **Flag, do not suppress.** Suppressing makes a finding indistinguishable
+ *    from "no difference here", which is this same bug with its sign flipped:
+ *    today a bad finding reads as a real one; under suppression a real one would
+ *    read as none at all. The channel next door already settled the question —
+ *    the pixel channel does not go quiet below its floor, it emits one finding
+ *    SAYING it skipped and why. The size of what suppression would swallow,
+ *    measured on this pair: 67 of its 225 findings are value findings, and they
+ *    split 33 text-proven / 1 slot / 33 geometric. Suppressing on confidence
+ *    alone would have deleted all 67 — half of them reliable — and suppressing
+ *    only what rule 2 leaves would still delete 34 findings a reader would then
+ *    have no way to know had ever been raised.
+ *
+ * 2. **A text-proven pair is exempt.** `via: "text"` means both elements carry
+ *    the same string, so the pair is evidence about itself and the alignment
+ *    transform played no part in forming it. Gating those on the transform's
+ *    confidence would flag the report's most reliable findings. Alignment
+ *    confidence is evidence about a PAIRING only where the pairing came from
+ *    geometry — which is why the flag reads "this pair is not worth believing"
+ *    rather than "confidence is low".
+ *
+ * `position` and `spacing` are not gated. They still carry `via` and `gamma` so
+ * a reader can weigh them, but a position finding IS the transform's own claim
+ * and states its evidence in its own message ("offset by (-70.7, 0.5)px" is
+ * visibly not drift); a colour delta offers no such tell. Steps 4 and 5 of
+ * `docs/plan-divergent-matching.md` replace this global floor with a per-pair
+ * ambiguity margin and a per-container confidence, at which point the exemption
+ * above stops being a special case and becomes the general rule.
+ */
+export function isUnverified(
+  type: FindingType,
+  via: MatchVia,
+  alignmentConfidence: number,
+  minAlignmentConfidence: number,
+): boolean {
+  if (via === "text") return false
+  if (!VALUE_FINDING_TYPES.has(type)) return false
+  return alignmentConfidence < minAlignmentConfidence
+}
+
 const deltaE = differenceCiede2000()
 
 const round1 = (n: number): number => Math.round(n * 10) / 10
+
+/**
+ * Stamp one pair finding with the evidence behind its pairing, and the gate's
+ * verdict on it. Applied to the whole batch a check produced rather than at each
+ * `out.push`, so a check added later cannot forget to carry its provenance.
+ */
+const withProvenance =
+  (via: MatchVia, gamma: number, o: Required<CheckOptions>) =>
+  (f: RawFinding): RawFinding => ({
+    ...f,
+    via,
+    gamma: round1(gamma),
+    ...(isUnverified(f.type, via, o.alignmentConfidence, o.minAlignmentConfidence)
+      ? { unverified: true as const, unverifiedReason: "low-alignment-confidence" as const }
+      : {}),
+  })
 
 /**
  * Flatten a translucent color over white — ΔE2000 has no alpha, and both
@@ -379,6 +478,19 @@ function pairFindings(
   return out
 }
 
+/**
+ * How much a pairing is worth believing, weakest first — a text-proven pair is
+ * evidence about itself, a slot pair has an anchor and a line height agreeing,
+ * and a geometric pair has only the transform.
+ */
+const VIA_TRUST: Record<MatchVia, number> = { geometry: 0, slot: 1, text: 2 }
+
+/** Of two pairings, the one a finding resting on both should be judged by. */
+const weakerPairing = (a: ElementMatch, b: ElementMatch): { via: MatchVia; gamma: number } => ({
+  via: VIA_TRUST[a.via] <= VIA_TRUST[b.via] ? a.via : b.via,
+  gamma: Math.max(a.gamma, b.gamma),
+})
+
 /** How much two intervals [a0,a1] and [b0,b1] overlap, in px (≤ 0 = disjoint). */
 const overlap = (a0: number, a1: number, b0: number, b1: number): number =>
   Math.min(a1, b1) - Math.max(a0, b0)
@@ -472,9 +584,15 @@ function spacingFindings(match: MatchResult, o: Required<CheckOptions>): RawFind
       if (dGap > o.spacingMaxGap || dGap < 0 || iGap < 0) return
       const delta = iGap - dGap
       if (Math.abs(delta) <= o.spacingTolerance) return
+      // A gap is a claim about BOTH its endpoints, so it inherits the weaker of
+      // the two pairings: one endpoint paired by geometry is enough to make the
+      // gap a geometric claim, however well the other end is proven.
+      const weaker = weakerPairing(a, b)
       out.push({
         type: "spacing",
         severity: Math.abs(delta) > o.spacingMajor ? "major" : "minor",
+        via: weaker.via,
+        gamma: round1(weaker.gamma),
         designBox: unionBox(A, b.design.box),
         implBox: unionBox(a.impl.box, b.impl.box),
         ...roleOf(a.design),
@@ -575,7 +693,9 @@ export function runTypedChecks(match: MatchResult, options: CheckOptions = {}): 
   const o: Required<CheckOptions> = { ...DEFAULTS, ...options }
   const raw: RawFinding[] = [
     ...presenceFindings(match, o.minElementSize),
-    ...match.matches.flatMap((m) => pairFindings(m.design, m.impl, o)),
+    ...match.matches.flatMap((m) =>
+      pairFindings(m.design, m.impl, o).map(withProvenance(m.via, m.gamma, o)),
+    ),
     ...spacingFindings(match, o),
   ]
   return finalize(raw)

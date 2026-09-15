@@ -109,6 +109,19 @@ export type FindingType =
 
 export type Severity = "critical" | "major" | "minor"
 
+/**
+ * How a design element was paired with an impl element — the EVIDENCE behind
+ * every finding about that pair.
+ *
+ *  - `text` — the two carry the same text, so the pair is proven by content.
+ *    The alignment transform played no part in forming it.
+ *  - `slot` — same anchor and line height, different text: one value slot
+ *    showing different data. Geometry (position-only) formed it.
+ *  - `geometry` — nothing but γ = |Δx|+|Δy|+|Δw|+|Δh| said these two belong
+ *    together. Only as good as the transform that put them in one space.
+ */
+export type MatchVia = "text" | "geometry" | "slot"
+
 /** One localized, typed, measured difference. */
 export interface Finding {
   id: string
@@ -128,6 +141,40 @@ export interface Finding {
    * its severity; it is grouped under the cause and left out of the verdict (see `ExplainRule`).
    */
   explained?: Explanation
+  /**
+   * How the PAIR this finding rests on was formed. Absent on findings that rest
+   * on no pair (`missing-element`, `extra-element`, `alignment`).
+   *
+   * A finding is only ever as trustworthy as its pairing: a colour delta between
+   * two elements that are not the same element is not drift, it is a mis-pairing
+   * wearing drift's clothes. Measured 2026-09-15 on `messages-accountant-desktop`:
+   * the comp's thread date `Včera` paired with the impl's filter chip `Otázky · 1`
+   * 70.7 px away and emitted six findings, five of which read as actionable.
+   * `via` is what lets a reader see that before believing them.
+   */
+  via?: MatchVia
+  /**
+   * The pair's γ = |Δx|+|Δy|+|Δw|+|Δh| in normalized CSS px. Present with `via`.
+   * On a `spacing` finding — which rests on TWO pairs — it is the worse of them.
+   */
+  gamma?: number
+  /**
+   * Set when the pairing beneath this finding is not trustworthy enough for its
+   * VALUES to be believed (see `unverifiedReason`). The finding is still
+   * reported and still counts toward the verdict; it is flagged so a reader
+   * weighs it accordingly and the summary can count it separately.
+   */
+  unverified?: true
+  /** Why `unverified` was set — one short machine-readable cause. */
+  unverifiedReason?: "low-alignment-confidence"
+  /**
+   * Reserved, and NOT yet written by anything: the ratio between the runner-up
+   * candidate's γ and this pair's (Lowe's ratio test). A pair whose second-best
+   * partner is barely worse is ambiguous however small its γ. The matcher does
+   * not compute a runner-up today; the field is declared here so the contract
+   * the annotator and the summary read is settled once rather than twice.
+   */
+  ambiguityMargin?: number
   designBox?: Box
   implBox?: Box
   /** Machine-readable expected vs actual, e.g. { fontSize: [24, 28] }. */

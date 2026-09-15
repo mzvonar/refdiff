@@ -14,7 +14,7 @@
  */
 
 import type { Capture, CaptureError, LiveAuth } from "./pipeline.js"
-import type { ComparisonReport, Finding, IgnorePolicy, Severity } from "./types.js"
+import type { ComparisonReport, Finding, IgnorePolicy, MatchVia, Severity } from "./types.js"
 import type { Browser } from "playwright"
 
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
@@ -590,7 +590,9 @@ async function runPair(
     }
   }
 
-  const structural = runTypedChecks(match)
+  // The alignment confidence rides into the checks so a value finding resting on
+  // a geometry-formed pair can be marked `unverified` rather than read as drift.
+  const structural = runTypedChecks(match, { alignmentConfidence: confidence })
 
   // Pixel channel: AA-aware diff inside each matched box, gated on the
   // structural alignment being trustworthy. Never duplicates a structural
@@ -701,6 +703,41 @@ async function runPair(
   return ok(report)
 }
 
+/**
+ * What formed this finding's pairing, appended to its line. The flagged ones say
+ * so in words: a reader should not have to know what γ 98.7 means to distrust a
+ * finding, only to recognise that nothing but geometry put the two elements
+ * together.
+ */
+function provenanceTag(f: Finding): string {
+  if (f.via === undefined) return ""
+  const g = f.gamma !== undefined ? ` γ${f.gamma}` : ""
+  return f.unverified ? `  [unverified · ${f.via}${g}]` : `  [${f.via}${g}]`
+}
+
+/** How the run's findings are split by the evidence behind their pairings. */
+function reportProvenance(findings: readonly Finding[]): void {
+  const byVia: Record<MatchVia, number> = { text: 0, slot: 0, geometry: 0 }
+  let paired = 0
+  let unverified = 0
+  for (const f of findings) {
+    if (f.via === undefined) continue
+    byVia[f.via]++
+    paired++
+    if (f.unverified === true) unverified++
+  }
+  if (paired === 0) return
+  const parts = (["text", "slot", "geometry"] as const)
+    .filter((v) => byVia[v] > 0)
+    .map((v) => `${byVia[v]} ${v}`)
+    .join(", ")
+  const tail =
+    unverified > 0
+      ? ` — ${unverified} marked UNVERIFIED: nothing but a weak alignment paired their two elements, so their values are not evidence of drift`
+      : ""
+  console.log(`pairing evidence: ${parts} (${findings.length - paired} rest on no pair)${tail}`)
+}
+
 function printReport(report: ComparisonReport): void {
   const counts = { critical: 0, major: 0, minor: 0 }
   for (const f of report.findings) counts[f.severity]++
@@ -732,10 +769,11 @@ function printReport(report: ComparisonReport): void {
     const times = f.instances !== undefined ? ` ×${f.instances}` : ""
     const why = f.explained ? ` [${f.explained.cause}]` : ""
     console.log(
-      `  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}${why}`,
+      `  [${f.mark}]${times} ${f.severity.padEnd(8)} ${f.type.padEnd(15)} ${f.message}${why}${provenanceTag(f)}`,
     )
   }
   if (report.findings.length > 40) console.log(`  … ${report.findings.length - 40} more`)
+  reportProvenance(report.findings)
   if (report.suppressed.length > 0) {
     const byRule = new Map<string, number>()
     for (const s of report.suppressed)

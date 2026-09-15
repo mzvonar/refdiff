@@ -36,6 +36,15 @@ export interface RunRow {
   suppressed: number
   pass: boolean
   confidence: number
+  /**
+   * How many of `findings` rest on a pairing the alignment cannot vouch for
+   * (`Finding.unverified`). Counted apart from the total because they are not
+   * evidence of drift at the same strength as the rest: a value delta between
+   * two elements that are not the same element says nothing about the design.
+   */
+  unverified: number
+  /** How the pairings behind `findings` were formed; the rest rest on no pair. */
+  via: { text: number; slot: number; geometry: number }
   /** The structural fit (design → impl); `1 / 0,0` in the table when it is the identity. */
   alignment: { scale: number; scaleY?: number; offsetX: number; offsetY: number }
   delta?: { introduced: number; resolved: number; regressions: number }
@@ -72,6 +81,8 @@ export interface SetSummary {
     findings: number
     instances: number
     suppressed: number
+    /** Findings whose pairing the alignment cannot vouch for — see `RunRow.unverified`. */
+    unverified: number
     introduced: number
     resolved: number
     regressions: number
@@ -121,6 +132,12 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
     suppressed: r.suppressed.length,
     pass: r.verdict.pass,
     confidence: r.alignment.confidence,
+    unverified: r.findings.filter((f) => f.unverified === true).length,
+    via: {
+      text: r.findings.filter((f) => f.via === "text").length,
+      slot: r.findings.filter((f) => f.via === "slot").length,
+      geometry: r.findings.filter((f) => f.via === "geometry").length,
+    },
     alignment: {
       scale: r.alignment.scale,
       ...(r.alignment.scaleY !== undefined ? { scaleY: r.alignment.scaleY } : {}),
@@ -259,6 +276,7 @@ export function summarizeReports(
       findings: sum((r) => r.findings),
       instances: sum((r) => r.instances),
       suppressed: sum((r) => r.suppressed),
+      unverified: sum((r) => r.unverified ?? 0),
       introduced: sum((r) => r.delta?.introduced ?? 0),
       resolved: sum((r) => r.delta?.resolved ?? 0),
       regressions: sum((r) => r.delta?.regressions ?? 0),
@@ -279,6 +297,21 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
       (s.runs.some((r) => r.delta)
         ? `; delta +${t.introduced} / −${t.resolved}${t.regressions > 0 ? `, ${t.regressions} REGRESSION(S)` : ""}`
         : ""),
+    ...(() => {
+      // How much of the report rests on a pairing nothing vouches for. Read this BEFORE the
+      // cause split below: a finding whose two elements are not the same element has no cause to
+      // diagnose, and counting it as drift is what this line exists to stop.
+      if (t.unverified === 0) return []
+      const across = (pick: (r: RunRow) => number): number =>
+        s.runs.reduce((n, r) => n + pick(r), 0)
+      const text = across((r) => r.via?.text ?? 0)
+      const slot = across((r) => r.via?.slot ?? 0)
+      const geometry = across((r) => r.via?.geometry ?? 0)
+      return [
+        `${t.unverified} of ${t.findings} findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift`,
+        `pairing evidence across the set: ${text} by text, ${slot} by slot, ${geometry} by geometry, ${t.findings - text - slot - geometry} resting on no pair`,
+      ]
+    })(),
     ...(() => {
       // The split a reader needs first: how many findings still have no diagnosed cause, and what
       // the rest are. Explained findings are in the counts above — they are labelled, not removed.
@@ -317,17 +350,17 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
   const aligns = s.runs.map((r) => formatAlignment(r.alignment))
   const alignWidth = Math.max(5, ...aligns.map((a) => a.length))
   lines.push(
-    `| ${pad("pair", dirWidth)} | verdict | findings (c/M/m) | inst | supp | conf | ${pad("align", alignWidth)} | delta |`,
+    `| ${pad("pair", dirWidth)} | verdict | findings (c/M/m) | inst | supp | unver | conf | ${pad("align", alignWidth)} | delta |`,
   )
   lines.push(
-    `|${"-".repeat(dirWidth + 2)}|---------|------------------|------|------|------|${"-".repeat(alignWidth + 2)}|-------|`,
+    `|${"-".repeat(dirWidth + 2)}|---------|------------------|------|------|-------|------|${"-".repeat(alignWidth + 2)}|-------|`,
   )
   s.runs.forEach((r, i) => {
     const delta = r.delta
       ? `+${r.delta.introduced}/−${r.delta.resolved}${r.delta.regressions > 0 ? ` R${r.delta.regressions}` : ""}`
       : "-"
     lines.push(
-      `| ${pad(r.dir, dirWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${r.confidence.toFixed(2)} | ${pad(aligns[i]!, alignWidth)} | ${pad(delta, 5)} |`,
+      `| ${pad(r.dir, dirWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${lpad(String(r.unverified ?? 0), 5)} | ${r.confidence.toFixed(2)} | ${pad(aligns[i]!, alignWidth)} | ${pad(delta, 5)} |`,
     )
   })
   lines.push("")

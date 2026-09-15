@@ -3,7 +3,7 @@ import type { ElementNode } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { runTypedChecks } from "./checks.js"
+import { isUnverified, runTypedChecks } from "./checks.js"
 
 const el = (id: string, partial: Partial<ElementNode> = {}): ElementNode => ({
   id,
@@ -424,5 +424,150 @@ describe("runTypedChecks", () => {
     expect(findings.map((f) => f.id)).toEqual(["f1", "f2"])
     expect(findings.map((f) => f.mark)).toEqual([1, 2])
     expect(findings[0]!.type).toBe("missing-element")
+  })
+})
+
+/**
+ * The witness this whole gate exists for (`docs/plan-divergent-matching.md`):
+ * on `messages-accountant-desktop` the comp's thread date "Včera" paired with
+ * the impl's filter chip "Otázky · 1" 70.7 px away, and the report said colour,
+ * border, radius and typography about two elements with nothing to do with each
+ * other. Five of its six findings read as actionable drift.
+ */
+const witness = (via: "text" | "geometry" | "slot", gamma: number): MatchResult => ({
+  matches: [
+    {
+      design: el("d", {
+        box: { x: 10, y: 10, w: 40, h: 12 },
+        text: "Včera",
+        style: { color: "rgb(185, 171, 151)", fontSize: 10, fontWeight: 400, borderRadius: 0 },
+      }),
+      impl: el("i", {
+        box: { x: 80, y: 10, w: 60, h: 24 },
+        // A text-proven pair carries the SAME string by definition; the other two
+        // vias are exactly the case where it does not.
+        text: via === "text" ? "Včera" : "Otázky · 1",
+        style: { color: "rgb(95, 85, 70)", fontSize: 12, fontWeight: 500, borderRadius: 18 },
+      }),
+      gamma,
+      via,
+    },
+  ],
+  designOnly: [],
+  implOnly: [],
+})
+
+const WEAK = { alignmentConfidence: 0.07 }
+const STRONG = { alignmentConfidence: 0.9 }
+
+describe("pairing provenance", () => {
+  it("carries via and γ onto every finding about a pair", () => {
+    const findings = runTypedChecks(witness("geometry", 70.7), STRONG)
+    expect(findings.length).toBeGreaterThan(1)
+    for (const f of findings) {
+      expect(f.via).toBe("geometry")
+      expect(f.gamma).toBe(70.7)
+    }
+  })
+
+  it("leaves presence findings without provenance — they rest on no pair", () => {
+    const findings = runTypedChecks({
+      matches: [],
+      designOnly: [el("d", { box: { x: 0, y: 0, w: 100, h: 100 }, text: "Header" })],
+      implOnly: [el("i", { box: { x: 0, y: 200, w: 100, h: 100 } })],
+    })
+    expect(findings.map((f) => f.type)).toEqual(["missing-element", "extra-element"])
+    for (const f of findings) {
+      expect(f.via).toBeUndefined()
+      expect(f.gamma).toBeUndefined()
+    }
+  })
+
+  it("judges a spacing finding by the WEAKER of the two pairings it spans", () => {
+    // A gap is a claim about both its endpoints: one end paired by geometry
+    // makes the gap a geometric claim however well the other end is proven.
+    const findings = runTypedChecks({
+      matches: [
+        {
+          design: el("d1", { text: "Label", box: { x: 10, y: 10, w: 100, h: 20 } }),
+          impl: el("i1", { text: "Label", box: { x: 10, y: 10, w: 100, h: 20 } }),
+          gamma: 0,
+          via: "text",
+        },
+        {
+          design: el("d2", { text: "Value", box: { x: 10, y: 38, w: 100, h: 20 } }),
+          impl: el("i2", { text: "Other", box: { x: 10, y: 50, w: 100, h: 20 } }),
+          gamma: 12,
+          via: "geometry",
+        },
+      ],
+      designOnly: [],
+      implOnly: [],
+    })
+    const spacing = findings.filter((f) => f.type === "spacing")
+    expect(spacing).toHaveLength(1)
+    expect(spacing[0]!.via).toBe("geometry")
+    expect(spacing[0]!.gamma).toBe(12)
+  })
+})
+
+describe("the unverified gate", () => {
+  const flagged = (findings: readonly { type: string; unverified?: true }[]): string[] =>
+    findings.filter((f) => f.unverified === true).map((f) => f.type)
+
+  it("flags the value findings of a geometric pair when the alignment cannot vouch for it", () => {
+    const findings = runTypedChecks(witness("geometry", 70.7), WEAK)
+    expect(flagged(findings).sort()).toEqual(["border-radius", "color", "size", "typography"])
+    const colour = findings.find((f) => f.type === "color")
+    expect(colour?.unverifiedReason).toBe("low-alignment-confidence")
+  })
+
+  it("leaves those same findings unflagged once the alignment is trustworthy", () => {
+    expect(flagged(runTypedChecks(witness("geometry", 70.7), STRONG))).toEqual([])
+  })
+
+  it("never flags a text-proven pair, however weak the alignment", () => {
+    // The pair is evidence about ITSELF — both elements carry the same string,
+    // so the alignment transform played no part in forming it. Gating these on
+    // the transform's confidence would flag the report's most reliable findings.
+    const findings = runTypedChecks(witness("text", 0.5), WEAK)
+    expect(findings.some((f) => f.type === "color")).toBe(true)
+    expect(flagged(findings)).toEqual([])
+  })
+
+  it("does not flag position, which states its own evidence in its message", () => {
+    const position = runTypedChecks(witness("geometry", 70.7), WEAK).find(
+      (f) => f.type === "position",
+    )
+    expect(position).toBeDefined()
+    expect(position!.unverified).toBeUndefined()
+    expect(position!.via).toBe("geometry")
+  })
+
+  it("FLAGS rather than suppresses: the gate changes no finding count", () => {
+    // The acceptance criterion of plan step 1 — this step instruments the
+    // report, it does not change what the report contains. A suppressing gate
+    // would make a real finding indistinguishable from no finding, which is the
+    // bug this exists to fix with its sign flipped.
+    const weak = runTypedChecks(witness("geometry", 70.7), WEAK)
+    const strong = runTypedChecks(witness("geometry", 70.7), STRONG)
+    expect(weak).toHaveLength(strong.length)
+    expect(weak.map((f) => [f.id, f.type, f.severity])).toEqual(
+      strong.map((f) => [f.id, f.type, f.severity]),
+    )
+  })
+
+  it("is ungated by default, so a caller that passes no confidence sees today's report", () => {
+    expect(flagged(runTypedChecks(witness("geometry", 70.7)))).toEqual([])
+  })
+
+  it("decides on the pairing and the type, at the floor's boundary", () => {
+    expect(isUnverified("color", "geometry", 0.49, 0.5)).toBe(true)
+    expect(isUnverified("color", "geometry", 0.5, 0.5)).toBe(false)
+    expect(isUnverified("color", "slot", 0.07, 0.5)).toBe(true)
+    expect(isUnverified("color", "text", 0, 0.5)).toBe(false)
+    for (const type of ["position", "spacing", "missing-element", "extra-element"] as const) {
+      expect(isUnverified(type, "geometry", 0, 0.5)).toBe(false)
+    }
   })
 })

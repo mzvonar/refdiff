@@ -120,6 +120,9 @@ describe("summarizeReports", () => {
       findings: 5,
       instances: 7,
       suppressed: 0,
+      // These fixtures build findings by hand, with no pairing behind them —
+      // nothing to vouch for and nothing to doubt.
+      unverified: 0,
       introduced: 1,
       resolved: 2,
       regressions: 1,
@@ -151,7 +154,7 @@ describe("summarizeReports", () => {
       "3 pairs: 1 PASS / 2 FAIL — 5 findings covering 7 instances, 0 suppressed; delta +1 / −2, 1 REGRESSION(S)",
     )
     expect(text).toMatch(
-      /\| alert--success\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \| 0\.00 \| 1 \/ 0,0\s+\| \+1\/−2 R1 \|/,
+      /\| alert--success\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \|\s+0 \| 0\.00 \| 1 \/ 0,0\s+\| \+1\/−2 R1 \|/,
     )
     expect(text).toContain("| major | size | text | 2/3 | 2 | w 500..692→200..302, h 19→15 |")
     expect(text).toContain(
@@ -163,6 +166,39 @@ describe("summarizeReports", () => {
     const s = summarizeReports([])
     expect(s.totals.pairs).toBe(0)
     expect(renderSummary(s)).toContain("0 pairs: 0 PASS / 0 FAIL")
+  })
+
+  it("counts findings whose pairing nothing vouches for, apart from the total", () => {
+    // A set summary that reports 3 findings without saying one of them rests on a
+    // pairing formed by geometry alone is the report this instrument exists to stop
+    // a reader from trusting — see `isUnverified` in structural/checks.ts.
+    const s = summarizeReports([
+      {
+        dir: "weak",
+        report: report("weak", [
+          finding("f1", { via: "text", gamma: 0 }),
+          finding("f2", { via: "geometry", gamma: 98.7, unverified: true }),
+          finding("f3", { type: "missing-element", severity: "critical" }),
+        ]),
+      },
+    ])
+    expect(s.runs[0]).toMatchObject({
+      findings: 3,
+      unverified: 1,
+      via: { text: 1, slot: 0, geometry: 1 },
+    })
+    expect(s.totals.unverified).toBe(1)
+    const text = renderSummary(s)
+    expect(text).toContain("1 of 3 findings are UNVERIFIED")
+    expect(text).toContain(
+      "pairing evidence across the set: 1 by text, 0 by slot, 1 by geometry, 1 resting on no pair",
+    )
+    // …and the per-pair table grows a column for it rather than burying it in prose.
+    expect(text).toContain("| unver |")
+  })
+
+  it("says nothing about provenance when no finding is flagged", () => {
+    expect(renderSummary(summarizeReports(reports))).not.toContain("UNVERIFIED")
   })
 })
 

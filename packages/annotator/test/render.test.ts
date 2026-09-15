@@ -1073,6 +1073,26 @@ describe("renderReport", () => {
       "function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); saveTheme(); }",
     )
   })
+
+  it("shows every finding what paired its two elements, and says so louder when nothing vouches for it", () => {
+    // Core stamps `via`/`gamma` on each finding and flags the ones whose pairing a weak
+    // alignment cannot vouch for; the rail is where a human meets them. Without the chip a
+    // reader is back to judging a colour delta with no way to see that the two elements have
+    // nothing to do with each other — the defect the provenance channel exists to surface
+    // (core: `isUnverified` in structural/checks.ts).
+    expect(html).toContain("h += viaChipHtml(f);")
+    expect(html).toContain("function viaChipHtml(f) {")
+    expect(html).toContain("if (!f.via) return '';")
+    expect(html).toContain("geometry: 'Matched by geometry alone'")
+    expect(html).toContain("(f.unverified ? 'unverified · ' : '')")
+    // Muted by default; the gate's flag is what turns it into a warning.
+    expect(html).toContain(
+      ".fvia { display:flex; align-items:center; gap:3px; font-size:10px; font-weight:600; letter-spacing:.04em; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--txt2); flex-shrink:0; font-variant-numeric:tabular-nums; }",
+    )
+    expect(html).toContain(
+      ".fvia.unver { border-style:dashed; border-color:var(--major); color:var(--major); }",
+    )
+  })
 })
 
 describe("embedJson", () => {

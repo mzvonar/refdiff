@@ -8,7 +8,7 @@
 
 import type { Ground } from "./adapters/ground.js"
 import type { CaptureStep } from "./adapters/steps.js"
-import type { Alignment, Bleed, Box, CaptureScope, ElementNode } from "./types.js"
+import type { Alignment, Bleed, Box, CaptureScope, ElementNode, MatchVia } from "./types.js"
 
 export interface Viewport {
   width: number
@@ -317,9 +317,10 @@ export interface ElementMatch {
   /**
    * How the pair was formed: identical unique text, GVT geometry, or the
    * width-blind slot pass (same anchor and height, different text — a
-   * value slot showing different data).
+   * value slot showing different data). Rides onto every finding about this
+   * pair, which is only ever as trustworthy as the pairing itself.
    */
-  via: "text" | "geometry" | "slot"
+  via: MatchVia
 }
 
 /** A pass-2 candidate the unrelated-text veto refused, for the run log. */
