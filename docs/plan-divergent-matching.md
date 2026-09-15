@@ -6,10 +6,15 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-15).** Nothing implemented yet.
-> **DO NEXT: step 0** (revert the veto widening — it is sitting uncommitted in the tree), then
-> **step 1** (per-finding provenance + confidence-gated value findings). Those two are "phase 1".
+> **STATUS (2026-09-15).** Phase 1 DONE — steps 0 and 1 are committed (`73cc4a1` formatting,
+> `164828a` the change), not pushed. Working tree clean; 457 core + 380 annotator tests green.
+> **DO NEXT: step 2** (corpus baseline harness).
 > Session state: [`handoff-2026-09-15.md`](handoff-2026-09-15.md).
+>
+> **Two numbers in this plan were wrong and are corrected below.** The step-0 baseline is
+> **225 findings at 42 matched**, not 223/43 — 223 was run 13, which still HAD the veto widening
+> step 0 reverts, exactly as the "what was already tried" entry records (225 → 223, 42 → 43).
+> The core test count after the revert is **445**, not 448.
 
 ---
 
@@ -152,6 +157,15 @@ the structural fix, and only then the two thresholds — re-derived against the 
 **Done.** `pnpm -r test` green (expect 448 core + 379 annotator), `git diff` empty in
 `packages/core/src/structural/`.
 
+**DONE 2026-09-15 — measured.** `git checkout -- packages/core/src/structural/` restored both
+files. Suite green at **445 core + 379 annotator** (the "448" above was the count WITH the three
+veto tests, so 445 is right and the plan's arithmetic was off by the same three). The witness pair
+re-captured as run 14: **225 findings** (35 critical / 127 major / 63 minor), **42 matched**,
+alignment `(-10.5, 0.0)` confidence 0.07 (x 0.50 / y 0.07), and all six witness findings alive
+(`f103` position, `f131` colour, `f142` border, `f152` border-radius, `f206` typography, `f207`
+text-content). **That 225/42 is the baseline step 1 must not move** — not the 223/43 written above,
+which was run 13 with the widening still in.
+
 ### Step 1 — per-finding provenance, and gate value findings on confidence
 
 **Goal.** Make every finding say how much it should be believed. This is the instrument the rest of
@@ -172,6 +186,33 @@ makes them visibly weaker than a text-matched finding. No change to matching beh
 finding COUNT must be identical to step 0's (223), or something else changed too.
 
 **Risk.** Touching `types.ts` ripples into the annotator's renderer and its 379 tests.
+
+**DONE 2026-09-15 — measured.** Commits `73cc4a1` (formatting, split out so the change is
+readable) and `164828a`.
+
+- Matching untouched, twice over: runs 15 and 16 both report **+0 introduced / −0 resolved**, at
+  **225 findings / 42 matched** — step 0's baseline exactly. `identityKey` ignores the three new
+  fields, which is why the delta is +0/−0 rather than 225 findings re-keyed.
+- Witness: all six findings read `via: "geometry"` γ98.7. Colour, border, border-radius and
+  typography are flagged `unverified`; `text-content` is deliberately NOT, because "text reads
+  Otázky · 1, design says Včera" is the line that gives the mis-pairing away.
+- Whole run: 49 text / 3 slot / 71 geometry / 102 resting on no pair; **34 flagged**.
+- **The open decision resolved to the `unverified` marker, not suppression**, argued in
+  `isUnverified`'s comment in `structural/checks.ts`. Measured reason: 67 of the 225 findings are
+  value findings, so suppressing on confidence alone deletes all 67 and a reader cannot tell the
+  deletions from "no difference here" — the same bug with its sign flipped. The pixel channel had
+  already settled it next door: below its floor it emits one finding SAYING it skipped.
+- **One deliberate sharpening of this step's wording.** The gate is NOT "alignment confidence is
+  low" but "this pair is not worth believing": a `via: "text"` pair is exempt at any confidence,
+  because both elements carry the same string and the transform played no part in forming it.
+  Those 67 value findings split 33 text-proven / 1 slot / 33 geometric, so the exemption is the
+  difference between flagging half the set and all of it. Step 5 generalises this.
+- `position` and `spacing` carry `via`/γ but are not gated — a position finding IS the transform's
+  own claim and states its evidence in its own message.
+- The verdict is untouched: flagged findings still count toward it. Whether they should is a step 5
+  question, once confidence is per-container instead of global.
+- `ambiguityMargin` is declared on `Finding` and written by nothing; step 4 fills it.
+- Tests +12 → **457 core + 380 annotator**.
 
 ### Step 2 — corpus baseline harness
 
