@@ -505,6 +505,42 @@ not an edge one — and today every one of them gets a full element-wise report 
 **Done.** Every corpus pair carries a phase, the five known-good polish pairs are all `polish`, the
 witness is `reconcile`, and no finding changed.
 
+**DERIVATION INPUT, measured 2026-09-15 on the step-3 corpus** (52 pairs; regenerate the full table
+from the three roots under `out/baseline/*/*/findings.json` — `alignment.confidence`, and
+`matched / min(designLeaves, implLeaves)` and `matchedVia.text / matched` from `matching`).
+
+Two candidate rules, and what separates them:
+
+| rule | polish | reconcile |
+| --- | --- | --- |
+| `conf >= 0.5 && rate >= 0.70` | 18 | 34 |
+| `rate >= 0.70 && (conf >= 0.5 \|\| share >= 0.35)` | 24 | 28 |
+
+**Both get all four named cases right** — `today-owner-desktop` (0.50 / 0.31) reconcile,
+`messages-owner-desktop` (0.07 / 0.68) reconcile, the witness `messages-accountant-desktop`
+(0.07 / 0.53) reconcile, `refdiff-library-groups-mobile` (0.85 / 0.78 / 0.19) polish. So the
+counter-examples the plan names do NOT settle the choice; these six pairs do, and they are the real
+question for whoever implements this:
+
+```
+refdiff-compare-mobile-toolbar-ghost   conf 0.46  rate 0.92  share 0.80
+tx-picker-owner-mobile                 conf 0.00  rate 0.91  share 0.38
+tx-picker-accountant-mobile            conf 0.00  rate 0.86  share 0.39
+tx-picker-accountant-desktop           conf 0.42  rate 0.86  share 0.42
+settings-owner-mobile                  conf 0.25  rate 0.75  share 0.43
+client-detail-chrome-accountant-mobile conf 0.38  rate 0.71  share 0.45
+```
+
+**`tx-picker-owner-mobile` is the one to look at first: confidence 0.00 at match rate 0.91, with 71
+of 78 leaves matched.** A pair cannot both be "no transform fits at all" and "the two sides contain
+almost exactly the same things" unless the transform fitter is failing on something the matcher
+does not need — which is step 1's text-exemption argument one level up ("a `via: text` pair is
+evidence about itself; the transform played no part in forming it"). If that reading holds, the
+three-signal rule is right and the two-signal one mislabels six pairs. **Confirm it by looking at
+why confidence is 0.00 on a pair that matched 91% of its leaves — do not take the arithmetic on
+trust.** These are components captured from their own story, i.e. exactly the polish-loop pairs step
+3 was run to obtain, so calling them `reconcile` would be the harm this whole plan is about.
+
 **Why this replaces most of old step 3.** Old step 3's stated Done criterion was "the witness's six
 findings collapse to an honest missing + extra". A phase label plus the refusal in step 5 gets there
 without touching how a well-aligned pair matches.
