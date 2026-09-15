@@ -1249,3 +1249,53 @@ Two things the implementation had to get right, both caught by existing tests:
   them in `bound` but not `leaves` moved the score 0.64 → 0.74 and would have
   loosened the `figma-low-quality` gate — a measurement change dressed as a
   feature.
+
+## 2026-09-15 — a number written in a handoff is not a measurement (matcher phase 1)
+
+Phase 1 opened with two figures inherited from the previous session's handoff: "expect
+448 core tests after the revert" and "the finding COUNT must be identical to step 0's
+(223)". Both were wrong. Measured after `git checkout -- packages/core/src/structural/`:
+**445 core** and **225 findings at 42 matched**.
+
+The cause is instructive. 223/43 were run 13's numbers — a run taken *with* the veto
+widening that step 0 exists to remove. The plan's own "what was already tried" section
+recorded the widening as `225 → 223 findings, matched 42 → 43`, so the correct baseline
+was already written down one paragraph away from the wrong one. The handoff had simply
+carried forward the latest run rather than the run that matched the state it described.
+
+Why it matters more than an off-by-two: step 1's acceptance criterion was "the finding
+count is unchanged from step 0". Had the step been judged against 223, a step that
+changed nothing would have read as −2, and the natural next move is to go hunting for a
+regression that does not exist. A baseline attached to the wrong tree state is worse
+than no baseline, because it produces confident wrong conclusions.
+
+The rule already exists for acceptance criteria stated as absolutes ("no drift", "the
+suite is green") — measure the pre-change baseline before believing it. This extends it:
+**a baseline in a document inherits the state of the run it came from, and a handoff
+rarely says which run that was.** Re-measure, and when recording one, name the run.
+
+## 2026-09-15 — refdiff has no formatter, but a uctoinak2-rooted session does (matcher phase 1)
+
+Every Write/Edit in a session whose project root is `/root/uctoinak2` fires that repo's
+`PostToolUse` hook: `oxlint --fix` then `oxfmt --write` on the file just written. The hook
+does not check which repo the file belongs to, and `/root/refdiff` has no formatter config
+of its own — no prettier, no biome, no `format` script.
+
+refdiff is mid-migration on semicolons (36 of 90 source files still carry them, 54 do not,
+and everything written recently is in the second group), so oxfmt's output is not foreign
+style — it is where the repo is going. That makes the churn correct and unreviewable at
+the same time: a three-line change to one of the 36 arrives as a few hundred lines of
+punctuation. Phase 1's first diff was 1163 insertions / 594 deletions for roughly 420
+lines of real change.
+
+**Remedy: commit the reformat separately, FIRST.** Back the working files up, `git
+checkout --` them, run the two commands by hand from `/root/uctoinak2`, verify the
+formatted-HEAD tree is behaviour-identical (typecheck + the parent commit's exact test
+counts), commit as `style:`, then restore and commit the real change on top. Phase 1 did
+this as `73cc4a1` then `164828a`, which took the semantic diff to 480 insertions / 13
+deletions.
+
+Two things this is NOT: not a reason to fight the hook (reverting the formatting means
+re-fighting it on every future edit), and not a reason to skip the split (the whole point
+of the matcher work is that a reader can check what the report claims — a commit nobody
+can read is the same failure one level up).
