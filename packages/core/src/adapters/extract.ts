@@ -75,6 +75,57 @@ export async function extractElementTree(
     const firstFontFamily = (v: string): string =>
       (v.split(",")[0] ?? v).trim().replace(/^["']|["']$/g, "");
 
+    /**
+     * The USED line-height in px — including when the computed value is the
+     * keyword `normal`.
+     *
+     * `getComputedStyle().lineHeight` returns the STRING "normal" whenever the
+     * author wrote a `font:` shorthand without a ratio, which is how every
+     * `.dc.html` comp is authored; a Tailwind implementation emits explicit px.
+     * Dropping the property on the `normal` side left `structural/checks.ts`'s
+     * line-height comparison — which requires the value on BOTH sides — silently
+     * never running. Measured over the four `messages-*` run dirs on 2026-09-16:
+     * 11 of 202 design text nodes carried it, against 194 of 194 implementation
+     * ones. The leading difference hiding there was absorbed by the alignment fit
+     * as a whole-page `scaleY 1.10`, which reads as "the layouts disagree
+     * vertically" and names no element; deriving it by hand cost a session.
+     *
+     * `normal` is not a number, but it IS measurable: one line in a hidden probe
+     * carrying the same font resolves to exactly the used value. Keyed on the
+     * whole font signature — the full family LIST, so fallbacks resolve the way
+     * the real element's do — and cached, because a page has few distinct fonts
+     * and many text nodes.
+     */
+    const usedNormal = new Map<string, number | undefined>();
+    let probe: HTMLElement | undefined;
+    const usedLineHeight = (cs: CSSStyleDeclaration): number | undefined => {
+      if (cs.lineHeight !== "normal") return pxOrUndef(cs.lineHeight);
+      const stretch = cs.getPropertyValue("font-stretch");
+      const key = [cs.fontFamily, cs.fontSize, cs.fontWeight, cs.fontStyle, stretch].join("|");
+      if (usedNormal.has(key)) return usedNormal.get(key);
+      if (!probe) {
+        // `fixed` so the probe cannot extend the scrollable area — an absolutely
+        // positioned one can, and then the capture is of a page this measurement
+        // changed. `visibility:hidden` lays out without painting.
+        probe = document.createElement("div");
+        probe.setAttribute("aria-hidden", "true");
+        probe.style.cssText =
+          "position:fixed;top:0;left:0;visibility:hidden;white-space:pre;margin:0;padding:0;border:0";
+        document.body.appendChild(probe);
+      }
+      probe.style.fontFamily = cs.fontFamily;
+      probe.style.fontSize = cs.fontSize;
+      probe.style.fontWeight = cs.fontWeight;
+      probe.style.fontStyle = cs.fontStyle;
+      probe.style.setProperty("font-stretch", stretch);
+      probe.style.lineHeight = "normal";
+      probe.textContent = "Ag";
+      const h = round(probe.getBoundingClientRect().height);
+      const value = h > 0 ? h : undefined;
+      usedNormal.set(key, value);
+      return value;
+    };
+
     // CSS `opacity` fades the whole element (and its subtree); the computed
     // colors do not carry it. Fold the effective opacity (product down the
     // ancestor chain from the root) into the alpha of every emitted color,
@@ -280,8 +331,8 @@ export async function extractElementTree(
         style["color"] = withOpacity(cs.color, opacity);
         style["fontFamily"] = firstFontFamily(cs.fontFamily);
         style["fontSize"] = pxOrUndef(cs.fontSize);
-        const lh = pxOrUndef(cs.lineHeight);
-        if (cs.lineHeight !== "normal" && lh !== undefined) style["lineHeight"] = lh;
+        const lh = usedLineHeight(cs);
+        if (lh !== undefined) style["lineHeight"] = lh;
         const fw = parseInt(cs.fontWeight, 10);
         if (Number.isFinite(fw)) style["fontWeight"] = fw;
       }
@@ -493,6 +544,10 @@ export async function extractElementTree(
       if (claimed.has(c.el)) continue;
       emit(c.el, c.rect, c.cs, "", c.opacity, true);
     }
+    // The line-height probe leaves the DOM as it found it: the screenshot is
+    // taken after extraction on some paths, and a stray node in the capture
+    // would be a difference the harness itself introduced.
+    probe?.remove();
     return {
       width: round(rootRect.width),
       height: round(rootRect.height),

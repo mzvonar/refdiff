@@ -314,6 +314,16 @@ items is now a typed finding — read it there:
   body family — is one finding, not a hunch. Per-breakpoint pairs are
   separate manifest entries (`…-desktop` / `…-mobile`); a fix that matches
   one can break the other — run both.
+  **`lineHeight` is the USED value on both sides, including when the author
+  set none.** A comp written with a `font:` shorthand computes to the keyword
+  `normal`, an implementation on Tailwind emits px, and until 2026-09-16 the
+  comp side carried no value at all, so the check needed two numbers and never
+  ran — 11 of 202 design text nodes had one, against 194 of 194 impl ones. The
+  difference that hides there does not vanish; it is absorbed by the alignment
+  fit as a page-wide `scaleY` (§1a), which reads as "the layouts disagree
+  vertically" and names no element. So: a leading finding is now a first-class
+  `typography` finding, and a page-wide `scaleY` with no obvious chrome cause
+  is worth re-reading as leading before it is read as layout.
 - **Layout** → `position` (per-element offset; aggregated by identical
   shift), `size` (box w×h; text measured by glyph-ink box), `spacing`
   (nearest-sibling gap below / right, adjacent on BOTH sides). `elements.json`
