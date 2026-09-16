@@ -15,7 +15,13 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: reconcile step 2's CHEAP TEST.** The clock freeze is now VERIFIED ON ALL THREE
+> **DO NEXT: BUILD reconcile step 2's SMALL version** — group the missing/extra findings by
+> container, **one grouping per side**, and stop. The cheap test ran (2026-09-16) and refuted the
+> full map's justification: a model reading only the comp, both screenshots and the raw
+> missing/extra list placed 57 of 59 texted unmatched elements, 4 of 4 correspondences, 0
+> contradicted claims. It also turned up **a second, worse witness** — a `via: "text"` pair at
+> γ 1062.6 yielding six unflagged findings — which is a STEP 5 input, not a step 2 one.
+> The clock freeze is VERIFIED ON ALL THREE
 > CORPORA and re-baselined — 52 pairs, `matched` unmoved on every one, zero `auth-failed` (the
 > named risk); see reconcile step 1's DONE block for the two-run table and the three explained
 > movements. Plan steps 0–4 and RECONCILE STEP 1 are DONE; the reconcile
@@ -772,10 +778,15 @@ the corpus** — if it flaps again, it is a capture-quiescence bug, not drift.
 **Goal.** Hand the judge the one thing it cannot build reliably by hand: a complete, measured
 account of which parts of the two surfaces correspond.
 
-> **Start with the OPEN QUESTION above, not with code.** Whether a model reading the comp, the two
-> screenshots and the raw missing/extra findings actually needs this is unmeasured. Run that test
-> first; it costs one pair and it decides how much of this step to build — or whether the answer is
-> a much smaller "group the missing/extra findings by container" rather than a full map.
+> **THE OPEN QUESTION IS ANSWERED — the cheap test ran 2026-09-16 and the full map is NOT earned.**
+> A fresh-context model reading only the comp, the two screenshots and the raw missing/extra list
+> placed **57 of 59** texted unmatched elements and got **4 of 4** of this step's own Done criteria
+> right, with **zero** claims contradicted by the artifacts. **Build the small version — group the
+> missing/extra findings by container, one grouping PER SIDE — and stop.** Method, metrics, the two
+> elements it missed, and the second witness the test turned up are in
+> [THE CHEAP TEST](#the-cheap-test--run-2026-09-16-the-maps-justification-is-refuted-on-this-pair)
+> below. The bullets that follow describe the FULL map and are kept for the record; they are not
+> the build order any more.
 
 Today the per-element truth exists — `missing-element` and `extra-element` findings carry text and
 boxes — but arrives flat, severity-sorted, mixed among 400 others. `byRegion` is the nearest lever
@@ -812,6 +823,92 @@ and it groups FINDINGS, not structure.
 **Done.** On the witness, the map names the thread rail, the filter chip row and the message pane
 as three correspondences, and says the comp's relative-date column has no impl counterpart — the
 thing a reader currently reconstructs by hand from six scattered findings.
+
+#### THE CHEAP TEST — RUN 2026-09-16. The map's justification is REFUTED on this pair.
+
+**Method.** A fresh-context model was given three things and forbidden everything else: the comp
+source (`messages.dc.html` frame `1c`), `design.png` and `impl.png`, and the 101 raw
+`missing-element` / `extra-element` findings flat in report order. No other findings, no
+`byRegion`, no `elements.json`, no matching stats, no phase line. It was asked for the reconcile
+account a skilled model would naturally produce — **deliberately NOT told to enumerate
+exhaustively**, since that instruction manufactures the very completeness under test. The
+population (101 = 59 texted + 42 textless), the metrics and the adjustment rule were written down
+**before** the model ran, and the two screenshots were read independently for a ground truth of
+the correspondences.
+
+| metric | result |
+| --- | --- |
+| **M1** texted elements placed | **57 of 59 (97%)** — 47 by verbatim quote, 10 more by an explicit set statement, each named below |
+| **M2** textless elements named by exact coordinate | **29 of 42 (69%)**; the remainder described as classes ("the avatar gutter", "the user card") |
+| **M3** the four things this step's Done criterion demands | **4 of 4**, all correct |
+| **M4** claims contradicted by the artifacts | **0 found** |
+
+The ten set-statement credits, listed so the adjustment can be audited: `"10:24"` and `"12. 9."`
+(the thread-row time column, prescribed as a class — "the comp's short relative form (`Včera`,
+`Pon`, `2. 7.`) not `15. 9.`"); `"Vy: Super — …"`, `"Vy: Ďakujem, sedí to…"` and its impl twin (the
+`Vy:` self-prefix rule, with one pair quoted elided); `"17:26"` (bubble-timestamp placement);
+`"14. 9. 2026 17:20"` and `"…17:26"` (the explicit "every `14. 9. 2026 …` finding is seed data");
+`"Transakcia · SumUp Payments · …"` (the anchor-descriptor snippet rule, sibling quoted in full);
+and the impl message body `"Super — prepošlite…"` (the transcript-model prescription) — the last
+being the weakest credit, so **M1 is 56/59 if it is refused**.
+
+**What it missed, in full: two elements, which are one divergence** — the fourth thread's title
+reads `"SumUp poplatky — jún"` in the comp and `"SumUp Payments — chýba doklad"` in the
+implementation, and the account never remarks it (it caught the fixture divergence in general,
+naming ~20 findings as seed data, but not this one). **A container-grouped map would not have
+caught it either**: both titles sit in the same thread-row container, so grouping by container
+places them and says nothing about them. The one thing reading missed is the one thing the
+proposed instrument does not measure.
+
+**The answer to the OPEN QUESTION, then: "enumerating that completely is exactly what a model
+reading two files does badly" is false here.** But the honest reading is narrower than "the model
+is good at this", and it is the reading that decides the build:
+
+- **The completeness was the TOOL's, re-organised.** The model was handed the complete flat list,
+  so it never had to enumerate anything — it had to not DROP anything, and it dropped 2 of 101.
+  The map was justified as supplying completeness the reading lacks; the flat list already
+  supplies it. What reading added was structure, priority and judgement.
+- So **build the small version**: group the missing/extra findings by container, **two groupings,
+  one per side** (the `byRegion` measurement above says why one will not do), and stop. The full
+  correspondence map is not earned by this evidence.
+
+**It also found something the tool does not report, which is the strongest single result here.**
+From the *absence* side — reasoning that the comp's fourth filter chip `Vybavené` is missing from
+the unmatched list while the implementation renders only three chips — it concluded the chip had
+been mis-paired with the implementation's unrelated `Vybavené` thread badge, and warned that
+"absence from `unmatched.md` is not evidence of presence". **Verified, and it is worse than
+claimed:** see the pass-1 defect below.
+
+**A SECOND WITNESS, found by the cheap test and worse than the first.** The comp's filter chip
+`"Vybavené"` at (766, 92) is paired with the impl's thread badge `"Vybavené"` at (351, 729) —
+**415 px left and 636 px down, γ 1062.6** — and it yields six findings (`f93` position, `f185`
+size, `f189` colour, `f191` border, `f195` typography, `f196` border-radius) about two unrelated
+elements. The canonical witness (`Včera` ↔ `Otázky · 1`, γ 98.7) is the same shape at a fourteenth
+of the distance, and it at least ends with an `f206` `text-content` line giving it away. **This one
+has no tell at all, because the two strings are IDENTICAL** — there is no text-content finding to
+reach.
+
+Cause, traced and confirmed:
+
+- **Pass 1 has no γ ceiling by design.** Its comment says an element whose text appears exactly
+  once on each side "IS the same semantic element, **wherever it moved**". `textMaxGamma`
+  (2 × `maxGamma` = 200) caps pass **1b** only — the several-times case.
+- `normalizeForMatching` is `collapse(text).toLowerCase()`, so `"✓ Vybavené"` and `"Vybavené"` are
+  different keys. That makes `"vybavené"` unique on *each* side — the chip in the comp, the badge
+  in the impl — and pass 1 pairs them unconditionally. The comp's own badge `"✓ Vybavené"` is then
+  left over as `f25 missing-element`, which is the visible half of the same mistake.
+- **Step 1's `unverified` gate cannot fire on it**: all six read `via: "text"`, `unverified: false`.
+  The exemption is deliberate and its stated reason is "both elements carry the same string and the
+  transform played no part in forming it" — **which is exactly the case where text identity proves
+  nothing**. Geometry is the only thing that could have refused this pair, and `via: "text"` is
+  precisely what turns geometry off.
+
+This is a matcher finding, not a reconcile one, and it is **not fixed here**. It belongs to
+**step 5** (which is about refusing pairs on weak evidence) and it changes that step's framing: the
+plan has step 5 refusing *geometric* pairs below the confidence floor, and the sharpest unflagged
+mis-pairing in the corpus is a **text** pair. It is also the first configuration the parked
+Lowe's ratio test would have caught, since the comp offers two candidates sharing the token and the
+matcher picks the wrong one — `Finding.ambiguityMargin` is still declared and unwritten.
 
 ### Reconcile step 3 — the WORKFLOW, in its own file, written to be revised
 
@@ -867,6 +964,22 @@ rewrite.
 - Below `DEFAULT_MIN_ALIGNMENT_CONFIDENCE` (0.5, the floor step 1 already uses), **do not form
   geometric pairs at all**; report both elements as missing/extra.
 - Text and slot pairs are untouched at any confidence — they are evidence about themselves.
+
+> **THE SECOND BULLET IS THE ONE TO RE-ARGUE, and 2026-09-16 produced the counter-example.**
+> "Text pairs are evidence about themselves" is what leaves the corpus's sharpest mis-pairing
+> unflagged: on the witness, the comp's filter chip `"Vybavené"` is paired with the impl's thread
+> badge `"Vybavené"` **762 px away (γ 1062.6)**, `via: "text"`, `unverified: false`, producing six
+> confident findings about two unrelated elements — the canonical witness's defect at 14× the
+> distance and with **no `text-content` tell**, because the strings are identical.
+>
+> Cause: **pass 1 has no γ ceiling at all** ("wherever it moved"); `textMaxGamma` caps pass 1b only.
+> `normalizeForMatching` keeps the `✓`, so `"vybavené"` is unique on each side and pass 1 takes it
+> unconditionally. So this step, as written, would refuse well-evidenced geometric pairs at γ 30
+> while leaving a γ 1062 text pair standing. **Whatever this step does about geometry, a γ ceiling
+> on pass 1 is the cheaper and better-evidenced half** — and it is the first configuration where
+> the parked Lowe's ratio test would have helped, since the comp offers two `Vybavené`-bearing
+> candidates and the matcher picks the wrong one. Measure it against the corpus before assuming a
+> ceiling is safe: pass 1's whole point is that a moved element stays paired.
 
 > **Read step 4's DONE block before implementing this — it moves the threshold's own ground.** This
 > step is written against the JOINT `alignment.confidence`, and step 4 measured that the joint score

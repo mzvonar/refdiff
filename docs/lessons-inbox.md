@@ -5,6 +5,33 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — the ABSENCE side of a report is unread, and it is where the worst mis-pairing hid
+
+The matcher workstream has spent four sessions on one witness: a mis-pairing that produces six
+confident findings about two unrelated elements. Every one of those sessions looked at the findings
+the report EMITS. The witness pair carries a second, worse instance, and it was found by asking
+what the report does NOT say — the comp draws four filter chips, the implementation draws three,
+and the fourth chip is absent from the `missing-element` list. Absence from that list is not
+evidence of presence; it means something claimed the element, and nothing tells you what.
+
+What it was: the comp's chip `"Vybavené"` (766, 92) paired with the implementation's thread badge
+`"Vybavené"` (351, 729) — **762 px apart, γ 1062.6** — yielding six findings (position, size,
+colour, border, typography, border-radius). The canonical witness is the same defect at γ 98.7 and
+at least ends with a `text-content` line that gives it away. **This one has no tell at all, because
+the two strings are identical**, so there is no text-content finding to reach.
+
+**Two guards were in place and neither could fire.** Pass 1 pairs a text that is unique on each
+side "wherever it moved" — no γ ceiling; `textMaxGamma` caps pass 1b only. And step 1's
+`unverified` marker exempts `via: "text"` at any confidence, on the reasoning that "both elements
+carry the same string and the transform played no part" — **which is precisely the case where text
+identity proves nothing.** A guard whose exemption is written for the common case will be absent
+from the pathological one by construction.
+
+**The transferable rule: when a report's value is a LIST, audit the list's complement.** Ask what
+should be in it and is not, and go find what claimed those elements. Here that question was worth
+more than four sessions of reading the findings themselves — and the model that asked it had been
+given nothing but the comp, two screenshots and the list.
+
 ## 2026-09-16 — the reconcile headline's COUNT is not the length of the list it introduces
 
 Measured on the witness, `messages-accountant-desktop` run 10:
