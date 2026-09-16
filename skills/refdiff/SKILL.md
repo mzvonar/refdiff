@@ -204,12 +204,27 @@ per-repo environment traps that make a capture fail in ways that read as product
    of its own, including a whole findings rail grouped by CAUSE that the tool's
    comp does not contain. Scoping it out would have shipped that rail with no
    pair measuring it, which is the one failure that reports itself nowhere.
-   Rule 1 applies to comparing two DESIGNS, not only a design and an impl.** Before changing a shared token or rule because one comp says so,
-   measure the other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l`
-   per file, or the other frames of the same component). If the comp you
-   are comparing is the outlier, the implementation is right: record the
-   decision with `refdiff accept` (`polish.md` §3a), evidence as its `reason`. If the
-   siblings agree with it, fix the token.
+   **Rule 1 applies to comparing two DESIGNS, not only a design and an impl.**
+   Before changing a shared token or rule because one comp says so, measure the
+   other comps (`grep -o '#hex' design-dir/*.dc.html | wc -l` per file, or the
+   other frames of the same component). If the comp you are comparing is the
+   outlier, the implementation is right: record the decision with `refdiff
+   accept` (`polish.md` §3a), evidence as its `reason`. If the siblings agree
+   with it, fix the token.
+   **This reaches STRUCTURE, not only tokens, and that is where it pays most.**
+   "This frame draws no page title", "this frame puts no card around the rail",
+   "this frame groups the rows" — each is either one frame's decision or the
+   design set's rule for a whole family of screens, and the two call for fixes
+   at completely different scopes. The sibling to open is the one drawing the
+   SAME chrome for a different screen (another section of the same detail page,
+   the same shell at the same width), and the check is just looking for the
+   element in it. Measured 2026-09-16: the accountant Messages phone frame
+   draws no page title, and the sibling — the same client shell on the Prehľad
+   screen — drew none either, which moved the fix from one route to the shared
+   page header and the seven routes under it. Read alone, that frame yields a
+   correct-LOOKING patch at a tenth of the right scope, and the pair goes green
+   on it. Scope is `polish.md` §4's other half: which axis the two frames differ
+   on, and what a shared-chrome fix reaches that this pair cannot measure.
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
    `regions`, `accepted: [{ type, expected?, actual?, reason }]`,

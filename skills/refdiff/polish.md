@@ -276,6 +276,38 @@ repo bindings). Read `delta`:
   introduced — read the counts and the message for progress on it. (Runs
   made before this identity existed churn exactly once on the next run.)
 
+**Two pairs of ONE surface are two views of one implementation — so the other pair's delta is part
+of reading this one's.** A `…-desktop` / `…-mobile` split is two manifest entries, two run dirs and
+two finding lists, and nothing in any of them says they render the same component. The fix you write
+does: an unprefixed class lands at every width, and the pair you were not aiming at is the only
+thing that will tell you.
+
+So when a fix is meant for ONE breakpoint, **re-run BOTH and require `+0/−0` on the other**. That is
+a check, not a caution — a non-zero delta on the pair you did not target means the class went in
+without its variant, and no finding on the pair you DID target can show it. It runs the other way
+too: a change meant for both should move both, and one of them reading `+0/−0` means half the fix is
+missing. (Measured, `messages-accountant-*` 2026-09-16: four mobile-only iterations, all `+0/−0` on
+desktop; the one change meant for both read `+0/−0` on mobile and `+50/−41` on desktop, which is how
+its scope was confirmed rather than assumed.)
+
+**Before writing that fix, ask which AXIS the two comps differ on.** Breakpoint is the likeliest
+answer, not the only one — the same two frames can also disagree by ROLE, by state, or by their
+fixture. Getting it wrong puts the fix at the wrong scope in a way that types, tests and this pair
+all accept: a `md:` variant applied to a difference that was really about who is looking hides the
+drift on the other role's pair instead of fixing it. What to DO once you know the axis belongs to
+the consuming repo, not to this skill — its component conventions are written down where the
+bindings say they are.
+
+**A fix inside SHARED chrome has a blast radius the measured pair cannot see, and re-running that
+pair is not evidence about it.** A page shell, a nav, a toolbar, a token: the pair in front of you
+renders one of N surfaces consuming it, and its delta answers for exactly that one. Two moves —
+check the SIBLING COMPS for whether the change is a family rule or one frame's (rule 4), then DRIVE
+the other surfaces at both widths instead of inferring them. The evidence to want is the fork
+itself, stated as two numbers. (Same session: a page header's identity block was hidden below `lg`
+across a client-detail family of seven routes on the strength of one Messages pair, and what settled
+it was header 103px at 1440 against 0px at 390 — a fact about the shell, which those pairs could not
+have produced.)
+
 Then mark the notes you acted on:
 
 ```bash
@@ -324,9 +356,9 @@ items is now a typed finding — read it there:
   Cross-check the comp: `grep -oE "#[0-9a-fA-F]{6}" <comp>.dc.html | sort | uniq -c`.
 - **Fonts / sizes / weights** → `typography` findings: family, `fontSize`,
   `fontWeight`, `lineHeight` per side. The classic miss — a heading in the
-  body family — is one finding, not a hunch. Per-breakpoint pairs are
-  separate manifest entries (`…-desktop` / `…-mobile`); a fix that matches
-  one can break the other — run both.
+  body family — is one finding, not a hunch. A per-breakpoint fix is where a
+  typography change most often leaks to the width it was not written for —
+  §4's two-pairs rule and its `+0/−0` check.
   **`lineHeight` is the USED value on both sides, including when the author
   set none.** A comp written with a `font:` shorthand computes to the keyword
   `normal`, an implementation on Tailwind emits px, and until 2026-09-16 the
