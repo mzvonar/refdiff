@@ -2,7 +2,14 @@ import type { Browser, Locator, Page } from "playwright"
 
 import { describe, expect, it, vi } from "vitest"
 
-import { closeQuietly, FROZEN_CLOCK, openPage, withGround } from "./browser.js"
+import {
+  CAPTURE_LOCALE,
+  CAPTURE_TIMEZONE,
+  closeQuietly,
+  FROZEN_CLOCK,
+  openPage,
+  withGround,
+} from "./browser.js"
 
 describe("openPage", () => {
   const asBrowser = (newContext: unknown): Browser => ({ newContext }) as unknown as Browser
@@ -42,6 +49,48 @@ describe("openPage", () => {
       {},
     )
     expect(page.clock.setFixedTime).toHaveBeenCalledWith(FROZEN_CLOCK)
+  })
+
+  /**
+   * Time was frozen for reproducibility while the ZONE that renders that frozen
+   * instant stayed an accident of the machine — so the same pair on a Bratislava
+   * laptop and on a UTC CI box disagreed by two hours on every timestamp, with
+   * nothing in the report saying so. Pinned at the same seam as the clock, for
+   * the same reason: `openPage` is the one site all three adapters go through.
+   */
+  it("pins the timezone and locale the capture renders in", async () => {
+    const page = mockPage()
+    const seen: unknown[] = []
+    await openPage(
+      asBrowser(async (options: unknown) => {
+        seen.push(options)
+        return { newPage: vi.fn(async () => page) }
+      }),
+      { viewport: { width: 10, height: 10 } },
+    )
+    expect(seen[0]).toMatchObject({
+      viewport: { width: 10, height: 10 },
+      timezoneId: CAPTURE_TIMEZONE,
+      locale: CAPTURE_LOCALE,
+    })
+  })
+
+  /**
+   * A comp drawn for another market is the case the default cannot serve, and
+   * the manifest entry is the level that knows. Caller wins, or the override is
+   * decoration.
+   */
+  it("lets a caller override the pinned zone and locale", async () => {
+    const page = mockPage()
+    const seen: unknown[] = []
+    await openPage(
+      asBrowser(async (options: unknown) => {
+        seen.push(options)
+        return { newPage: vi.fn(async () => page) }
+      }),
+      { timezoneId: "Europe/Bratislava", locale: "sk-SK" },
+    )
+    expect(seen[0]).toMatchObject({ timezoneId: "Europe/Bratislava", locale: "sk-SK" })
   })
 
   /**

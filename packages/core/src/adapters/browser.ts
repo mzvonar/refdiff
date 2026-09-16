@@ -140,7 +140,15 @@ export async function openPage(
   fixedTime: Date | null = FROZEN_CLOCK,
 ): Promise<{ ctx: BrowserContext; page: Page } | { error: string }> {
   try {
-    const ctx = await browser.newContext(options)
+    // Pinned the same way and for the same reason as the clock below: a
+    // capture parameter the HOST decides is not a measurement parameter.
+    // Caller-supplied values win — a pair whose comp is drawn for another
+    // market sets its own on the manifest entry.
+    const ctx = await browser.newContext({
+      ...options,
+      timezoneId: options?.timezoneId ?? CAPTURE_TIMEZONE,
+      locale: options?.locale ?? CAPTURE_LOCALE,
+    })
     const page = await ctx.newPage()
     // Before the caller navigates — every adapter opens its page here and goes
     // to the URL afterwards, which is what makes this the one site that cannot
@@ -188,6 +196,39 @@ export async function openPage(
  * every pair at once, so it is a re-baseline, never a tweak.
  */
 export const FROZEN_CLOCK = new Date("2026-09-15T12:00:00Z")
+
+/**
+ * The zone and locale every capture renders in, unless a pair says otherwise.
+ *
+ * `FROZEN_CLOCK` above freezes WHEN a capture believes it is. These freeze the
+ * two things that decide what that instant LOOKS LIKE. Without them the clock is
+ * pinned for reproducibility while the zone rendering it is an accident of the
+ * machine — a comp compared in Bratislava and the same comp compared on a UTC CI
+ * box disagree by two hours on every timestamp, with nothing in the report saying
+ * so and a `matched` drop that reads exactly like a regression (see FROZEN_CLOCK
+ * for the measured version of that failure: `20 d ago` → `19 d ago` cost a
+ * pairing overnight). For any app that localises dates, and `uctoinak2`'s whole
+ * corpus does, the captured zone is a measurement parameter exactly as the
+ * viewport is.
+ *
+ * UTC and en-US specifically, and for the same reason the frozen instant is the
+ * day a baseline was measured rather than whatever makes a comp agree: they are
+ * what an unconfigured Linux capture box already produces, so pinning them moves
+ * no existing measurement (verified 2026-09-16 on the devbox — a default context
+ * and a pinned one returned identical `navigator.language`, `navigator.languages`,
+ * `Intl.DateTimeFormat().resolvedOptions().timeZone` and `toLocaleString()`). The
+ * change is that ANOTHER machine now measures the same thing. Picking a market
+ * zone as the default would be choosing one corpus's answer for every corpus.
+ *
+ * A pair whose comp is drawn for a market overrides both on its manifest entry
+ * (`timezoneId` / `locale`, see `configuring.md`), which is the level that can
+ * know: it is a property of the COMPONENT's data, not of the machine.
+ *
+ * Changing either of these re-dates every pair at once, so it is a re-baseline,
+ * never a tweak.
+ */
+export const CAPTURE_TIMEZONE = "UTC"
+export const CAPTURE_LOCALE = "en-US"
 
 /** CSS injected before every capture so animations never smear a shot. */
 export const FREEZE_CSS = `

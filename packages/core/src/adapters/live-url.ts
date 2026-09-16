@@ -132,6 +132,8 @@ export async function captureLiveUrl(
     viewport,
     deviceScaleFactor: DPR,
     ...(source.auth?.kind === "storage-state" ? { storageState: source.auth.path } : {}),
+    ...(source.timezoneId !== undefined ? { timezoneId: source.timezoneId } : {}),
+    ...(source.locale !== undefined ? { locale: source.locale } : {}),
   })
   if ("error" in opened) return err({ kind: "capture-failed", ref: identity, detail: opened.error })
   const { ctx, page } = opened

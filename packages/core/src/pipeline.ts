@@ -55,6 +55,15 @@ export interface DcHtmlSource {
    * Element shots only — see `adapters/ground.ts`.
    */
   ground?: Ground
+  /**
+   * The zone and locale this capture renders in, overriding the pinned
+   * defaults (`CAPTURE_TIMEZONE` / `CAPTURE_LOCALE` in `adapters/browser.ts`).
+   * A comp drawn for one market needs its fixture rendered in that market's
+   * zone or every timestamp is off by the offset; the pair is the level that
+   * knows, and both sides take the same value or the pair IS the difference.
+   */
+  timezoneId?: string
+  locale?: string
 }
 
 /** A Storybook story rendered via the bare iframe. */
@@ -95,6 +104,15 @@ export interface StorybookSource {
    * Element shots only — see `adapters/ground.ts`.
    */
   ground?: Ground
+  /**
+   * The zone and locale this capture renders in, overriding the pinned
+   * defaults (`CAPTURE_TIMEZONE` / `CAPTURE_LOCALE` in `adapters/browser.ts`).
+   * A comp drawn for one market needs its fixture rendered in that market's
+   * zone or every timestamp is off by the offset; the pair is the level that
+   * knows, and both sides take the same value or the pair IS the difference.
+   */
+  timezoneId?: string
+  locale?: string
 }
 
 /**
@@ -174,6 +192,15 @@ export interface LiveUrlSource {
    * Element shots only — see `adapters/ground.ts`.
    */
   ground?: Ground
+  /**
+   * The zone and locale this capture renders in, overriding the pinned
+   * defaults (`CAPTURE_TIMEZONE` / `CAPTURE_LOCALE` in `adapters/browser.ts`).
+   * A comp drawn for one market needs its fixture rendered in that market's
+   * zone or every timestamp is off by the offset; the pair is the level that
+   * knows, and both sides take the same value or the pair IS the difference.
+   */
+  timezoneId?: string
+  locale?: string
 }
 
 export type SourceConfig = DcHtmlSource | FigmaSource | StorybookSource | LiveUrlSource

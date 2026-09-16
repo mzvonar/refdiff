@@ -86,6 +86,22 @@ Design side:
   printed as `scope … fluid`) — a resize alone leaves a comp's mount-time
   layout (a one-shot fit of its artboard) where the wider window put it.
 
+**What every browser capture is pinned to (`adapters/browser.ts`, `openPage` —
+the one seam all three browser adapters go through).** The clock is frozen at
+`FROZEN_CLOCK` (2026-09-15T12:00:00Z, the day a committed baseline was measured)
+so a surface rendering relative time renders the same thing tomorrow — measured:
+`20 d ago` → `19 d ago` reflowed a row overnight and cost a pairing, with nothing
+edited. Since 2026-09-16 the ZONE and LOCALE that render that instant are pinned
+too (`CAPTURE_TIMEZONE` = UTC, `CAPTURE_LOCALE` = en-US): freezing WHEN while
+letting the host decide what it LOOKS LIKE made time reproducible and its
+rendering not, so the same pair disagreed by two hours between a market laptop
+and a UTC CI box. Both defaults are what an unconfigured Linux capture box
+already produced, so the pin moved no existing measurement; a pair whose comp is
+drawn for a market overrides them on its manifest entry (`timezoneId` / `locale`,
+entry-level so both sides take the same value — there is no run-wide flag,
+because that would re-date a whole set at once). Changing any of the three is a
+re-baseline, never a tweak.
+
 Implementation side:
 - **Storybook**: per-story iframe capture with error-page detection; an
   optional `selector` narrows the capture to one node inside the story (one

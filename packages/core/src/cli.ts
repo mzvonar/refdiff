@@ -411,6 +411,24 @@ function groundFor(spec: PairSpec, own: Ground | undefined, o: RunOptions): { gr
   return { ground: own ?? spec.ground ?? o.ground ?? DEFAULT_GROUND }
 }
 
+/**
+ * The zone and locale BOTH sides of this pair render in: the entry's, else
+ * nothing — and "nothing" means `openPage`'s pinned `CAPTURE_TIMEZONE` /
+ * `CAPTURE_LOCALE`, not the host's.
+ *
+ * Deliberately NOT a three-tier resolve like `bleedFor` / `groundFor`, and not a
+ * CLI flag either. The zone a comp is drawn for is a property of that pair's
+ * data, so a run-wide override would let one invocation re-date every pair in a
+ * set at once — which is a re-baseline wearing a flag. The manifest is the level
+ * that can say it, and it is the level under version control.
+ */
+function zoneFor(spec: PairSpec): { timezoneId?: string; locale?: string } {
+  return {
+    ...(spec.timezoneId !== undefined ? { timezoneId: spec.timezoneId } : {}),
+    ...(spec.locale !== undefined ? { locale: spec.locale } : {}),
+  }
+}
+
 async function captureDesign(
   browser: Browser,
   spec: PairSpec,
@@ -457,6 +475,7 @@ async function captureDesign(
       ...(scope !== undefined ? { scope } : {}),
       ...bleedFor(spec, spec.design.bleed, o),
       ...groundFor(spec, spec.design.ground, o),
+      ...zoneFor(spec),
     },
     { pngPath },
   )
@@ -483,6 +502,7 @@ async function captureImpl(
         ...(auth ? { auth } : {}),
         ...bleedFor(spec, rest.bleed, o),
         ...groundFor(spec, rest.ground, o),
+        ...zoneFor(spec),
       },
       { pngPath },
     )
@@ -495,6 +515,7 @@ async function captureImpl(
       url: o.storybookUrl,
       ...bleedFor(spec, spec.impl.bleed, o),
       ...groundFor(spec, spec.impl.ground, o),
+      ...zoneFor(spec),
     },
     { pngPath },
   )

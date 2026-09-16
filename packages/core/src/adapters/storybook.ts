@@ -60,7 +60,12 @@ export async function captureStorybook(
   }
 
   const viewport = source.viewport ?? { width: 1200, height: 900 }
-  const opened = await openPage(browser, { viewport, deviceScaleFactor: DPR })
+  const opened = await openPage(browser, {
+    viewport,
+    deviceScaleFactor: DPR,
+    ...(source.timezoneId !== undefined ? { timezoneId: source.timezoneId } : {}),
+    ...(source.locale !== undefined ? { locale: source.locale } : {}),
+  })
   if ("error" in opened) return err({ kind: "capture-failed", ref: identity, detail: opened.error })
   const { ctx, page } = opened
 

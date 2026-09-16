@@ -398,6 +398,36 @@ describe("readGallery — how a set's cells lay out", () => {
     }
   });
 
+  it("takes an entry-level timezoneId and locale, and REFUSES an empty one", async () => {
+    // The regression shape the comment below names: core + adapters correct and
+    // the parser silently dropping the field, so every pair keeps the default
+    // while the manifest says otherwise. Absent stays ABSENT — the default is
+    // `openPage`'s pin, and a default written here would look like an override.
+    const { parseManifest } = await import("./manifest.js");
+    const r = parseManifest([{ ...entry, timezoneId: "Europe/Bratislava", locale: "sk-SK" }]);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.pairs[0]?.timezoneId).toBe("Europe/Bratislava");
+      expect(r.value.pairs[0]?.locale).toBe("sk-SK");
+    }
+    const none = parseManifest([entry]);
+    expect(none.ok).toBe(true);
+    if (none.ok) {
+      expect(none.value.pairs[0]?.timezoneId).toBeUndefined();
+      expect(none.value.pairs[0]?.locale).toBeUndefined();
+    }
+    for (const bad of ["", "   ", 0, true, null]) {
+      expect(
+        parseManifest([{ ...entry, timezoneId: bad }]).ok,
+        `timezoneId: ${JSON.stringify(bad)} should be refused`,
+      ).toBe(false);
+      expect(
+        parseManifest([{ ...entry, locale: bad }]).ok,
+        `locale: ${JSON.stringify(bad)} should be refused`,
+      ).toBe(false);
+    }
+  });
+
   it("carries an entry's section and gallery nowhere near the ignore policy", async () => {
     // Regression shape from `contentsOf`: core, policy and manifest were all
     // correct and five pairs of six did not move, because the parser dropped

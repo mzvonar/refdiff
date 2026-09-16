@@ -100,6 +100,18 @@ export interface PairSpec {
    * the behaviour this makes true of the browser sides. See `adapters/ground.ts`.
    */
   ground?: Ground
+  /**
+   * The zone and locale BOTH sides of this pair render in, overriding the
+   * pinned `CAPTURE_TIMEZONE` / `CAPTURE_LOCALE`.
+   *
+   * Per entry, and never per side, for the same reason as `bleed` and `ground`:
+   * it is a property of the pair's DATA. A comp drawn for one market against a
+   * fixture rendered in another disagrees by the offset on every timestamp, and
+   * a pair that pinned one side only would have manufactured exactly that.
+   * Figma ignores both — its render has no clock.
+   */
+  timezoneId?: string
+  locale?: string
 }
 
 /**
@@ -637,6 +649,25 @@ export function parseManifest(
       })
     }
 
+    // Not validated against a zone/locale database: Playwright rejects an
+    // unknown `timezoneId` at newContext with a message naming the value, and
+    // that failure is already a typed `capture-failed`. A list maintained here
+    // would go stale and refuse a zone that works.
+    const timezoneId = entry["timezoneId"]
+    const locale = entry["locale"]
+    for (const [key, value] of [
+      ["timezoneId", timezoneId],
+      ["locale", locale],
+    ] as const) {
+      if (value !== undefined && (typeof value !== "string" || value.trim() === "")) {
+        return err({
+          kind: "invalid-entry",
+          index,
+          detail: `${id}: ${key} must be a non-empty string (e.g. ${key === "timezoneId" ? '"Europe/Bratislava"' : '"sk-SK"'})`,
+        })
+      }
+    }
+
     pairs.push({
       id,
       ...(typeof entry["title"] === "string" ? { title: entry["title"] } : {}),
@@ -644,6 +675,8 @@ export function parseManifest(
       impl: i.value,
       ...(bleed !== undefined ? { bleed } : {}),
       ...(ground !== undefined ? { ground } : {}),
+      ...(typeof timezoneId === "string" ? { timezoneId } : {}),
+      ...(typeof locale === "string" ? { locale } : {}),
       ...(ignore ? { ignore } : {}),
       ...(section !== undefined ? { section } : {}),
       ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),

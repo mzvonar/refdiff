@@ -189,6 +189,8 @@ export const manifest = [
                                                           // so a focus ring or shadow is captured
     ground: "keep",                                       // OPT-OUT. Default is "transparent":
                                                           // the paint BEHIND the node is not captured
+    timezoneId: "Europe/Bratislava",                      // the zone BOTH sides render in.
+    locale: "sk-SK",                                      // Default: UTC / en-US, PINNED (see below)
     // Only on a component SET — every field names a variant PROPERTY.
     gallery: {
       columns: "State",                                   // which axis is columns
@@ -200,6 +202,32 @@ export const manifest = [
 ]
 ```
 
+- **`timezoneId` / `locale` are the capture's ZONE, and they are pinned, not
+  inherited.** Every capture renders at a frozen instant (`FROZEN_CLOCK`,
+  2026-09-15T12:00:00Z) so a surface showing relative time renders the same thing
+  tomorrow. Until 2026-09-16 the zone that rendered that frozen instant was
+  whatever the machine had, so time was reproducible and its RENDERING was not:
+  the same pair on a Bratislava laptop and on a UTC CI box disagreed by two hours
+  on every timestamp, with nothing in the report saying so. The default is now
+  `UTC` / `en-US` for both sides of every pair — chosen because it is what an
+  unconfigured Linux capture box already produced, so pinning it moved no
+  existing measurement; picking a market as the default would be choosing one
+  corpus's answer for every corpus.
+
+  Set these when the COMP is drawn for a market, and set them on the ENTRY: both
+  sides take the same value, and a pair that pinned one side would manufacture
+  exactly the offset the pin exists to remove. There is deliberately no CLI flag
+  — a run-wide override re-dates every pair in a set at once, which is a
+  re-baseline wearing a flag. **Changing either value on an entry IS a
+  re-baseline for that pair.**
+
+  Two related traps the zone does not solve. **Which SIDE computes a relative
+  time decides whether the frozen clock can reach it at all**: `page.clock`
+  freezes what the browser reads, so a client-side "now" obeys it and a
+  server-rendered one does not — a fixture whose timestamps are computed on the
+  server must be anchored on a fixed date of its own. And an `ignore.textPatterns`
+  rule is not a substitute for either: policy runs long after matching, so it
+  hides the finding about `19 d ago` while the reflow still costs the pairing.
 - **Paths are flat strings, `/`-separated, and every segment is TRIMMED.** So
   `"Actions / Button"` and `"Actions/Button"` are the same node. Without the
   trim they would be two groups rendering under one name — a split with no

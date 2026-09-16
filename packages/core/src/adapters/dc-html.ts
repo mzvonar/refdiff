@@ -153,6 +153,8 @@ export async function captureDcHtml(
   const opened = await openPage(browser, {
     viewport: canvas,
     deviceScaleFactor: DPR,
+    ...(source.timezoneId !== undefined ? { timezoneId: source.timezoneId } : {}),
+    ...(source.locale !== undefined ? { locale: source.locale } : {}),
   })
   if ("error" in opened) {
     // The static server is already up; releasing its port is this path's job.
