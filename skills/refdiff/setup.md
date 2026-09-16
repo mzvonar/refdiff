@@ -111,6 +111,22 @@ failure shapes that recur everywhere and impersonate product bugs.
   route on first hit fails as `navigation-failed` / `Timeout 30000ms exceeded`,
   which reads exactly like a broken page. Warm the route once (`curl -L`), then
   re-run before believing it.
+- **An unread fetch body keeps the page from `networkidle`, and the capture never starts.** The
+  live adapter navigates with `waitUntil: networkidle`. Chromium reports a `fetch()` as finished
+  only once its body has been consumed, so a page that reads the body on 200 and ignores it on
+  403 or 404 (`if (r.ok) data = await r.json()`) holds that request open for as long as the page
+  lives. The capture fails as `navigation-failed` / `Timeout 30000ms exceeded` while the page has
+  rendered completely and looks fine in a browser. Measured instance: one optional provenance
+  route answered 404 for the fixture, and every capture of that page timed out until the fixture
+  carried the file the route reads. Diagnose by listing requests that never reached
+  `requestfinished` in headless Playwright; fix the fixture so the route answers 200 for the state
+  you measure, or make the page consume the body it ignores — a state the page can only reach
+  through a non-OK answer (a "locked" route returning 403) is uncapturable until it does.
+- **`selector-not-found` on `waitFor` can be a page error, not a wrong selector.** A script that
+  throws on a fixture field of the wrong shape stops before it builds the element you wait for,
+  and the wait times out against a page that is half rendered. Read `pageerror` in headless
+  Chromium before touching the selector: `Cannot convert undefined or null to object` from a
+  `facts` reader is a fixture-schema bug, and the selector was right all along.
 - **A direct DB seed does not invalidate the app's caches.** Insert a row with
   SQL and a cached read still serves the old answer — typically as a soft 404
   (HTTP **200** with a not-found body, so only a content check catches it).
@@ -123,6 +139,26 @@ failure shapes that recur everywhere and impersonate product bugs.
   the one below). Pair any self-hosted or newly wired font with a load check:
   `[...document.fonts]` statuses in the captured page, or an audit of zero
   non-200 font requests.
+- **A comp whose root carries neither an `id` nor a `data-screen-label` cannot be addressed as
+  a frame** — the dc-html adapter resolves `frame` by element id, then by `data-screen-label`, and
+  reports `frame-not-found` otherwise. Do not edit the fetched comp (a refetch loses the edit).
+  Write a LOCAL wrapper comp beside it that imports it unchanged inside a labelled node:
+
+  ```html
+  <x-dc>
+  <div id="my-page" data-screen-label="My page">
+    <dc-import name="My Page" hint-size="100%,100vh"></dc-import>
+  </div>
+  </x-dc>
+  ```
+
+  (same `<script src="./support.js">` head as the comps; `name` is the comp's file name without
+  `.dc.html`). Point the manifest at the wrapper with `frame: "my-page"`. The label on the wrapper
+  makes the scope resolve to the wrapper itself, so the whole page is measured; the imported
+  comp's `<helmet>` (fonts, body styles) still applies; `hint-size` becomes a min-size, so nothing
+  clips. Ask the designer to label the comp's root, then delete the wrapper and repoint the
+  manifest. Note the wrapper in the repo's bindings — it is a file the design project does not
+  have.
 - **A comp's prop DEFAULTS decide what gets captured.** A `.dc.html` comp is
   captured in its default state; a designed state behind a non-default prop
   (`showDeltaStrip: false`, an `errorState` selector) ships UNMEASURED and any

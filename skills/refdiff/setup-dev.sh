@@ -20,7 +20,8 @@ CHECKOUT="${REFDIFF_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/refdiff}"
 WATCH=0
 BROWSER=1
 LINKS=1
-case "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" in */.claude/plugins/*) LINKS=0 ;; esac
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+case "$SCRIPT_DIR" in */.claude/plugins/*) LINKS=0 ;; esac   # the plugin IS the skill: no links
 while [ $# -gt 0 ]; do
   case "$1" in
     --checkout) CHECKOUT="$2"; shift 2 ;;
@@ -122,10 +123,10 @@ fi
 # 4. dev-mode user-level skill symlinks (skipped under a plugin install). With the two-profile setup (~/.claude-shared exists) follow its
 #    convention: shared → checkout, profiles → shared. On a plain machine (only ~/.claude) link the
 #    profile straight to the checkout — never create ~/.claude-shared where it is not in use.
+SKILL_SRC="$CHECKOUT/skills/refdiff"
 if [ "$LINKS" = 0 ]; then
   say "skill links: skipped (plugin install, or --no-links)"
 else
-  SKILL_SRC="$CHECKOUT/skills/refdiff"
   LINK_TARGET="$SKILL_SRC"
   if [ -d "$HOME/.claude-shared" ]; then
     mkdir -p "$HOME/.claude-shared/skills"
@@ -174,7 +175,14 @@ echo "tests: $(pnpm -r test 2>&1 | grep -oE 'Tests +[0-9]+ passed' | awk '{s+=$2
 # proves the install is COHERENT rather than merely complete — a build that landed but did not
 # finish, or a checkout behind origin, shows up now instead of as a +0/-0 delta later.
 echo
-bash "$CHECKOUT/skills/refdiff/preflight.sh" || true
+REFDIFF_DIR="$CHECKOUT" bash "$SCRIPT_DIR/preflight.sh" || true
 echo
-echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."
+if [ "$SCRIPT_DIR" != "$SKILL_SRC" ]; then
+  # run from a plugin cache or a vendored copy: that copy is the skill the user runs, the checkout is only the engine
+  echo "engine ready: $CHECKOUT (edit packages/*/src — dist follows with pnpm dev)."
+  echo "The skill you run is the copy at $SCRIPT_DIR, not the checkout's. Change it upstream in $SKILL_SRC and bump"
+  echo "$CHECKOUT/.claude-plugin/plugin.json, or no consumer receives it (setup.md 'Vendoring the skill')."
+else
+  echo "dev mode ready. Edit $SKILL_SRC/SKILL.md or packages/*/src — the skill is live, dist follows with pnpm dev."
+fi
 echo "A consuming repo needs only: its manifest + a refdiff.bindings.md (see SKILL.md 'Repo bindings')."
