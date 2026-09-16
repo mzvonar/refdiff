@@ -36,6 +36,54 @@ and will be believed. Example: flipping the `dataSlots` default left the skill
 saying "matched pairs with differing text are already suppressed", which sent
 the reader looking for suppressions that no longer happened.
 
+### A NEW FILE in `skills/refdiff/` does not ship until `FILES` says so
+
+`sync-skill.sh` vendors the skill by copying an **explicit list**:
+
+```sh
+FILES="SKILL.md setup-dev.sh preflight.sh sync-skill.sh"
+```
+
+Nothing globs the directory. So a file you add there — a split-out
+`reconcile.md` / `polish.md` / `sets.md`, a new script, a reference table —
+**exists locally, is read correctly by every test you run, and silently never
+reaches a single vendored consumer.** They keep working from a skill that is
+missing a piece it now refers to, and the dangling reference reads as a file
+they failed to find rather than one that was never sent.
+
+**So: adding a file to `skills/refdiff/` is a TWO-site change — the file and
+`FILES`.** Add it in the same commit, and if it must be executable, add it to
+the `chmod +x` line too.
+
+Verify by listing, not by remembering. **Parse the `FILES` line — do not grep
+the script**, or a mention in a comment reads as membership:
+
+```sh
+cd skills/refdiff
+FILES=$(sed -n 's/^FILES="\(.*\)"/\1/p' sync-skill.sh)
+DEV_ONLY="preflight-selftest.sh"          # deliberately not vendored: it tests preflight.sh
+for f in *; do
+  case " $FILES "    in *" $f "*) continue;; esac
+  case " $DEV_ONLY " in *" $f "*) continue;; esac
+  echo "NOT SHIPPED: $f"
+done
+```
+
+The naive version of this — `grep -q "\b$f\b" sync-skill.sh` — was written here
+first and **passed on a directory that already had an unshipped file**:
+`preflight-selftest.sh` is absent from `FILES` but named in a comment on line
+79, so the grep matched prose and reported all-clear. A check that cannot fail
+reads exactly like one that passed. `DEV_ONLY` is listed explicitly for the same
+reason: a standing unexplained warning trains a reader to ignore the check.
+
+This is the repo's own favourite failure wearing a new hat — a report that looks
+complete, here a sync that looks total. **The durable fix is mechanical, not a
+rule in this file:** make `sync-skill.sh` glob its own directory, or have
+`preflight-selftest.sh` fail when a skill-dir file is absent from `FILES` and
+not in `DEV_ONLY`. Until one of those exists this paragraph is the only guard,
+and a rule a reader must remember is the weakest kind — prefer building the
+check to relying on this.
+
 ## Keep the skill repo-agnostic
 
 The skill is installed USER-level and loads in every project. Nothing
