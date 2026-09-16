@@ -1,0 +1,4087 @@
+{
+  "gammaFloor": 200,
+  "dropped": [],
+  "candidates": [
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 1261.0561224489795,
+      "dx": -113.64795918367346,
+      "dy": -1132.4948979591836,
+      "designText": "Požiadať o doklad",
+      "implText": "Požiadať o doklad",
+      "designBox": {
+        "x": 146.64795918367346,
+        "y": 1346.4948979591836,
+        "w": 108.70408163265306,
+        "h": 15.38265306122449
+      },
+      "implBox": {
+        "x": 33,
+        "y": 214,
+        "w": 123,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "13px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r13",
+      "implStyle": "14px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 1062.5997260714428,
+      "dx": -415.027061928315,
+      "dy": 636.5,
+      "designText": "Vybavené",
+      "implText": "Vybavené",
+      "designBox": {
+        "x": 766.027061928315,
+        "y": 92,
+        "w": 61.07266414312767,
+        "h": 14
+      },
+      "implBox": {
+        "x": 351,
+        "y": 728.5,
+        "w": 52,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 286,
+        "y": 664.5,
+        "w": 351,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Portfólio@17",
+        "6@201",
+        "Všetky@523",
+        "Žiadosti@601",
+        "Otázky@686"
+      ],
+      "implRow": [],
+      "designStyle": "12px · w500 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r14",
+      "implStyle": "10.5px · w500 · rgba(44, 36, 25, 0.7) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-library-groups-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 872.5,
+      "dx": 0,
+      "dy": -870.5,
+      "designText": "Stepper",
+      "implText": "stepper",
+      "designBox": {
+        "x": 109,
+        "y": 1664,
+        "w": 52,
+        "h": 18
+      },
+      "implBox": {
+        "x": 109,
+        "y": 793.5,
+        "w": 50,
+        "h": 18
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "chevron_right@31",
+        "design_services@391",
+        "Figma@407",
+        "3 cells@514",
+        "Clean@622",
+        "chat_bubble@664",
+        "1@682",
+        "r47@861",
+        "grid_view@1111",
+        "Open sheet@1133"
+      ],
+      "implRow": [
+        "design_services@391",
+        "Figma@407",
+        "1 cell@514",
+        "Clean@622",
+        "r12@861",
+        "17 d ago@861",
+        "Compare@1123",
+        "chevron_right@1181"
+      ],
+      "designStyle": "13.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "13.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 822.5,
+      "dx": -209,
+      "dy": -596.5,
+      "designText": "Zavrieť obdobie",
+      "implText": "Zavrieť obdobie",
+      "designBox": {
+        "x": 242,
+        "y": 862.5,
+        "w": 92,
+        "h": 15
+      },
+      "implBox": {
+        "x": 33,
+        "y": 266,
+        "w": 108,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Požiadať o doklad@53"
+      ],
+      "implRow": [
+        "▼@32"
+      ],
+      "designStyle": "12.5px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r13",
+      "implStyle": "14px · w600 · rgb(44, 36, 25) · bg rgb(248, 243, 236) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 822.0228018707481,
+      "dx": -143.960625,
+      "dy": 670.8469387755101,
+      "designText": "Vybavené",
+      "implText": "Vybavené",
+      "designBox": {
+        "x": 240.960625,
+        "y": 165.15306122448982,
+        "w": 46.71333333333333,
+        "h": 13.928571428571429
+      },
+      "implBox": {
+        "x": 97,
+        "y": 836,
+        "w": 52,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 772,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Všetky@60",
+        "Žiadosti@118",
+        "Otázky@182"
+      ],
+      "implRow": [],
+      "designStyle": "12px · w500 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r14",
+      "implStyle": "10.5px · w500 · rgba(44, 36, 25, 0.7) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-library-groups-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 805,
+      "dx": 0,
+      "dy": -803,
+      "designText": "Stepper",
+      "implText": "stepper",
+      "designBox": {
+        "x": 103,
+        "y": 2348.5,
+        "w": 48,
+        "h": 17
+      },
+      "implBox": {
+        "x": 103,
+        "y": 1545.5,
+        "w": 46,
+        "h": 17
+      },
+      "designContainer": {
+        "x": 16,
+        "y": 2329.0000000000005,
+        "w": 358,
+        "h": 102
+      },
+      "implContainer": {
+        "x": 16,
+        "y": 1526,
+        "w": 358,
+        "h": 103
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "chevron_right@25",
+        "3 cells@265",
+        "grid_view@335"
+      ],
+      "implRow": [
+        "1 cell@272",
+        "chevron_right@335"
+      ],
+      "designStyle": "13px · w600 · rgb(231, 233, 236)",
+      "implStyle": "13px · w600 · rgb(231, 233, 236)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 778.13,
+      "dx": 335,
+      "dy": -423.13,
+      "designText": "Nahrať doklad",
+      "implText": "Nahrať doklad",
+      "designBox": {
+        "x": 491,
+        "y": 446.63,
+        "w": 82,
+        "h": 14
+      },
+      "implBox": {
+        "x": 826,
+        "y": 23.5,
+        "w": 100,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 459,
+        "y": 310.88,
+        "w": 576,
+        "h": 174.75
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 0,
+        "w": 1100,
+        "h": 64
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Super — prepošlite ju rovn@123",
+        "1@380",
+        "Preposlať e-mailom@614",
+        "Odložiť@763"
+      ],
+      "implRow": [
+        "ŠL@37",
+        "Štúdio Lumo@68",
+        "Dnes@336",
+        "3@380",
+        "Doklady@416",
+        "1@482",
+        "Transakcie@515",
+        "2@599",
+        "Prehľady@634",
+        "Viac@717",
+        "RO@1048"
+      ],
+      "designStyle": "12px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r17",
+      "implStyle": "14px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 770,
+      "dx": 102.5,
+      "dy": -648.5,
+      "designText": "Požiadať o doklad",
+      "implText": "Požiadať o doklad",
+      "designBox": {
+        "x": 52.5,
+        "y": 862.5,
+        "w": 105,
+        "h": 15
+      },
+      "implBox": {
+        "x": 155,
+        "y": 214,
+        "w": 123,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Zavrieť obdobie@242"
+      ],
+      "implRow": [
+        "Pripomenúť@33"
+      ],
+      "designStyle": "12.5px · w600 · rgb(44, 36, 25) · bg rgb(255, 253, 249) · r13",
+      "implStyle": "14px · w600 · rgb(44, 36, 25) · bg rgb(248, 243, 236) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 762.9314725890357,
+      "dx": -185.85294117647067,
+      "dy": 571.6989795918367,
+      "designText": "Vybavené",
+      "implText": "Vybavené",
+      "designBox": {
+        "x": 282.85294117647067,
+        "y": 136.30102040816328,
+        "w": 55.45098039215688,
+        "h": 13.928571428571429
+      },
+      "implBox": {
+        "x": 97,
+        "y": 708,
+        "w": 52,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 644,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Všetky@53",
+        "Žiadosti@127",
+        "Otázky@208"
+      ],
+      "implRow": [],
+      "designStyle": "12px · w500 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r16",
+      "implStyle": "10.5px · w500 · rgba(44, 36, 25, 0.7) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-detail-chrome-accountant-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 701.7342835064179,
+      "dx": -85.3903,
+      "dy": -575.7923099032593,
+      "designText": "Požiadať o doklad",
+      "implText": "Požiadať o doklad",
+      "designBox": {
+        "x": 118.3903,
+        "y": 789.7923099032593,
+        "w": 84.7894,
+        "h": 18.341073603158637
+      },
+      "implBox": {
+        "x": 33,
+        "y": 214,
+        "w": 123,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "13px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r13",
+      "implStyle": "14px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 686.31,
+      "dx": -199,
+      "dy": 481.31,
+      "designText": "Vybavené",
+      "implText": "Vybavené",
+      "designBox": {
+        "x": 304,
+        "y": 265.69,
+        "w": 56,
+        "h": 14
+      },
+      "implBox": {
+        "x": 105,
+        "y": 747,
+        "w": 52,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 40,
+        "y": 683,
+        "w": 351,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Všetky@78",
+        "Žiadosti@151",
+        "Otázky@230"
+      ],
+      "implRow": [],
+      "designStyle": "12px · w500 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r15",
+      "implStyle": "10.5px · w500 · rgba(44, 36, 25, 0.7) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-members-owner-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 636.5382789815155,
+      "dx": -6.740659439897797,
+      "dy": -7.75321489001692,
+      "designText": "Upravujete nastavenia organizácie . Zmeny sa týkajú len tejto organizácie.",
+      "implText": "Functional s. r. o.",
+      "designBox": {
+        "x": 482.7406594398978,
+        "y": 115.50321489001692,
+        "w": 717.8836601507547,
+        "h": 15.160744500846024
+      },
+      "implBox": {
+        "x": 476,
+        "y": 107.75,
+        "w": 97,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Profil a účet@12",
+        "KP@437",
+        "Kaviareň Prameň@759"
+      ],
+      "implRow": [
+        "Profil@26",
+        "FS@318",
+        "Členovia organizácie a kto@351"
+      ],
+      "designStyle": "11.5px · w400 · rgb(122, 83, 38)",
+      "implStyle": "12px · w600 · rgb(184, 92, 36)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 604.678163265306,
+      "dx": -51.49193877551022,
+      "dy": -541.8698979591836,
+      "designText": "Požiadavky",
+      "implText": "Požiadavky",
+      "designBox": {
+        "x": 219.9719387755102,
+        "y": 1421.8698979591836,
+        "w": 55.37755102040816,
+        "h": 12.306122448979592
+      },
+      "implBox": {
+        "x": 168.48,
+        "y": 880,
+        "w": 65,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Portfólio@39",
+        "Správy@137",
+        "Viac@330"
+      ],
+      "implRow": [
+        "Portfólio@15",
+        "Správy@101",
+        "Analytika@254",
+        "Viac@349"
+      ],
+      "designStyle": "10px · w500 · rgb(138, 125, 108)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 586.5503061224489,
+      "dx": -36.82836734693876,
+      "dy": -541.8698979591836,
+      "designText": "Správy",
+      "implText": "Správy",
+      "designBox": {
+        "x": 137.41836734693877,
+        "y": 1421.8698979591836,
+        "w": 33.84183673469388,
+        "h": 12.306122448979592
+      },
+      "implBox": {
+        "x": 100.59,
+        "y": 880,
+        "w": 40,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Portfólio@39",
+        "Požiadavky@220",
+        "Viac@330"
+      ],
+      "implRow": [
+        "Portfólio@15",
+        "Požiadavky@168",
+        "Analytika@254",
+        "Viac@349"
+      ],
+      "designStyle": "10px · w500 · rgb(138, 125, 108)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 576.2844897959183,
+      "dx": -24.792142857142856,
+      "dy": -541.8698979591836,
+      "designText": "Portfólio",
+      "implText": "Portfólio",
+      "designBox": {
+        "x": 39.482142857142854,
+        "y": 1421.8698979591836,
+        "w": 43.07142857142857,
+        "h": 12.306122448979592
+      },
+      "implBox": {
+        "x": 14.69,
+        "y": 880,
+        "w": 51,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Správy@137",
+        "Požiadavky@220",
+        "Viac@330"
+      ],
+      "implRow": [
+        "Správy@101",
+        "Požiadavky@168",
+        "Analytika@254",
+        "Viac@349"
+      ],
+      "designStyle": "10px · w600 · rgb(184, 92, 36)",
+      "implStyle": "12px · w500 · rgb(184, 92, 36)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-members-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 544.0165714399539,
+      "dx": 16.509217941431373,
+      "dy": -438.00676818950933,
+      "designText": "Org-nastavenia platia len pre vybranú organizáciu.",
+      "implText": "Org-nastavenia platia len pre vybranú organizáciu.",
+      "designBox": {
+        "x": 9.490782058568627,
+        "y": 836.0067681895093,
+        "w": 257.7391639892162,
+        "h": 29.238578680203045
+      },
+      "implBox": {
+        "x": 26,
+        "y": 398,
+        "w": 171,
+        "h": 32
+      },
+      "designContainer": {
+        "x": -28.369208131937704,
+        "y": 62.8087986463621,
+        "w": 372.77528802960086,
+        "h": 826.2605752961083
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 56,
+        "w": 256,
+        "h": 844
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [
+        "Účtovník a spolupráca@296"
+      ],
+      "designStyle": "10px · w400 · rgb(168, 154, 133)",
+      "implStyle": "12px · w400 · oklab(0.596632 0.00792834 0.0285945 / 0.8)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 447.63,
+      "dx": -422,
+      "dy": -12.629999999999995,
+      "designText": "Martin Hruška",
+      "implText": "Martin Hruška",
+      "designBox": {
+        "x": 894,
+        "y": 327.88,
+        "w": 70,
+        "h": 12
+      },
+      "implBox": {
+        "x": 472,
+        "y": 315.25,
+        "w": 81,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 459,
+        "y": 310.88,
+        "w": 576,
+        "h": 174.75
+      },
+      "implContainer": {
+        "x": 460,
+        "y": 305.25,
+        "w": 540.59,
+        "h": 106
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Žiadosť o doklad@485",
+        "·@964",
+        "Dnes 9:41@972"
+      ],
+      "implRow": [
+        "15. 9. 2026 9:41@561"
+      ],
+      "designStyle": "10.5px · w400 · rgb(185, 171, 151)",
+      "implStyle": "12px · w500 · lab(31.2288 30.2627 40.0378)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 442.4919781631077,
+      "dx": -0.9502476168332912,
+      "dy": -438.00676818950933,
+      "designText": "Org-nastavenia platia len pre vybranú organizáciu.",
+      "implText": "Org-nastavenia platia len pre vybranú organizáciu.",
+      "designBox": {
+        "x": 26.95024761683329,
+        "y": 836.0067681895093,
+        "w": 171.77354103696814,
+        "h": 29.238578680203045
+      },
+      "implBox": {
+        "x": 26,
+        "y": 398,
+        "w": 171,
+        "h": 32
+      },
+      "designContainer": {
+        "x": 1.7179760520809075,
+        "y": 62.8087986463621,
+        "w": 248.440827714485,
+        "h": 826.2605752961083
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 56,
+        "w": 256,
+        "h": 844
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "10px · w400 · rgb(168, 154, 133)",
+      "implStyle": "12px · w400 · oklab(0.596632 0.00792834 0.0285945 / 0.8)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 433,
+      "dx": 0,
+      "dy": 433,
+      "designText": "Label color drift",
+      "implText": "Label color drift",
+      "designBox": {
+        "x": 1079,
+        "y": 92.88,
+        "w": 96,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 525.88,
+        "w": 96,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "2@-286",
+        "pan_tool@13",
+        "DESIGN@65",
+        "2@211",
+        "IMPLEMENTATION@921",
+        "REVIEW@1052",
+        "7@1059",
+        "×15@1188",
+        "right_panel_close@1331"
+      ],
+      "implRow": [
+        "6@-286",
+        "6@211",
+        "7@1059",
+        "×14@1188"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 411.90999999999997,
+      "dx": 0,
+      "dy": 411.90999999999997,
+      "designText": "#94A3B8",
+      "implText": "#94A3B8",
+      "designBox": {
+        "x": 1194,
+        "y": 138.09,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1194,
+        "y": 550,
+        "w": 49,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "add_comment@13",
+        "upload_file@137",
+        "upload_file@635",
+        "Findings ·@1080",
+        "color@1080",
+        "#6B7280@1121",
+        "12@1144",
+        "arrow_right_alt@1176",
+        "Comments ·@1238",
+        "4@1314"
+      ],
+      "implRow": [
+        "color@1080",
+        "#6B7280@1121",
+        "arrow_right_alt@1176"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 411.90999999999997,
+      "dx": 0,
+      "dy": 411.90999999999997,
+      "designText": "Row baseline shifted 23px",
+      "implText": "Row baseline shifted 23px",
+      "designBox": {
+        "x": 1079,
+        "y": 174.97,
+        "w": 161,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 586.88,
+        "w": 161,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "center_focus_strong@13",
+        "upload_file@137",
+        "Drag your document here@537",
+        "8@1059",
+        "Critical 3@1076",
+        "Major 5@1167",
+        "Minor 4@1250",
+        "×6@1253"
+      ],
+      "implRow": [
+        "8@1059",
+        "×5@1253"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 398.8132950680272,
+      "dx": -9.273124999999993,
+      "dy": 361.1581632653061,
+      "designText": "Ostatné vlákna",
+      "implText": "OSTATNÉ VLÁKNA",
+      "designBox": {
+        "x": 53.27312499999999,
+        "y": 323.3418367346939,
+        "w": 78.41166666666668,
+        "h": 12.933673469387756
+      },
+      "implBox": {
+        "x": 44,
+        "y": 684.5,
+        "w": 105.86,
+        "h": 12
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "11px · w600 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-owner-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 398.21840034250084,
+      "dx": -15.783774703557242,
+      "dy": 9.045685279187822,
+      "designText": "KP",
+      "implText": "Ako a kedy vás upozorníme na dianie v účtovníctve.",
+      "designBox": {
+        "x": 311.78377470355724,
+        "y": 116.95431472081218,
+        "w": 12.616135782376192,
+        "h": 12.99492385786802
+      },
+      "implBox": {
+        "x": 296,
+        "y": 126,
+        "w": 380,
+        "h": 19
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Profil a účet@29",
+        "Upravujete nastavenia orga@342",
+        "Kaviareň Prameň@527"
+      ],
+      "implRow": [],
+      "designStyle": "10px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r7",
+      "implStyle": "16px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-gallery-desktop",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 380.96999999999997,
+      "dx": 0,
+      "dy": -0.9100000000000001,
+      "designText": "Actions / Button · 60 variants",
+      "implText": "Button — 48 cells · 41 measured · 7 missing in impl · runs 45→47 · 2 of 50 combinations undeclared",
+      "designBox": {
+        "x": 129.83,
+        "y": 15.5,
+        "w": 158,
+        "h": 15
+      },
+      "implBox": {
+        "x": 129.83,
+        "y": 14.59,
+        "w": 538.06,
+        "h": 15
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "arrow_back@17",
+        "RefDiff@76",
+        "Split@416",
+        "Full@463",
+        "Off@517",
+        "Wipe@556",
+        "Onion@606",
+        "Blink@661",
+        "Diff@711",
+        "Findings@764",
+        "Comments@832",
+        "All@915",
+        "Clean@953",
+        "light_mode@1365"
+      ],
+      "implRow": [
+        "arrow_back@17",
+        "RefDiff@76",
+        "Split@416",
+        "Full@463",
+        "Off@517",
+        "Wipe@556",
+        "Onion@606",
+        "Blink@661",
+        "Diff@711",
+        "Findings@764",
+        "Comments@832",
+        "All@915",
+        "Clean@953",
+        "light_mode@1365"
+      ],
+      "designStyle": "12px · w400 · rgb(166, 171, 179)",
+      "implStyle": "12px · w400 · rgb(166, 171, 179)",
+      "blockMates": 29
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 374.72,
+      "dx": 0,
+      "dy": 374.72,
+      "designText": "translateY",
+      "implText": "translateY",
+      "designBox": {
+        "x": 1080,
+        "y": 260.28,
+        "w": 70,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 635,
+        "w": 70,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "flare@13",
+        "0px@1156",
+        "arrow_right_alt@1183",
+        "23px@1201"
+      ],
+      "implRow": [
+        "0px@1156",
+        "arrow_right_alt@1183",
+        "23px@1201"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 374.72,
+      "dx": 0,
+      "dy": 374.72,
+      "designText": "0px",
+      "implText": "0px",
+      "designBox": {
+        "x": 1156,
+        "y": 260.28,
+        "w": 21,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1156,
+        "y": 635,
+        "w": 21,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "flare@13",
+        "translateY@1080",
+        "arrow_right_alt@1183",
+        "23px@1201"
+      ],
+      "implRow": [
+        "translateY@1080",
+        "arrow_right_alt@1183",
+        "23px@1201"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 374.72,
+      "dx": 0,
+      "dy": 374.72,
+      "designText": "23px",
+      "implText": "23px",
+      "designBox": {
+        "x": 1201,
+        "y": 260.28,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1201,
+        "y": 635,
+        "w": 28,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "flare@13",
+        "translateY@1080",
+        "0px@1156",
+        "arrow_right_alt@1183"
+      ],
+      "implRow": [
+        "translateY@1080",
+        "0px@1156",
+        "arrow_right_alt@1183"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-accountant-desktop",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 357.393964032591,
+      "dx": -24.56655290102384,
+      "dy": 10.819925274795509,
+      "designText": "Priradiť voľnému účtovníkovi",
+      "implText": "Nastavenie denného súhrnu portfólia a okamžitých upozornení pripravujeme.",
+      "designBox": {
+        "x": 341.56655290102384,
+        "y": 227.1800747252045,
+        "w": 172.5051194539249,
+        "h": 12.487394689303473
+      },
+      "implBox": {
+        "x": 317,
+        "y": 238,
+        "w": 491,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 321.6621160409556,
+        "y": 142.44418219064522,
+        "w": 663.481228668942,
+        "h": 193.55461768420383
+      },
+      "implContainer": {
+        "x": 296,
+        "y": 169,
+        "w": 560,
+        "h": 121
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [
+        "Ucto & Syn@62"
+      ],
+      "designStyle": "11.5px · w400 · rgb(138, 125, 108)",
+      "implStyle": "14px · w400 · rgb(138, 125, 108)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-mobile",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 355,
+      "dx": -15,
+      "dy": -16,
+      "designText": "7",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne · klient od 9/2026",
+      "designBox": {
+        "x": 31,
+        "y": 176,
+        "w": 11,
+        "h": 20
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 329,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 392,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "najstaršia 12 dní@48",
+        "132@215",
+        "+9 tento mesiac@254"
+      ],
+      "implRow": [],
+      "designStyle": "20px · w500 · rgb(44, 36, 25)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 333.69548894557823,
+      "dx": -14.48895833333333,
+      "dy": 280.25,
+      "designText": "Faktúra SPP 2026/0612",
+      "implText": "Faktúra SPP 2026/0612",
+      "designBox": {
+        "x": 102.48895833333333,
+        "y": 438.75,
+        "w": 120.11999999999999,
+        "h": 14.923469387755103
+      },
+      "implBox": {
+        "x": 88,
+        "y": 719,
+        "w": 158,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 49.93645833333333,
+        "y": 344.234693877551,
+        "w": 298.63166666666666,
+        "h": 225.84183673469389
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Pon@319"
+      ],
+      "implRow": [
+        "MH@51",
+        "12. 9.@568"
+      ],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "14px · w500 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 309.3312202380952,
+      "dx": -14.48895833333333,
+      "dy": 251.74489795918367,
+      "designText": "Slovnaft, a.s. — chýba doklad",
+      "implText": "Slovnaft, a.s. — chýba doklad",
+      "designBox": {
+        "x": 102.48895833333333,
+        "y": 242.75510204081633,
+        "w": 145.97916666666666,
+        "h": 14.923469387755103
+      },
+      "implBox": {
+        "x": 88,
+        "y": 494.5,
+        "w": 188,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 49.93645833333333,
+        "y": 228.8265306122449,
+        "w": 298.63166666666666,
+        "h": 84.56632653061224
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 482.5,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "10:24@314"
+      ],
+      "implRow": [
+        "SA@52",
+        "15. 9.@568"
+      ],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "14px · w500 · rgb(44, 36, 25)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 300.42733585687233,
+      "dx": -0.8807460795019324,
+      "dy": 296.5,
+      "designText": "Faktúra SPP 2026/0612",
+      "implText": "Faktúra SPP 2026/0612",
+      "designBox": {
+        "x": 342.88074607950193,
+        "y": 315,
+        "w": 155.95341022262957,
+        "h": 15
+      },
+      "implBox": {
+        "x": 342,
+        "y": 611.5,
+        "w": 158,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 271.99283234194303,
+        "y": 127,
+        "w": 889.9159632284318,
+        "h": 608
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Analýzy@17",
+        "ZK@305",
+        "Pon@581",
+        "ZK@649"
+      ],
+      "implRow": [
+        "MH@305",
+        "12. 9.@597"
+      ],
+      "designStyle": "12.5px · w600 · rgb(44, 36, 25)",
+      "implStyle": "14px · w500 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-detail-chrome-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 297.97549909255906,
+      "dx": -20.61070780399274,
+      "dy": 6.284936479128856,
+      "designText": "Doklady — Kaviareň Prameň",
+      "implText": "Doklady",
+      "designBox": {
+        "x": 290.61070780399274,
+        "y": 26.715063520871144,
+        "w": 365.88021778584397,
+        "h": 30.199637023593468
+      },
+      "implBox": {
+        "x": 270,
+        "y": 33,
+        "w": 99,
+        "h": 26
+      },
+      "implContainer": {
+        "x": 240,
+        "y": 0,
+        "w": 1040,
+        "h": 100.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Hrubá Co.@14",
+        "&@79",
+        "2@1220"
+      ],
+      "implRow": [
+        "Portfólio@52",
+        "4@202",
+        "Exportovať@961",
+        "Požiadať o doklad@1064"
+      ],
+      "designStyle": "26px · w500 · rgb(44, 36, 25)",
+      "implStyle": "26px · w500 · rgb(44, 36, 25)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 296.2835331632653,
+      "dx": -12.996458333333337,
+      "dy": 261.9591836734694,
+      "designText": "Žiadosť o doklad",
+      "implText": "Žiadosť o doklad",
+      "designBox": {
+        "x": 109.99645833333334,
+        "y": 284.5408163265306,
+        "w": 66.73333333333333,
+        "h": 11.938775510204081
+      },
+      "implBox": {
+        "x": 97,
+        "y": 546.5,
+        "w": 88,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 49.93645833333333,
+        "y": 228.8265306122449,
+        "w": 298.63166666666666,
+        "h": 84.56632653061224
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 482.5,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "10px · w600 · rgb(184, 92, 36) · bg rgb(246, 239, 228) · r8",
+      "implStyle": "10.5px · w500 · rgb(44, 36, 25) · bg rgb(244, 237, 226) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 284.68672776982953,
+      "dx": 32.199626940110875,
+      "dy": -246.69000000000005,
+      "designText": "Napísať správu",
+      "implText": "Napísať správu",
+      "designBox": {
+        "x": 868.8003730598891,
+        "y": 576.69,
+        "w": 81.20289917028137,
+        "h": 14
+      },
+      "implBox": {
+        "x": 901,
+        "y": 330,
+        "w": 87,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 820.7718290384422,
+        "y": 474.69,
+        "w": 326.7921551974738,
+        "h": 198
+      },
+      "implContainer": {
+        "x": 822,
+        "y": 222.5,
+        "w": 330,
+        "h": 149.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "FEB@298",
+        "MAR@384",
+        "APR@470",
+        "MÁJ@556",
+        "JÚN@643",
+        "JÚL@729",
+        "Pripomenúť@1026"
+      ],
+      "implRow": [
+        "Členovia@40",
+        "Pripomenúť@1049"
+      ],
+      "designStyle": "11.5px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r10",
+      "implStyle": "12px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 283.68,
+      "dx": -21.5,
+      "dy": -0.09000000000000341,
+      "designText": "Section padding change pushes the whole row down",
+      "implText": "2",
+      "designBox": {
+        "x": 1080,
+        "y": 222.09,
+        "w": 252,
+        "h": 31.09
+      },
+      "implBox": {
+        "x": 1058.5,
+        "y": 222,
+        "w": 7,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "tonality@13",
+        "PNG, JPG or PDF · up to 10@38",
+        "PNG, JPG or PDF · up to 10@536"
+      ],
+      "implRow": [
+        "crop_free@1063",
+        "Dropzone inner padding red@1079",
+        "Primary only · 12@1082"
+      ],
+      "designStyle": "11.5px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w700 · rgb(255, 255, 255) · bg rgb(229, 72, 77) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 283.555625,
+      "dx": -9.273124999999993,
+      "dy": 252.06632653061223,
+      "designText": "Vyžaduje akciu",
+      "implText": "VYŽADUJE AKCIU",
+      "designBox": {
+        "x": 53.27312499999999,
+        "y": 207.93367346938777,
+        "w": 77.5775,
+        "h": 12.933673469387756
+      },
+      "implBox": {
+        "x": 44,
+        "y": 460,
+        "w": 98.86,
+        "h": 12
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "11px · w600 · rgb(138, 125, 108)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-settings-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 282.6004499890238,
+      "dx": 131.17073170731706,
+      "dy": -138.7587631192789,
+      "designText": "Uložiť zmeny",
+      "implText": "Uložiť zmeny",
+      "designBox": {
+        "x": 159.82926829268294,
+        "y": 737.7587631192789,
+        "w": 90.18292682926831,
+        "h": 22.488028333159562
+      },
+      "implBox": {
+        "x": 291,
+        "y": 599,
+        "w": 84,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "14px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r13",
+      "implStyle": "14px · w500 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 275.8724489795918,
+      "dx": 84.56632653061224,
+      "dy": 189.95408163265307,
+      "designText": "Vybrať",
+      "implText": "Vybrať",
+      "designBox": {
+        "x": 17.433673469387756,
+        "y": 243.04591836734693,
+        "w": 39.994897959183675,
+        "h": 14.357142857142858
+      },
+      "implBox": {
+        "x": 102,
+        "y": 433,
+        "w": 39,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Exportovať@74",
+        "Kôš@363"
+      ],
+      "implRow": [
+        "Exportovať@21",
+        "Kôš@361"
+      ],
+      "designStyle": "12px · w600 · rgb(184, 92, 36)",
+      "implStyle": "12px · w600 · rgb(184, 92, 36)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 271.1438903061224,
+      "dx": -14.48895833333333,
+      "dy": 229.33673469387753,
+      "designText": "Záloha na kávovar",
+      "implText": "Záloha na kávovar",
+      "designBox": {
+        "x": 102.48895833333333,
+        "y": 358.16326530612247,
+        "w": 91.75833333333333,
+        "h": 14.923469387755103
+      },
+      "implBox": {
+        "x": 88,
+        "y": 587.5,
+        "w": 118,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 49.93645833333333,
+        "y": 344.234693877551,
+        "w": 298.63166666666666,
+        "h": 225.84183673469389
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 575.5,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Včera@311"
+      ],
+      "implRow": [
+        "MH@51",
+        "14. 9.@568"
+      ],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "14px · w500 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 265.2368324829932,
+      "dx": -12.996458333333337,
+      "dy": 241.5408163265306,
+      "designText": "Otázka",
+      "implText": "Otázka",
+      "designBox": {
+        "x": 109.99645833333334,
+        "y": 397.9591836734694,
+        "w": 28.361666666666668,
+        "h": 11.938775510204081
+      },
+      "implBox": {
+        "x": 97,
+        "y": 639.5,
+        "w": 39,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 49.93645833333333,
+        "y": 344.234693877551,
+        "w": 298.63166666666666,
+        "h": 225.84183673469389
+      },
+      "implContainer": {
+        "x": 32,
+        "y": 575.5,
+        "w": 576,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "10px · w600 · rgb(184, 92, 36) · bg rgb(246, 239, 228) · r8",
+      "implStyle": "10.5px · w500 · rgb(44, 36, 25) · bg rgb(244, 237, 226) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 262,
+      "dx": -243,
+      "dy": -13,
+      "designText": "Doklady",
+      "implText": "Doklady",
+      "designBox": {
+        "x": 659,
+        "y": 36.5,
+        "w": 49,
+        "h": 15
+      },
+      "implBox": {
+        "x": 416,
+        "y": 23.5,
+        "w": 54,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 0,
+        "w": 1100,
+        "h": 64
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "KP@73",
+        "Kaviareň Prameň@105",
+        "▾@236",
+        "Dnes@606",
+        "Transakcie@730",
+        "Správy@818",
+        "Viac ▾@883",
+        "ZK@1010"
+      ],
+      "implRow": [
+        "ŠL@37",
+        "Štúdio Lumo@68",
+        "Dnes@336",
+        "3@380",
+        "1@482",
+        "Transakcie@515",
+        "2@599",
+        "Prehľady@634",
+        "Viac@717",
+        "Nahrať doklad@826",
+        "RO@1048"
+      ],
+      "designStyle": "13px · w500 · rgb(138, 125, 108)",
+      "implStyle": "14px · w500 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 251.2826135186948,
+      "dx": -0.5871349437512663,
+      "dy": -248.19,
+      "designText": "Vlastník",
+      "implText": "Vlastník",
+      "designBox": {
+        "x": 839.5871349437513,
+        "y": 489.69,
+        "w": 51.494521425056476,
+        "h": 16
+      },
+      "implBox": {
+        "x": 839,
+        "y": 241.5,
+        "w": 53,
+        "h": 15
+      },
+      "designContainer": {
+        "x": 820.7718290384422,
+        "y": 474.69,
+        "w": 326.7921551974738,
+        "h": 198
+      },
+      "implContainer": {
+        "x": 822,
+        "y": 222.5,
+        "w": 330,
+        "h": 149.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "návrh spárovania čaká na p@333"
+      ],
+      "implRow": [
+        "Najdlhšie čakajúce položky@287",
+        "Všetkých 0@703"
+      ],
+      "designStyle": "13.5px · w600 · rgb(44, 36, 25)",
+      "implStyle": "13px · w600 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "Primary button color mismatch",
+      "implText": "Primary button color mismatch",
+      "designBox": {
+        "x": 1079,
+        "y": -114.12,
+        "w": 189,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 135.88,
+        "w": 189,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "public@-250",
+        "directions_car@55",
+        "public@248",
+        "badge@359",
+        "directions_car@552",
+        "badge@856",
+        "1@1059"
+      ],
+      "implRow": [
+        "add_comment@13",
+        "1@1059",
+        "Findings ·@1080",
+        "12@1144",
+        "Comments ·@1238",
+        "4@1314"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "background-color",
+      "implText": "background-color",
+      "designBox": {
+        "x": 1080,
+        "y": -66,
+        "w": 112,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 184,
+        "w": 112,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "#4F46E5@1198",
+        "arrow_right_alt@1253",
+        "#6366F1@1271"
+      ],
+      "implRow": [
+        "center_focus_strong@13",
+        "Critical 3@1076",
+        "Major 5@1167",
+        "#4F46E5@1198",
+        "Minor 4@1250",
+        "arrow_right_alt@1253",
+        "#6366F1@1271"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "#4F46E5",
+      "implText": "#4F46E5",
+      "designBox": {
+        "x": 1198,
+        "y": -66,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1198,
+        "y": 184,
+        "w": 49,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "background-color@1080",
+        "arrow_right_alt@1253",
+        "#6366F1@1271"
+      ],
+      "implRow": [
+        "center_focus_strong@13",
+        "Critical 3@1076",
+        "background-color@1080",
+        "Major 5@1167",
+        "Minor 4@1250",
+        "arrow_right_alt@1253",
+        "#6366F1@1271"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "#6366F1",
+      "implText": "#6366F1",
+      "designBox": {
+        "x": 1271,
+        "y": -66,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1271,
+        "y": 184,
+        "w": 49,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "background-color@1080",
+        "#4F46E5@1198",
+        "arrow_right_alt@1253"
+      ],
+      "implRow": [
+        "center_focus_strong@13",
+        "Critical 3@1076",
+        "background-color@1080",
+        "Major 5@1167",
+        "#4F46E5@1198",
+        "Minor 4@1250",
+        "arrow_right_alt@1253"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "Dropzone inner padding reduced",
+      "implText": "Dropzone inner padding reduced",
+      "designBox": {
+        "x": 1079,
+        "y": -29.12,
+        "w": 199,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 220.88,
+        "w": 199,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "2@1059"
+      ],
+      "implRow": [
+        "2@1059",
+        "crop_free@1063",
+        "Primary only · 12@1082"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "padding",
+      "implText": "padding",
+      "designBox": {
+        "x": 1080,
+        "y": -5,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 245,
+        "w": 49,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Photo page with MRZ visibl@-261",
+        "Front and back sides@44",
+        "Photo page with MRZ visibl@237",
+        "Front and back sides@348",
+        "Front and back sides@541",
+        "Front and back sides@845",
+        "32px@1135",
+        "arrow_right_alt@1169",
+        "20px@1187"
+      ],
+      "implRow": [
+        "tonality@13",
+        "32px@1135",
+        "arrow_right_alt@1169",
+        "20px@1187"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "32px",
+      "implText": "32px",
+      "designBox": {
+        "x": 1135,
+        "y": -5,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1135,
+        "y": 245,
+        "w": 28,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Photo page with MRZ visibl@-261",
+        "Front and back sides@44",
+        "Photo page with MRZ visibl@237",
+        "Front and back sides@348",
+        "Front and back sides@541",
+        "Front and back sides@845",
+        "padding@1080",
+        "arrow_right_alt@1169",
+        "20px@1187"
+      ],
+      "implRow": [
+        "tonality@13",
+        "padding@1080",
+        "arrow_right_alt@1169",
+        "20px@1187"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "20px",
+      "implText": "20px",
+      "designBox": {
+        "x": 1187,
+        "y": -5,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1187,
+        "y": 245,
+        "w": 28,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Photo page with MRZ visibl@-261",
+        "Front and back sides@44",
+        "Photo page with MRZ visibl@237",
+        "Front and back sides@348",
+        "Front and back sides@541",
+        "Front and back sides@845",
+        "padding@1080",
+        "32px@1135",
+        "arrow_right_alt@1169"
+      ],
+      "implRow": [
+        "tonality@13",
+        "padding@1080",
+        "32px@1135",
+        "arrow_right_alt@1169"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "Heading font-size drift",
+      "implText": "Heading font-size drift",
+      "designBox": {
+        "x": 1079,
+        "y": 31.88,
+        "w": 137,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 281.88,
+        "w": 137,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "3@1059"
+      ],
+      "implRow": [
+        "flare@13",
+        "3@1059"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "font-size",
+      "implText": "font-size",
+      "designBox": {
+        "x": 1080,
+        "y": 56,
+        "w": 63,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 306,
+        "w": 63,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "warning@15",
+        "Run 47 vs 46@44",
+        "+3 introduced@140",
+        "−6 resolved@229",
+        "2 regressions@320",
+        "fixed earlier, back again @408",
+        "Review@954",
+        "28px@1149",
+        "arrow_right_alt@1183",
+        "24px@1201",
+        "close@1328"
+      ],
+      "implRow": [
+        "28px@1149",
+        "arrow_right_alt@1183",
+        "24px@1201"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 250,
+      "dx": 0,
+      "dy": 250,
+      "designText": "28px",
+      "implText": "28px",
+      "designBox": {
+        "x": 1149,
+        "y": 56,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1149,
+        "y": 306,
+        "w": 28,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "warning@15",
+        "Run 47 vs 46@44",
+        "+3 introduced@140",
+        "−6 resolved@229",
+        "2 regressions@320",
+        "fixed earlier, back again @408",
+        "Review@954",
+        "font-size@1080",
+        "arrow_right_alt@1183",
+        "24px@1201",
+        "close@1328"
+      ],
+      "implRow": [
+        "font-size@1080",
+        "arrow_right_alt@1183",
+        "24px@1201"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 10
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 248.44933261232222,
+      "dx": -1.6959956739331687,
+      "dy": 246,
+      "designText": "Žiadosť o doklad",
+      "implText": "Žiadosť o doklad",
+      "designBox": {
+        "x": 352.69599567393317,
+        "y": 193,
+        "w": 87.24666306161096,
+        "h": 12
+      },
+      "implBox": {
+        "x": 351,
+        "y": 439,
+        "w": 88,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 281.80808193637426,
+        "y": 136,
+        "w": 330.4467363458515,
+        "h": 83
+      },
+      "implContainer": {
+        "x": 286,
+        "y": 375,
+        "w": 351,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Doklady@39"
+      ],
+      "implRow": [
+        "refdiff owner@718",
+        "14. 9. 2026 17:20@802"
+      ],
+      "designStyle": "10px · w600 · rgb(184, 92, 36) · bg rgb(246, 239, 228) · r8",
+      "implStyle": "10.5px · w500 · rgb(44, 36, 25) · bg rgb(244, 237, 226) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 244.78061224489795,
+      "dx": -52.836734693877546,
+      "dy": 189.95408163265307,
+      "designText": "Exportovať",
+      "implText": "Exportovať",
+      "designBox": {
+        "x": 73.83673469387755,
+        "y": 243.04591836734693,
+        "w": 65.63265306122449,
+        "h": 14.357142857142858
+      },
+      "implBox": {
+        "x": 21,
+        "y": 433,
+        "w": 64,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Vybrať@17",
+        "Kôš@363"
+      ],
+      "implRow": [
+        "Vybrať@102",
+        "Kôš@361"
+      ],
+      "designStyle": "12px · w500 · rgb(138, 125, 108)",
+      "implStyle": "12px · w500 · rgb(184, 92, 36) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 243.99999999999994,
+      "dx": 0,
+      "dy": 243.99999999999994,
+      "designText": "Label color drift",
+      "implText": "Label color drift",
+      "designBox": {
+        "x": 39,
+        "y": 322.16,
+        "w": 96,
+        "h": 16
+      },
+      "implBox": {
+        "x": 39,
+        "y": 566.16,
+        "w": 96,
+        "h": 16
+      },
+      "designContainer": {
+        "x": -287.62,
+        "y": 182.06,
+        "w": 741,
+        "h": 231.56
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "7@19",
+        "Browse files@38",
+        "×15@148"
+      ],
+      "implRow": [
+        "7@19",
+        "×14@148"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 242.39100378530853,
+      "dx": -0.8807460795019324,
+      "dy": 239,
+      "designText": "Slovnaft, a.s. — chýba doklad",
+      "implText": "Slovnaft, a.s. — chýba doklad",
+      "designBox": {
+        "x": 342.88074607950193,
+        "y": 148,
+        "w": 186.4897422941934,
+        "h": 15
+      },
+      "implBox": {
+        "x": 342,
+        "y": 387,
+        "w": 188,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 281.80808193637426,
+        "y": 136,
+        "w": 330.4467363458515,
+        "h": 83
+      },
+      "implContainer": {
+        "x": 286,
+        "y": 375,
+        "w": 351,
+        "h": 91
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Prehľad@39",
+        "ZK@305",
+        "10:24@574",
+        "Záloha na kávovar@642",
+        "Otázka@958",
+        "Uzavrieť@1034",
+        "⋯@1116"
+      ],
+      "implRow": [
+        "Nastavenia@40",
+        "SA@306",
+        "15. 9.@597",
+        "MH@673",
+        "Stačí zálohová faktúra ale@718"
+      ],
+      "designStyle": "12.5px · w600 · rgb(44, 36, 25)",
+      "implStyle": "14px · w500 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-gallery-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 241,
+      "dx": -74,
+      "dy": 161,
+      "designText": "0 12px",
+      "implText": "0 12px",
+      "designBox": {
+        "x": 1228,
+        "y": 376,
+        "w": 42,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1154,
+        "y": 537,
+        "w": 36,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1079,
+        "y": 86,
+        "w": 321,
+        "h": 774
+      },
+      "implContainer": {
+        "x": 1079,
+        "y": 47,
+        "w": 321,
+        "h": 813
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "size=sm story missing for @379",
+        "size=sm story missing for @896",
+        "padding@1107",
+        "0 16px@1162",
+        "arrow_right_alt@1210"
+      ],
+      "implRow": [
+        "0 16px@1092",
+        "arrow_right_alt@1134"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 240.57643733149848,
+      "dx": -3.32806672866775,
+      "dy": -232.97123519458546,
+      "designText": "Uložiť",
+      "implText": "Uložiť",
+      "designBox": {
+        "x": 310.32806672866775,
+        "y": 606.9712351945855,
+        "w": 33.96651941408975,
+        "h": 16.243654822335024
+      },
+      "implBox": {
+        "x": 307,
+        "y": 374,
+        "w": 38,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "13px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r21",
+      "implStyle": "14px · w500 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r12",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 239.12755102040816,
+      "dx": -13.739795918367346,
+      "dy": -12.285714285714278,
+      "designText": "⛭",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne",
+      "designBox": {
+        "x": 29.739795918367346,
+        "y": 172.28571428571428,
+        "w": 10.255102040816325,
+        "h": 14.357142857142858
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 223,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 402,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Filter@45",
+        "Všetky · 9@115",
+        "Bez transakcie · 2@202"
+      ],
+      "implRow": [],
+      "designStyle": "11.5px · w600 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r14",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-accountant-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 238.51910546039716,
+      "dx": -130.89920982320507,
+      "dy": 106.67184615384616,
+      "designText": "74 %",
+      "implText": "74 %",
+      "designBox": {
+        "x": 187.89920982320507,
+        "y": 408.6381538461538,
+        "w": 26.42118128588483,
+        "h": 12.369230769230768
+      },
+      "implBox": {
+        "x": 57,
+        "y": 515.31,
+        "w": 27,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 18,
+        "y": 466.06,
+        "w": 366,
+        "h": 75
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Prevod · 9. 7. · TB ··2841@59",
+        "·@179",
+        "−219,00 €@275",
+        "i@359"
+      ],
+      "implRow": [],
+      "designStyle": "10.5px · w600 · rgb(78, 122, 90)",
+      "implStyle": "10.5px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-gallery-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 237,
+      "dx": -70,
+      "dy": 161,
+      "designText": "0 16px",
+      "implText": "0 16px",
+      "designBox": {
+        "x": 1162,
+        "y": 376,
+        "w": 42,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1092,
+        "y": 537,
+        "w": 36,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1079,
+        "y": 86,
+        "w": 321,
+        "h": 774
+      },
+      "implContainer": {
+        "x": 1079,
+        "y": 47,
+        "w": 321,
+        "h": 813
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "size=sm story missing for @379",
+        "size=sm story missing for @896",
+        "padding@1107",
+        "arrow_right_alt@1210",
+        "0 12px@1228"
+      ],
+      "implRow": [
+        "arrow_right_alt@1134",
+        "0 12px@1154"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 236,
+      "dx": -215,
+      "dy": -13,
+      "designText": "Transakcie",
+      "implText": "Transakcie",
+      "designBox": {
+        "x": 730,
+        "y": 36.5,
+        "w": 66,
+        "h": 15
+      },
+      "implBox": {
+        "x": 515,
+        "y": 23.5,
+        "w": 73,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 0,
+        "w": 1100,
+        "h": 64
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "KP@73",
+        "Kaviareň Prameň@105",
+        "▾@236",
+        "Dnes@606",
+        "Doklady@659",
+        "Správy@818",
+        "Viac ▾@883",
+        "ZK@1010"
+      ],
+      "implRow": [
+        "ŠL@37",
+        "Štúdio Lumo@68",
+        "Dnes@336",
+        "3@380",
+        "Doklady@416",
+        "1@482",
+        "2@599",
+        "Prehľady@634",
+        "Viac@717",
+        "Nahrať doklad@826",
+        "RO@1048"
+      ],
+      "designStyle": "13px · w500 · rgb(138, 125, 108)",
+      "implStyle": "14px · w500 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-mobile",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 231,
+      "dx": 4,
+      "dy": 208,
+      "designText": "Najbližšia uzávierka",
+      "implText": "Najbližšia uzávierka",
+      "designBox": {
+        "x": 215,
+        "y": 230,
+        "w": 98,
+        "h": 12
+      },
+      "implBox": {
+        "x": 219,
+        "y": 438,
+        "w": 115,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 202,
+        "y": 419,
+        "w": 174,
+        "h": 98
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Transakcie@31"
+      ],
+      "implRow": [
+        "Transakcie@33"
+      ],
+      "designStyle": "10.5px · w400 · rgb(138, 125, 108)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-owner-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 227.38,
+      "dx": -88,
+      "dy": -56.379999999999995,
+      "designText": "Bloček mám odfotený v mobile, nahrám ho poobede.",
+      "implText": "Bloček mám odfotený v mobile, nahrám ho poobede.",
+      "designBox": {
+        "x": 710,
+        "y": 507.63,
+        "w": 311,
+        "h": 15
+      },
+      "implBox": {
+        "x": 622,
+        "y": 451.25,
+        "w": 390,
+        "h": 19
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "OSTATNÉ VLÁKNA@65"
+      ],
+      "implRow": [
+        "Žiadosť o doklad@105",
+        "RO@1036"
+      ],
+      "designStyle": "13px · w400 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r16",
+      "implStyle": "16px · w400 · lab(27.3812 1.32917 3.57789)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 222.90999999999997,
+      "dx": 0,
+      "dy": 222.90999999999997,
+      "designText": "Row baseline shifted 23px",
+      "implText": "Row baseline shifted 23px",
+      "designBox": {
+        "x": 39,
+        "y": 404.25,
+        "w": 161,
+        "h": 16
+      },
+      "implBox": {
+        "x": 39,
+        "y": 627.16,
+        "w": 161,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "8@19",
+        "12@81",
+        "Missing here — exists in d@103",
+        "×6@213",
+        "undo@247",
+        "REGRESSION@262",
+        "swap_horiz@273",
+        "View design@290"
+      ],
+      "implRow": [
+        "8@19",
+        "×5@213",
+        "undo@247",
+        "REGRESSION@262"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 222.89999999999998,
+      "dx": 0,
+      "dy": 222.89999999999998,
+      "designText": "#94A3B8",
+      "implText": "#94A3B8",
+      "designBox": {
+        "x": 154,
+        "y": 367.38,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 154,
+        "y": 590.28,
+        "w": 49,
+        "h": 14
+      },
+      "designContainer": {
+        "x": -287.62,
+        "y": 182.06,
+        "w": 741,
+        "h": 231.56
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "color@40",
+        "#6B7280@81",
+        "arrow_right_alt@136"
+      ],
+      "implRow": [
+        "color@40",
+        "#6B7280@81",
+        "arrow_right_alt@136"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-all-requested-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 222.846420271601,
+      "dx": -0.8888888888888715,
+      "dy": 20.949528113472866,
+      "designText": "Prevod · 3. 7. · žiadosť otvorená 5. 7.",
+      "implText": "Prevod · 24. 6. 2026 · žiadosť otvorená 5. 7. · VS: 8100245 · Tatra banka ··2841",
+      "designBox": {
+        "x": 57.88888888888887,
+        "y": 533.9604718865271,
+        "w": 180.99346405228758,
+        "h": 12.00146732152683
+      },
+      "implBox": {
+        "x": 57,
+        "y": 554.91,
+        "w": 382,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 14.745098039215666,
+        "y": 507.9572926898857,
+        "w": 372.5098039215686,
+        "h": 75.00917075954268
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "−89,90 €@319"
+      ],
+      "implRow": [
+        "-96,30 €@317"
+      ],
+      "designStyle": "10.5px · w400 · rgb(189, 176, 154)",
+      "implStyle": "10.5px · w400 · rgba(138, 125, 108, 0.8)",
+      "blockMates": 14
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-library-groups-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 222,
+      "dx": 0,
+      "dy": 222,
+      "designText": "41 cells",
+      "implText": "41 cells",
+      "designBox": {
+        "x": 258,
+        "y": 282.5,
+        "w": 56,
+        "h": 15.000000000000002
+      },
+      "implBox": {
+        "x": 258,
+        "y": 504.5,
+        "w": 56,
+        "h": 15
+      },
+      "implContainer": {
+        "x": 16,
+        "y": 484,
+        "w": 358,
+        "h": 129
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "expand_more@25",
+        "Button@103",
+        "grid_view@335"
+      ],
+      "implRow": [
+        "chevron_right@25",
+        "ds-button@103",
+        "grid_view@335"
+      ],
+      "designStyle": "12px · w400 · rgb(231, 233, 236)",
+      "implStyle": "12px · w400 · rgb(231, 233, 236)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-members-accountant-desktop",
+      "phase": "reconcile",
+      "via": "text",
+      "gamma": 214.81760435571692,
+      "dx": -160.92558983666066,
+      "dy": 50.100725952813065,
+      "designText": "2 členovia",
+      "implText": "2 členovia",
+      "designBox": {
+        "x": 430.92558983666066,
+        "y": 60.399274047186935,
+        "w": 67.36842105263159,
+        "h": 17.422867513611617
+      },
+      "implBox": {
+        "x": 270,
+        "y": 110.5,
+        "w": 65,
+        "h": 16
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Kaviareň Prameň ·@305"
+      ],
+      "implRow": [
+        "Prehľad@40"
+      ],
+      "designStyle": "12.5px · w400 · rgb(138, 125, 108)",
+      "implStyle": "14px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 214.5604455343962,
+      "dx": 6.924355148834479,
+      "dy": 28.5,
+      "designText": "—",
+      "implText": "najbližšia uzávierka August 2026",
+      "designBox": {
+        "x": 586.0756448511655,
+        "y": 358.5,
+        "w": 13.863909614438283,
+        "h": 15
+      },
+      "implBox": {
+        "x": 593,
+        "y": 387,
+        "w": 192,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 268.1960029772592,
+        "y": 178,
+        "w": 532.7702408976998,
+        "h": 332
+      },
+      "implContainer": {
+        "x": 270,
+        "y": 367,
+        "w": 532,
+        "h": 141.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "✉@298",
+        "Žiadosť: výpis z terminálu@333",
+        "čaká na vlastníka · odosla@333",
+        "5 dní@652",
+        "Pripomenúť@710",
+        "Vlastník nahráva v dávkach@857"
+      ],
+      "implRow": [
+        "Nastavenia@40",
+        "Uzávierky období@287"
+      ],
+      "designStyle": "12.5px · w500 · rgb(44, 36, 25)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-accountant-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 210.09771864983415,
+      "dx": -126.67182081746353,
+      "dy": 82.3641538461539,
+      "designText": "91 %",
+      "implText": "91 %",
+      "designBox": {
+        "x": 183.67182081746353,
+        "y": 351.9458461538461,
+        "w": 24.307486783014046,
+        "h": 12.369230769230768
+      },
+      "implBox": {
+        "x": 57,
+        "y": 434.31,
+        "w": 25,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 18,
+        "y": 385.06,
+        "w": 366,
+        "h": 75
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Karta · 10. 7. · TB ··2841@59",
+        "·@175",
+        "−219,00 €@275",
+        "i@359"
+      ],
+      "implRow": [],
+      "designStyle": "10.5px · w600 · rgb(78, 122, 90)",
+      "implStyle": "10.5px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-pending-accountant-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 209.6708994266602,
+      "dx": -6.434587912087913,
+      "dy": 13.478260869565133,
+      "designText": "Všetko",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne",
+      "designBox": {
+        "x": 22.434587912087913,
+        "y": 146.52173913043487,
+        "w": 34.459340659340654,
+        "h": 12.782608695652174
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 223,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 392,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "7@62",
+        "Transakcie@96",
+        "3@153",
+        "Doklady@186",
+        "2@230",
+        "Platby@264",
+        "1@299",
+        "Správy@331",
+        "1@369"
+      ],
+      "implRow": [],
+      "designStyle": "11.5px · w600 · rgb(248, 243, 236)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-all-requested-desktop",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 207.69792744437328,
+      "dx": -0.11390799473241486,
+      "dy": 5.223676441212945,
+      "designText": "Prevod · 3. 7. · žiadosť otvorená 5. 7.",
+      "implText": "Prevod · 24. 6. 2026 · žiadosť otvorená 5. 7. · VS: 8100245 · Tatra banka ··2841",
+      "designBox": {
+        "x": 126.11390799473241,
+        "y": 496.86632355878703,
+        "w": 180.7348589411546,
+        "h": 13.09520194958252
+      },
+      "implBox": {
+        "x": 126,
+        "y": 502.09,
+        "w": 382,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 65.16843230527329,
+        "y": 93.23946146777985,
+        "w": 569.5249624773594,
+        "h": 613.9794560744677
+      },
+      "implContainer": {
+        "x": 89,
+        "y": 257.66,
+        "w": 522,
+        "h": 268.19
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "má otvorenú žiadosť@363",
+        "−89,90 €@488",
+        "vlákno →@554"
+      ],
+      "implRow": [
+        "má otvorenú žiadosť@366",
+        "-96,30 €@487",
+        "vlákno@550"
+      ],
+      "designStyle": "10.5px · w400 · rgb(189, 176, 154)",
+      "implStyle": "10.5px · w400 · rgba(138, 125, 108, 0.8)",
+      "blockMates": 23
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-accountant-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 205.67345325867993,
+      "dx": -191.43669718301578,
+      "dy": -7.252171693735477,
+      "designText": "Bez dokladu",
+      "implText": "Bez dokladu",
+      "designBox": {
+        "x": 432.4366971830158,
+        "y": 295.5021716937355,
+        "w": 62.3643158500899,
+        "h": 13.348900232018563
+      },
+      "implBox": {
+        "x": 241,
+        "y": 288.25,
+        "w": 68,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 70,
+        "y": 90,
+        "w": 560,
+        "h": 680
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Všetky@366",
+        "Podobná suma@525"
+      ],
+      "implRow": [
+        "Všetky@172",
+        "Možné zhody@341"
+      ],
+      "designStyle": "11px · w500 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r12",
+      "implStyle": "11px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r13.25",
+      "blockMates": 1
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "Card corner radius mismatch",
+      "implText": "Card corner radius mismatch",
+      "designBox": {
+        "x": 1079,
+        "y": 664.16,
+        "w": 175,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 459.88,
+        "w": 175,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "Your documents are encrypt@93",
+        "Your documents are encrypt@590",
+        "4@1059"
+      ],
+      "implRow": [
+        "8@91",
+        "8@588",
+        "4@1059"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "border-radius",
+      "implText": "border-radius",
+      "designBox": {
+        "x": 1080,
+        "y": 688.28,
+        "w": 91,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 484,
+        "w": 91,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "12px@1177",
+        "arrow_right_alt@1211",
+        "6px@1229"
+      ],
+      "implRow": [
+        "12px@1177",
+        "arrow_right_alt@1211",
+        "6px@1229"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "12px",
+      "implText": "12px",
+      "designBox": {
+        "x": 1177,
+        "y": 688.28,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1177,
+        "y": 484,
+        "w": 28,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "border-radius@1080",
+        "arrow_right_alt@1211",
+        "6px@1229"
+      ],
+      "implRow": [
+        "border-radius@1080",
+        "arrow_right_alt@1211",
+        "6px@1229"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "6px",
+      "implText": "6px",
+      "designBox": {
+        "x": 1229,
+        "y": 688.28,
+        "w": 21,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1229,
+        "y": 484,
+        "w": 21,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "border-radius@1080",
+        "12px@1177",
+        "arrow_right_alt@1211"
+      ],
+      "implRow": [
+        "border-radius@1080",
+        "12px@1177",
+        "arrow_right_alt@1211"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "Step indicator gap tighter",
+      "implText": "Step indicator gap tighter",
+      "designBox": {
+        "x": 1079,
+        "y": 725.16,
+        "w": 155,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 520.88,
+        "w": 155,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "5@1059"
+      ],
+      "implRow": [
+        "5@1059"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "gap",
+      "implText": "gap",
+      "designBox": {
+        "x": 1080,
+        "y": 749.28,
+        "w": 21,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1080,
+        "y": 545,
+        "w": 21,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "24px@1107",
+        "arrow_right_alt@1141",
+        "16px@1159"
+      ],
+      "implRow": [
+        "24px@1107",
+        "arrow_right_alt@1141",
+        "16px@1159"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "16px",
+      "implText": "16px",
+      "designBox": {
+        "x": 1159,
+        "y": 749.28,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1159,
+        "y": 545,
+        "w": 28,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "gap@1080",
+        "24px@1107",
+        "arrow_right_alt@1141"
+      ],
+      "implRow": [
+        "gap@1080",
+        "24px@1107",
+        "arrow_right_alt@1141"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "Footer text color drift",
+      "implText": "Footer text color drift",
+      "designBox": {
+        "x": 1079,
+        "y": 786.16,
+        "w": 129,
+        "h": 16
+      },
+      "implBox": {
+        "x": 1079,
+        "y": 581.88,
+        "w": 129,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "remove@67",
+        "66%@103",
+        "add@143",
+        "fit_screen@173",
+        "link@873",
+        "hub@901",
+        "Anchors@922",
+        "expand_less@973",
+        "warning@1000",
+        "6@1059"
+      ],
+      "implRow": [
+        "1@91",
+        "12@283",
+        "1@588",
+        "3@588",
+        "6@1059"
+      ],
+      "designStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "implStyle": "12.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 204.27999999999997,
+      "dx": 0,
+      "dy": -204.27999999999997,
+      "designText": "#9CA3AF",
+      "implText": "#9CA3AF",
+      "designBox": {
+        "x": 1194,
+        "y": 810.28,
+        "w": 49,
+        "h": 14
+      },
+      "implBox": {
+        "x": 1194,
+        "y": 606,
+        "w": 49,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "color@1080",
+        "#6B7280@1121",
+        "arrow_right_alt@1176"
+      ],
+      "implRow": [
+        "4@475",
+        "color@1080",
+        "#6B7280@1121",
+        "arrow_right_alt@1176"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 8
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-accountant-desktop",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 203.43841077475102,
+      "dx": -194.04887708453305,
+      "dy": -7.252171693735477,
+      "designText": "Všetky",
+      "implText": "Všetky",
+      "designBox": {
+        "x": 366.04887708453305,
+        "y": 295.5021716937355,
+        "w": 36.21153823553607,
+        "h": 13.348900232018563
+      },
+      "implBox": {
+        "x": 172,
+        "y": 288.25,
+        "w": 37,
+        "h": 12
+      },
+      "implContainer": {
+        "x": 70,
+        "y": 90,
+        "w": 560,
+        "h": 680
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Bez dokladu@432",
+        "Podobná suma@525"
+      ],
+      "implRow": [
+        "Bez dokladu@241",
+        "Možné zhody@341"
+      ],
+      "designStyle": "11px · w600 · rgb(248, 243, 236) · bg rgb(44, 36, 25) · r12",
+      "implStyle": "11px · w500 · rgb(138, 125, 108) · bg rgb(255, 253, 249) · r13.25",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-owner-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 201.94457778659887,
+      "dx": -1.1554755612892649,
+      "dy": -22.582307692307722,
+      "designText": "Prevod · 8. 7.",
+      "implText": "Platba kartou · 12. 7. 2026 · Tatra banka ··2841",
+      "designBox": {
+        "x": 63.155475561289265,
+        "y": 632.8923076923077,
+        "w": 74.22397469776733,
+        "h": 14.43076923076923
+      },
+      "implBox": {
+        "x": 62,
+        "y": 610.31,
+        "w": 252,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 20,
+        "y": 574.31,
+        "w": 362,
+        "h": 65.25
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "−312,40 €@260",
+        "i@355"
+      ],
+      "implRow": [
+        "-84,20 €@273"
+      ],
+      "designStyle": "11.5px · w400 · rgb(138, 125, 108)",
+      "implStyle": "11.5px · w400 · rgb(138, 125, 108)",
+      "blockMates": 17
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 201.80999999999995,
+      "dx": 0,
+      "dy": 201.80999999999995,
+      "designText": "translateY",
+      "implText": "translateY",
+      "designBox": {
+        "x": 40,
+        "y": 449.47,
+        "w": 70,
+        "h": 14
+      },
+      "implBox": {
+        "x": 40,
+        "y": 651.28,
+        "w": 70,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 0,
+        "y": 417.28,
+        "w": 390,
+        "h": 426.72
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "1@-289",
+        "3@-289",
+        "0px@116",
+        "arrow_right_alt@143",
+        "23px@161"
+      ],
+      "implRow": [
+        "0px@116",
+        "arrow_right_alt@143",
+        "23px@161"
+      ],
+      "designStyle": "11px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w400 · rgb(166, 171, 179)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 201.80999999999995,
+      "dx": 0,
+      "dy": 201.80999999999995,
+      "designText": "0px",
+      "implText": "0px",
+      "designBox": {
+        "x": 116,
+        "y": 449.47,
+        "w": 21,
+        "h": 14
+      },
+      "implBox": {
+        "x": 116,
+        "y": 651.28,
+        "w": 21,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 68.25,
+        "y": 442.88,
+        "w": 253.5,
+        "h": 68.25
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "1@-289",
+        "3@-289",
+        "translateY@40",
+        "arrow_right_alt@143",
+        "23px@161"
+      ],
+      "implRow": [
+        "translateY@40",
+        "arrow_right_alt@143",
+        "23px@161"
+      ],
+      "designStyle": "11px · w400 · rgb(231, 233, 236)",
+      "implStyle": "11px · w400 · rgb(231, 233, 236)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 201.80999999999995,
+      "dx": 0,
+      "dy": 201.80999999999995,
+      "designText": "23px",
+      "implText": "23px",
+      "designBox": {
+        "x": 161,
+        "y": 449.47,
+        "w": 28,
+        "h": 14
+      },
+      "implBox": {
+        "x": 161,
+        "y": 651.28,
+        "w": 28,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 68.25,
+        "y": 442.88,
+        "w": 253.5,
+        "h": 68.25
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 418.28,
+        "w": 390,
+        "h": 425.72
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "1@-289",
+        "3@-289",
+        "translateY@40",
+        "0px@116",
+        "arrow_right_alt@143"
+      ],
+      "implRow": [
+        "translateY@40",
+        "0px@116",
+        "arrow_right_alt@143"
+      ],
+      "designStyle": "11px · w400 · rgb(229, 72, 77)",
+      "implStyle": "11px · w400 · rgb(229, 72, 77)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "tx-picker-accountant-mobile",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 201.3044561423455,
+      "dx": 2.4393155590926767,
+      "dy": 197.10646153846153,
+      "designText": "−312,40 €",
+      "implText": "-312,40 €",
+      "designBox": {
+        "x": 274.5606844409073,
+        "y": 536.4535384615384,
+        "w": 61.29714058325281,
+        "h": 15.46153846153846
+      },
+      "implBox": {
+        "x": 277,
+        "y": 733.56,
+        "w": 60,
+        "h": 15
+      },
+      "implContainer": {
+        "x": 18,
+        "y": 703.81,
+        "w": 366,
+        "h": 75
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Prevod · Coffein s.r.o.@59",
+        "Prevod · 8. 7. · TB ··2841@59",
+        "i@359"
+      ],
+      "implRow": [
+        "Prevod · 8. 7. 2026 · VS: @57",
+        "i@359"
+      ],
+      "designStyle": "13px · w600 · rgb(44, 36, 25)",
+      "implStyle": "13px · w600 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-mobile-toolbar-ghost",
+      "phase": "polish",
+      "via": "text",
+      "gamma": 200.01,
+      "dx": 7.459999999999994,
+      "dy": -192.54999999999998,
+      "designText": "Missing here — exists in design",
+      "implText": "Missing here — exists in design",
+      "designBox": {
+        "x": 103.25,
+        "y": 411.34,
+        "w": 154,
+        "h": 14
+      },
+      "implBox": {
+        "x": 110.71,
+        "y": 218.79,
+        "w": 154,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "8@19",
+        "Row baseline shifted 23px@39",
+        "12@81",
+        "×6@213",
+        "undo@247",
+        "REGRESSION@262",
+        "swap_horiz@273",
+        "View design@290"
+      ],
+      "implRow": [
+        "background-color@40",
+        "12@89",
+        "#4F46E5@158",
+        "arrow_right_alt@213",
+        "#6366F1@231",
+        "swap_horiz@281",
+        "View design@298"
+      ],
+      "designStyle": "11px · w600 · rgb(231, 233, 236)",
+      "implStyle": "11px · w600 · rgb(231, 233, 236)",
+      "blockMates": 3
+    }
+  ]
+}

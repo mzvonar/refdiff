@@ -82,8 +82,8 @@ console prints it after each line (`[geometry γ98.7]`) and sums it up
 
 | `via` | what formed the pair | how much to believe its values |
 | --- | --- | --- |
-| `text` | both elements carry the SAME string | the transform played no part — trustworthy at any confidence |
-| `slot` | same anchor and line height, different text (a value slot) | geometry formed it, but position-only |
+| `text` | both elements carry the SAME string | the transform played no part — trustworthy at any confidence, with one measured exception: a pair that moved a LONG way may be two different elements sharing a string (74 of 79 above γ 200 were right; `reconcile.md` §R3) |
+| `slot` | same anchor and line height, different text (a value slot) | geometry formed it, but position-only — and the two boxes are now bounded to within 5× in AREA, because unbounded a 13×13 avatar claimed a 380×19 subtitle |
 | `geometry` | nothing but γ | only as good as `alignment.confidence` |
 | absent | the finding rests on no pair (`missing-element`, `extra-element`, `alignment`) | — |
 
@@ -298,9 +298,14 @@ items is now a typed finding — read it there:
   colour, typography, radius and text-content about two unrelated elements: five
   findings, all noise, one of them crying REGRESSION on the next run (measured:
   14 such findings on one pair, 12 on another). The run log names the refusals
-  it acted on. A value slot in the same place is never touched — 146% against
-  100% at γ 0.5, a card count at γ 0, a status chip whose word the other side
-  does not use at all. **SVG content is extracted now, with limits.** An `<svg>` is
+  it acted on. A value slot in the same place is never touched by THIS guard —
+  146% against 100% at γ 0.5, a card count at γ 0, a status chip whose word the
+  other side does not use at all. A slot pair has one other bound, added
+  2026-09-16 and unrelated to the veto: its two boxes may not differ by more
+  than **5× in AREA**, because the slot pass drops the width term on purpose and
+  without that ceiling a 13×13 avatar badge paired with a 380×19 page subtitle
+  16 px away. A stretched slot is still a slot; a thirtyfold different thing is
+  not. **SVG content is extracted now, with limits.** An `<svg>` is
   still ONE atomic `icon` when its shapes are all icon-sized, or when it holds
   more than 24 of them (a drawing is a picture, not a set of elements). A large
   SPARSE one — a mark layer, a diagram, an overlay — is walked, and its

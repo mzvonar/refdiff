@@ -145,13 +145,30 @@ read `via: "text"`, `unverified: false`.
 exempts text pairs because "both elements carry the same string and the transform played no part
 in forming it" — which is precisely the case where text identity proves nothing. Pass 1 has no
 γ ceiling by design (an element whose text is unique on each side "IS the same semantic element,
-wherever it moved"). The family is four confirmed pairs, and a distance threshold is **measured
-and refuted** as a fix: correct long-distance text pairs reach γ 873 while wrong ones start at
-686, across 1424 text pairs. Do not go build one — read `polish.md` §1a-ii for what `via`
-means, and treat a long-γ text pair on a reconcile pair as a claim to check, not a fact.
+wherever it moved"). Read `polish.md` §1a-ii for what `via` means, and treat a long-γ text pair on
+a reconcile pair as a claim to check, not a fact.
 
-The cheap check: `elements.json` holds both aligned leaf sets. Grep the string you expected to
-be missing on both sides and compare the boxes.
+**Do NOT reach for a distance threshold — it is measured and refuted.** A corpus-wide sweep
+(2026-09-16, 52 pairs, 92 labelled long-γ pairings) puts CORRECT pairs out to **γ 1261** — one CTA
+the implementation relocated — and WRONG ones down to **γ 210**. The populations overlap across
+the whole band, so every ceiling destroys more correct pairs than it catches. So does "it moved on
+both axes", and so does containment. **Distance tells you nothing about a text pair. Look at it.**
+
+**The two cheap checks, in order.**
+
+1. `elements.json` holds both aligned leaf sets. Grep the string you expected to be missing on
+   both sides and compare the boxes.
+2. **Then LOOK at each element where it sits on its OWN side** — that is what settles it, and
+   nothing shorter does. The run dir's crops cannot serve: they crop both PNGs at the SAME region,
+   which is right for a finding about a pair and shows nothing when the pair is 1000 px apart.
+
+**A long γ is not the only shape — check `via: "slot"` too.** A slot pair is width-blind by
+design, so its POSITION distance is tiny by construction and a γ scan cannot see it at all; what
+it may not be is the same SIZE of thing. Measured: of the 15 slot pairs in the corpus whose boxes
+differ in area by more than 4×, **13 were mis-pairings** — a 13×13 avatar badge claiming a 380×19
+page subtitle, a field LABEL claiming a field VALUE. The matcher now refuses above 5×, and **22 of
+the 43 it keeps still carry token-disjoint texts**, so a slot pairing between two very
+differently-sized boxes deserves the same suspicion as a long-γ text one.
 
 ## R4. Classify each divergence — three kinds, and one that is not a divergence at all
 
@@ -216,7 +233,8 @@ lines up horizontally and packs differently down the page still corresponds.
 
 ## R7. The pairs this has been run against
 
-**Run end to end: none.** Written against these two, which are the range's ends:
+**Run end to end: none.** §R3 alone has been run, over the WHOLE corpus — see the row below.
+Written against these two, which are the range's ends:
 
 | pair | signals | unmatched | the map places | what it is here for |
 | --- | --- | --- | --- | --- |
@@ -225,3 +243,16 @@ lines up horizontally and packs differently down the page still corresponds.
 
 **When you revise this file, add the pair that forced it to this table and say which step it
 changed.** The two above justify the steps; they do not validate them.
+
+**§R3 — run read-only over all 52 corpus pairs, 2026-09-16** (refdiff `docs/r3-sweep-2026-09-16.md`).
+It is the only step with a track record, and it changed its own text twice:
+
+- **What it confirmed.** The complement question works, and it scales: asked of every recorded
+  pair at once it turned 7 labelled pairings into 107 and found mis-pairings on `polish` pairs at
+  confidence 0.83, which four sessions of reading findings had not.
+- **What it corrected in this file.** (a) The γ figures it carried (correct to 873, wrong from
+  686) understated the overlap badly — it is the whole band, correct to 1261 and wrong from 210.
+  (b) It said nothing about `via: "slot"`, which turned out to be the LARGER family in that band
+  and the only one with a discriminator: 13 of 15 slot pairs above area ratio 4 were mis-pairings.
+  (c) It implied distance and structure could settle a candidate; measured, only LOOKING does, so
+  the step now says so and names why the run dir's own crops cannot be used for it.

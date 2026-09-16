@@ -6,10 +6,17 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-16).** Steps 0–4 DONE, plus **RECONCILE STEPS 1, 2 AND 3** — the clock
-> freeze, the per-side unmatched map, and the `reconcile.md` workflow with the six-way `SKILL.md`
-> split. **The reconcile workstream is complete; next is STEP 5.** Not pushed. 488 core + 380
+> **STATUS (2026-09-16, later).** Steps 0–5 DONE, plus **RECONCILE STEPS 1, 2 AND 3**. **Step 5
+> shipped as a SLOT AREA-RATIO ceiling, not as the containment rule this plan proposed — the
+> sweep refuted containment in all three readings.** Next is STEP 6. Not pushed. 490 core + 380
 > annotator green; `preflight-selftest.sh` 24/24.
+>
+> **READ [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md) BEFORE step 6**: it is the 107-label
+> ground-truth set the corpus now has (it had 7), and three of this plan's standing claims died on
+> it — the γ ceiling's overlap is the whole band and not [686, 873]; containment does not
+> discriminate, because the container column is absent on 8 of the 12 wrong pairs; and mis-pairing
+> is NOT a `reconcile`-only phenomenon, which is what disqualified step 5's own acceptance
+> criterion.
 >
 > **THE REMAINING STEPS WERE REWRITTEN after step 2's corpus contradicted the plan's premise — read
 > [THE REFRAME](#the-reframe-2026-09-15-after-step-2--read-this-before-any-remaining-step) before
@@ -17,15 +24,18 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: STEP 5 — refuse pairs on weak evidence, and its MEASUREMENT PHASE IS FIRST.** Run
-> `reconcile.md` §R3 as a sweep over the 24 `reconcile` pairs to build the labelled set the step
-> needs: today it is **7 labels against 1424 text pairs**, and a discriminator fitted to the 7
-> examples that named it is not validated. No capture, no server — `matchElements` over each run
-> dir's `elements.json`, admissible only where it reproduces that pair's recorded `matching` block.
-> **Do not run the rest of `reconcile.md` to get it**: R5/R6 would reconcile the witness and re-date
-> every number this plan quotes. Then read step 4's DONE block AND the γ-ceiling refutation before
-> writing any code; the corpus's worst unflagged mis-pairings are TEXT pairs, so the step's "text
-> pairs are evidence about themselves" bullet is the one to re-argue. Then step 6.
+> **DO NEXT: STEP 6 — per-container confidence**, and re-ask step 2's parked verdict question
+> there. Note the sweep has already measured the per-side container map's limit as a matching
+> feature: it is ABSENT on 8 of the 12 long-γ mis-pairings and it keeps a mis-pairing whose two
+> sides share a container. That is a fact about the map used as a DISCRIMINATOR; step 6 uses
+> containers to scope a CONFIDENCE, which is a different use — but do not carry the plan's old
+> assumption that the container column is reliably available. Start from
+> [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md).
+>
+> **Two things step 5 left open and deliberately did not close**, both in its DONE block: the slot
+> family is bigger than the shipped ceiling reaches (22 of the 43 slot pairs it KEEPS are
+> token-disjoint — precision is measured, recall is not), and the `via: "text"` mis-pairing family
+> (5 confirmed of 79 long-γ text pairs) still has no discriminator.
 >
 > **RECONCILE STEP 3 SHIPPED 2026-09-16** (see its DONE block): `skills/refdiff/reconcile.md`, 227
 > lines, seven numbered steps, marked **PROVISIONAL and run against ZERO pairs** in its own header;
@@ -149,6 +159,7 @@ step that needs to change one must say so out loud and explain why in the test's
 | copy drift is kept | `Blok · 12. 7. 2026` ↔ `Doklad · 12. 7. 2026` | shares tokens, so it is the same element reworded |
 | one counterpart is not proof | `missing` ↔ `×14`, only `missing` has a twin | asymmetric evidence is not evidence |
 | a refused candidate that would have lost anyway is not reported | `vetoed` stays undefined | noise control on the veto's own reporting |
+| a slot may STRETCH but stays the same slot | a page H1 `Doklady — Kaviareň Prameň` ↔ `Doklady`, areas 4.3× apart, is kept; a 13×13 avatar ↔ a 380×19 subtitle, 44× apart, is refused | added by step 5; the first half is the slot pass's own premise and the second is the bound it lacked |
 
 ---
 
@@ -1240,6 +1251,45 @@ still the witness. R3 reads; it changes nothing.
 family, with the per-side container recorded for each — enough that a containment rule can be
 proposed AND falsified rather than illustrated.
 
+**DONE 2026-09-16 — measured. CONTAINMENT IS REFUTED, and the sweep found a defect this plan was
+not looking at.** Full write-up, method and every table:
+[`docs/r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md); the labelled sets and the candidate sets
+they were labelled against are frozen beside it as four JSON files, so the scoring reproduces
+without the run dirs. Scripts: `r3-sweep.ts` (the audit), `r3-crops.ts` (own-side crops — the
+LOOKING), `r3-score.ts` (falsification). 52 run dirs read, **52 admissible, 0 dropped**; the text-γ
+distribution reproduces the previous session's to the decimal, which is what says it is the same
+matcher on the same inputs.
+
+- **107 labelled candidates against the 7 this step started with**, from two selectors: 92 at
+  γ ≥ 200 (12 wrong / 79 correct / 1 leaf-shape) and 15 slot pairs at area ratio > 4 (13 / 1 / 1).
+  25 decided from the PNGs alone — `packageForModel` crops both sides at the SAME region, which
+  shows nothing when a pair is 1000 px apart, so `r3-crops.ts` crops each element where it sits on
+  its OWN side. The scorer prints that pixels-only subset as its own table, because a `detail`
+  label reads an element's line-mates while a containment rule reads its container: the one place
+  the labels are not independent of the hypothesis. **Containment is refuted on both tables.**
+- **The unclassified family is classified, and it SPLITS.** `Požiadať o doklad` γ 1261 / 770 / 702
+  and `Zavrieť obdobie` γ 823 are **CORRECT** — one relocated CTA per side, i.e. refdiff reporting
+  something true. `Nahrať doklad` γ 778 is **WRONG**, and new: the comp's in-thread action button
+  against the implementation's global top-nav upload button.
+- **So the γ ceiling is refuted harder than before.** The overlap was [686, 873]; it is now the
+  whole band — correct to **γ 1261**, wrong down to **γ 210**. Every ceiling costs more than it
+  buys (700 catches 4 and breaks 6; 500 catches 5 and breaks 10), and so do both axis readings of
+  "correct long pairs keep their x" (|Δx|>100: 5 for 12; both-axes: 5 for 10).
+- **Containment, in all three readings its own wording allows:** shape disagreement catches 3 and
+  breaks 18; counting an unplaced side as disagreement catches 11 and breaks 63; adding the
+  offset-inside-container test catches 4 and breaks 18. **The cause is the map's own miss rate one
+  level down** — only 4 of the 12 wrong pairs have both sides placed, against 34 of 79 correct —
+  and where it IS available it still fails: `refdiff-compare-desktop-ghost` mis-pairs a 252×31
+  sentence with a 7×14 badge *inside the same container on both sides*.
+- **ZERO geometric candidates above γ 200**, because `DEFAULT_MAX_GAMMA` is 100. This step's first
+  bullet addresses a population that is already distance-bounded; every long-distance pairing in
+  the corpus is `text` or `slot`.
+- **The defect nobody had looked at: the SLOT pass.** Width-blind by design, and width-blind
+  without a BOUND — so a 13×13 avatar badge claimed a 380×19 page subtitle 16 px away, and the
+  comp's `POPIS` field LABEL claimed the implementation's `ZDROJ` field VALUE on two Storybook
+  pairs at confidence 0.83. **Mis-pairing is not a `reconcile`-only phenomenon**, which is what
+  disqualifies this step's written acceptance criterion.
+
 **Done.** The witness (confidence 0.07) emits `missing-element "Včera"` and
 `extra-element "Otázky · 1"` and none of the other four findings. **No pair at confidence ≥ 0.5
 changes by a single finding** — that is the acceptance criterion, and it is the one this step is
@@ -1250,6 +1300,77 @@ drop is CORRECT, and it is also the exact shape step 2's rule calls a regression
 localises the change; it cannot by itself say whether a collapse was deserved. That judgement stays
 human, and step 4's phase label is what makes it answerable ("matched collapsed on a `reconcile`
 pair" is expected; "on a `polish` pair" is a bug).
+
+**DONE 2026-09-16 — measured. The step shipped as the rule the SWEEP supports, not the one written
+above, and both of its bullets were re-argued first.**
+
+**Bullet 1 ("below the floor, do not form geometric pairs at all") is MOOT, not wrong.** Geometric
+pairing is already bounded at `DEFAULT_MAX_GAMMA` = 100, so the sweep's 92 long-γ candidates contain
+**zero** geometric pairs. There is no far-away geometric pairing in this corpus to refuse. Gating
+pair FORMATION on the joint `alignment.confidence` — which step 4 disqualified for the phase, and
+which collapses to 0.00 on a surface that corresponds on one axis (`tx-picker-owner-mobile`: 17
+anchors, 14 on X, 1 on Y, 0 on both, at match rate 0.91) — would have refused every geometric pair
+on all 14 Storybook pairs to buy nothing measurable. **Not implemented, and the reason is a number,
+not a preference.**
+
+**Bullet 2 ("text and slot pairs are untouched at any confidence — they are evidence about
+themselves") is HALF RIGHT, and the measurement says which half.**
+
+- **TEXT: right, and by a wide margin.** Of 79 text pairs above γ 200, **74 are correct and 5 are
+  wrong** — the four `Vybavené` chip↔badge pairs plus `Nahrať doklad`. The correct ones are not
+  noise to be tolerated: they are refdiff saying *the comp's bottom CTA is in the implementation's
+  header* (γ 1261), *the comp right-aligns the message author and the implementation left-aligns
+  it* (γ 448, Δx −422), *the same library row is higher up a shorter list* (γ 873, Δx 0). No
+  feature tested here separates the 5 from the 74. The bullet stands for `text` **because nothing
+  measured is good enough to overturn it**, which is a different and weaker claim than the one it
+  makes — a text pair's ~94% correctness in this band is the bar a future rule must beat.
+- **SLOT: wrong.** The slot pass's premise is "the same slot showing different data", and it
+  enforced position but not SIZE, so the corpus carries a 13×13 avatar paired with a 380×19
+  subtitle and a field LABEL paired with a field VALUE. Of the 15 slot pairs above area ratio 4,
+  **13 are wrong, 1 is leaf-shape and 1 is correct**. The two populations meet between 4.3 and 5.5.
+
+**What shipped: `DEFAULT_SLOT_MAX_AREA_RATIO = 5`** in `structural/match.ts` (plus `slotMaxAreaRatio`
+on `MatchOptions`, `areaRatio()` beside `slotGamma`, and 2 tests → **490 core + 380 annotator**).
+A slot may stretch — that is the pass's whole premise, and the test pinning it names the one
+labelled-correct pair above ratio 4 — but it is still the same slot. 5 is the gap between the
+populations, read off the corpus. The refusal is pushed to `vetoed`, like the existing veto,
+because a refusal a reader cannot see is the same defect as a suppression they cannot see.
+
+**Cost, re-captured end to end on all three corpora** (before-picture:
+`baseline-matching-2026-09-16.md` at commit `6025583`; after: the same path in this change):
+
+- **−13 matched of 3003, every one `via: "slot"`, one per pair on 13 pairs.**
+  `matchedVia.text` and `matchedVia.geometry` are **unmoved on all 52 pairs**, and the other 39
+  pairs are `+0 / −0`. Findings 7201 → 7169.
+- On the two `doc-detail-*-mobile` pairs the delta is **`+2 / −6`** each — six confident findings
+  about a field label and a field value replaced by one honest `missing-element` and one
+  `extra-element`, on the corpus's best-corresponding pairs. That is the outcome this step exists
+  for.
+- **The mis-pairings were producing SILENCE, not wrong findings, on at least one pair.**
+  `refdiff-compare-desktop-ghost` is `+1 / −0`: the data-slot policy had classified its text
+  difference as expected, so the pair consumed one element from each side and emitted nothing. A
+  finding count can never show that; `matching` can.
+- **One consequence that is not cosmetic: `client-pending-accountant-mobile` moves `polish` →
+  `reconcile`**, its match rate falling 0.72 → 0.69 across the floor. It was the corpus's
+  nearest-the-floor `polish` pair and the pairing it lost was a pixel-confirmed mis-pairing, so its
+  true correspondence was always 25 of 36. But state the general shape: **refusing a pair lowers
+  the match rate, and any pair within one pairing of the floor will cross it.** Corpus phase totals
+  28P/24R → 27P/25R.
+
+**THE ACCEPTANCE CRITERION IS RESTATED, because the measurement disqualified the written one.**
+"No pair at confidence ≥ 0.5 changes by a single finding" forbids the only change the evidence
+supports: four of the thirteen refusals are on `polish` pairs, two of them at confidence 0.83, and
+all four are labelled mis-pairings. **Restated: no pair loses a pairing the labelled set calls
+CORRECT, and the guard is the labelled set, not the finding count.** Met — 13 refusals, each
+individually labelled: 12 `wrong`, 1 `leafshape`, **0 `correct`**. Re-running the sweep against the
+post-change corpus reproduces all 52 `matching` blocks and returns 85 γ-candidates where there were
+92; the seven that vanished are six `wrong` plus the one `leafshape`.
+
+**What this step did NOT close, and the next reader inherits it.** The slot family is bigger than
+the ceiling reaches: of the 43 slot pairs it KEEPS, **22 carry token-disjoint texts**, including
+`ZÚČT. OBDOBIE` ↔ `Aplikácia · nahral(a) Test Owner` at ratio 3.60 — the same label-vs-value defect
+as the pair above the line. **Precision is measured; recall is not.** And the `via: "text"` family
+(5 confirmed wrong) is untouched, with no discriminator found.
 
 ### Step 6 — per-container confidence (promoted: this is the one that HELPS the polish loop)
 

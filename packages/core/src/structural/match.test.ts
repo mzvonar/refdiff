@@ -76,6 +76,40 @@ describe("matchElements", () => {
     expect(result.implOnly).toEqual([])
   })
 
+  it("refuses a slot pair whose boxes are not the same SIZE of thing", () => {
+    // Measured, `settings-owner-desktop`: the comp's 13×13 avatar badge "KP"
+    // against the impl's 380×19 page subtitle, 16 px away. slotGamma is 38 —
+    // well inside the pass — and the areas differ 44×. Six confident findings
+    // about an avatar and a sentence followed, with no text-content tell worth
+    // reaching, because differing text is what a slot pair is FOR.
+    const design = [el("d1", 312, 117, 13, 13, "KP")]
+    const impl = [el("i1", 296, 126, 380, 19, "Ako a kedy vás upozorníme.")]
+    const result = matchElements(design, impl)
+    expect(result.matches).toEqual([])
+    expect(result.designOnly.map((e) => e.id)).toEqual(["d1"])
+    expect(result.implOnly.map((e) => e.id)).toEqual(["i1"])
+    // Refused VISIBLY: a refusal a reader cannot see is a suppression.
+    expect(result.vetoed?.map((v) => v.designText)).toEqual(["KP"])
+  })
+
+  it("keeps the STRETCH the slot pass exists for, and the ceiling is an option", () => {
+    // The ceiling must not eat the pass's own premise. `Doklady — Kaviareň
+    // Prameň` (366×30) against `Doklady` (99×26) is ratio 4.3 and the only
+    // labelled-CORRECT pair above ratio 4 in the 52-pair corpus: one page H1
+    // whose copy got shorter. It stays.
+    const kept = matchElements(
+      [el("d1", 291, 27, 366, 30, "Doklady — Kaviareň Prameň")],
+      [el("i1", 270, 33, 99, 26, "Doklady")],
+    )
+    expect(kept.matches.map((m) => m.via)).toEqual(["slot"])
+    const off = matchElements(
+      [el("d1", 312, 117, 13, 13, "KP")],
+      [el("i1", 296, 126, 380, 19, "Ako a kedy vás upozorníme.")],
+      { slotMaxAreaRatio: 0 },
+    )
+    expect(off.matches.map((m) => m.via)).toEqual(["slot"])
+  })
+
   it("slot pass never pairs non-text or far-apart elements", () => {
     // 60px apart vertically AND 250px wider: γ = 310 (no geometry match),
     // slot distance 60 > 40 (no slot match either).

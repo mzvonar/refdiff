@@ -40,7 +40,14 @@ row per cause across pairs** (`type`/`role`/values, `pairs = k/N`). Rules:
   apart move the FINDING count the same way. So after any change that could
   affect pairing (a fixture that now renders the comp's data, a `scope`, a
   `--max-gamma`), **a large `matched` drop is a REGRESSION** unless the
-  `Findings by type` table shows the property types falling with it.
+  `Findings by type` table shows the property types falling with it — **with one
+  measured exception: refusing a pair that was emitting NOTHING makes the
+  finding count go UP.** A mis-paired value slot has its text difference
+  classified as expected by the data-slot policy, so it consumes one element
+  from each side in silence; refusing it turns that into one `missing-element`
+  plus one `extra-element`, and no property type falls. Read the `matched`
+  SPLIT: a drop that is entirely `slot`, or entirely `geom` with `text` unmoved,
+  is localised — and the pairs that moved are the ones to check by hand.
 - **What a set CONTAINS is an artifact, not a console line: `<out-root>/<entryId>.set.json`.**
   Written at expansion time, before any capture, so it lands even when the
   captures or the Figma render fail. It carries the set's `axes.properties`,

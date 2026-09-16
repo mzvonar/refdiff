@@ -1621,3 +1621,47 @@ Two things this is NOT: not a reason to fight the hook (reverting the formatting
 re-fighting it on every future edit), and not a reason to skip the split (the whole point
 of the matcher work is that a reader can check what the report claims — a commit nobody
 can read is the same failure one level up).
+
+## 2026-09-16 — a rule derived from N examples is refuted by the N+1th, so go and get them
+
+Step 5 of the matcher plan had a discriminator picked out — CONTAINMENT — and a written
+argument for it: *"correct long pairs keep their x and their local structure; wrong ones
+move on both axes and change role."* Every word of that was true of the three examples it
+was derived from. Against 92 labelled pairings it catches 3 and breaks 18.
+
+The plan had already named the trap ("a discriminator validated on the examples that
+named it is illustrated, not validated") and scheduled a measurement phase to escape it.
+What the measurement phase actually cost was one afternoon of LOOKING: 25 pairs of
+screenshots. The generalisable part is that **the labels are the expensive input and
+nothing substitutes for them** — not the element trees, not the containers, not the
+distances. Every feature that could be computed from the recorded data had already been
+computed, by four previous sessions, and all of them were wrong about this.
+
+Three sharper sub-lessons:
+
+**An instrument built for one purpose reports its absence as a value.** The per-side
+container map places 60% of unmatched elements corpus-wide, which reads like a usable
+feature. Used as a DISCRIMINATOR it is absent on 8 of the 12 pairs where the decision
+matters — because the mis-pairings are exactly the elements sitting in the gaps between
+containers. The map's own miss rate, already printed in the reconcile headline, was the
+warning, one level up from where it was written.
+
+**When a pass deliberately ignores a dimension, the bound it needs is on that dimension.**
+The slot pass drops the width term so a cell that stretched still pairs. It enforced
+position and never size, so a 13×13 avatar claimed a 380×19 sentence. No γ scan could ever
+find this — `slotGamma` caps the position distance at 40 px by construction, so the whole
+family is *near* by definition. The fix was the dropped term, put back as a ratio. Ask of
+any deliberate blindness: what bounds the thing we stopped measuring?
+
+**A mis-pairing can emit SILENCE, and that is worse than emitting noise.** One pair's
+mis-match produced zero findings — the data-slot policy classified its text difference as
+expected — while quietly consuming one element from each side. The canonical witness was
+found because it emitted six loud wrong findings; this one was invisible to every
+finding-count-based check. Only `matching` showed it. Second instance of "the finding
+count is the wrong instrument for a matcher change", and the first where the count was not
+merely misleading but literally unmoved.
+
+**And the process lesson, small but it bit twice today:** never read a run's outcome off a
+grep-filtered log. A filtered read of the Storybook pass said "11 of 14 pairs failed to
+capture"; the harness's own retry had recovered all of them, which only the regenerated
+baseline document showed. Same shape as the `tail -5` rule in uctoinak2's CLAUDE.md.

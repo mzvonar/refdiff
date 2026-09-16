@@ -57,6 +57,11 @@ export interface MatchOptions {
    */
   slotMaxGamma?: number
   /**
+   * Max ratio between the two boxes' AREAS for a slot pair. 0 disables it.
+   * See `DEFAULT_SLOT_MAX_AREA_RATIO`.
+   */
+  slotMaxAreaRatio?: number
+  /**
    * Min γ at which the unrelated-text veto applies (see
    * `unrelatedPairing`). 0 disables the veto.
    */
@@ -65,6 +70,26 @@ export interface MatchOptions {
 
 export const DEFAULT_MAX_GAMMA = 100
 export const DEFAULT_SLOT_MAX_GAMMA = 40
+/**
+ * A slot may STRETCH — that is the pass's whole premise — but it is still the
+ * same slot, not a thirtyfold different thing. `slotGamma` drops the width
+ * term so a shrink-wrapped cell still pairs with a column-wide one; until
+ * 2026-09-16 it dropped it without a bound, so a 13×13 avatar badge claimed a
+ * 380×19 page subtitle 16 px away and six confident findings followed.
+ *
+ * 5 is read off the corpus, not chosen: `docs/r3-sweep-2026-09-16.md` labels
+ * every slot pair above ratio 4 across all 52 recorded pairs, and the
+ * populations sit at 4.3 (the only CORRECT one — a page H1 whose copy got
+ * shorter, `Doklady — Kaviareň Prameň` against `Doklady`) and 5.5 upwards
+ * (twelve mis-pairings, running to 79.9). 5 is the gap between them.
+ *
+ * They are NOT cleanly separable and the ceiling does not pretend to be a
+ * classifier: one labelled mis-pairing sits at 4.2, below the floor, and the
+ * complement audit in that document found 22 of the 43 slot pairs the ceiling
+ * KEEPS carry token-disjoint texts. This buys the far tail, where the evidence
+ * is unambiguous; the rest of the slot family is open (`docs/handoff`).
+ */
+export const DEFAULT_SLOT_MAX_AREA_RATIO = 5
 /**
  * Below this γ a differing-text pair is trusted as a VALUE SLOT — the same
  * element showing other data (a zoom pill reading 146% against 100%, a count
@@ -84,6 +109,16 @@ export function gamma(a: ElementNode, b: ElementNode): number {
 /** Width-blind distance: same left/top anchor and same line height. */
 export function slotGamma(a: ElementNode, b: ElementNode): number {
   return Math.abs(a.box.x - b.box.x) + Math.abs(a.box.y - b.box.y) + Math.abs(a.box.h - b.box.h)
+}
+
+/**
+ * How many times bigger the larger box is — the term `slotGamma` drops, as a
+ * ratio. Both dimensions floor at 1 px so a zero-height leaf cannot divide.
+ */
+export function areaRatio(a: ElementNode, b: ElementNode): number {
+  const x = Math.max(1, a.box.w) * Math.max(1, a.box.h)
+  const y = Math.max(1, b.box.w) * Math.max(1, b.box.h)
+  return Math.max(x, y) / Math.min(x, y)
 }
 
 const normText = (t: string | undefined): string | undefined =>
@@ -164,6 +199,7 @@ export function matchElements(
     maxGamma = DEFAULT_MAX_GAMMA,
     textMaxGamma = 2 * maxGamma,
     slotMaxGamma = DEFAULT_SLOT_MAX_GAMMA,
+    slotMaxAreaRatio = DEFAULT_SLOT_MAX_AREA_RATIO,
     unrelatedMinGamma = DEFAULT_UNRELATED_MIN_GAMMA,
   }: MatchOptions = {},
 ): MatchResult {
@@ -294,6 +330,17 @@ export function matchElements(
         if (implTaken.has(ii) || impl[ii]!.text === undefined) continue
         const dist = slotGamma(design[di]!, impl[ii]!)
         if (dist > slotMaxGamma) continue
+        // The bound the width-blindness lacked. Reported like the veto rather
+        // than dropped silently: a refusal a reader cannot see is the same
+        // defect as a suppression they cannot see.
+        if (slotMaxAreaRatio > 0 && areaRatio(design[di]!, impl[ii]!) > slotMaxAreaRatio) {
+          vetoed.push({
+            designText: design[di]!.text ?? "",
+            implText: impl[ii]!.text ?? "",
+            gamma: dist,
+          })
+          continue
+        }
         // The veto again, or pass 3 would re-create what pass 2 refused — but
         // measured by THIS pass's distance. A slot pair's full γ is dominated by
         // the width difference it exists to forgive (a shrink-wrapped cell

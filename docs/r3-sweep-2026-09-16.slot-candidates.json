@@ -1,0 +1,632 @@
+{
+  "gammaFloor": 200,
+  "dropped": [],
+  "candidates": [
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-members-owner-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 636.5382789815155,
+      "dx": -6.740659439897797,
+      "dy": -7.75321489001692,
+      "designText": "Upravujete nastavenia organizácie . Zmeny sa týkajú len tejto organizácie.",
+      "implText": "Functional s. r. o.",
+      "designBox": {
+        "x": 482.7406594398978,
+        "y": 115.50321489001692,
+        "w": 717.8836601507547,
+        "h": 15.160744500846024
+      },
+      "implBox": {
+        "x": 476,
+        "y": 107.75,
+        "w": 97,
+        "h": 14
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Profil a účet@12",
+        "KP@437",
+        "Kaviareň Prameň@759"
+      ],
+      "implRow": [
+        "Profil@26",
+        "FS@318",
+        "Členovia organizácie a kto@351"
+      ],
+      "designStyle": "11.5px · w400 · rgb(122, 83, 38)",
+      "implStyle": "12px · w600 · rgb(184, 92, 36)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "settings-owner-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 398.21840034250084,
+      "dx": -15.783774703557242,
+      "dy": 9.045685279187822,
+      "designText": "KP",
+      "implText": "Ako a kedy vás upozorníme na dianie v účtovníctve.",
+      "designBox": {
+        "x": 311.78377470355724,
+        "y": 116.95431472081218,
+        "w": 12.616135782376192,
+        "h": 12.99492385786802
+      },
+      "implBox": {
+        "x": 296,
+        "y": 126,
+        "w": 380,
+        "h": 19
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Profil a účet@29",
+        "Upravujete nastavenia orga@342",
+        "Kaviareň Prameň@527"
+      ],
+      "implRow": [],
+      "designStyle": "10px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r7",
+      "implStyle": "16px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-mobile",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 355,
+      "dx": -15,
+      "dy": -16,
+      "designText": "7",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne · klient od 9/2026",
+      "designBox": {
+        "x": 31,
+        "y": 176,
+        "w": 11,
+        "h": 20
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 329,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 392,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "najstaršia 12 dní@48",
+        "132@215",
+        "+9 tento mesiac@254"
+      ],
+      "implRow": [],
+      "designStyle": "20px · w500 · rgb(44, 36, 25)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-detail-chrome-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 297.97549909255906,
+      "dx": -20.61070780399274,
+      "dy": 6.284936479128856,
+      "designText": "Doklady — Kaviareň Prameň",
+      "implText": "Doklady",
+      "designBox": {
+        "x": 290.61070780399274,
+        "y": 26.715063520871144,
+        "w": 365.88021778584397,
+        "h": 30.199637023593468
+      },
+      "implBox": {
+        "x": 270,
+        "y": 33,
+        "w": 99,
+        "h": 26
+      },
+      "implContainer": {
+        "x": 240,
+        "y": 0,
+        "w": 1040,
+        "h": 100.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Hrubá Co.@14",
+        "&@79",
+        "2@1220"
+      ],
+      "implRow": [
+        "Portfólio@52",
+        "4@202",
+        "Exportovať@961",
+        "Požiadať o doklad@1064"
+      ],
+      "designStyle": "26px · w500 · rgb(44, 36, 25)",
+      "implStyle": "26px · w500 · rgb(44, 36, 25)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-compare-desktop-ghost",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 283.68,
+      "dx": -21.5,
+      "dy": -0.09000000000000341,
+      "designText": "Section padding change pushes the whole row down",
+      "implText": "2",
+      "designBox": {
+        "x": 1080,
+        "y": 222.09,
+        "w": 252,
+        "h": 31.09
+      },
+      "implBox": {
+        "x": 1058.5,
+        "y": 222,
+        "w": 7,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "implContainer": {
+        "x": 1039,
+        "y": 86,
+        "w": 321,
+        "h": 734
+      },
+      "sameContainerShape": true,
+      "designRow": [
+        "tonality@13",
+        "PNG, JPG or PDF · up to 10@38",
+        "PNG, JPG or PDF · up to 10@536"
+      ],
+      "implRow": [
+        "crop_free@1063",
+        "Dropzone inner padding red@1079",
+        "Primary only · 12@1082"
+      ],
+      "designStyle": "11.5px · w400 · rgb(166, 171, 179)",
+      "implStyle": "11px · w700 · rgb(255, 255, 255) · bg rgb(229, 72, 77) · r10",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "docs-accountant-mobile",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 239.12755102040816,
+      "dx": -13.739795918367346,
+      "dy": -12.285714285714278,
+      "designText": "⛭",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne",
+      "designBox": {
+        "x": 29.739795918367346,
+        "y": 172.28571428571428,
+        "w": 10.255102040816325,
+        "h": 14.357142857142858
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 223,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 402,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Filter@45",
+        "Všetky · 9@115",
+        "Bez transakcie · 2@202"
+      ],
+      "implRow": [],
+      "designStyle": "11.5px · w600 · rgb(95, 85, 70) · bg rgb(255, 253, 249) · r14",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 1
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-overview-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 214.5604455343962,
+      "dx": 6.924355148834479,
+      "dy": 28.5,
+      "designText": "—",
+      "implText": "najbližšia uzávierka August 2026",
+      "designBox": {
+        "x": 586.0756448511655,
+        "y": 358.5,
+        "w": 13.863909614438283,
+        "h": 15
+      },
+      "implBox": {
+        "x": 593,
+        "y": 387,
+        "w": 192,
+        "h": 14
+      },
+      "designContainer": {
+        "x": 268.1960029772592,
+        "y": 178,
+        "w": 532.7702408976998,
+        "h": 332
+      },
+      "implContainer": {
+        "x": 270,
+        "y": 367,
+        "w": 532,
+        "h": 141.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "✉@298",
+        "Žiadosť: výpis z terminálu@333",
+        "čaká na vlastníka · odosla@333",
+        "5 dní@652",
+        "Pripomenúť@710",
+        "Vlastník nahráva v dávkach@857"
+      ],
+      "implRow": [
+        "Nastavenia@40",
+        "Uzávierky období@287"
+      ],
+      "designStyle": "12.5px · w500 · rgb(44, 36, 25)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 2
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-pending-accountant-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 209.6708994266602,
+      "dx": -6.434587912087913,
+      "dy": 13.478260869565133,
+      "designText": "Všetko",
+      "implText": "Kaviareň Prameň · s.r.o. · DPH mesačne",
+      "designBox": {
+        "x": 22.434587912087913,
+        "y": 146.52173913043487,
+        "w": 34.459340659340654,
+        "h": 12.782608695652174
+      },
+      "implBox": {
+        "x": 16,
+        "y": 160,
+        "w": 223,
+        "h": 14
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 105.5,
+        "w": 392,
+        "h": 86.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "7@62",
+        "Transakcie@96",
+        "3@153",
+        "Doklady@186",
+        "2@230",
+        "Platby@264",
+        "1@299",
+        "Správy@331",
+        "1@369"
+      ],
+      "implRow": [],
+      "designStyle": "11.5px · w600 · rgb(248, 243, 236)",
+      "implStyle": "12px · w400 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-members-accountant-mobile",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 190.9026840749623,
+      "dx": -11.247482014388481,
+      "dy": -11.23456790123464,
+      "designText": "✉",
+      "implText": "Žiadne čakajúce pozvánky.",
+      "designBox": {
+        "x": 44.24748201438848,
+        "y": 560.2345679012346,
+        "w": 11.61640287769784,
+        "h": 22.037037037037035
+      },
+      "implBox": {
+        "x": 33,
+        "y": 549,
+        "w": 174,
+        "h": 16
+      },
+      "designContainer": {
+        "x": 14.913669064748209,
+        "y": 524.9753086419753,
+        "w": 381.17985611510784,
+        "h": 166.01234567901233
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "brigita@pramen.sk@82"
+      ],
+      "implRow": [],
+      "designStyle": "13px · w400 · rgb(185, 171, 151) · r18",
+      "implStyle": "14px · w400 · rgb(138, 125, 108) · bg oklab(0.948561 0.00308838 0.016212 / 0.4) · r21.6",
+      "blockMates": 0
+    },
+    {
+      "corpus": "refdiff",
+      "pair": "refdiff-library-groups-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 154,
+      "dx": -8,
+      "dy": -14,
+      "designText": "Primary · sm · Disabled",
+      "implText": "login",
+      "designBox": {
+        "x": 117,
+        "y": 429.5,
+        "w": 161,
+        "h": 15
+      },
+      "implBox": {
+        "x": 109,
+        "y": 415.5,
+        "w": 32,
+        "h": 18
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Major@622",
+        "history@867",
+        "r45@882",
+        "3 h ago@916",
+        "Compare@1138",
+        "chevron_right@1194"
+      ],
+      "implRow": [
+        "auto_awesome@391",
+        "Claude Design@407",
+        "1 cell@514",
+        "Clean@622",
+        "r12@861",
+        "17 d ago@861",
+        "Compare@1123",
+        "chevron_right@1181"
+      ],
+      "designStyle": "12px · w400 · rgb(231, 233, 236)",
+      "implStyle": "13.5px · w600 · rgb(231, 233, 236)",
+      "blockMates": 6
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "doc-detail-accountant-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 147.9485969880421,
+      "dx": -0.2491522829047561,
+      "dy": -9.857352941176487,
+      "designText": "POPIS",
+      "implText": "Aplikácia · nahral(a) Test Owner",
+      "designBox": {
+        "x": 18.249152282904756,
+        "y": 647.2173529411765,
+        "w": 32.10202588309796,
+        "h": 10.805882352941177
+      },
+      "implBox": {
+        "x": 18,
+        "y": 637.36,
+        "w": 147,
+        "h": 33.75
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "9px · w600 · rgb(185, 171, 151)",
+      "implStyle": "12.5px · w500 · rgb(44, 36, 25)",
+      "blockMates": 4
+    },
+    {
+      "corpus": "uctoinak2-storybook",
+      "pair": "doc-detail-owner-mobile",
+      "phase": "polish",
+      "via": "slot",
+      "gamma": 147.9485969880421,
+      "dx": -0.2491522829047561,
+      "dy": -9.857352941176487,
+      "designText": "POPIS",
+      "implText": "Aplikácia · nahral(a) Test Owner",
+      "designBox": {
+        "x": 18.249152282904756,
+        "y": 647.2173529411765,
+        "w": 32.10202588309796,
+        "h": 10.805882352941177
+      },
+      "implBox": {
+        "x": 18,
+        "y": 637.36,
+        "w": 147,
+        "h": 33.75
+      },
+      "sameContainerShape": false,
+      "designRow": [],
+      "implRow": [],
+      "designStyle": "9px · w600 · rgb(185, 171, 151)",
+      "implStyle": "12.5px · w500 · rgb(44, 36, 25)",
+      "blockMates": 4
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "client-pending-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 129.35670704633202,
+      "dx": 0.21768029245595244,
+      "dy": 2.6028003556007206,
+      "designText": "Transakcie",
+      "implText": "Čaká na akciu",
+      "designBox": {
+        "x": 269.78231970754405,
+        "y": 30.39719964439928,
+        "w": 37.896311066799605,
+        "h": 19.56746253492507
+      },
+      "implBox": {
+        "x": 270,
+        "y": 33,
+        "w": 158,
+        "h": 26
+      },
+      "implContainer": {
+        "x": 240,
+        "y": 0,
+        "w": 942,
+        "h": 100.5
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Portfólio@65",
+        "12@165",
+        "Všetko@216",
+        "7@245",
+        "3@312",
+        "Doklady@338",
+        "2@371",
+        "Platby@396",
+        "1@423",
+        "Správy@447",
+        "1@476"
+      ],
+      "implRow": [
+        "Portfólio@52",
+        "4@202",
+        "0 položiek@438",
+        "Pripomenúť@1000"
+      ],
+      "designStyle": "12px · w600 · rgb(95, 85, 70)",
+      "implStyle": "26px · w500 · rgb(44, 36, 25)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "messages-accountant-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 116.8021649542652,
+      "dx": -6.710330990047112,
+      "dy": 26.5,
+      "designText": "ZK",
+      "implText": "VYŽADUJE AKCIU",
+      "designBox": {
+        "x": 304.7103309900471,
+        "y": 326,
+        "w": 15.268166035781917,
+        "h": 12
+      },
+      "implBox": {
+        "x": 298,
+        "y": 352.5,
+        "w": 98.86,
+        "h": 12
+      },
+      "designContainer": {
+        "x": 271.99283234194303,
+        "y": 127,
+        "w": 889.9159632284318,
+        "h": 608
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "Faktúra SPP 2026/0612@343",
+        "Vy: Ďakujem, sedí to. Fakt@343",
+        "Pon@581",
+        "ZK@649",
+        "16:02@679"
+      ],
+      "implRow": [
+        "Členovia@40",
+        "Stačí zálohová faktúra ale@718"
+      ],
+      "designStyle": "10.5px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r17",
+      "implStyle": "11px · w600 · rgb(138, 125, 108)",
+      "blockMates": 0
+    },
+    {
+      "corpus": "uctoinak2",
+      "pair": "today-owner-desktop",
+      "phase": "reconcile",
+      "via": "slot",
+      "gamma": 104.84543742621737,
+      "dx": -20.133257355113756,
+      "dy": -0.7741935483870961,
+      "designText": "ZK",
+      "implText": "Nahrať doklad",
+      "designBox": {
+        "x": 1026.1332573551138,
+        "y": 24.274193548387096,
+        "w": 17.610400574057664,
+        "h": 14.451612903225806
+      },
+      "implBox": {
+        "x": 1006,
+        "y": 23.5,
+        "w": 100,
+        "h": 16
+      },
+      "implContainer": {
+        "x": 0,
+        "y": 0,
+        "w": 1280,
+        "h": 64
+      },
+      "sameContainerShape": false,
+      "designRow": [
+        "KP@-210",
+        "Kaviareň Prameň@-175",
+        "▾@-30",
+        "Dnes@583",
+        "Doklady@641",
+        "Transakcie@719",
+        "Prehľady@816",
+        "Viac ▾@900"
+      ],
+      "implRow": [
+        "FS@37",
+        "Functional s. r. o.@68",
+        "Dnes@582",
+        "Doklady@641",
+        "Transakcie@719",
+        "Prehľady@816",
+        "Viac@899",
+        "RO@1228"
+      ],
+      "designStyle": "11.5px · w600 · rgb(95, 85, 70) · bg rgb(244, 237, 226) · r19",
+      "implStyle": "14px · w600 · rgb(255, 253, 249) · bg rgb(184, 92, 36) · r12",
+      "blockMates": 0
+    }
+  ]
+}

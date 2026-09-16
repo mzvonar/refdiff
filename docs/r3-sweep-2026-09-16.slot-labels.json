@@ -1,0 +1,31 @@
+{
+  "_": [
+    "Ground truth for the SECOND selector of the R3 sweep:",
+    "`node scripts/r3-sweep.ts --slot-ratio 4`, ranked γ-descending.",
+    "",
+    "It exists because the γ selector cannot see this family at all. `slotGamma`",
+    "caps a slot pair's POSITION distance at 40 px by construction, so a slot",
+    "mis-pairing is always nearby; what it is not is the same SIZE of thing. The",
+    "recorded `gamma` on these rows is the full γ, whose bulk is the width term",
+    "`slotGamma` deliberately drops.",
+    "",
+    "Same label vocabulary and the same `how` provenance as the γ labels file."
+  ],
+  "labels": [
+    { "n": 1, "label": "leafshape", "how": "pixels", "note": "the same org-context banner; the comp's sentence is one leaf, the impl's is spans" },
+    { "n": 2, "label": "wrong", "how": "pixels", "note": "a 13x13 avatar badge vs a 380x19 page subtitle" },
+    { "n": 3, "label": "wrong", "how": "family", "note": "an 11x20 stat digit vs the client subtitle line; 8 confirms the family by pixels" },
+    { "n": 4, "label": "correct", "how": "detail", "note": "the page H1 in the same place, shorter copy — the case slot exists for" },
+    { "n": 5, "label": "wrong", "how": "detail", "note": "a 252x31 annotation sentence vs a 7x14 red count badge" },
+    { "n": 6, "label": "wrong", "how": "family", "note": "a 10x14 gear icon vs the client subtitle line; family of 8" },
+    { "n": 7, "label": "wrong", "how": "pixels", "note": "an amount placeholder in a pending row vs a period-close card's caption" },
+    { "n": 8, "label": "wrong", "how": "pixels", "note": "a filter chip label vs the client subtitle line — on a POLISH pair" },
+    { "n": 9, "label": "wrong", "how": "detail", "note": "a 12x22 envelope icon vs a 174x16 empty-state sentence" },
+    { "n": 10, "label": "wrong", "how": "pixels", "note": "a variant-cell caption vs a library group name — two different lists" },
+    { "n": 11, "label": "wrong", "how": "pixels", "note": "the comp's POPIS field LABEL vs the impl's ZDROJ field VALUE — on a 0.84-confidence POLISH pair" },
+    { "n": 12, "label": "wrong", "how": "family", "note": "owner twin of 11" },
+    { "n": 13, "label": "wrong", "how": "pixels", "note": "a filter chip vs the page H1" },
+    { "n": 14, "label": "wrong", "how": "pixels", "note": "a thread-row avatar vs a section heading" },
+    { "n": 15, "label": "wrong", "how": "detail", "note": "a thread-row avatar vs a primary action button; same shape as 14" }
+  ]
+}
