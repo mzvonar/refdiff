@@ -5,6 +5,34 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — splitting a document splits every CHECK written against it, and the half that still passes is the dangerous one
+
+`SKILL.md` went 1423 lines → six files. The mechanical risks were all handled in advance and none
+of them bit: `sync-skill.sh` has globbed its own directory since `bf392ee`, the self-test's row 9c
+has been planting a fake `reconcile.md` for exactly this, and a real vendor into a temp consumer
+shipped all nine files with the stamp naming each. **What was NOT handled was everything that had
+been written to point INTO the file.**
+
+Three rows of `CLAUDE.md`'s doc-sync table said "update the 'Configuring a pair' table in
+`SKILL.md`", "'Reading the measurements' + §1a in `SKILL.md`", "'Environment pre-flight' in
+`SKILL.md`" — instructions naming sections that had just moved out. And its verification line,
+`grep -n "<term>" skills/ packages/ docs/`, **now misses five sixths of the skill and comes back
+clean**, which is the same failure shape this repo has already filed twice: a check that cannot
+fail reads exactly like one that passed (the `FILES` snippet that matched a filename in a comment;
+the `+0/−0` a stale dist produces).
+
+**The rule:** when a file is split, renamed or moved, the same change sweeps every pointer at it —
+cross-references inside the moved text (each `§3a` that is now cross-file), routing tables that
+claim to list its parts, and **every grep/lint/test whose SCOPE was that one path.** A scoped check
+does not go red when its subject moves; it silently narrows. The audit that catches it is
+mechanical and cheap: list every `§`/section reference per file and confirm each is intra-file or
+file-qualified, and re-read every command in the guidelines that names the old path.
+
+**Its twin, the one that DOES go red, is worth keeping beside it:** byte-preservation. The nine
+extracted ranges were concatenated and `diff`ed against the committed original (clean), then a
+line-level set difference isolated the 23 lines that differ — every one a deliberate edit. That
+check costs one command and turns "I think I moved it all" into a number.
+
 ## 2026-09-16 — an instrument built for one SIDE of a comparison is not an instrument for the other
 
 Second instance in this workstream of the rule filed on 2026-09-15 as "an AGGREGATE score answers

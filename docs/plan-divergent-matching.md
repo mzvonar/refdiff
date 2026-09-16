@@ -6,8 +6,10 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-16).** Steps 0–4 DONE, plus RECONCILE STEPS 1 (the clock freeze) and 2 (the
-> per-side unmatched map). Not pushed. 488 core + 380 annotator green; `preflight-selftest.sh` 24/24.
+> **STATUS (2026-09-16).** Steps 0–4 DONE, plus **RECONCILE STEPS 1, 2 AND 3** — the clock
+> freeze, the per-side unmatched map, and the `reconcile.md` workflow with the six-way `SKILL.md`
+> split. **The reconcile workstream is complete; next is STEP 5.** Not pushed. 488 core + 380
+> annotator green; `preflight-selftest.sh` 24/24.
 >
 > **THE REMAINING STEPS WERE REWRITTEN after step 2's corpus contradicted the plan's premise — read
 > [THE REFRAME](#the-reframe-2026-09-15-after-step-2--read-this-before-any-remaining-step) before
@@ -15,8 +17,21 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: RECONCILE STEP 3** — the `reconcile.md` workflow, and split the 1395-line `SKILL.md`
-> while doing it. Reconcile step 2's small version SHIPPED 2026-09-16 (see its DONE block): the
+> **DO NEXT: STEP 5 — refuse pairs on weak evidence.** Read step 4's DONE block AND the γ-ceiling
+> refutation before touching it; the corpus's worst unflagged mis-pairings are TEXT pairs, so the
+> step's "text pairs are evidence about themselves" bullet is the one to re-argue. Then step 6.
+>
+> **RECONCILE STEP 3 SHIPPED 2026-09-16** (see its DONE block): `skills/refdiff/reconcile.md`, 227
+> lines, seven numbered steps, marked **PROVISIONAL and run against ZERO pairs** in its own header;
+> `SKILL.md` **1423 → 399 lines** across six files, so a polish session loads 808 lines instead of
+> 1423 and a reconcile session 626. Content byte-preserved (the nine ranges `diff` back to the
+> committed file; 23 lines differ and all 23 are deliberate edits). One of this plan's own framings
+> did not survive the re-derivation: **the map is not the instrument that catches what reading
+> misses** — the `SumUp` title divergence is placed by the map on both sides, in different rows,
+> connected by nothing. `CLAUDE.md`'s doc-sync table is updated in the same change, because three
+> of its rows named sections that had moved.
+>
+> Reconcile step 2's small version SHIPPED 2026-09-16 (see its DONE block): the
 > per-side unmatched map, `report.unmatched`, placing **697 of 1200** unmatched comp elements on the
 > 24 `reconcile` pairs where `byRegion` placed 251, with both filed headline defects fixed inside it.
 > The FULL correspondence map stays parked — the cheap test refuted its justification: a model
@@ -31,10 +46,11 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > The clock freeze is VERIFIED ON ALL THREE
 > CORPORA and re-baselined — 52 pairs, `matched` unmoved on every one, zero `auth-failed` (the
 > named risk); see reconcile step 1's DONE block for the two-run table and the three explained
-> movements. Plan steps 0–4 and RECONCILE STEPS 1–2 are DONE; the reconcile
-> workstream comes BEFORE step 5. Step 4 shipped the `reconcile` label and nothing about
-> how to act on it, and 24 of the 52 corpus pairs are in that phase; step 2 gave it the inventory
-> and step 3 gives the skill the workflow it lacks. When you do reach step 5, read
+> movements. Plan steps 0–4 and RECONCILE STEPS 1–3 are DONE, so the reconcile workstream — which
+> came BEFORE step 5 — is closed: step 4 shipped the `reconcile` label and nothing about how to act
+> on it, step 2 gave it the inventory, step 3 gave the skill the workflow it lacked. What that
+> workflow still lacks is a RUN: it is provisional against 24 corpus pairs and zero real uses, and
+> the first one revises it. When you reach step 5, read
 > step 4's DONE block first: it changed which confidence a threshold should read
 > (`max(confidenceX, confidenceY)`, not the joint score), and step 5 is written against the joint
 > one. Baseline:
@@ -1029,6 +1045,81 @@ confirmed against how it actually reads:
 
 **Done.** A `reconcile` pair can be worked end to end from the skill alone, and the section names
 the pairs it has actually been run against.
+
+#### DONE 2026-09-16 — `reconcile.md` shipped, and `SKILL.md` split six ways
+
+**(a) `skills/refdiff/reconcile.md`, 227 lines, marked PROVISIONAL in its own first paragraph.**
+Seven numbered steps in §0's shape, each naming the failure it prevents: **R1 READ** (the comp,
+`design.png`, `impl.png`, for intent — the hypothesis), **R2** the per-side `report.unmatched`
+map as the CHECKLIST against that reading, **R3** the complement audit, **R4** classify, **R5**
+fix in order, **R6** re-run and read the PHASE, **R7** the anchor table. The binding half of the
+old ban is stated in the header — *reading forms a hypothesis; the measurement adjudicates it* —
+and the file says plainly that it has been RUN end to end against **zero** pairs.
+
+It answers the three questions the four sentences ducked. **Where to start at 291 unmatched:**
+the biggest GROUP, not the first finding — a group is usually one decision, and the witness's
+two ten-element groups account for 20 of its 37 listed elements. **The three-way classification**
+is a table with a tell per row, and the "stale comp" row does not re-decide anything: it
+cross-links `polish.md` §3a (never edit the comp to agree; ASK before writing upstream) and
+names `disabled: "<why>"` for a comp a rebuild superseded. **When to stop:** re-run after each
+structural change and read `matching` + `phase`, not the finding count — refusing a pair moves
+one element out of `matched` and adds one to BOTH one-sided columns, so progress is `matched`
+RISING while `designOnly` and `implOnly` fall. The `polish` crossing is quoted as the shipped
+rule (`rate >= 0.70 && max(confidenceX, confidenceY) >= 0.50`), and the one bound with no
+measurement behind it — three flat iterations → stop — is **labelled `(unmeasured)` in the file.**
+
+**Every claim in it was re-derived from the artifacts, and one of the plan's own framings did not
+survive.** The plan said the map is the instrument that catches what reading misses. Measured:
+the one thing the cheap test's reading missed — the fourth thread's title, `"SumUp poplatky —
+jún"` against `"SumUp Payments — chýba doklad"` — is `f24` and `f81`, and the map DOES place
+both, in the comp's thread row at (282, 363) and the implementation's at (286, 665). **Different
+rows, so nothing connects them.** `reconcile.md` says so rather than claiming a catch: the one
+thing reading missed is a thing the map does not measure either, which is what R4 exists for.
+The `Vybavené` numbers were re-measured the same way and hold exactly — comp chips at y 92
+(`Všetky · Žiadosti · Otázky · Vybavené`), impl chips at y 235.5 (three of them), the comp's
+fourth paired with the impl's thread badge at (351, 728.5): **415.0 left, 636.5 down, γ 1062.6.**
+
+**(b) The split, measured.** `SKILL.md` **1423 lines / 103 KB → 399 lines / 30 KB**; six files,
+1737 lines total. The layout is the one the plan proposed, confirmed against how it reads:
+
+| file | lines | loaded when |
+| --- | --- | --- |
+| `SKILL.md` | 399 | always — bindings, the rules, tool pre-flight, the loop, §0, §1, §1a-0, and the routing table |
+| `polish.md` | 409 | `phase: polish` — §1a, §1a-ii, §2–§6, Reading the measurements |
+| `sets.md` | 269 | a set / manifest run — §1b |
+| `configuring.md` | 261 | declaring a pair — `disabled`, `ignore`, `section`/`sections`/`gallery` |
+| `reconcile.md` | 227 | `phase: reconcile` |
+| `setup.md` | 172 | once per machine / per repo — vendoring, dev-mode setup, environment pre-flight |
+
+**What a session actually loads**: a polish run 808 lines (SKILL + polish) against 1423 — **43%
+less**; a reconcile run 626 — **56% less**, and it gets a workflow where it previously got four
+sentences. `Environment pre-flight` went to `setup.md` rather than staying resident: it is about
+the repo you measure, it is read when a capture fails, and rule 6 now points at it by name.
+
+**Content is byte-preserved and that was verified, not assumed.** The nine extracted ranges
+concatenate back to the committed `SKILL.md` exactly (`diff` clean), and a line-level set
+difference of the original against the union of the six files leaves exactly **23** lines, every
+one of them a deliberate edit — the frontmatter description, the phase table's two rows, and every
+cross-reference that became cross-file (`§3a` → `polish.md` §3a, `§1b` → `sets.md` §1b, and so
+on). Every `§` reference in the six files is now either intra-file or file-qualified; that was
+audited per file rather than spot-checked.
+
+**`CLAUDE.md`'s doc-sync table was stale the moment the split landed and is updated in the same
+change.** Three of its rows pointed at "the 'Configuring a pair' table … in `SKILL.md`",
+"'Reading the measurements' + §1a in `SKILL.md`" and "'Environment pre-flight' in `SKILL.md`" —
+sections that are no longer there. The rows now name the owning file, a row for the phase /
+`unmatched` / reconcile material was added, and the "grep before you call it done" line became
+`grep -rn … skills/`: **a grep of `SKILL.md` alone now misses five sixths of the skill and
+reports clean**, which is this repo's own favourite failure shape.
+
+**Verification.** `preflight-selftest.sh` **24 passed, 0 failed** — the only check of the
+vendoring path, and rows 9a/9c/9d are the ones that matter here (9c has planted a `reconcile.md`
+since `bf392ee`, which is now a real file). A real vendor into a temp consumer ships all nine
+files — `configuring.md polish.md preflight.sh reconcile.md sets.md setup-dev.sh setup.md
+SKILL.md sync-skill.sh` — and the `.skill-version` stamp's `files=` names every one. `pnpm
+typecheck` clean; tests **488 core + 380 annotator**, unmoved, because **no source file changed**
+— which is also why the corpus needs no re-measurement: `matched` cannot move on a documentation
+change, and no capture was run.
 
 ---
 
