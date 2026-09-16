@@ -30,7 +30,7 @@ import sharp from "sharp"
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
 import { pairPhase } from "../structural/phase.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
-import { containersOf, groupByRegion } from "./regions.js"
+import { containersOf, groupByRegion, groupUnmatched } from "./regions.js"
 import { verdictOf } from "./verdict.js"
 
 export interface PackageOptions {
@@ -146,6 +146,25 @@ export async function packageForModel(
     containersOf(impl.elements, { x: 0, y: 0, w: impl.width, h: impl.height }),
   )
 
+  // And WHERE THE UNMATCHED ONES are, one grouping per side — the design side by
+  // the comp's OWN containers, which is the whole point (see `groupUnmatched`).
+  // `design.elements` are already mapped into impl world space by
+  // `alignStructural`, and so is the comp's frame: its origin is the alignment
+  // offset, and `design.width/height` are the post-transform dimensions.
+  const unmatched = groupUnmatched({
+    findings: withCrops,
+    suppressed,
+    ...(matching !== undefined ? { matching } : {}),
+    design: {
+      elements: design.elements,
+      frame: { x: alignment.offsetX, y: alignment.offsetY, w: design.width, h: design.height },
+    },
+    impl: {
+      elements: impl.elements,
+      frame: { x: 0, y: 0, w: impl.width, h: impl.height },
+    },
+  })
+
   const report: ComparisonReport = {
     pair: pair.id,
     createdAt: new Date().toISOString(),
@@ -186,6 +205,7 @@ export async function packageForModel(
       ? { delta: diffReports(previous, { findings: withCrops }, {}, ledger) }
       : {}),
     ...(byRegion.groups.length > 0 ? { byRegion } : {}),
+    ...(unmatched !== undefined ? { unmatched } : {}),
     artifacts: {
       designPng: rel(design.pngPath),
       implPng: rel(impl.pngPath),

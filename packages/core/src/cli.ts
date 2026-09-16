@@ -59,7 +59,7 @@ import { captureStorybook } from "./adapters/storybook.js"
 import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
 import { packageForModel } from "./package/package-for-model.js"
-import { describeRegions } from "./package/regions.js"
+import { describeRegions, describeUnmatched } from "./package/regions.js"
 import { buildSetIndex, setIndexFileName, type SetIndex } from "./package/set-index.js"
 import { renderSummary, summarizeReports } from "./package/summary.js"
 import { defaultDesignScale, normalize, pairRefs } from "./pipeline.js"
@@ -744,16 +744,20 @@ function reportProvenance(findings: readonly Finding[]): void {
 /**
  * The phase verdict, FIRST — before the findings, because it says how to read them.
  *
- * On a `reconcile` pair the missing/extra COUNTS are the headline and the per-element
+ * On a `reconcile` pair the unmatched elements are the headline and the per-element
  * findings are not — they size the problem before a reader starts spending attention on
  * individual colour deltas between elements that were never the same element.
  *
- * They are counts, deliberately labelled as such and NOT as an inventory. The per-element
- * list does exist, as the `missing-element` / `extra-element` findings below, but it
- * arrives flat and severity-sorted and nothing here groups it into the structure map a
- * reconciliation actually wants. That map is parked in `docs/plan-divergent-matching.md`
- * (§PARKED, "container correspondence as a RECONCILE output"); until it is built, calling
- * these three numbers an inventory would promise a reader something they do not get.
+ * Since 2026-09-16 they arrive PLACED, one grouping per side (`report.unmatched`), which
+ * is as much of the parked structure map as the evidence earns — a fresh-context model
+ * given the comp, both screenshots and the flat list placed 57 of 59 texted elements by
+ * itself, so what it lacked was never completeness but organisation. The full
+ * correspondence map stays parked (`docs/plan-divergent-matching.md`).
+ *
+ * Two things this block used to get wrong, both fixed there rather than here:
+ * it printed the MATCHER's count over a list holding one fewer, and it told the reader
+ * `byRegion` grouped that list when `byRegion` places 11 of the witness's 37 design-only
+ * elements (it groups by IMPL containers — see `groupUnmatched`).
  *
  * The findings are still all there, printed below and written to `findings.json`
  * unchanged — this only changes what a reader meets first.
@@ -768,11 +772,23 @@ function printPhase(report: ComparisonReport): void {
   if (p.phase === "reconcile" && report.matching) {
     const m = report.matching
     console.log(
-      `  what to do: read the comp and the implementation as WHOLES and fix the structure before reading findings one by one — the missing-element / extra-element findings below are the raw material, and \`byRegion\` groups them`,
+      `  what to do: read the comp and the implementation as WHOLES and fix the structure before reading findings one by one — the missing-element / extra-element findings below are the raw material, grouped per side here and in \`unmatched\` in findings.json`,
     )
     console.log(
-      `  unmatched: ${m.designOnly} design element(s) with no counterpart, ${m.implOnly} impl element(s) unaccounted for; of ${m.matched} pairings ${m.matchedVia.text} are text-proven and ${m.matchedVia.geometry} rest on position alone`,
+      `  pairings: of ${m.matched}, ${m.matchedVia.text} are text-proven and ${m.matchedVia.geometry} rest on position alone`,
     )
+    if (report.unmatched) {
+      for (const line of describeUnmatched(
+        report.unmatched.design,
+        "design element(s) with no counterpart, in the comp's own containers",
+      ))
+        console.log(line)
+      for (const line of describeUnmatched(
+        report.unmatched.impl,
+        "impl element(s) the design does not have, in the implementation's containers",
+      ))
+        console.log(line)
+    }
   }
 }
 

@@ -24,6 +24,8 @@ export type {
   MatchVia,
   Severity,
   SuppressedFinding,
+  UnmatchedBreakdown,
+  UnmatchedSide,
   Explanation,
   ExplainRule,
   SuppressionReason,
@@ -248,7 +250,10 @@ export { packageForModel, type PackageOptions } from "./package/package-for-mode
 export {
   containersOf,
   describeRegions,
+  describeUnmatched,
   groupByRegion,
+  groupUnmatched,
+  type UnmatchedInput,
   DEFAULT_MAX_CONTAINER_SHARE,
   DEFAULT_MIN_CONTAINER_PX,
 } from "./package/regions.js"

@@ -531,6 +531,49 @@ export interface RegionBreakdown {
   elsewhere: number
 }
 
+/**
+ * One side of `UnmatchedBreakdown`. The two POPULATIONS are kept apart on
+ * purpose: what the matcher left unpaired and what the run actually lists are
+ * different numbers, and the reconcile headline used to print the first while
+ * pointing the reader at the second — 38 unmatched, 37 listed, nothing saying
+ * where the 38th went.
+ *
+ * `elements === reported + suppressed + belowFloor`, always.
+ */
+export interface UnmatchedSide {
+  /** What the MATCHER left unpaired here — `MatchingStats.designOnly` / `implOnly`. */
+  elements: number
+  /** How many of those this run LISTS, as a `missing-element` / `extra-element` finding. */
+  reported: number
+  /** …removed by the ignore policy: in `ComparisonReport.suppressed`, not in the list. */
+  suppressed: number
+  /** …never raised at all, being under `minElementSize` on one dimension. */
+  belowFloor: number
+  /** The REPORTED ones, placed in this side's OWN containers. */
+  byRegion: RegionBreakdown
+}
+
+/**
+ * Where the elements only ONE side has actually are — the `reconcile` phase's
+ * raw material, placed. Built by `groupUnmatched`.
+ *
+ * TWO groupings, never one, and that is the whole content of this type.
+ * `byRegion` draws its containers from the IMPL tree, which is right for a
+ * finding about a PAIR (both boxes live in impl world space) and wrong for a
+ * design-only element: a `reconcile` pair is by definition one whose two
+ * layouts disagree, so a comp element falls outside every impl container
+ * exactly where the comp puts something the implementation does not have.
+ * Measured over the 24 `reconcile` pairs of the 2026-09-16 corpus: impl
+ * containers place **251 of 1200** design-only elements (21%); each side's own
+ * containers place **697** (58%).
+ */
+export interface UnmatchedBreakdown {
+  /** `missing-element` findings, grouped by the COMP's own containers. */
+  design: UnmatchedSide
+  /** `extra-element` findings, grouped by the IMPLEMENTATION's containers. */
+  impl: UnmatchedSide
+}
+
 export type SuppressionReason =
   | "text-pattern"
   | "role"
@@ -716,6 +759,18 @@ export interface ComparisonReport {
    * severity-sorted list shows neither. Absent when nothing groups.
    */
   byRegion?: RegionBreakdown
+  /**
+   * WHERE the UNMATCHED elements are, one grouping per side — the material a
+   * `reconcile` pair is worked from (see `UnmatchedBreakdown`). Not gated on the
+   * phase: it is computed from the same two element trees on every pair, and a
+   * `polish` pair with 84 design-only elements wants it just as much.
+   *
+   * Absent when `matching` is — `UnmatchedSide.elements` IS `MatchingStats`'s
+   * count, and a report that cannot say how many the matcher left over must say
+   * so by being silent rather than by substituting the reported count, which is
+   * a different number. Absent too when nothing is unmatched at all.
+   */
+  unmatched?: UnmatchedBreakdown
   artifacts: {
     designPng: string
     implPng: string

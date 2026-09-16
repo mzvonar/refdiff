@@ -363,16 +363,37 @@ how many impl elements are unaccounted for, and how many of the pairings that DI
 position alone. Those counts are the size of the problem, not the problem: the 200 element-wise
 findings under them are mostly describing two structures being forced onto each other.
 
-**Where the actual list is, because refdiff does not yet assemble it for you.** The per-element
-answer is in `findings.json` as the `missing-element` findings (a comp element with no counterpart,
-carrying its text and box) and the `extra-element` findings (an impl element nothing accounted for).
-That is the raw material for reconciling, and today it arrives as a flat severity-sorted list mixed
-in with everything else — **you have to group it yourself.** `report.byRegion` is the best lever:
-it buckets findings by their smallest containing container, so reading the missing/extra entries
-region by region is the closest thing to a structure map that exists right now. A real one — which
-comp container corresponds to which impl subtree, which has no counterpart, where reading order
-diverges — is a known gap, parked deliberately in `docs/plan-divergent-matching.md` (§PARKED,
-"container correspondence as a RECONCILE output"), not an oversight.
+**Where the actual list is, and where it is PLACED.** The per-element answer is in `findings.json`
+as the `missing-element` findings (a comp element with no counterpart, carrying its text and box)
+and the `extra-element` findings (an impl element nothing accounted for). That is the raw material
+for reconciling, and it arrives flat and severity-sorted, mixed in with everything else.
+
+`report.unmatched` groups it for you — **two groupings, one per side**, printed in the reconcile
+headline and written to `findings.json`: the comp's unmatched elements placed in the COMP's own
+containers, the implementation's in the IMPLEMENTATION's. **Do not use `report.byRegion` for this.**
+It is the right instrument for findings about PAIRS and the wrong one here: it draws every container
+from the impl tree, and a `reconcile` pair is by definition one whose layouts disagree, so a comp
+element lands in the gap between impl containers exactly where the comp draws something the
+implementation has nothing for. Measured over the corpus's 24 `reconcile` pairs — impl containers
+place **251 of 1200** unmatched comp elements, each side's own place **697**.
+
+**Read the map's own miss rate, which it prints.** A line reading `N in no container of that side —
+this map does not place them` is the map saying it placed none of those N; a short list of groups is
+not a short problem. Some pairs get nothing at all — a flat page of same-size cards has no container
+between "a chip" and "most of the frame" for the map to use (`refdiff-library-groups-desktop` places
+22 of 290, and 0 of 106 on the impl side). There, grouping is not available and reading the two
+surfaces is all you have.
+
+**The headline states TWO populations, and on half the corpus they differ.** `38 design element(s)
+with no counterpart … (37 listed below, 1 under the reporting floor)`: the first number is what the
+MATCHER left unpaired, the second what this run lists. The gap is elements under the 4 px reporting
+floor plus whatever the ignore policy suppressed, and it is named rather than rounded away — on
+`refdiff-compare-desktop` it is 84 unmatched against 22 listed, all of it policy.
+
+A full correspondence map — which comp container corresponds to which impl subtree, where reading
+order diverges — stays parked in `docs/plan-divergent-matching.md`, and deliberately: a
+fresh-context model given the comp, both screenshots and the flat list placed 57 of 59 texted
+elements by itself. What it lacked was organisation, not completeness.
 
 **So `reconcile` tells you WHICH loop you are in, not HOW to do it.** The method is yours. What
 refdiff guarantees here is only that it will not let you spend an hour on a colour delta between two
