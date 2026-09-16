@@ -744,12 +744,19 @@ function reportProvenance(findings: readonly Finding[]): void {
 /**
  * The phase verdict, FIRST — before the findings, because it says how to read them.
  *
- * On a `reconcile` pair the missing/extra inventory is the headline and the per-element
- * findings are not: enumerating which comp elements have no counterpart and which impl
- * elements are unaccounted for is the picture a model building it by hand gets wrong, and
- * it is exactly what a structural reconciliation needs. The findings are still all there,
- * printed below and written to `findings.json` unchanged — this only changes what a reader
- * meets first.
+ * On a `reconcile` pair the missing/extra COUNTS are the headline and the per-element
+ * findings are not — they size the problem before a reader starts spending attention on
+ * individual colour deltas between elements that were never the same element.
+ *
+ * They are counts, deliberately labelled as such and NOT as an inventory. The per-element
+ * list does exist, as the `missing-element` / `extra-element` findings below, but it
+ * arrives flat and severity-sorted and nothing here groups it into the structure map a
+ * reconciliation actually wants. That map is parked in `docs/plan-divergent-matching.md`
+ * (§PARKED, "container correspondence as a RECONCILE output"); until it is built, calling
+ * these three numbers an inventory would promise a reader something they do not get.
+ *
+ * The findings are still all there, printed below and written to `findings.json`
+ * unchanged — this only changes what a reader meets first.
  */
 function printPhase(report: ComparisonReport): void {
   const p = report.phase
@@ -761,7 +768,10 @@ function printPhase(report: ComparisonReport): void {
   if (p.phase === "reconcile" && report.matching) {
     const m = report.matching
     console.log(
-      `  inventory: ${m.designOnly} design element(s) with no counterpart, ${m.implOnly} impl element(s) unaccounted for; of ${m.matched} pairings ${m.matchedVia.text} are text-proven and ${m.matchedVia.geometry} rest on position alone`,
+      `  what to do: read the comp and the implementation as WHOLES and fix the structure before reading findings one by one — the missing-element / extra-element findings below are the raw material, and \`byRegion\` groups them`,
+    )
+    console.log(
+      `  unmatched: ${m.designOnly} design element(s) with no counterpart, ${m.implOnly} impl element(s) unaccounted for; of ${m.matched} pairings ${m.matchedVia.text} are text-proven and ${m.matchedVia.geometry} rest on position alone`,
     )
   }
 }

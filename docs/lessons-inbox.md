@@ -5,6 +5,24 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — a corpus that measures ITSELF drifts with the clock, and the drift reads as a regression
+
+The `refdiff` corpus's implementation side is the annotator serving `fixtures/demo-root`, and the
+Library page it captures renders **the age of the runs it contains**. Crossing midnight into the
+16th turned `20 d ago` into `19 d ago` on `refdiff-library-groups-desktop`. The label narrowed, the
+row reflowed, two elements moved ~13 px, and one pairing was lost: **`matched` 197 → 196, findings
+560 → 561, +4 / −3** against the previous evening's run, with nothing edited in between.
+
+That is precisely the signature step 2 declared a REGRESSION ("a `matched` column that fell while
+`d-only`/`i-only` rose"), produced by the calendar. The tell is cheap: read the INTRODUCED findings
+and look for a relative date — `N d ago`, `stale`, a countdown. The uctoinak2 corpus has the same
+shape in a milder form (`"August 2026 · uzávierka o 9 dní"`).
+
+Two things follow. A baseline is only comparable to a run from the same DAY, so the date in
+`baseline-matching-<date>.md` is load-bearing, not decoration. And a guard whose fixture renders
+live time will keep manufacturing small deltas — worth either freezing the clock on the capture or
+adding the affected texts to that pair's `ignore.textPatterns`, neither of which is done.
+
 ## 2026-09-15 — an AGGREGATE score answers the question it was built for, not the one you are asking
 
 `alignment.confidence` is the fraction of anchors the fitted transform explains **on both axes at
