@@ -1,7 +1,41 @@
-# Matching baseline — 2026-09-16
+# Matching baseline — 2026-09-16, AFTER the line-height fix
+
+> **What this file is, and why it is not the dated one.** This is the
+> re-baseline owed by `fix(extract): resolve line-height: normal to its used
+> value` (refdiff `d2f642c`, shipped in 1.3.0). Its pair is
+> [`baseline-matching-2026-09-16.md`](baseline-matching-2026-09-16.md), which is
+> the BEFORE picture and is **amended, not superseded** — both were measured on
+> the same day, so overwriting the dated file would have destroyed the only
+> before-picture the fix can be read against.
+>
+> **What moved, on the `refdiff` corpus (the only one re-measured — see below).**
+> 2233 → 2254 findings, ledger delta +54 / −33. Read those three numbers
+> together: 59 `typography` findings now name `line-height` where **zero** could
+> before, because a `.dc.html` comp authored with a `font:` shorthand computes to
+> the keyword `normal` and the check needs a number on both sides. The −33 is not
+> findings going away — it is existing `typography` findings whose identity key
+> changed when the leading joined their `expected`/`actual`, which is why
+> `refdiff-library-groups-mobile` reads `+12/−12` at an unchanged 520 findings
+> with an unchanged critical/major/minor split.
+>
+> **Nothing in the MATCHING table moved at all** — `design`, `impl`, `matched`,
+> `text`, `slot`, `geom`, `d-only`, `i-only`, `vetoed`, `conf`, `axis`, `rate`,
+> `share` and `phase` are identical on all nine pairs, and every pair's critical
+> and major counts are unchanged. That is the signature to expect: extraction
+> emits one more style property, so the checks see more and the matcher sees the
+> same thing. A `matched` move here would have meant the fix did something it was
+> not supposed to.
+>
+> It also corroborates a hand-found note from 2026-08-28 that had no measurement
+> behind it — `architecture.md`'s observation that the comps set no line-height
+> while the report ran 1.4, "making every chip, tag and prop line 1–2px taller".
+> That is now 59 findings instead of a paragraph.
+>
+> This preamble is hand-written; the rest of the file is generated and a
+> regeneration to this path would drop it.
 
 The before-picture for `docs/plan-divergent-matching.md` steps 3–5, produced by
-`node scripts/baseline-matching.ts` at refdiff `39104ad` (WORKING TREE DIRTY — the numbers below are not a committed state).
+`node scripts/baseline-matching.ts` at refdiff `42d8cc6`.
 
 **How to read it.** The *Matching* table is the instrument. Steps 3–5 all make the matcher
 refuse more pairs, and a refusal moves one element out of `matched` and adds one to BOTH
@@ -16,19 +50,11 @@ floor. Both should FALL as the matcher improves, while `text` holds.
 
 Regenerate with the same command; it rewrites this file for today's date.
 
-> **This is now the BEFORE picture for the line-height fix** (refdiff `d2f642c`,
-> 1.3.0), which made a `.dc.html` comp's leading comparable at all and therefore
-> ADDS findings. The after-picture is
-> [`baseline-matching-2026-09-16-lineheight.md`](baseline-matching-2026-09-16-lineheight.md);
-> this file is amended by that pointer and not superseded. Both were measured the
-> same day, which is why the after-picture does not carry the dated name — a
-> regeneration would have overwritten the only before-picture that exists.
-
-## refdiff — NOT RE-MEASURED IN THIS RUN
+## refdiff
 
 the annotator's own redesign comps against the annotator serving `fixtures/demo-root` — self-contained in this repo.
 
-**The numbers below were measured 2026-09-16T14:46:29.287Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: svc up annotator (it may land on another port — pass --app-url or REFDIFF_APP_URL), then `node scripts/baseline-matching.ts --only refdiff`.
+Measured 2026-09-16T17:31:53.290Z.
 
 ```
 cd /root/refdiff
@@ -41,22 +67,22 @@ Not in the tables below:
 - `refdiff-library-desktop` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 489 findings at confidence 0.14
 - `refdiff-library-mobile` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 335 findings at confidence 0.67
 
-9 pairs: 1 PASS / 8 FAIL — 2233 findings covering 3580 instances, 351 suppressed; delta +0 / −0
-80 of 2233 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
-pairing evidence across the set: 221 by text, 34 by slot, 651 by geometry, 1327 resting on no pair
-2038 unexplained · 195 explained: 139 comp rail row order, 37 comp mark numbering, 19 canvas zoom divergence
+9 pairs: 1 PASS / 8 FAIL — 2254 findings covering 3666 instances, 374 suppressed; delta +54 / −33
+81 of 2254 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
+pairing evidence across the set: 240 by text, 35 by slot, 652 by geometry, 1327 resting on no pair
+2059 unexplained · 195 explained: 139 comp rail row order, 37 comp mark numbering, 19 canvas zoom divergence
 
 | pair                                 | verdict | findings (c/M/m) | inst | supp | unver | conf | align         | delta |
 |--------------------------------------|---------|------------------|------|------|-------|------|---------------|-------|
-| refdiff-compare-desktop              | FAIL    |     69 (20/43/6) |  103 |   66 |     0 | 0.72 | 1 / 0,0       | +0/−0 |
-| refdiff-library-groups-desktop       | FAIL    | 560 (200/229/131) |  774 |    5 |     0 | 0.56 | 1 / 0,0       | +0/−0 |
-| refdiff-library-groups-mobile        | FAIL    | 520 (130/247/143) |  722 |    2 |     0 | 0.85 | 1 / −1.0,−1.0 | +0/−0 |
-| refdiff-compare-mobile               | FAIL    |       13 (3/8/2) |   25 |   29 |     0 | 0.97 | 1 / 0,0       | +0/−0 |
-| refdiff-compare-mobile-toolbar       | PASS    |        4 (3/0/1) |    4 |   29 |     0 | 1.00 | 1 / 0,0       | +0/−0 |
-| refdiff-compare-mobile-toolbar-ghost | FAIL    |    90 (21/56/13) |  174 |   40 |     5 | 0.46 | 1 / 0,0       | +0/−0 |
-| refdiff-gallery-desktop              | FAIL    | 621 (152/328/141) | 1240 |   93 |    75 | 0.40 | 1 / 0,0       | +0/−0 |
-| refdiff-gallery-mobile               | FAIL    |  246 (91/120/35) |  357 |   32 |     0 | 0.78 | 1 / 0,0       | +0/−0 |
-| refdiff-compare-desktop-ghost        | FAIL    |   110 (37/55/18) |  181 |   55 |     0 | 0.56 | 1 / 0,0       | +0/−0 |
+| refdiff-compare-desktop              | FAIL    |     72 (20/43/9) |  128 |   69 |     0 | 0.72 | 1 / 0,0       | +3/−0 |
+| refdiff-library-groups-desktop       | FAIL    | 560 (200/229/131) |  774 |    5 |     0 | 0.56 | 1 / 0,0       | +4/−4 |
+| refdiff-library-groups-mobile        | FAIL    | 520 (130/247/143) |  722 |    2 |     0 | 0.85 | 1 / −1.0,−1.0 | +12/−12 |
+| refdiff-compare-mobile               | FAIL    |       15 (3/8/4) |   35 |   32 |     0 | 0.97 | 1 / 0,0       | +3/−1 |
+| refdiff-compare-mobile-toolbar       | PASS    |        8 (3/0/5) |   17 |   32 |     0 | 1.00 | 1 / 0,0       | +4/−0 |
+| refdiff-compare-mobile-toolbar-ghost | FAIL    |    95 (21/56/18) |  183 |   43 |     5 | 0.46 | 1 / 0,0       | +7/−2 |
+| refdiff-gallery-desktop              | FAIL    | 622 (152/328/142) | 1241 |   97 |    76 | 0.40 | 1 / 0,0       | +12/−11 |
+| refdiff-gallery-mobile               | FAIL    |  248 (91/120/37) |  359 |   36 |     0 | 0.78 | 1 / 0,0       | +5/−3 |
+| refdiff-compare-desktop-ghost        | FAIL    |   114 (37/55/22) |  207 |   58 |     0 | 0.56 | 1 / 0,0       | +4/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
@@ -81,16 +107,16 @@ Findings by type:
 
 | pair                                 | miss | extra | text | pos | size | space | color | typo | bord | rad | pixel |  all |
 |--------------------------------------|------|-------|------|-----|------|-------|-------|------|------|-----|-------|------|
-| refdiff-compare-desktop              |   22 |    12 |    1 |  26 |    2 |     0 |     3 |    0 |    1 |   0 |     2 |   69 |
+| refdiff-compare-desktop              |   22 |    12 |    1 |  26 |    2 |     0 |     3 |    3 |    1 |   0 |     2 |   72 |
 | refdiff-library-groups-desktop       |  290 |   106 |   44 |  55 |   11 |     6 |    27 |   12 |    2 |   5 |     2 |  560 |
 | refdiff-library-groups-mobile        |  200 |    65 |   49 |  73 |   29 |    17 |    46 |   29 |    2 |   9 |     1 |  520 |
-| refdiff-compare-mobile               |    3 |     0 |    1 |   4 |    0 |     1 |     1 |    1 |    0 |   1 |     1 |   13 |
-| refdiff-compare-mobile-toolbar       |    3 |     0 |    0 |   0 |    0 |     0 |     0 |    0 |    0 |   0 |     1 |    4 |
-| refdiff-compare-mobile-toolbar-ghost |   25 |    12 |    1 |  33 |    3 |     3 |     5 |    2 |    2 |   3 |     1 |   90 |
-| refdiff-gallery-desktop              |  297 |    44 |   83 |  83 |   27 |    19 |    24 |   25 |    8 |  10 |     1 |  621 |
-| refdiff-gallery-mobile               |  166 |     2 |   10 |  35 |   16 |     0 |     3 |    5 |    5 |   3 |     1 |  246 |
-| refdiff-compare-desktop-ghost        |   43 |    24 |    2 |  24 |    2 |     2 |     7 |    1 |    1 |   1 |     3 |  110 |
-| TOTAL (9)                            | 1049 |   265 |  191 | 333 |   90 |    48 |   116 |   75 |   21 |  32 |    13 | 2233 |
+| refdiff-compare-mobile               |    3 |     0 |    1 |   4 |    0 |     1 |     1 |    3 |    0 |   1 |     1 |   15 |
+| refdiff-compare-mobile-toolbar       |    3 |     0 |    0 |   0 |    0 |     0 |     0 |    4 |    0 |   0 |     1 |    8 |
+| refdiff-compare-mobile-toolbar-ghost |   25 |    12 |    1 |  33 |    3 |     3 |     5 |    7 |    2 |   3 |     1 |   95 |
+| refdiff-gallery-desktop              |  297 |    44 |   83 |  83 |   27 |    19 |    24 |   26 |    8 |  10 |     1 |  622 |
+| refdiff-gallery-mobile               |  166 |     2 |   10 |  35 |   16 |     0 |     3 |    7 |    5 |   3 |     1 |  248 |
+| refdiff-compare-desktop-ghost        |   43 |    24 |    2 |  24 |    2 |     2 |     7 |    5 |    1 |   1 |     3 |  114 |
+| TOTAL (9)                            | 1049 |   265 |  191 | 333 |   90 |    48 |   116 |   96 |   21 |  32 |    13 | 2254 |
 
 Across pairs (one row = one cause; `pairs` = how many cells show it):
 
@@ -131,14 +157,14 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 2/9 | 3 (×5) | color=rgb(255, 255, 255) → color=rgb(166, 171, 179) | "1 REGRESSED" text color is rgb(166, 171, 179), design says rgb(255, 255, 255) (ΔE2000 20.3) ×3 |
 | major | color | text | 2/9 | 3 (×6) | color=rgb(229, 72, 77) → color=rgb(231, 233, 236) | "Montserrat 700" text color is rgb(231, 233, 236), design says rgb(229, 72, 77) (ΔE2000 40.4) ×4 |
 | major | border | text | 2/9 | 3 (×10) | borderWidth=0 → borderWidth=1 borderColor=rgb(245, 166, 35) | "CONTINUE" border differs: border the design does not have ×8 |
-| major | typography | text | 2/9 | 3 (×6) | fontFamily=Oswald fontSize=13.5 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 13.5px, weight 400 vs 500 ×4 |
+| major | typography | text | 2/9 | 3 (×6) | fontFamily=Oswald fontSize=13.5 lineHeight=20 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 lineHeight=11.25 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 13.5px, line-height 11.25px vs 20px, weight 400 vs 500 ×4 |
 | major | color | box | 2/9 | 2 | backgroundColor=rgb(229, 72, 77) → backgroundColor=rgb(79, 70, 229) | box at (59, 269) background is rgb(79, 70, 229), design says rgb(229, 72, 77) (ΔE2000 41.8) |
 | major | color | box | 2/9 | 2 (×8) | backgroundColor=rgb(76, 154, 255) → backgroundColor=rgb(79, 70, 229) | box at (59, 351) background is rgb(79, 70, 229), design says rgb(76, 154, 255) (ΔE2000 28.4) ×5 |
 | major | color | text | 2/9 | 2 | color=rgb(229, 72, 77) → color=rgb(245, 166, 35) | "4" text color is rgb(245, 166, 35), design says rgb(229, 72, 77) (ΔE2000 37.5) |
 | major | color | box | 2/9 | 2 | backgroundColor=rgb(229, 72, 77) → backgroundColor=rgb(245, 166, 35) | box at (622, 732) background is rgb(245, 166, 35), design says rgb(229, 72, 77) (ΔE2000 37.5) |
 | major | color | text | 2/9 | 2 | color=rgb(166, 171, 179) → color=rgb(76, 154, 255) | "3" text color is rgb(76, 154, 255), design says rgb(166, 171, 179) (ΔE2000 20.9) |
 | major | color | box | 2/9 | 2 | backgroundColor=rgb(76, 154, 255) → backgroundColor=rgb(245, 166, 35) | box at (622, 874) background is rgb(245, 166, 35), design says rgb(76, 154, 255) (ΔE2000 55.3) |
-| major | typography | text | 2/9 | 2 (×6) | fontFamily=Material Symbols Outlined → fontFamily=IBM Plex Mono | "history" typography differs: family "IBM Plex Mono" vs "Material Symbols Outlined" ×3 |
+| major | typography | text | 2/9 | 2 (×6) | fontFamily=Material Symbols Outlined lineHeight=12 → fontFamily=IBM Plex Mono lineHeight=15 | "history" typography differs: family "IBM Plex Mono" vs "Material Symbols Outlined", line-height 15px vs 12px ×3 |
 | major | color | text | 2/9 | 2 (×12) | backgroundColor=rgb(245, 166, 35) → backgroundColor=rgba(245, 166, 35, 0.35) | "14" background is rgba(245, 166, 35, 0.35), design says rgb(245, 166, 35) (ΔE2000 19.1) ×4 |
 | major | color | text | 2/9 | 2 (×8) | backgroundColor=rgb(76, 154, 255) → backgroundColor=rgba(76, 154, 255, 0.35) | "5" background is rgba(76, 154, 255, 0.35), design says rgb(76, 154, 255) (ΔE2000 19.6) |
 | major | border | text | 2/9 | 2 (×13) | borderWidth=0 → borderWidth=2 borderColor=rgba(255, 255, 255, 0.9) | "2" border differs: border the design does not have |
@@ -149,12 +175,12 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 1/9 | 2 | color=rgb(166, 171, 179) → color=rgb(245, 166, 35) | "history" text color is rgb(245, 166, 35), design says rgb(166, 171, 179) (ΔE2000 32.3) |
 | major | color | text | 1/9 | 2 | color=rgb(91, 141, 239) → color=rgb(166, 171, 179) | "unfold_more" text color is rgb(166, 171, 179), design says rgb(91, 141, 239) (ΔE2000 20.8) |
 | major | color | text | 1/9 | 2 | color=rgb(229, 72, 77) → color=rgb(166, 171, 179) | "4" text color is rgb(166, 171, 179), design says rgb(229, 72, 77) (ΔE2000 33.4) |
-| major | typography | text | 1/9 | 2 | fontFamily=Material Symbols Outlined fontWeight=400 → fontFamily=IBM Plex Sans fontWeight=600 | "history" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", weight 600 vs 400 |
+| major | typography | text | 1/9 | 2 | fontFamily=Material Symbols Outlined lineHeight=12 fontWeight=400 → fontFamily=IBM Plex Sans lineHeight=15 fontWeight=600 | "history" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", line-height 15px vs 12px, weight 600 vs 400 |
 | major | typography | text | 1/9 | 2 | fontFamily=IBM Plex Mono fontWeight=400 → fontFamily=IBM Plex Sans fontWeight=600 | "r45" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", weight 600 vs 400 |
 | major | border | text | 1/9 | 2 | borderWidth=1 borderColor=rgba(255, 255, 255, 0.85) → borderWidth=0 | "2" border differs: no border, design has one |
-| major | typography | text | 1/9 | 2 | fontFamily=Oswald fontSize=15 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 15px, weight 400 vs 500 |
-| major | typography | text | 1/9 | 2 | fontFamily=IBM Plex Mono fontSize=11 → fontFamily=IBM Plex Sans fontSize=12.5 | "Primary · lg · Disabled" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 12.5px vs 11px |
-| major | typography | text | 1/9 | 2 | fontFamily=Montserrat fontSize=13.5 fontWeight=700 → fontFamily=IBM Plex Sans fontSize=9 fontWeight=400 | "Delete" typography differs: family "IBM Plex Sans" vs "Montserrat", size 9px vs 13.5px, weight 400 vs 700 |
+| major | typography | text | 1/9 | 2 | fontFamily=Oswald fontSize=15 lineHeight=22 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 lineHeight=11.25 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 15px, line-height 11.25px vs 22px, weight 400 vs 500 |
+| major | typography | text | 1/9 | 2 | fontFamily=IBM Plex Mono fontSize=11 lineHeight=14 → fontFamily=IBM Plex Sans fontSize=12.5 lineHeight=16 | "Primary · lg · Disabled" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 12.5px vs 11px, line-height 16px vs 14px |
+| major | typography | text | 1/9 | 2 | fontFamily=Montserrat fontSize=13.5 lineHeight=16 fontWeight=700 → fontFamily=IBM Plex Sans fontSize=9 lineHeight=11.25 fontWeight=400 | "Delete" typography differs: family "IBM Plex Sans" vs "Montserrat", size 9px vs 13.5px, line-height 11.25px vs 16px, weight 400 vs 700 |
 | major | border | surface | 1/9 | 2 | borderWidth=1 borderColor=rgb(166, 171, 179) → borderWidth=0 | surface at (60, 623) border differs: no border, design has one |
 | major | border | surface | 1/9 | 1 | borderWidth=1 borderColor=rgb(245, 166, 35) → borderWidth=1 borderColor=rgb(76, 154, 255) | surface at (1249, 1031) border differs: color rgb(76, 154, 255) vs rgb(245, 166, 35) (ΔE2000 55.3) |
 | major | color | surface | 1/9 | 1 (×7) | backgroundColor=rgb(244, 245, 247) → backgroundColor=rgba(79, 70, 229, 0.35) | surface at (75, 261) background is rgba(79, 70, 229, 0.35), design says rgb(244, 245, 247) (ΔE2000 20.8) ×7 |
@@ -167,8 +193,8 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | border | text | 1/9 | 1 | borderWidth=1 borderColor=rgb(76, 77, 84) → borderWidth=0 | "Open sheet" border differs: no border, design has one |
 | major | border | box | 1/9 | 1 | borderWidth=1 borderColor=rgb(70, 167, 88) → borderWidth=0 | box at (59, 310) border differs: no border, design has one |
 | major | border-radius | text | 1/9 | 1 | borderRadius=0 → borderRadius=8.5 | "1 REGRESSED" border-radius is 8.5px, design says 0px |
-| major | typography | text | 1/9 | 1 (×3) | fontFamily=IBM Plex Mono fontSize=11 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13.5 fontWeight=600 | "Actions / Button" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13.5px vs 11px, weight 600 vs 400 ×3 |
-| major | typography | text | 1/9 | 1 (×7) | fontFamily=IBM Plex Mono fontSize=12 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13.5 fontWeight=600 | "Primary · sm · Hover" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13.5px vs 12px, weight 600 vs 400 ×7 |
+| major | typography | text | 1/9 | 1 (×3) | fontFamily=IBM Plex Mono fontSize=11 lineHeight=14 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13.5 lineHeight=18 fontWeight=600 | "Actions / Button" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13.5px vs 11px, line-height 18px vs 14px, weight 600 vs 400 ×3 |
+| major | typography | text | 1/9 | 1 (×7) | fontFamily=IBM Plex Mono fontSize=12 lineHeight=15 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13.5 lineHeight=18 fontWeight=600 | "Primary · sm · Hover" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13.5px vs 12px, line-height 18px vs 15px, weight 600 vs 400 ×7 |
 | major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontSize=11.5 fontWeight=600 → fontFamily=Material Symbols Outlined fontSize=14 fontWeight=400 | "Major" typography differs: family "Material Symbols Outlined" vs "IBM Plex Sans", size 14px vs 11.5px, weight 400 vs 600 |
 | major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=16 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=12 fontWeight=600 | "grid_view" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", size 12px vs 16px, weight 600 vs 400 |
 | major | color | box | 1/9 | 1 | backgroundColor=rgb(245, 166, 35) → backgroundColor=rgb(229, 72, 77) | box at (150, 319) background is rgb(229, 72, 77), design says rgb(245, 166, 35) (ΔE2000 37.5) |
@@ -187,12 +213,12 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | color | text | 1/9 | 1 | color=rgb(229, 72, 77) → color=rgb(76, 154, 255) | "3" text color is rgb(76, 154, 255), design says rgb(229, 72, 77) (ΔE2000 46.3) |
 | major | border | surface | 1/9 | 1 | borderWidth=0 → borderWidth=1 borderColor=rgb(76, 77, 84) | surface at (52, 341) border differs: border the design does not have |
 | major | border | surface | 1/9 | 1 | borderWidth=1 borderColor=rgba(76, 77, 84, 0.7) → borderWidth=1 borderColor=rgb(76, 77, 84) | surface at (52, 1564) border differs: color rgb(76, 77, 84) vs rgba(76, 77, 84, 0.7) (ΔE2000 20.2) |
-| major | typography | text | 1/9 | 1 (×3) | fontFamily=IBM Plex Mono fontSize=11.5 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13 fontWeight=600 | "Primary · sm · Default" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13px vs 11.5px, weight 600 vs 400 ×3 |
-| major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontSize=11.5 fontWeight=600 → fontFamily=Material Symbols Outlined fontSize=13 fontWeight=400 | "Minor" typography differs: family "Material Symbols Outlined" vs "IBM Plex Sans", size 13px vs 11.5px, weight 400 vs 600 |
+| major | typography | text | 1/9 | 1 (×3) | fontFamily=IBM Plex Mono fontSize=11.5 lineHeight=15 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=13 lineHeight=17 fontWeight=600 | "Primary · sm · Default" typography differs: family "IBM Plex Sans" vs "IBM Plex Mono", size 13px vs 11.5px, line-height 17px vs 15px, weight 600 vs 400 ×3 |
+| major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontSize=11.5 lineHeight=15 fontWeight=600 → fontFamily=Material Symbols Outlined fontSize=13 lineHeight=13 fontWeight=400 | "Minor" typography differs: family "Material Symbols Outlined" vs "IBM Plex Sans", size 13px vs 11.5px, line-height 13px vs 15px, weight 400 vs 600 |
 | major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontSize=9.5 fontWeight=700 → fontFamily=Material Symbols Outlined fontSize=14 fontWeight=400 | "REGRESSION" typography differs: family "Material Symbols Outlined" vs "IBM Plex Sans", size 14px vs 9.5px, weight 400 vs 700 |
-| major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=20 → fontFamily=IBM Plex Mono fontSize=12 | "grid_view" typography differs: family "IBM Plex Mono" vs "Material Symbols Outlined", size 12px vs 20px |
+| major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=20 lineHeight=20 → fontFamily=IBM Plex Mono fontSize=12 lineHeight=15 | "grid_view" typography differs: family "IBM Plex Mono" vs "Material Symbols Outlined", size 12px vs 20px, line-height 15px vs 20px |
 | major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Mono fontSize=11.5 fontWeight=600 → fontFamily=Material Symbols Outlined fontSize=14 fontWeight=400 | "4" typography differs: family "Material Symbols Outlined" vs "IBM Plex Mono", size 14px vs 11.5px, weight 400 vs 600 |
-| major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=13 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=11.5 fontWeight=600 | "account_tree" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", size 11.5px vs 13px, weight 600 vs 400 |
+| major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=13 lineHeight=13 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=11.5 lineHeight=15 fontWeight=600 | "account_tree" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", size 11.5px vs 13px, line-height 15px vs 13px, weight 600 vs 400 |
 | major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontSize=11 → fontFamily=IBM Plex Mono fontSize=12 | "not measured" typography differs: family "IBM Plex Mono" vs "IBM Plex Sans", size 12px vs 11px |
 | major | typography | text | 1/9 | 1 | fontFamily=Material Symbols Outlined fontSize=15 → fontFamily=IBM Plex Mono fontSize=11.5 | "folder" typography differs: family "IBM Plex Mono" vs "Material Symbols Outlined", size 11.5px vs 15px |
 | major | color | text | 1/9 | 1 | backgroundColor=rgb(143, 126, 231) → backgroundColor=rgb(229, 72, 77) | "2" background is rgb(229, 72, 77), design says rgb(143, 126, 231) (ΔE2000 37.2) |
@@ -225,12 +251,16 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | major | typography | text | 1/9 | 1 | fontFamily=IBM Plex Sans fontWeight=700 → fontFamily=IBM Plex Mono fontWeight=500 | "3" typography differs: family "IBM Plex Mono" vs "IBM Plex Sans", weight 500 vs 700 |
 | major | typography | text | 1/9 | 1 (×3) | fontFamily=Material Symbols Outlined fontSize=11 fontWeight=400 → fontFamily=IBM Plex Sans fontSize=12 fontWeight=700 | "history" typography differs: family "IBM Plex Sans" vs "Material Symbols Outlined", size 12px vs 11px, weight 700 vs 400 ×3 |
 | major | border | text | 1/9 | 1 | borderWidth=1 borderColor=rgba(109, 106, 240, 0.3) borderStyle=solid → borderWidth=1 borderColor=rgb(245, 166, 35) borderStyle=dashed | "CONTINUE" border differs: dashed where the design is solid, color rgb(245, 166, 35) vs rgba(109, 106, 240, 0.3) (ΔE2000 43.7) |
-| major | typography | text | 1/9 | 1 | fontFamily=Oswald fontSize=12 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 12px, weight 400 vs 500 |
+| major | typography | text | 1/9 | 1 | fontFamily=Oswald fontSize=12 lineHeight=17 fontWeight=500 → fontFamily=IBM Plex Sans fontSize=9 lineHeight=11.25 fontWeight=400 | "CONTINUE" typography differs: family "IBM Plex Sans" vs "Oswald", size 9px vs 12px, line-height 11.25px vs 17px, weight 400 vs 500 |
 | major | color | text | 1/9 | 1 (×4) | backgroundColor=rgb(229, 72, 77) → backgroundColor=rgba(229, 72, 77, 0.35) | "2" background is rgba(229, 72, 77, 0.35), design says rgb(229, 72, 77) (ΔE2000 27.7) ×4 |
 | minor | text-content | text | 8/9 | 191 |  | text reads "3 suppressed by policy rules", design says "Impl renders an element with no counterpart in the design re" |
-| minor | typography | text | 4/9 | 5 | fontSize=11 → fontSize=12 | "r47" typography differs: size 12px vs 11px |
+| minor | typography | text | 6/9 | 6 | lineHeight=15 → lineHeight=16.8 | "Onboarding — Document step" typography differs: line-height 16.8px vs 15px |
+| minor | typography | text | 5/9 | 5 (×11) | lineHeight=14 → lineHeight=11 | "1" typography differs: line-height 11px vs 14px ×4 |
+| minor | typography | text | 5/9 | 5 (×64) | lineHeight=15 → lineHeight=12 | "14" typography differs: line-height 12px vs 15px ×20 |
 | minor | extra-element | box | 3/9 | 53 |  | implementation renders box at (74, 251) (9×11) that the design does not have |
+| minor | typography | text | 3/9 | 4 | fontSize=11 lineHeight=14 → fontSize=12 lineHeight=12 | "2" typography differs: size 12px vs 11px, line-height 12px vs 14px |
 | minor | border-radius | text | 3/9 | 3 | borderRadius=0 → borderRadius=5 | "r45" border-radius is 5px, design says 0px |
+| minor | typography | text | 3/9 | 3 | lineHeight=13 → lineHeight=9.5 | "16" typography differs: line-height 9.5px vs 13px |
 | minor | border-radius | text | 2/9 | 3 | borderRadius=0 → borderRadius=4 | "undo" border-radius is 4px, design says 0px |
 | minor | color | text | 2/9 | 3 | backgroundColor=rgba(129, 140, 248, 0.06) → backgroundColor=rgba(128, 132, 140, 0.06) | "CONTINUE" background is rgba(128, 132, 140, 0.06), design says rgba(129, 140, 248, 0.06) (ΔE2000 3) |
 | minor | border-radius | text | 2/9 | 3 (×10) | borderRadius=6 → borderRadius=4 | "CONTINUE" border-radius is 4px, design says 6px ×8 |
@@ -239,6 +269,7 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 2/9 | 2 (×7) | fontWeight=600 → fontWeight=400 | "Claude Design" typography differs: weight 400 vs 600 |
 | minor | pixel-region |  | 2/9 | 2 | alignmentConfidence 0.5→0.4..0.5 | pixel channel skipped: alignment confidence 0.46 is below 0.5 — element geometry did not line up well enough to compare pixels |
 | minor | border-radius | text | 2/9 | 2 (×38) | borderRadius=8 → borderRadius=14 | "public" border-radius is 14px, design says 8px |
+| minor | typography | text | 2/9 | 2 | lineHeight=13 → lineHeight=10 | "12" typography differs: line-height 10px vs 13px |
 | minor | typography | text | 2/9 | 2 (×15) | fontWeight=500 → fontWeight=600 | "Default" typography differs: weight 600 vs 500 ×10 |
 | minor | extra-element | image | 1/9 | 8 |  | implementation renders image at (141, 337) (51×21) that the design does not have |
 | minor | typography | text | 1/9 | 2 | fontWeight=400 → fontWeight=600 | "No findings" typography differs: weight 600 vs 400 |
@@ -246,31 +277,32 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 1/9 | 2 | fontSize=10 fontWeight=700 → fontSize=11 fontWeight=400 | "1 REGRESSED" typography differs: size 11px vs 10px, weight 400 vs 700 |
 | minor | typography | text | 1/9 | 2 | fontWeight=700 → fontWeight=400 | "SKIPPED · NO IMPL CELL" typography differs: weight 400 vs 700 |
 | minor | typography | text | 1/9 | 1 (×8) | fontSize=15 → fontSize=16 | "chevron_right" typography differs: size 16px vs 15px ×8 |
-| minor | typography | text | 1/9 | 1 | fontSize=12 → fontSize=13.5 | "Show 31 more" typography differs: size 13.5px vs 12px |
+| minor | typography | text | 1/9 | 1 | fontSize=12 lineHeight=15 → fontSize=13.5 lineHeight=18 | "Show 31 more" typography differs: size 13.5px vs 12px, line-height 18px vs 15px |
 | minor | color | surface | 1/9 | 1 (×5) | backgroundColor=rgb(42, 43, 46) → backgroundColor=rgb(51, 52, 56) | surface at (17, 390) background is rgb(51, 52, 56), design says rgb(42, 43, 46) (ΔE2000 3) ×5 |
 | minor | color | surface | 1/9 | 1 | backgroundColor=rgb(244, 245, 247) → backgroundColor=rgb(217, 219, 224) | surface at (68, 405) background is rgb(217, 219, 224), design says rgb(244, 245, 247) (ΔE2000 5.8) |
 | minor | border-radius | text | 1/9 | 1 (×6) | borderRadius=0 → borderRadius=2 | "arrow_right_alt" border-radius is 2px, design says 0px ×6 |
 | minor | typography | text | 1/9 | 1 (×5) | fontSize=18 lineHeight=18 → fontSize=20 lineHeight=20 | "chevron_right" typography differs: size 20px vs 18px, line-height 20px vs 18px ×5 |
-| minor | typography | text | 1/9 | 1 | fontSize=11.5 fontWeight=400 → fontSize=13 fontWeight=600 | "No findings" typography differs: size 13px vs 11.5px, weight 600 vs 400 |
+| minor | typography | text | 1/9 | 1 | fontSize=11.5 lineHeight=15 fontWeight=400 → fontSize=13 lineHeight=17 fontWeight=600 | "No findings" typography differs: size 13px vs 11.5px, line-height 17px vs 15px, weight 600 vs 400 |
+| minor | typography | text | 1/9 | 1 | fontSize=11 → fontSize=12 | "r47" typography differs: size 12px vs 11px |
 | minor | border-radius | text | 1/9 | 1 | borderRadius=7.5 → borderRadius=0 | "REGRESSION" border-radius is 0px, design says 7.5px |
-| minor | typography | text | 1/9 | 1 | fontSize=11.5 → fontSize=13 | "Major" typography differs: size 13px vs 11.5px |
+| minor | typography | text | 1/9 | 1 | fontSize=11.5 lineHeight=15 → fontSize=13 lineHeight=17 | "Major" typography differs: size 13px vs 11.5px, line-height 17px vs 15px |
 | minor | typography | text | 1/9 | 1 | fontSize=16 lineHeight=16 → fontSize=14 lineHeight=14 | "unfold_more" typography differs: size 14px vs 16px, line-height 14px vs 16px |
 | minor | typography | text | 1/9 | 1 | fontSize=12 fontWeight=600 → fontSize=11 fontWeight=400 | "Show 31 more" typography differs: size 11px vs 12px, weight 400 vs 600 |
-| minor | typography | text | 1/9 | 1 | fontSize=13 fontWeight=600 → fontSize=11.5 fontWeight=400 | "Checkbox" typography differs: size 11.5px vs 13px, weight 400 vs 600 |
+| minor | typography | text | 1/9 | 1 | fontSize=13 lineHeight=17 fontWeight=600 → fontSize=11.5 lineHeight=15 fontWeight=400 | "Checkbox" typography differs: size 11.5px vs 13px, line-height 15px vs 17px, weight 400 vs 600 |
 | minor | typography | text | 1/9 | 1 | fontSize=13 → fontSize=14 | "arrow_right_alt" typography differs: size 14px vs 13px |
-| minor | typography | text | 1/9 | 1 | fontSize=13 → fontSize=11.5 | "Radio" typography differs: size 11.5px vs 13px |
+| minor | typography | text | 1/9 | 1 | fontSize=13 lineHeight=17 → fontSize=11.5 lineHeight=15 | "Radio" typography differs: size 11.5px vs 13px, line-height 15px vs 17px |
 | minor | border-radius | box | 1/9 | 1 | borderRadius=2 → borderRadius=0 | box at (57, 1363) border-radius is 0px, design says 2px |
-| minor | typography | text | 1/9 | 1 | fontSize=13 fontWeight=600 → fontSize=11 fontWeight=400 | "Foundations" typography differs: size 11px vs 13px, weight 400 vs 600 |
+| minor | typography | text | 1/9 | 1 | fontSize=13 lineHeight=17 fontWeight=600 → fontSize=11 lineHeight=14 fontWeight=400 | "Foundations" typography differs: size 11px vs 13px, line-height 14px vs 17px, weight 400 vs 600 |
 | minor | typography | text | 1/9 | 1 | fontSize=12 → fontSize=11 | "Elevation" typography differs: size 11px vs 12px |
 | minor | missing-element | backdrop | 1/9 | 1 |  | design backdrop at (-331, -266) (829×902) has no counterpart in the implementation |
-| minor | typography | text | 1/9 | 1 | fontSize=12 fontWeight=600 → fontSize=11 fontWeight=700 | "2" typography differs: size 11px vs 12px, weight 700 vs 600 |
+| minor | typography | text | 1/9 | 1 | fontSize=12 lineHeight=15 fontWeight=600 → fontSize=11 lineHeight=11 fontWeight=700 | "2" typography differs: size 11px vs 12px, line-height 11px vs 15px, weight 700 vs 600 |
 | minor | border-radius | text | 1/9 | 1 | borderRadius=13.41 → borderRadius=6 | "2" border-radius is 6px, design says 13.41px |
 | minor | border | text | 1/9 | 1 (×36) | borderWidth=1 borderColor=rgba(255, 255, 255, 0.85) → borderWidth=2 borderColor=rgba(255, 255, 255, 0.9) | "2" border differs: width 2px vs 1px ×36 |
 | minor | border-radius | text | 1/9 | 1 | borderRadius=7 → borderRadius=0 | "Review" border-radius is 0px, design says 7px |
 | minor | typography | text | 1/9 | 1 (×5) | fontSize=12 lineHeight=12 → fontSize=14 lineHeight=14 | "arrow_right_alt" typography differs: size 14px vs 12px, line-height 14px vs 12px ×5 |
-| minor | typography | text | 1/9 | 1 | fontSize=12.5 fontWeight=600 → fontSize=10.5 fontWeight=400 | "Primary fill off-token" typography differs: size 10.5px vs 12.5px, weight 400 vs 600 |
+| minor | typography | text | 1/9 | 1 | fontSize=12.5 lineHeight=16 fontWeight=600 → fontSize=10.5 lineHeight=14 fontWeight=400 | "Primary fill off-token" typography differs: size 10.5px vs 12.5px, line-height 14px vs 16px, weight 400 vs 600 |
 | minor | typography | text | 1/9 | 1 | fontSize=9.5 fontWeight=700 → fontSize=10.5 fontWeight=400 | "2" typography differs: size 10.5px vs 9.5px, weight 400 vs 700 |
-| minor | typography | text | 1/9 | 1 | fontSize=12.5 fontWeight=600 → fontSize=10.5 fontWeight=700 | "Disabled too faint" typography differs: size 10.5px vs 12.5px, weight 700 vs 600 |
+| minor | typography | text | 1/9 | 1 | fontSize=12.5 lineHeight=16.25 fontWeight=600 → fontSize=10.5 lineHeight=14 fontWeight=700 | "Disabled too faint" typography differs: size 10.5px vs 12.5px, line-height 14px vs 16.25px, weight 700 vs 600 |
 | minor | border-radius | text | 1/9 | 1 | borderRadius=8 → borderRadius=4 | "1" border-radius is 4px, design says 8px |
 | minor | extra-element | backdrop | 1/9 | 1 |  | implementation renders backdrop at (0, 45) (390×799) that the design does not have |
 | minor | typography | text | 1/9 | 1 | fontSize=16 lineHeight=16 → fontSize=18 lineHeight=18 | "close" typography differs: size 18px vs 16px, line-height 18px vs 16px |
@@ -702,11 +734,11 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 
 
 
-## uctoinak2-storybook
+## uctoinak2-storybook — NOT RE-MEASURED IN THIS RUN
 
 the Uctoinak app's 14 COMPONENT pairs — dialogs, pickers and action cards captured from Storybook, which no route can reach.
 
-Measured 2026-09-16T14:48:53.285Z.
+**The numbers below were measured 2026-09-16T14:48:53.285Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: `svc down design-live` in that worktree, then `svc up storybook` there (it lands on the worktree's own port — pass DC_STORYBOOK_URL), then `node scripts/baseline-matching.ts --only uctoinak2-storybook`.
 
 ```
 cd /root/uctoinak2/.claude/worktrees/messages-redesign
