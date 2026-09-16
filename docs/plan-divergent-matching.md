@@ -781,6 +781,27 @@ Today the per-element truth exists — `missing-element` and `extra-element` fin
 boxes — but arrives flat, severity-sorted, mixed among 400 others. `byRegion` is the nearest lever
 and it groups FINDINGS, not structure.
 
+> **MEASURED 2026-09-16, before the cheap test: the cheap option is not available as it stands.**
+> A `reconcile` run's headline tells the reader the missing/extra findings are the raw material
+> "and `byRegion` groups them" (`cli.ts:771`). On the witness it does not. Of the **101** unmatched
+> elements, `byRegion` places **52** — **41 of 64 impl-only, but only 11 of 37 design-only**; the
+> other 49 fall to `elsewhere`.
+>
+> **The design-side failure is structural, not a tuning problem, and it is worst exactly where the
+> map is needed.** `containersOf` draws its containers from the IMPL side, and a `reconcile` pair is
+> by definition one whose two layouts do not agree — so a comp element lands outside every impl
+> container whenever the comp puts it where the impl has nothing. Verified element by element on
+> the witness: `"Hrubá Co."` at (17, 23) does land in the impl's sidebar, but `"Všetky"` at x 523
+> falls in the gap between the impl's sidebar (0–240) and its thread list (286–637), and the comp's
+> notification badge `"2"` at x 1149 is outside the impl's 1100 px frame altogether. The mapping of
+> design boxes into impl world space is fine (`regions.ts:44` is correct and was checked); there is
+> simply no impl container there to hold them.
+>
+> So "just group missing/extra by container" cannot mean "re-use `byRegion`". The cheap version
+> still exists, but it has to group the **design** side by the **comp's own** containers — two
+> groupings, one per side, not one. Cost that in when the cheap test's answer decides how much to
+> build.
+
 - An OUTPUT beside the matcher, never inside it (`PARKED` says why, and that reasoning is unchanged:
   as an output it cannot misfire into leaf matching the way a confidence-gated code path can).
 - Name, per comp container: which impl subtree it corresponds to, which have no counterpart on
