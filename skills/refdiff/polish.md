@@ -102,6 +102,25 @@ actionable plus, LAST, the `text-content` one that gives it away. When a pair's
 `geometry` share is large and its confidence low, **read the `text-content`
 findings first** and fix the alignment (§1a) before believing anything else.
 
+**`report.distant` — the pairings formed across a LONG distance, printed on
+every pair and written to `findings.json`.** The worse version of the shape
+above has no tell at all: two identical strings on opposite sides of the page,
+so there is no `text-content` finding to reach and a text pair is exempt from
+the `unverified` gate by design. On the canonical witness it is a filter chip
+paired with a thread badge 415 px left and 636 px down, `via: "text"`,
+`γ 1062.6`, six confident findings. Every number that gives it away was already
+on those findings; nothing pointed at them, so this list does.
+
+**It is a list to CHECK, not a list of defects, and the difference is
+measured:** of the 79 such pairings across the 52-pair corpus, **74 were
+CORRECT** — an element the implementation relocated, a label the comp
+right-aligns and the implementation does not. Their colour and typography
+findings are real drift. Nothing separates the two groups (distance, axis and
+containment are all refuted — `reconcile.md` §R3), which is exactly why this
+ships as a list rather than as a flag: flagging would discount 74 true findings
+to cast doubt on 5. Read both boxes, decide, move on. Most pairs print nothing;
+the median list is 2 rows.
+
 ### 2. Classify every finding — this is the whole skill
 
 | class | how it looks | what you do |

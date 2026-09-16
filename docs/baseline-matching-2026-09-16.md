@@ -1,7 +1,7 @@
 # Matching baseline — 2026-09-16
 
 The before-picture for `docs/plan-divergent-matching.md` steps 3–5, produced by
-`node scripts/baseline-matching.ts` at refdiff `6025583` (WORKING TREE DIRTY — the numbers below are not a committed state).
+`node scripts/baseline-matching.ts` at refdiff `39104ad` (WORKING TREE DIRTY — the numbers below are not a committed state).
 
 **How to read it.** The *Matching* table is the instrument. Steps 3–5 all make the matcher
 refuse more pairs, and a refusal moves one element out of `matched` and adds one to BOTH
@@ -20,7 +20,7 @@ Regenerate with the same command; it rewrites this file for today's date.
 
 the annotator's own redesign comps against the annotator serving `fixtures/demo-root` — self-contained in this repo.
 
-**The numbers below were measured 2026-09-16T13:52:35.627Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: svc up annotator (it may land on another port — pass --app-url or REFDIFF_APP_URL), then `node scripts/baseline-matching.ts --only refdiff`.
+**The numbers below were measured 2026-09-16T14:46:29.287Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: svc up annotator (it may land on another port — pass --app-url or REFDIFF_APP_URL), then `node scripts/baseline-matching.ts --only refdiff`.
 
 ```
 cd /root/refdiff
@@ -33,7 +33,7 @@ Not in the tables below:
 - `refdiff-library-desktop` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 489 findings at confidence 0.14
 - `refdiff-library-mobile` — disabled in the manifest: RefDiff Library.dc.html draws the card grid chunk 5 replaced — 335 findings at confidence 0.67
 
-9 pairs: 1 PASS / 8 FAIL — 2233 findings covering 3580 instances, 351 suppressed; delta +1 / −0
+9 pairs: 1 PASS / 8 FAIL — 2233 findings covering 3580 instances, 351 suppressed; delta +0 / −0
 80 of 2233 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 221 by text, 34 by slot, 651 by geometry, 1327 resting on no pair
 2038 unexplained · 195 explained: 139 comp rail row order, 37 comp mark numbering, 19 canvas zoom divergence
@@ -48,7 +48,7 @@ pairing evidence across the set: 221 by text, 34 by slot, 651 by geometry, 1327 
 | refdiff-compare-mobile-toolbar-ghost | FAIL    |    90 (21/56/13) |  174 |   40 |     5 | 0.46 | 1 / 0,0       | +0/−0 |
 | refdiff-gallery-desktop              | FAIL    | 621 (152/328/141) | 1240 |   93 |    75 | 0.40 | 1 / 0,0       | +0/−0 |
 | refdiff-gallery-mobile               | FAIL    |  246 (91/120/35) |  357 |   32 |     0 | 0.78 | 1 / 0,0       | +0/−0 |
-| refdiff-compare-desktop-ghost        | FAIL    |   110 (37/55/18) |  181 |   55 |     0 | 0.56 | 1 / 0,0       | +1/−0 |
+| refdiff-compare-desktop-ghost        | FAIL    |   110 (37/55/18) |  181 |   55 |     0 | 0.56 | 1 / 0,0       | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
@@ -274,11 +274,11 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 
 
 
-## uctoinak2
+## uctoinak2 — NOT RE-MEASURED IN THIS RUN
 
 the Uctoinak app's 31 whole-PAGE pairs on its own dev server, including the witness `messages-accountant-desktop`.
 
-Measured 2026-09-16T14:01:19.551Z.
+**The numbers below were measured 2026-09-16T14:41:48.965Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: start that worktree's `design-live` svc unit (APP_ENV=test, NEXT_DIST_DIR=.next-design, its own DB) — see docs/plan-divergent-matching.md §Repro, then `node scripts/baseline-matching.ts --only uctoinak2`.
 
 ```
 cd /root/uctoinak2/.claude/worktrees/messages-redesign
@@ -292,28 +292,28 @@ Not in the tables below:
 - `docs-owner-desktop` — **impl capture failed** (`error-page`), so it produced no report at all.
 - `docs-owner-mobile` — **impl capture failed** (`error-page`), so it produced no report at all.
 
-29 pairs: 0 PASS / 29 FAIL — 3627 findings covering 4186 instances, 8 suppressed; delta +23 / −48
+29 pairs: 0 PASS / 29 FAIL — 3627 findings covering 4186 instances, 8 suppressed; delta +0 / −0
 475 of 3627 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 724 by text, 30 by slot, 1083 by geometry, 1790 resting on no pair
 
 | pair                                    | verdict | findings (c/M/m) | inst | supp | unver | conf | align                     | delta |
 |-----------------------------------------|---------|------------------|------|------|-------|------|---------------------------|-------|
 | docs-accountant-desktop                 | FAIL    |  221 (106/80/35) |  256 |    0 |    12 | 0.00 | 1.173×1.162 / −15.3,0     | +0/−0 |
-| docs-accountant-mobile                  | FAIL    |   170 (66/62/42) |  180 |    0 |    24 | 0.10 | 1.026 / 0,0               | +2/−6 |
-| today-owner-desktop                     | FAIL    |    74 (26/36/12) |   78 |    0 |     0 | 0.50 | 1.101×1.032 / −263.8,−9.8 | +2/−6 |
+| docs-accountant-mobile                  | FAIL    |   170 (66/62/42) |  180 |    0 |    24 | 0.10 | 1.026 / 0,0               | +0/−0 |
+| today-owner-desktop                     | FAIL    |    74 (26/36/12) |   78 |    0 |     0 | 0.50 | 1.101×1.032 / −263.8,−9.8 | +0/−0 |
 | portfolio-accountant-desktop            | FAIL    |   192 (37/98/57) |  279 |    0 |    22 | 0.29 | 1.141×1.097 / −43.7,−9.3  | +0/−0 |
 | portfolio-accountant-mobile             | FAIL    |   160 (25/83/52) |  200 |    0 |    27 | 0.10 | 1.011×0.790 / −2.1,272.9  | +0/−0 |
 | client-detail-chrome-accountant-desktop | FAIL    |   111 (21/54/36) |  147 |    0 |    13 | 0.00 | 1.162 / −14.9,0           | +0/−0 |
 | client-detail-chrome-accountant-mobile  | FAIL    |     87 (8/47/32) |   99 |    0 |    12 | 0.38 | 0.800×1.223 / 4.0,−14.2   | +0/−0 |
-| client-overview-accountant-desktop      | FAIL    | 317 (119/126/72) |  373 |    0 |    45 | 0.08 | 0.990×1 / 7.8,0           | +2/−3 |
-| client-overview-accountant-mobile       | FAIL    |  214 (49/103/62) |  232 |    0 |    45 | 0.13 | 1 / 0,0                   | +3/−5 |
-| client-pending-accountant-desktop       | FAIL    |   157 (81/53/23) |  187 |    8 |     8 | 0.38 | 0.602×1.398 / 49.6,−99.6  | +2/−4 |
-| client-pending-accountant-mobile        | FAIL    |   149 (73/40/36) |  168 |    0 |    22 | 0.38 | 0.861×0.913 / −3.4,−1.4   | +2/−4 |
-| settings-owner-desktop                  | FAIL    |   104 (26/41/37) |  106 |    0 |    18 | 0.13 | 0.970×1.083 / 0.7,0       | +2/−7 |
+| client-overview-accountant-desktop      | FAIL    | 317 (119/126/72) |  373 |    0 |    45 | 0.08 | 0.990×1 / 7.8,0           | +0/−0 |
+| client-overview-accountant-mobile       | FAIL    |  214 (49/103/62) |  232 |    0 |    45 | 0.13 | 1 / 0,0                   | +0/−0 |
+| client-pending-accountant-desktop       | FAIL    |   157 (81/53/23) |  187 |    8 |     8 | 0.38 | 0.602×1.398 / 49.6,−99.6  | +0/−0 |
+| client-pending-accountant-mobile        | FAIL    |   149 (73/40/36) |  168 |    0 |    22 | 0.38 | 0.861×0.913 / −3.4,−1.4   | +0/−0 |
+| settings-owner-desktop                  | FAIL    |   104 (26/41/37) |  106 |    0 |    18 | 0.13 | 0.970×1.083 / 0.7,0       | +0/−0 |
 | settings-owner-mobile                   | FAIL    |    61 (20/16/25) |   81 |    0 |     5 | 0.25 | 1.035×1.026 / −0.7,0      | +0/−0 |
 | settings-accountant-desktop             | FAIL    |    79 (14/27/38) |   90 |    0 |    17 | 0.38 | 1.106×0.892 / −6.8,6.0    | +0/−0 |
 | settings-accountant-mobile              | FAIL    |    76 (24/22/30) |   85 |    0 |     9 | 0.38 | 1.061×0.793 / −4.0,24.3   | +0/−0 |
-| settings-members-owner-desktop          | FAIL    |   121 (29/59/33) |  127 |    0 |    17 | 0.13 | 1.456×1.083 / −29.8,0     | +2/−4 |
+| settings-members-owner-desktop          | FAIL    |   121 (29/59/33) |  127 |    0 |    17 | 0.13 | 1.456×1.083 / −29.8,0     | +0/−0 |
 | settings-team-accountant-desktop        | FAIL    |    98 (12/48/38) |  107 |    0 |    13 | 0.38 | 1.097×0.962 / −4.8,1.7    | +0/−0 |
 | invite-org-desktop                      | FAIL    |     37 (18/9/10) |   37 |    0 |     0 | 0.00 | 1.162×1.285 / 0,−10.3     | +0/−0 |
 | invite-org-mobile                       | FAIL    |      30 (16/5/9) |   30 |    0 |     1 | 0.00 | 1.026 / 0,0               | +0/−0 |
@@ -323,10 +323,10 @@ pairing evidence across the set: 724 by text, 30 by slot, 1083 by geometry, 1790
 | client-settings-accountant-mobile       | FAIL    |     89 (9/42/38) |   98 |    0 |    13 | 0.33 | 1.061×1.406 / −3.0,32.3   | +0/−0 |
 | messages-owner-desktop                  | FAIL    |  189 (18/103/68) |  220 |    0 |    33 | 0.07 | 1 / 0,0                   | +0/−0 |
 | messages-owner-mobile                   | FAIL    |   117 (16/65/36) |  138 |    0 |    13 | 0.00 | 0.990×0.995 / 18.5,0      | +0/−0 |
-| messages-accountant-desktop             | FAIL    |  226 (36/128/62) |  259 |    0 |    36 | 0.07 | 1.091×1 / −10.5,0         | +4/−3 |
+| messages-accountant-desktop             | FAIL    |  226 (36/128/62) |  259 |    0 |    36 | 0.07 | 1.091×1 / −10.5,0         | +0/−0 |
 | messages-accountant-mobile              | FAIL    |   145 (17/86/42) |  154 |    0 |    29 | 0.00 | 0.834×0.995 / 35.8,0      | +0/−0 |
 | client-members-accountant-desktop       | FAIL    |   129 (20/68/41) |  142 |    0 |    21 | 0.00 | 1.162 / 0,0               | +0/−0 |
-| client-members-accountant-mobile        | FAIL    |    94 (12/46/36) |  104 |    0 |    19 | 0.25 | 1.065×1.469 / −3.2,−40.6  | +2/−6 |
+| client-members-accountant-mobile        | FAIL    |    94 (12/46/36) |  104 |    0 |    19 | 0.25 | 1.065×1.469 / −3.2,−40.6  | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
@@ -686,7 +686,7 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 | minor | typography | text | 1/29 | 1 | fontSize=14 → fontSize=16 | "Záloha na kávovar" typography differs: size 16px vs 14px |
 | minor | typography | text | 1/29 | 1 | fontSize=10 fontWeight=400 → fontSize=12 fontWeight=500 | "Včera" typography differs: size 12px vs 10px, weight 500 vs 400 |
 | minor | typography | text | 1/29 | 1 | fontSize=10 → fontSize=11 | "2. 7." typography differs: size 11px vs 10px |
-| minor | size | icon | 1/29 | 1 (×4) | w 14.2→20, h 16.9���16 | icon at (326, 27) renders 20×16, design says 14×17 ×4 |
+| minor | size | icon | 1/29 | 1 (×4) | w 14.2→20, h 16.9→16 | icon at (326, 27) renders 20×16, design says 14×17 ×4 |
 | minor | typography | text | 1/29 | 1 | fontSize=15 fontWeight=400 → fontSize=12 fontWeight=600 | "‹" typography differs: size 12px vs 15px, weight 600 vs 400 |
 | minor | border-radius | text | 1/29 | 1 | borderRadius=19 → borderRadius=12 | "‹" border-radius is 12px, design says 19px |
 | minor | typography | text | 1/29 | 1 | fontSize=12 fontWeight=600 → fontSize=12.8 fontWeight=500 | "＋ Pozvať člena" typography differs: size 12.8px vs 12px, weight 500 vs 600 |
@@ -694,11 +694,11 @@ Across pairs (one row = one cause; `pairs` = how many cells show it):
 
 
 
-## uctoinak2-storybook — NOT RE-MEASURED IN THIS RUN
+## uctoinak2-storybook
 
 the Uctoinak app's 14 COMPONENT pairs — dialogs, pickers and action cards captured from Storybook, which no route can reach.
 
-**The numbers below were measured 2026-09-16T13:55:50.836Z**, not now: not selected in this run (--only). They are a valid earlier measurement of the same corpus, and the document keeps them so the baseline stays whole — but anything compared against them is being compared across two different moments. To refresh: `svc down design-live` in that worktree, then `svc up storybook` there (it lands on the worktree's own port — pass DC_STORYBOOK_URL), then `node scripts/baseline-matching.ts --only uctoinak2-storybook`.
+Measured 2026-09-16T14:48:53.285Z.
 
 ```
 cd /root/uctoinak2/.claude/worktrees/messages-redesign
@@ -709,7 +709,7 @@ node /root/refdiff/packages/core/dist/cli.js compare --manifest tools/design-com
 
 > **11 pair(s) below captured only on a SECOND attempt**: `doc-detail-owner-desktop`, `doc-detail-owner-mobile`, `doc-detail-accountant-desktop`, `doc-detail-accountant-mobile`, `tx-picker-owner-desktop`, `tx-picker-owner-mobile`, `tx-picker-accountant-desktop`, `tx-picker-accountant-mobile`, `tx-picker-all-requested-desktop`, `tx-picker-all-requested-mobile`, `card-unidentified-doc-desktop`. Their numbers are this run's, not carried over — a first capture pays a cold server's compile out of its navigation budget. A pair that needs this every run is a slow server or a flaky pair, not a measurement.
 
-14 pairs: 0 PASS / 14 FAIL — 1309 findings covering 1961 instances, 1 suppressed; delta +3 / −7, 1 REGRESSION(S)
+14 pairs: 0 PASS / 14 FAIL — 1309 findings covering 1961 instances, 1 suppressed; delta +0 / −0
 89 of 1309 findings are UNVERIFIED — nothing but a weak alignment paired their two elements, so their values are not evidence of drift
 pairing evidence across the set: 484 by text, 45 by slot, 543 by geometry, 237 resting on no pair
 
@@ -719,16 +719,16 @@ pairing evidence across the set: 484 by text, 45 by slot, 543 by geometry, 237 r
 | card-not-a-statement-desktop    | FAIL    |     63 (2/30/31) |   68 |    0 |     0 | 0.64 | 1.053×0.990 / −10.2,−27.4 | +0/−0 |
 | card-not-a-statement-mobile     | FAIL    |     69 (2/34/33) |   79 |    0 |     0 | 0.73 | 0.714×1.066 / 39.7,−16.3  | +0/−0 |
 | doc-detail-owner-desktop        | FAIL    |     85 (4/29/52) |  156 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | +0/−0 |
-| doc-detail-owner-mobile         | FAIL    |     86 (5/28/53) |  155 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +2/−6 |
+| doc-detail-owner-mobile         | FAIL    |     86 (5/28/53) |  155 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +0/−0 |
 | doc-detail-accountant-desktop   | FAIL    |     89 (4/31/54) |  160 |    0 |     0 | 0.84 | 0.941×0.970 / 5.0,−1.5    | +0/−0 |
+| doc-detail-accountant-mobile    | FAIL    |     87 (5/29/53) |  156 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +0/−0 |
 | tx-picker-owner-desktop         | FAIL    |    105 (9/38/58) |  204 |    0 |     0 | 0.52 | 1.008×1.053 / 70.0,56.0   | +0/−0 |
 | tx-picker-owner-mobile          | FAIL    |   136 (20/69/47) |  207 |    0 |    29 | 0.00 | 1.060×1.031 / −5.8,0      | +0/−0 |
-| tx-picker-accountant-desktop    | FAIL    |   140 (21/57/62) |  207 |    0 |    24 | 0.42 | 1.006×1.112 / 69.3,68.3   | +1/−1 R1 |
+| tx-picker-accountant-desktop    | FAIL    |   140 (21/57/62) |  207 |    0 |    24 | 0.42 | 1.006×1.112 / 69.3,68.3   | +0/−0 |
 | tx-picker-accountant-mobile     | FAIL    |   152 (17/83/52) |  196 |    0 |    36 | 0.00 | 1.057×1.031 / −4.4,0      | +0/−0 |
 | tx-picker-all-requested-desktop | FAIL    |     86 (1/31/54) |  114 |    1 |     0 | 0.73 | 1.051×1.091 / 13.7,−14.5  | +0/−0 |
 | tx-picker-all-requested-mobile  | FAIL    |     88 (3/37/48) |  128 |    0 |     0 | 0.75 | 1.052×1 / −5.2,−24.1      | +0/−0 |
 | card-unidentified-doc-desktop   | FAIL    |     59 (2/27/30) |   65 |    0 |     0 | 0.55 | 1.031×1.064 / 6.6,−32.6   | +0/−0 |
-| doc-detail-accountant-mobile    | FAIL    |     87 (5/29/53) |  156 |    0 |     0 | 0.83 | 1.046×0.982 / −1.6,61.7   | +0/−0 |
 
 Matching — what the matcher PAIRED (pairs, not findings). A `matched` column that fell while
 `d-only`/`i-only` rose is a REGRESSION, not a precision win: both move that way.
@@ -744,6 +744,7 @@ collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.
 | doc-detail-owner-desktop        |     70 |   65 |      62 |   40 |    1 |   21 |      8 |      3 |      0 | 0.84 | 0.94 | 0.95 |  0.65 | polish |
 | doc-detail-owner-mobile         |     68 |   66 |      60 |   38 |    0 |   22 |      8 |      6 |      1 | 0.83 | 0.93 | 0.91 |  0.63 | polish |
 | doc-detail-accountant-desktop   |     70 |   66 |      63 |   40 |    1 |   22 |      7 |      3 |      0 | 0.84 | 0.94 | 0.95 |  0.63 | polish |
+| doc-detail-accountant-mobile    |     68 |   67 |      60 |   38 |    0 |   22 |      8 |      7 |      1 | 0.83 | 0.93 | 0.90 |  0.63 | polish |
 | tx-picker-owner-desktop         |     93 |   96 |      86 |   33 |    6 |   47 |      7 |     10 |      0 | 0.52 | 0.81 | 0.92 |  0.38 | polish |
 | tx-picker-owner-mobile          |     97 |   78 |      71 |   27 |    3 |   41 |     26 |      7 |      0 | 0.00 | 0.82 | 0.91 |  0.38 | polish |
 | tx-picker-accountant-desktop    |     97 |   83 |      71 |   30 |    3 |   38 |     26 |     12 |      0 | 0.42 | 0.74 | 0.86 |  0.42 | polish |
@@ -751,7 +752,6 @@ collapse is expected; on a `polish` pair it is a bug. Reported, never enforced.
 | tx-picker-all-requested-desktop |     43 |   48 |      42 |   17 |    2 |   23 |      1 |      6 |      0 | 0.73 | 1.00 | 0.98 |  0.40 | polish |
 | tx-picker-all-requested-mobile  |     43 |   48 |      40 |   14 |    2 |   24 |      3 |      8 |      0 | 0.75 | 0.83 | 0.93 |  0.35 | polish |
 | card-unidentified-doc-desktop   |     21 |   21 |      18 |   11 |    0 |    7 |      3 |      3 |      0 | 0.55 | 0.82 | 0.86 |  0.61 | polish |
-| doc-detail-accountant-mobile    |     68 |   67 |      60 |   38 |    0 |   22 |      8 |      7 |      1 | 0.83 | 0.93 | 0.90 |  0.63 | polish |
 | TOTAL (14)                      |    836 |  780 |     698 |  347 |   21 |  330 |    138 |     82 |      2 |      |      |      |       | 14P/0R |
 
 Findings by type:
@@ -764,6 +764,7 @@ Findings by type:
 | doc-detail-owner-desktop        |    7 |     3 |   14 |  25 |    8 |     4 |     8 |    8 |    1 |   4 |     3 |   85 |
 | doc-detail-owner-mobile         |    8 |     6 |   14 |  20 |    4 |    11 |     8 |    8 |    1 |   4 |     2 |   86 |
 | doc-detail-accountant-desktop   |    7 |     3 |   15 |  26 |    9 |     4 |     8 |    9 |    1 |   4 |     3 |   89 |
+| doc-detail-accountant-mobile    |    8 |     7 |   14 |  20 |    4 |    11 |     8 |    8 |    1 |   4 |     2 |   87 |
 | tx-picker-owner-desktop         |    7 |    10 |   19 |  22 |    6 |     6 |    19 |    5 |    6 |   1 |     4 |  105 |
 | tx-picker-owner-mobile          |   26 |     7 |   15 |  32 |   14 |     5 |    22 |    8 |    4 |   2 |     1 |  136 |
 | tx-picker-accountant-desktop    |   26 |    12 |   15 |  31 |    5 |     6 |    23 |    9 |    8 |   4 |     1 |  140 |
@@ -771,7 +772,6 @@ Findings by type:
 | tx-picker-all-requested-desktop |    1 |     6 |   10 |  12 |   12 |     5 |    20 |    6 |    7 |   5 |     2 |   86 |
 | tx-picker-all-requested-mobile  |    3 |     8 |   12 |  16 |   10 |     4 |    18 |    6 |    6 |   5 |     0 |   88 |
 | card-unidentified-doc-desktop   |    3 |     2 |    2 |  14 |    8 |     6 |     5 |   10 |    2 |   6 |     1 |   59 |
-| doc-detail-accountant-mobile    |    8 |     7 |   14 |  20 |    4 |    11 |     8 |    8 |    1 |   4 |     2 |   87 |
 | TOTAL (14)                      |  134 |    80 |  153 | 295 |  133 |    85 |   180 |  114 |   52 |  60 |    23 | 1309 |
 
 Across pairs (one row = one cause; `pairs` = how many cells show it):

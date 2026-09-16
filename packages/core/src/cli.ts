@@ -695,6 +695,10 @@ async function runPair(
     // The matcher's own counts ride into the report: a finding total cannot tell a
     // matcher that got stricter from one that fell apart (see `MatchingStats`).
     matching: matchingStats(match),
+    // And the pair LIST, for `report.distant`: the counts cannot say WHICH
+    // pairing crossed the shared-text bound, and that is the whole question.
+    matches: match.matches,
+    ...(o.maxGamma !== undefined ? { maxGamma: o.maxGamma } : {}),
     ...(previous !== undefined ? { previous, ledger } : {}),
   })
   // The ledger remembers every fix across runs, so a finding that comes back
@@ -792,8 +796,44 @@ function printPhase(report: ComparisonReport): void {
   }
 }
 
+/**
+ * The pairings that crossed the shared-text bound — printed on EVERY pair, not
+ * only `reconcile` ones: the longest list in the corpus (17) is on a `polish`
+ * pair, and step 5 found mis-pairings on the two best-corresponding pairs in
+ * the corpus. Capped at six rows like the region lines, with the rest in
+ * `findings.json`; a busy tail is not orientation.
+ */
+function printDistant(report: ComparisonReport, limit = 6): void {
+  const rows = report.distant
+  if (rows === undefined || rows.length === 0) return
+  console.log(
+    `\nDISTANT PAIRINGS: ${rows.length} pairing(s) formed across more than the matcher's own shared-text bound`,
+  )
+  console.log(
+    `  A list to CHECK, not defects — measured across 52 pairs, 74 of 79 such pairings were RIGHT (an element the`,
+  )
+  console.log(
+    `  implementation relocated). But the corpus's worst mis-pairing is here too, and it has no tell: identical`,
+  )
+  console.log(
+    `  strings, so no text-content finding. Read both boxes before believing any finding that names one of these.`,
+  )
+  const box = (b: { x: number; y: number; w: number; h: number }): string =>
+    `(${Math.round(b.x)}, ${Math.round(b.y)}) ${Math.round(b.w)}×${Math.round(b.h)}`
+  for (const r of rows.slice(0, limit)) {
+    const d = r.designText === undefined ? "" : ` "${r.designText}"`
+    const i = r.implText === undefined ? "" : ` "${r.implText}"`
+    console.log(
+      `    ${r.via.padEnd(8)} γ${r.gamma.toFixed(1).padStart(7)}  design${d} ${box(r.designBox)}  →  impl${i} ${box(r.implBox)}`,
+    )
+  }
+  if (rows.length > limit)
+    console.log(`    ${rows.length - limit} more — see \`distant\` in findings.json`)
+}
+
 function printReport(report: ComparisonReport): void {
   printPhase(report)
+  printDistant(report)
   const counts = { critical: 0, major: 0, minor: 0 }
   for (const f of report.findings) counts[f.severity]++
   const instances = report.findings.reduce((n, f) => n + (f.instances ?? 1), 0)

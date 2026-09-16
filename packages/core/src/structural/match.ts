@@ -8,7 +8,7 @@
  */
 
 import type { ElementMatch, MatchResult, VetoedPairing } from "../pipeline.js"
-import type { ElementNode, MatchingStats } from "../types.js"
+import type { DistantPairing, ElementNode, MatchingStats } from "../types.js"
 
 import { normalizeForMatching } from "./text.js"
 
@@ -33,6 +33,56 @@ export function matchingStats(result: MatchResult): MatchingStats {
     implOnly: result.implOnly.length,
     vetoed: result.vetoed?.length ?? 0,
   }
+}
+
+/**
+ * The distance beyond which the matcher itself stops trusting a shared string.
+ * ONE definition, used twice: it is `textMaxGamma`'s default — pass 1b's bound
+ * on pairing a NON-unique text — and it is the line `distantPairings` reports
+ * against. Pass 1 exempts itself from it, because a text unique on each side
+ * "IS the same semantic element, wherever it moved"; the report exists because
+ * that exemption is sometimes wrong and nothing measured says when.
+ */
+export const textEvidenceGamma = (maxGamma: number = DEFAULT_MAX_GAMMA): number => 2 * maxGamma
+
+/**
+ * The pairings the matcher formed ACROSS `minGamma` — a report, never a gate
+ * (pure, γ descending).
+ *
+ * The canonical witness of `docs/plan-divergent-matching.md` is six confident
+ * findings about a comp date label and an impl filter chip, and its tell —
+ * `text-content` — is the LAST one a reader reaches. Its worse twin has no tell
+ * at all: a filter chip `"Vybavené"` paired with a thread badge `"Vybavené"`
+ * 415 px left and 636 px down, `via: "text"`, `unverified: false`, because the
+ * strings are identical and a text pair is exempt from the confidence gate by
+ * design. Every fact a reader needs was already in the report — `via` and
+ * `gamma` ride on all six findings — and nothing pointed at them.
+ *
+ * So this is the pointing, and it is deliberately NOT a flag on the findings.
+ * Measured over the 52-pair corpus (`docs/r3-sweep-2026-09-16.md`): of 79 text
+ * pairings beyond this line, **74 were CORRECT** — a relocated CTA, a
+ * right-aligned author label the implementation left-aligns, a library row
+ * higher up a shorter list. Their colour and typography findings are real
+ * drift. Marking them `unverified` would tell a reader to discount 74 true
+ * findings to cast doubt on 5, and no feature tested separates the two groups
+ * (distance, axis and containment are all refuted in that document). A list to
+ * CHECK is the honest instrument; a verdict on each row is not available.
+ */
+export function distantPairings(
+  matches: readonly ElementMatch[],
+  minGamma: number,
+): DistantPairing[] {
+  return matches
+    .filter((m) => m.gamma >= minGamma)
+    .sort((a, b) => b.gamma - a.gamma)
+    .map((m) => ({
+      via: m.via,
+      gamma: Math.round(m.gamma * 10) / 10,
+      ...(m.design.text !== undefined ? { designText: m.design.text } : {}),
+      ...(m.impl.text !== undefined ? { implText: m.impl.text } : {}),
+      designBox: m.design.box,
+      implBox: m.impl.box,
+    }))
 }
 
 export interface MatchOptions {
@@ -197,7 +247,7 @@ export function matchElements(
   impl: readonly ElementNode[],
   {
     maxGamma = DEFAULT_MAX_GAMMA,
-    textMaxGamma = 2 * maxGamma,
+    textMaxGamma = textEvidenceGamma(maxGamma),
     slotMaxGamma = DEFAULT_SLOT_MAX_GAMMA,
     slotMaxAreaRatio = DEFAULT_SLOT_MAX_AREA_RATIO,
     unrelatedMinGamma = DEFAULT_UNRELATED_MIN_GAMMA,

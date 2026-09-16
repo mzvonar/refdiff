@@ -12,7 +12,7 @@
  * impl-only snapshot of the same numbers had no reader.
  */
 
-import type { AlignedPair } from "../pipeline.js"
+import type { AlignedPair, ElementMatch } from "../pipeline.js"
 import type {
   Box,
   ComparisonReport,
@@ -28,6 +28,7 @@ import { join, relative } from "node:path"
 import sharp from "sharp"
 
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
+import { distantPairings, textEvidenceGamma } from "../structural/match.js"
 import { pairPhase } from "../structural/phase.js"
 import { diffReports, identityKey, type ResolvedLedger } from "./delta.js"
 import { containersOf, groupByRegion, groupUnmatched } from "./regions.js"
@@ -48,6 +49,18 @@ export interface PackageOptions {
   diffMaskPath?: string
   /** What the matcher did (`matchingStats`) → `report.matching`. */
   matching?: MatchingStats
+  /**
+   * The pairs the matcher formed → `report.distant`. Passed rather than
+   * re-derived, and PROJECTED HERE rather than by the caller, for the same
+   * reason `phase` is: one place builds the report, so a caller cannot ship a
+   * `distant` row that disagrees with the findings printed beside it.
+   */
+  matches?: readonly ElementMatch[]
+  /**
+   * The `maxGamma` that run actually used, so the reported line is that run's
+   * and not the default restated. Ignored without `matches`.
+   */
+  maxGamma?: number
   /** The previous run's report of this pair, when one exists → `delta`. */
   previous?: ComparisonReport
   /** What earlier runs resolved → `delta.regressions` (needs `previous`). */
@@ -80,6 +93,8 @@ export async function packageForModel(
     policy = {},
     diffMaskPath,
     matching,
+    matches,
+    maxGamma,
     previous,
     ledger,
   }: PackageOptions,
@@ -165,6 +180,12 @@ export async function packageForModel(
     },
   })
 
+  // And WHICH PAIRINGS crossed the matcher's own shared-text bound. Every fact
+  // in a row is already on the findings that rest on it (`via`, `gamma`, both
+  // boxes); what was missing was anything pointing at them, which is why the
+  // canonical witness's tell is the last line a reader reaches.
+  const distant = matches === undefined ? [] : distantPairings(matches, textEvidenceGamma(maxGamma))
+
   const report: ComparisonReport = {
     pair: pair.id,
     createdAt: new Date().toISOString(),
@@ -206,6 +227,7 @@ export async function packageForModel(
       : {}),
     ...(byRegion.groups.length > 0 ? { byRegion } : {}),
     ...(unmatched !== undefined ? { unmatched } : {}),
+    ...(distant.length > 0 ? { distant } : {}),
     artifacts: {
       designPng: rel(design.pngPath),
       implPng: rel(impl.pngPath),

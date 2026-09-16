@@ -3,10 +3,13 @@ import type { ElementNode } from "../types.js"
 import { describe, expect, it } from "vitest"
 
 import {
+  DEFAULT_MAX_GAMMA,
   DEFAULT_UNRELATED_MIN_GAMMA,
+  distantPairings,
   gamma,
   matchElements,
   matchingStats,
+  textEvidenceGamma,
   unrelatedPairing,
 } from "./match.js"
 
@@ -356,5 +359,49 @@ describe("matchingStats", () => {
     // would read as "not measured" beside pairs where it is.
     const stats = matchingStats(matchElements([el("d1", 0, 0, 10, 10)], [el("i1", 1, 1, 10, 10)]))
     expect(stats.vetoed).toBe(0)
+  })
+})
+
+describe("distantPairings", () => {
+  it("names the mis-pairing the report had no way to point at", () => {
+    // Measured, `messages-accountant-desktop`: the comp's fourth filter chip
+    // paired with the impl's thread badge, 415 px left and 636.5 px down. Both
+    // carry "Vybavené", so there is NO text-content finding to reach and the
+    // pair is exempt from the confidence gate — six confident findings about
+    // two unrelated elements, and every number that gives it away was already
+    // in the report with nothing pointing at it.
+    const design = [
+      el("chip", 766, 92, 61, 14, "Vybavené"),
+      el("title", 343, 148, 186, 15, "Slovnaft, a.s."),
+    ]
+    const impl = [
+      el("badge", 351, 728.5, 52, 12, "Vybavené"),
+      el("title", 342, 150, 188, 16, "Slovnaft, a.s."),
+    ]
+    const rows = distantPairings(matchElements(design, impl).matches, textEvidenceGamma())
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ via: "text", designText: "Vybavené", implText: "Vybavené" })
+    // 415 + 636.5 + 9 + 2. The recorded pair reads 1062.6 because its comp box
+    // is 61.07 wide; the whole numbers here keep the sum checkable by eye.
+    expect(rows[0]!.gamma).toBe(1062.5)
+    // The nearby pair is NOT listed — a list that names everything points at
+    // nothing, and that title pair moved 5 γ.
+    expect(rows.map((r) => r.designText)).not.toContain("Slovnaft, a.s.")
+  })
+
+  it("is γ descending, and the line moves with the matcher's own bound", () => {
+    const design = [el("a", 0, 0, 10, 10, "alpha"), el("b", 0, 0, 10, 10, "beta")]
+    const impl = [el("a", 600, 0, 10, 10, "alpha"), el("b", 300, 0, 10, 10, "beta")]
+    const matches = matchElements(design, impl).matches
+    expect(distantPairings(matches, textEvidenceGamma()).map((r) => r.gamma)).toEqual([600, 300])
+    // `textEvidenceGamma` is ONE definition used twice — pass 1b's default
+    // bound and this report's line — so a run with a widened `--max-gamma`
+    // reports against the line THAT run used, not against the default.
+    expect(textEvidenceGamma()).toBe(2 * DEFAULT_MAX_GAMMA)
+    // A run at `--max-gamma 350` reports against 700, so neither pair qualifies.
+    expect(distantPairings(matches, textEvidenceGamma(350))).toEqual([])
+    // Guard: the set is non-empty at the default line, so the assertion above
+    // cannot be passing because nothing was ever a candidate.
+    expect(distantPairings(matches, textEvidenceGamma())).not.toEqual([])
   })
 })

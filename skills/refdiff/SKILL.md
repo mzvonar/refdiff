@@ -357,6 +357,13 @@ between "a chip" and "most of the frame" for the map to use (`refdiff-library-gr
 22 of 290, and 0 of 106 on the impl side). There, grouping is not available and reading the two
 surfaces is all you have.
 
+**On BOTH phases the run also prints `DISTANT PAIRINGS`** — the pairings formed across more than
+the matcher's own shared-text bound, γ descending, and in `findings.json` as `report.distant`. A
+list to CHECK, not defects: 74 of the corpus's 79 are correct. It exists because the worst
+mis-pairing measured has no tell — identical strings on opposite sides of the page, so no
+`text-content` finding and no `unverified` flag. `polish.md` §1a-ii has the reading, and this is
+NOT reconcile-only: the longest list in the corpus (17 rows) is on a `polish` pair.
+
 **The headline states TWO populations, and on half the corpus they differ.** `38 design element(s)
 with no counterpart … (37 listed below, 1 under the reporting floor)`: the first number is what the
 MATCHER left unpaired, the second what this run lists. The gap is elements under the 4 px reporting

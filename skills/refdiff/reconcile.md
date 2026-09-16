@@ -154,6 +154,12 @@ the implementation relocated — and WRONG ones down to **γ 210**. The populati
 the whole band, so every ceiling destroys more correct pairs than it catches. So does "it moved on
 both axes", and so does containment. **Distance tells you nothing about a text pair. Look at it.**
 
+**The run now hands you the shortlist: `report.distant`.** Every pairing formed beyond the
+matcher's own shared-text bound is listed in the headline and in `findings.json`, γ descending —
+on the canonical witness that is 4 rows, and the `Vybavené` mis-pairing is the first of them. It
+is a list to CHECK, not defects (74 of the corpus's 79 are correct), so it shortens the search; it
+does not do the judging. `polish.md` §1a-ii has the full reading.
+
 **The two cheap checks, in order.**
 
 1. `elements.json` holds both aligned leaf sets. Grep the string you expected to be missing on

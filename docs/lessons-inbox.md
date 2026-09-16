@@ -1665,3 +1665,35 @@ merely misleading but literally unmoved.
 grep-filtered log. A filtered read of the Storybook pass said "11 of 14 pairs failed to
 capture"; the harness's own retry had recovered all of them, which only the regenerated
 baseline document showed. Same shape as the `tail -5` rule in uctoinak2's CLAUDE.md.
+
+## 2026-09-16 — when you cannot classify, LIST; a flag is a per-row verdict
+
+Step 5b started as "extend the `unverified` flag to text pairs that moved a long way",
+which is the obvious fix and which I had recommended out loud. Measuring it killed it: at
+the matcher's own bound it would flag 93 value findings, and **74 of the 79 pairings it
+flags are correct** — their colour and typography deltas are real drift. The flag would
+have told a reader to discount 74 true findings in order to cast doubt on 5.
+
+The distinction worth keeping: **a flag is a claim about the row it sits on; a list is a
+claim about the SET.** "This finding is not worth believing" needs a discriminator. "These
+four pairings crossed the line where the matcher stops trusting a shared string — check
+them" needs only a threshold and an honest hit rate printed beside it. When the
+measurement says the populations overlap, the second is available and the first is not.
+
+Two details that made it cheap and non-arbitrary:
+
+**The threshold already existed.** Rather than pick a number (and be fitted to the five
+labelled mis-pairings), the report reuses `textMaxGamma` — pass 1b's own bound on pairing
+a non-unique string. Pass 1 exempts itself from that bound by design, so the report is
+precisely that exemption made visible, and a run with a widened `--max-gamma` reports
+against its own line. One definition, two uses, nothing to keep in step.
+
+**The information was already there.** `via` and `gamma` ride on every finding and the
+console prints them. Nothing was missing except something POINTING at them — the witness's
+tell was the sixth of six findings, and its worse twin had no tell at all. Before building
+a new signal, check whether the existing one is merely unfindable; the fix for
+unfindable is a pointer, not a new measurement.
+
+**The caveat I owed and paid:** I recommended the flag before measuring it. Recommending a
+mechanism is not the same as verifying one, and the measurement that settles it is usually
+an hour's work. Say "I think X, let me price it" rather than "do X".

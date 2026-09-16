@@ -26,6 +26,7 @@ export type {
   SuppressedFinding,
   UnmatchedBreakdown,
   UnmatchedSide,
+  DistantPairing,
   Explanation,
   ExplainRule,
   SuppressionReason,
@@ -181,10 +182,14 @@ export {
 export {
   DEFAULT_MAX_GAMMA,
   DEFAULT_SLOT_MAX_GAMMA,
+  DEFAULT_SLOT_MAX_AREA_RATIO,
   gamma,
   slotGamma,
+  areaRatio,
+  textEvidenceGamma,
   matchElements,
   matchingStats,
+  distantPairings,
   type MatchOptions,
 } from "./structural/match.js"
 export {

@@ -574,6 +574,24 @@ export interface UnmatchedBreakdown {
   impl: UnmatchedSide
 }
 
+/**
+ * One pairing the matcher formed across a long distance — a row in a list to
+ * CHECK, not a defect. See `distantPairings` for why this is a list and not a
+ * flag on the findings: of the 79 such pairings in the 2026-09-16 corpus, 74
+ * were CORRECT.
+ *
+ * Both boxes are in impl world space, like every other box in the report.
+ */
+export interface DistantPairing {
+  via: "text" | "slot" | "geometry"
+  /** The pair's γ, rounded to 0.1 — the same number its findings carry. */
+  gamma: number
+  designText?: string
+  implText?: string
+  designBox: Box
+  implBox: Box
+}
+
 export type SuppressionReason =
   | "text-pattern"
   | "role"
@@ -771,6 +789,18 @@ export interface ComparisonReport {
    * a different number. Absent too when nothing is unmatched at all.
    */
   unmatched?: UnmatchedBreakdown
+  /**
+   * The pairings formed across more than `textEvidenceGamma` — the matcher's own
+   * bound on shared-text evidence — γ descending. A list to CHECK, never a
+   * verdict: 74 of the corpus's 79 are correct, and the report says so where it
+   * prints them. Absent when there are none, which is the common case (20 of 52
+   * corpus pairs print anything; median 2 rows).
+   *
+   * Not gated on the phase. The two worst-known mis-pairings are on `reconcile`
+   * pairs, but `polish` pairs carry the longest list in the corpus (17), and
+   * step 5 found mis-pairings on the two best-corresponding pairs there.
+   */
+  distant?: DistantPairing[]
   artifacts: {
     designPng: string
     implPng: string

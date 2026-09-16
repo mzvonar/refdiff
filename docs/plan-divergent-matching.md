@@ -6,10 +6,11 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-16, later).** Steps 0–5 DONE, plus **RECONCILE STEPS 1, 2 AND 3**. **Step 5
-> shipped as a SLOT AREA-RATIO ceiling, not as the containment rule this plan proposed — the
-> sweep refuted containment in all three readings.** Next is STEP 6. Not pushed. 490 core + 380
-> annotator green; `preflight-selftest.sh` 24/24.
+> **STATUS (2026-09-16, later).** Steps 0–5 DONE **plus STEP 5b**, and **RECONCILE STEPS 1, 2 AND
+> 3**. **Step 5 shipped as a SLOT AREA-RATIO ceiling, not as the containment rule this plan
+> proposed — the sweep refuted containment in all three readings; step 5b then pointed at the
+> long TEXT pairings, which the sweep showed cannot be refused or flagged.** Next is STEP 6. Not
+> pushed. 492 core + 380 annotator green; `preflight-selftest.sh` 24/24.
 >
 > **READ [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md) BEFORE step 6**: it is the 107-label
 > ground-truth set the corpus now has (it had 7), and three of this plan's standing claims died on
@@ -1371,6 +1372,60 @@ the ceiling reaches: of the 43 slot pairs it KEEPS, **22 carry token-disjoint te
 `ZÚČT. OBDOBIE` ↔ `Aplikácia · nahral(a) Test Owner` at ratio 3.60 — the same label-vs-value defect
 as the pair above the line. **Precision is measured; recall is not.** And the `via: "text"` family
 (5 confirmed wrong) is untouched, with no discriminator found.
+
+### Step 5b — POINT at the long pairings, because nothing does ✅ DONE 2026-09-16
+
+**Why this exists.** Step 5 left the `via: "text"` family untouched, and after it **both of this
+plan's witnesses still emit six findings each** (verified, not assumed — run 11 of
+`messages-accountant-desktop`). But they are not in the same state:
+
+- Witness 1 (`Včera` ↔ `Otázky · 1`, geometry γ 98.7) — **four of its six read
+  `unverified: true`.** Step 1 handled it as well as a flag can; `position` states its own evidence
+  and `text-content` is the tell, and both are deliberately unflagged.
+- Witness 2 (`Vybavené` ↔ `Vybavené`, text γ 1062.6) — **all six read `unverified: false`**, and
+  there is no `text-content` finding because the strings are identical.
+
+The whole gap between those two lines is step 1's exemption of `via: "text"` from the confidence
+gate. **Every fact a
+reader needs was already in the report** — `via` and `gamma` ride on all six findings and the
+console prints them — and nothing pointed at them.
+
+**What was NOT done, and why, because the obvious move is wrong.** The first instinct is to extend
+`unverified` to long-γ text pairs. Measured: at the matcher's own shared-text bound that would newly
+flag **93 value findings (5.2% of the corpus's 1789)**, and **74 of the 79 pairings it would flag
+are CORRECT** — a relocated CTA, a right-aligned author label, a library row higher up a shorter
+list. Their colour and typography findings are real drift. The flag would tell a reader to discount
+74 true findings to cast doubt on 5, and step 5 established that **no feature separates the two
+groups**. A flag is a per-row verdict, and this corpus does not have one to give.
+
+**So: a LIST, not a flag.** `ComparisonReport.distant` + `distantPairings()` (pure, beside
+`matchingStats`), printed as a `DISTANT PAIRINGS` block on **every** pair — not reconcile-only,
+because the longest list in the corpus (17) is on a `polish` pair and step 5 found mis-pairings on
+the two best-corresponding pairs there. Capped at six printed rows like the region lines; the rest
+in `findings.json`.
+
+**The threshold is not a new number — that was the point.** It is `textEvidenceGamma()`, which is
+ONE definition used twice: `textMaxGamma`'s default (pass 1b's own bound on pairing a non-unique
+text) and this report's line. Pass 1 exempts itself from it by design; the report is that exemption
+made visible. So a run with `--max-gamma` widened reports against the line THAT run used, and
+nothing here is fitted to the 5 labelled mis-pairings.
+
+**Measured, all 52 pairs re-captured in three passes:**
+
+- **`+0 / −0` on every pair, all three corpus totals byte-identical** (refdiff 2233, uctoinak2 3627,
+  storybook 1309). Purely additive: no finding, no pairing, no phase changed.
+- **85 rows across 25 of 52 pairs** — 79 text and 6 slot, median 2 rows, max 17. Most pairs print
+  nothing.
+- **On the witness it is 4 rows and `Vybavené` γ 1062.6 is the first**, above three thread-row
+  pairings that are all labelled correct. The defect the plan opened with is now the top line of a
+  four-line list instead of the sixth finding of six.
+- Tests +2 → **492 core + 380 annotator**.
+
+**What it does NOT do, stated because the wording invites the opposite reading.** It does not
+refuse the pair, flag its findings, or change the verdict. Witness 2 still emits six findings and
+they still read `unverified: false`. What changed is that the run now says which pairings to check
+before believing them. Whether that is enough is a judgement the corpus cannot make, and the
+honest next measurement is whether a reader who has the list actually catches the mis-pairing.
 
 ### Step 6 — per-container confidence (promoted: this is the one that HELPS the polish loop)
 
