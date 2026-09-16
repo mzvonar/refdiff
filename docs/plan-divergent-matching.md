@@ -11,7 +11,7 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > **THE REMAINING STEPS WERE REWRITTEN after step 2's corpus contradicted the plan's premise — read
 > [THE REFRAME](#the-reframe-2026-09-15-after-step-2--read-this-before-any-remaining-step) before
 > anything else.** In short: the matcher was the wrong instrument for divergence, the work splits
-> into a model-driven phase A and today's loop as phase B, and the original steps 3 and 4 are parked
+> into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
 > **DO NEXT: step 5** (refuse geometric pairs below the confidence floor). Steps 0–4 are DONE.
@@ -180,16 +180,21 @@ of the instrument's precision on the case it exists for.
 
 ### The two-phase workflow this implies
 
-- **Phase A — rough, model-driven, NOT a refdiff findings loop.** Read the design, read the
+> **Naming.** These two were originally "phase A" and "phase B". They ship as **`reconcile`** and
+> **`polish`**, and the letters are retired everywhere — a lettered phase collides with the lettered
+> candidate RULES in step 4, which are now named for the confidence each reads.
+
+- **RECONCILE — rough, model-driven, NOT a refdiff findings loop.** Read the design, read the
   implementation, understand the structure and behaviour of both, reconcile them. refdiff's job here
-  is to say *"you are in phase A"* and, at most, to hand over an inventory the model is bad at
+  is to say *"you are in reconcile"* and, at most, to hand over an inventory the model is bad at
   building by hand.
-- **Phase B — today's refdiff loop, unchanged.** Element-wise findings, the bounded fix loop, the
+- **POLISH — today's refdiff loop, unchanged.** Element-wise findings, the bounded fix loop, the
   fine details the model cannot see.
 
-**Do not implement phase A as a gate on the existing pipeline.** A behavioural switch on a threshold
-misfires: `today-owner-desktop` scores confidence 0.50 — over any sane floor — with a match rate of
-**0.31**, the worst in the corpus. Phase-A work belongs in outputs that cannot touch leaf matching,
+**Do not implement reconcile as a gate on the existing pipeline.** A behavioural switch on a
+threshold misfires: `today-owner-desktop` scores confidence 0.50 — over any sane floor — with a match
+rate of **0.31**, the worst in the corpus. Reconcile work belongs in outputs that cannot touch leaf
+matching,
 which is why the container work below is re-scoped as a REPORT rather than as an input to matching.
 
 ### No single number detects the phase
@@ -517,8 +522,8 @@ Two candidate rules, and what separates them:
 
 | rule | polish | reconcile |
 | --- | --- | --- |
-| `conf >= 0.5 && rate >= 0.70` | 18 | 34 |
-| `rate >= 0.70 && (conf >= 0.5 \|\| share >= 0.35)` | 24 | 28 |
+| `joint-only` — `conf >= 0.5 && rate >= 0.70` | 18 | 34 |
+| `joint-or-share` — `rate >= 0.70 && (conf >= 0.5 \|\| share >= 0.35)` | 24 | 28 |
 
 **Both get all four named cases right** — `today-owner-desktop` (0.50 / 0.31) reconcile,
 `messages-owner-desktop` (0.07 / 0.68) reconcile, the witness `messages-accountant-desktop`
@@ -576,21 +581,23 @@ full derivation and is the thing to read before changing a threshold. Headlines:
   and takes `confidenceY` from 0.47 to 0.06. The exact value 0.00 is a threshold cliff, not a
   measurement. Worth knowing before anyone trusts a 0.00 again.)*
 
-- **The two candidates are nested inside the one that shipped: A ⊂ B ⊂ C.** Scored by how well each
-  separates pairs whose geometric pairings are junk (token-DISJOINT `text-content` findings on a
-  geometric pair — the witness's own tell — over geometric matches):
+- **The two candidates are nested inside the one that shipped:
+  `joint-only` ⊂ `joint-or-share` ⊂ `best-axis`.** The rules are named for the confidence each
+  READS, never lettered — a "rule B" beside a "phase B" is the collision this rename retires.
+  Scored by how well each separates pairs whose geometric pairings are junk (token-DISJOINT
+  `text-content` findings on a geometric pair — the witness's own tell — over geometric matches):
 
   | rule | polish | median junk, polish | median junk, reconcile | separation | conf-only twin splits |
   | --- | --- | --- | --- | --- | --- |
-  | A `conf ≥ .5 && rate ≥ .7` | 18 | 0.136 | 0.323 | 0.186 | 3 |
-  | B `rate ≥ .7 && (conf ≥ .5 ∨ share ≥ .35)` | 24 | 0.143 | 0.429 | 0.286 | 2 |
-  | **C `rate ≥ .7 && max(cX, cY) ≥ .5`** | **28** | **0.146** | **0.462** | **0.315** | **1** |
+  | `joint-only` `conf ≥ .5 && rate ≥ .7` | 18 | 0.136 | 0.323 | 0.186 | 3 |
+  | `joint-or-share` `rate ≥ .7 && (conf ≥ .5 ∨ share ≥ .35)` | 24 | 0.143 | 0.429 | 0.286 | 2 |
+  | **`best-axis` `rate ≥ .7 && max(cX, cY) ≥ .5`** | **28** | **0.146** | **0.462** | **0.315** | **1** |
 
-  C is strictly more inclusive AND separates strictly better at unchanged quality inside the polish
-  set. The extra discriminator is RESPONSIVE TWINS: two captures of one surface whose `rate` and
-  `share` agree within 0.10 correspond equally well, so splitting them is the transform overruling
-  the content. A's extra casualty is `tx-picker-owner` — rate 0.92/0.91, share 0.38/0.38, joint
-  confidence 0.52 and 0.00.
+  `best-axis` is strictly more inclusive AND separates strictly better at unchanged quality inside
+  the polish set. The extra discriminator is RESPONSIVE TWINS: two captures of one surface whose
+  `rate` and `share` agree within 0.10 correspond equally well, so splitting them is the transform
+  overruling the content. `joint-only`'s extra casualty is `tx-picker-owner` — rate 0.92/0.91,
+  share 0.38/0.38, joint confidence 0.52 and 0.00.
 
 - **`share >= 0.35` gets the right answer for the wrong reason, so it does not ship as a gate.**
   Text share is the WEAKEST signal against the junk rate (Spearman −0.44, against −0.71 for rate and
@@ -665,7 +672,7 @@ localises the change; it cannot by itself say whether a collapse was deserved. T
 human, and step 4's phase label is what makes it answerable ("matched collapsed on a `reconcile`
 pair" is expected; "on a `polish` pair" is a bug).
 
-### Step 6 — per-container confidence (promoted: this is the one that HELPS phase B)
+### Step 6 — per-container confidence (promoted: this is the one that HELPS the polish loop)
 
 **Goal.** Stop using one global confidence to license geometry everywhere. A well-aligned thread rail
 inside a badly-aligned page should keep its geometry — today it does not, and that is a precision
@@ -696,22 +703,22 @@ which is what makes it robust to small structural differences. Comp groupings ar
 impl groupings are divs; they routinely disagree, and a wrongly matched container scopes children to
 the wrong candidate set.
 
-**The part worth keeping is the container correspondence itself, as a phase-A OUTPUT** — a structure
+**The part worth keeping is the container correspondence itself, as a RECONCILE OUTPUT** — a structure
 map naming which comp containers correspond to which impl subtrees, which have no counterpart, and
 where reading order diverges. Enumerating that completely is exactly what a model reading two files
 does badly, so it is real value; and as an output it cannot touch leaf matching, which a
-confidence-gated version of the same code could still do by misfiring. Revisit only if phase A asks
+confidence-gated version of the same code could still do by misfiring. Revisit only if reconcile asks
 for it, and build it beside the matcher rather than inside it.
 
 ### Lowe's ratio test on geometric candidates (the original step 4)
 
-**Dropped as a gate.** Harmful in phase B and redundant in phase A:
+**Dropped as a gate.** Harmful in `polish` and redundant in `reconcile`:
 
-- In phase B it is structurally hostile to repeated-content layouts — uniform grids, tables, variant
+- In `polish` it is structurally hostile to repeated-content layouts — uniform grids, tables, variant
   sheets — where position is the only discriminator and the runner-up is the next row by
   construction. That is the polish loop's home ground. Measured exposure:
   `refdiff-library-groups-mobile`, 150 geometric matches at confidence 0.70.
-- In phase A the pair has already been judged untrustworthy wholesale, so "this particular geometric
+- In `reconcile` the pair has already been judged untrustworthy wholesale, so "this particular geometric
   pair is ambiguous" tells nobody anything new.
 
 **What survives:** `Finding.ambiguityMargin` as a REPORTED diagnostic — compute the runner-up ratio,

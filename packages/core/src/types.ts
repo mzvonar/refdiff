@@ -156,8 +156,8 @@ export interface MatchingStats {
  * Which kind of work this pair is asking for.
  *
  *  - `polish` — the two surfaces already correspond, so the element-wise findings mean
- *    what they say and the bounded fix loop is the right tool. This is phase B, the case
- *    refdiff was built for: the 2 px offset and the ΔE 3 colour delta a model cannot see.
+ *    what they say and the bounded fix loop is the right tool. This is the case refdiff
+ *    was built for: the 2 px offset and the ΔE 3 colour delta a model cannot see.
  *  - `reconcile` — they do not. The comp and the implementation are different structures,
  *    and the hard part is NOT invisible to a model; it is a judgement no measurement
  *    supplies. Read both sides and reconcile them before reading findings one by one.

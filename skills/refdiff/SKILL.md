@@ -351,11 +351,25 @@ surfaces to RECONCILE?**
 | `polish` | the two sides already correspond | the normal loop below. This is what refdiff is for: the 2 px offset and the ΔE 3 delta you cannot see |
 | `reconcile` | they are different structures | **stop reading findings one by one.** Read the comp and the implementation as wholes, work out which regions correspond and which exist on one side only, and fix the structure. Then re-run |
 
-On a `reconcile` pair the run leads with the **inventory** — how many design elements have no
-counterpart, how many impl elements are unaccounted for, and how many of the pairings that DID form
-rest on position alone. That inventory is the deliverable; the 200 element-wise findings under it
-are mostly describing two structures being forced onto each other. Enumerating it by hand from the
-two sources is the thing a model reliably gets wrong, which is why it is measured for you.
+On a `reconcile` pair the run leads with **counts** — how many design elements have no counterpart,
+how many impl elements are unaccounted for, and how many of the pairings that DID form rest on
+position alone. Those counts are the size of the problem, not the problem: the 200 element-wise
+findings under them are mostly describing two structures being forced onto each other.
+
+**Where the actual list is, because refdiff does not yet assemble it for you.** The per-element
+answer is in `findings.json` as the `missing-element` findings (a comp element with no counterpart,
+carrying its text and box) and the `extra-element` findings (an impl element nothing accounted for).
+That is the raw material for reconciling, and today it arrives as a flat severity-sorted list mixed
+in with everything else — **you have to group it yourself.** `report.byRegion` is the best lever:
+it buckets findings by their smallest containing container, so reading the missing/extra entries
+region by region is the closest thing to a structure map that exists right now. A real one — which
+comp container corresponds to which impl subtree, which has no counterpart, where reading order
+diverges — is a known gap, parked deliberately in `docs/plan-divergent-matching.md` (§PARKED,
+"container correspondence as a RECONCILE output"), not an oversight.
+
+**So `reconcile` tells you WHICH loop you are in, not HOW to do it.** The method is yours. What
+refdiff guarantees here is only that it will not let you spend an hour on a colour delta between two
+elements that were never the same element.
 
 **It is a label, not a gate.** Every finding is emitted on a `reconcile` pair exactly as on a
 `polish` one, and the verdict is unchanged — so you can still work one if you have a reason to.

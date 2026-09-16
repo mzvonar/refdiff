@@ -2,12 +2,12 @@
  * Which PHASE a pair is in — `reconcile` or `polish` (pure).
  *
  * refdiff exists because a model cannot see a 2 px offset or a ΔE 3 colour delta. That is
- * phase B, the polish loop, and it is only meaningful once the two surfaces already
- * correspond. When they do NOT — the comp draws a thread rail with relative dates, the
- * implementation renders absolute dates and a filter chip row — the hard problem is not
- * invisible to a model, and 200 element-wise findings about it are noise wearing the
- * costume of precision. That is phase A: read both sides, reconcile the structure, and
- * come back. See `docs/plan-divergent-matching.md`, THE REFRAME.
+ * the POLISH loop, and it is only meaningful once the two surfaces already correspond.
+ * When they do NOT — the comp draws a thread rail with relative dates, the implementation
+ * renders absolute dates and a filter chip row — the hard problem is not invisible to a
+ * model, and 200 element-wise findings about it are noise wearing the costume of
+ * precision. That is RECONCILE: read both sides, reconcile the structure, and come back.
+ * See `docs/plan-divergent-matching.md`, THE REFRAME.
  *
  * **This label is REPORTED, never enforced.** Nothing downstream reads it; every finding
  * is emitted on a `reconcile` pair exactly as on a `polish` one. A phase that silently
@@ -44,7 +44,7 @@
  * non-affine, so the pair would not have cleared 0.5 either way; but the exact value 0.00
  * is a threshold cliff, not a measurement.)
  *
- * **`textShare` is carried and does NOT gate.** The plan's second candidate rule used
+ * **`textShare` is carried and does NOT gate.** The `joint-or-share` candidate used
  * `share >= 0.35` as an escape hatch, and it reaches the right verdict on all six disputed
  * pairs — for the wrong reason. Share is the WEAKEST of the signals against the junk-
  * pairing rate (Spearman −0.44), and its 0.35 threshold separates nothing: median junk is
@@ -54,26 +54,30 @@
  *
  * ## What the corpus says about the rule that ships
  *
- * Three nested candidates (polish sets A ⊂ B ⊂ C), scored by how well each separates pairs
- * whose geometric pairings are junk from pairs whose are not:
+ * Three nested candidates — named for the confidence each READS, because that is the only
+ * thing they disagree about, and deliberately not lettered: the phases themselves were
+ * once called A and B, and a "rule B" beside a "phase B" meaning something unrelated is
+ * exactly the kind of collision this file exists to argue against. Scored by how well each
+ * separates pairs whose geometric pairings are junk from pairs whose are not (polish sets
+ * nest: `joint-only` ⊂ `joint-or-share` ⊂ `best-axis`):
  *
  * | rule | polish | median junk, polish | median junk, reconcile | separation |
  * | --- | --- | --- | --- | --- |
- * | A `conf >= .5 && rate >= .7`                     | 18 | 0.136 | 0.323 | 0.186 |
- * | B `rate >= .7 && (conf >= .5 \|\| share >= .35)` | 24 | 0.143 | 0.429 | 0.286 |
- * | C `rate >= .7 && max(cX, cY) >= .5`              | 28 | 0.146 | 0.462 | 0.315 |
+ * | `joint-only`     `conf >= .5 && rate >= .7`                     | 18 | 0.136 | 0.323 | 0.186 |
+ * | `joint-or-share` `rate >= .7 && (conf >= .5 \|\| share >= .35)` | 24 | 0.143 | 0.429 | 0.286 |
+ * | `best-axis`      `rate >= .7 && max(cX, cY) >= .5`              | 28 | 0.146 | 0.462 | 0.315 |
  *
- * C is this module. It is strictly more inclusive AND separates strictly better, at
- * essentially unchanged quality inside the polish set — and all three agree on the four
+ * `best-axis` is this module. It is strictly more inclusive AND separates strictly better,
+ * at essentially unchanged quality inside the polish set — and all three agree on the four
  * cases the plan named (`today-owner-desktop` and `messages-owner-desktop` reconcile, the
  * witness `messages-accountant-desktop` reconcile, `refdiff-library-groups-mobile`
  * polish). It also splits the fewest RESPONSIVE TWINS on the transform alone: a desktop
  * and mobile capture of one surface whose `matchRate` and `textShare` agree to within 0.10
  * are the same surface corresponding equally well, so a rule that puts them in different
- * phases is letting the transform overrule the content. A splits 3 such twins, B splits 2,
- * C splits 1 — and A's extra casualty is `tx-picker-owner`, whose two captures agree at
- * rate 0.92/0.91 and share 0.38/0.38 and land on opposite sides of the joint-confidence
- * floor at 0.52 and 0.00.
+ * phases is letting the transform overrule the content. `joint-only` splits 3 such twins,
+ * `joint-or-share` 2, `best-axis` 1 — and `joint-only`'s extra casualty is
+ * `tx-picker-owner`, whose two captures agree at rate 0.92/0.91 and share 0.38/0.38 and
+ * land on opposite sides of the joint-confidence floor at 0.52 and 0.00.
  *
  * **Honest limits of that derivation, both of which belong in the next reader's hands.**
  * The junk-pairing rate is a PROXY: a token-disjoint text pairing can be a legitimate value
