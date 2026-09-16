@@ -5,6 +5,33 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — an EXTERNAL plugin has two manifests in two repos, and the stale one is silent
+
+refdiff ships as a Claude Code plugin whose source is its own repo, so its version lives in
+`refdiff/.claude-plugin/plugin.json` AND in `claude-skills-public/.claude-plugin/marketplace.json`.
+Both read 1.1.0 from 2026-09-14 while `main` advanced 48 commits, twelve of them touching
+`skills/`. Consumers therefore ran the pre-split 1308-line `SKILL.md` — **`reconcile.md` did not
+exist for them at all** — for a day, across the entire divergent-matching workstream.
+
+**Nothing could have reported it.** Claude Code keeps the cached copy until the CATALOG's version
+moves, so an unbumped version means the marketplace advertises exactly what every consumer already
+has: `check-drift.sh` compares installed against catalog and both said 1.1.0, i.e. the drift
+detector reads clean precisely when the bump was forgotten. For the plugins that live INSIDE
+claude-skills-public `validate.sh` catches a mismatch between the two manifests; for an external
+one the two are in different repos and nothing compares them.
+
+**And the field that looks like it would catch it does not.** After
+`claude plugin update refdiff@claude-skills-public`, `installed_plugins.json` showed
+`version: 1.2.0` and the new content on disk while `gitCommitSha` still read `84797cef` — the sha
+from two days earlier. That field is not refreshed by an update, so it is not evidence of what the
+cached copy actually contains.
+
+Generalisable: **a version number is a PROMISE a human makes, not a fact a tool derives — so drift
+detection built on it reports "clean" for both "nothing changed" and "somebody forgot".** When
+releasing an external plugin, bump both manifests in the same sitting, and verify by reading the
+cached copy's CONTENT (`wc -l <cache>/skills/*/*.md`, grep for the newest thing you wrote) rather
+than any recorded number.
+
 ## 2026-09-16 — a handoff's "NOT pushed" is a claim about a REMOTE, and it goes stale silently
 
 Every handoff in this repo carries a push status, and on 2026-09-16 the one at the top said "NOT
