@@ -71,30 +71,30 @@ implementation's in the IMPLEMENTATION's. It is printed in the run headline and 
 
 ```
 PHASE: reconcile — these two surfaces do not correspond well enough for element-wise findings;
-  reconcile structure first — only 42 of 80 leaves matched (53%, floor 0.7), 38 design-only and 64 impl-only
-  signals: match rate 0.53 · best axis 0.50 (joint 0.07) · text share 0.45
-  pairings: of 42, 19 are text-proven and 22 rest on position alone
-  38 design element(s) with no counterpart, in the comp's own containers (37 listed below, 1 under the reporting floor):
+  reconcile structure first — only 41 of 80 leaves matched (51%, floor 0.7), 39 design-only and 65 impl-only
+  signals: match rate 0.51 · best axis 0.50 (joint 0.07) · text share 0.46
+  pairings: of 41, 19 are text-proven and 22 rest on position alone
+  39 design element(s) with no counterpart, in the comp's own containers (38 listed below, 1 under the reporting floor):
+      11 in surface at (272, 127) 890×608
       10 in surface at (-9, 1) 253×760
-      10 in surface at (272, 127) 890×608
        3 in surface at (282, 136) 330×83
        3 in surface at (622, 667) 539×67
        2 in surface at (282, 221) 330×80
        2 in surface at (282, 363) 330×80
        7 in no container of that side — this map does not place them
-  64 impl element(s) the design does not have, in the implementation's containers (all 64 listed below):
+  65 impl element(s) the design does not have, in the implementation's containers (all 65 listed below):
       15 in surface at (0, 0) 240×900
        7 in surface at (0, 824) 239×77
        ...
-      23 in no container of that side — this map does not place them
+      24 in no container of that side — this map does not place them
 ```
 
-**Where to start when 291 elements are unmatched: at the biggest GROUP, not the first finding.**
+**Where to start when 104 elements are unmatched: at the biggest GROUP, not the first finding.**
 A group is usually ONE decision — a whole region the other side does not have — not N decisions.
-The witness's two ten-element groups are two questions ("what is the comp's left rail for, and
-where did it go?"), and answering them accounts for 20 of the 37 listed elements. Work the
-groups largest first, on the side with more unmatched elements, and check each one against the
-correspondence you wrote in R1.
+The witness's two biggest design-side groups hold 11 and 10, and they are two questions ("what is
+the comp's left rail for, and where did it go?"); answering them accounts for 21 of the 38 listed
+elements. Work the groups largest first, on the side with more unmatched elements, and check each
+one against the correspondence you wrote in R1.
 
 **Do NOT use `report.byRegion` for this.** It is the right instrument for findings about a PAIR
 and structurally wrong here: it draws every container from the IMPL tree, and a `reconcile` pair
@@ -105,7 +105,7 @@ each side's own place **697**.
 
 **Read the map's own MISS RATE, which it prints.** `N in no container of that side — this map
 does not place them` is the map saying it placed none of those N. A short list of groups is not
-a short problem: the witness's design side is 30 placed and 7 unplaced, its impl side 41 and 23.
+a short problem: the witness's design side is 31 placed and 7 unplaced, its impl side 41 and 24.
 
 **A pair where the map places nothing is read differently, and that is a mode, not a failure.**
 `refdiff-library-groups-desktop` places **22 of 290 and 0 of 106** — a flat page of same-size
@@ -222,7 +222,7 @@ fall**. If `matched` drops, that is a REGRESSION unless you can argue it.
 
 **The pair crosses into `polish` when `matchRate >= 0.70` AND `max(confidenceX, confidenceY) >=
 0.50`.** `phase.reason` names which clause failed and by how much — read it rather than
-recomputing: *"only 42 of 80 leaves matched (53%, floor 0.7)"* is a distance, not a verdict.
+recomputing: *"only 41 of 80 leaves matched (51%, floor 0.7)"* is a distance, not a verdict.
 Note the floor is the BETTER-fitting axis, not the joint `alignment.confidence`: a surface that
 lines up horizontally and packs differently down the page still corresponds.
 
@@ -244,7 +244,7 @@ Written against these two, which are the range's ends:
 
 | pair | signals | unmatched | the map places | what it is here for |
 | --- | --- | --- | --- | --- |
-| `messages-accountant-desktop` (uctoinak2) | rate 0.53 · axis 0.50 (joint 0.07) · share 0.45 | 38 design-only / 64 impl-only | 30 of 37 listed in 6 comp containers; 41 of 64 in 8 impl containers | the canonical witness — both mis-pairings (`Včera` ↔ `Otázky · 1` at γ 98.7, `Vybavené` ↔ `Vybavené` at γ 1062.6) and the cheap test's 57/59 reading are measured on it |
+| `messages-accountant-desktop` (uctoinak2) | rate 0.51 · axis 0.50 (joint 0.07) · share 0.46 | 39 design-only / 65 impl-only | 31 of 38 listed in 6 comp containers; 41 of 65 in 8 impl containers | the canonical witness — both mis-pairings (`Včera` ↔ `Otázky · 1` at γ 98.7, `Vybavené` ↔ `Vybavené` at γ 1062.6) and the cheap test's 57/59 reading are measured on it |
 | `refdiff-library-groups-desktop` (refdiff) | rate 0.65 · axis 0.89 (joint 0.56) · share 0.30 | 290 design-only / 106 impl-only | 22 of 290; **0 of 106** | the degenerate map — R2's second mode, where grouping is unavailable and reading is all you have |
 
 **When you revise this file, add the pair that forced it to this table and say which step it

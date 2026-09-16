@@ -25,13 +25,15 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: STEP 6 — per-container confidence**, and re-ask step 2's parked verdict question
-> there. Note the sweep has already measured the per-side container map's limit as a matching
-> feature: it is ABSENT on 8 of the 12 long-γ mis-pairings and it keeps a mis-pairing whose two
-> sides share a container. That is a fact about the map used as a DISCRIMINATOR; step 6 uses
-> containers to scope a CONFIDENCE, which is a different use — but do not carry the plan's old
-> assumption that the container column is reliably available. Start from
-> [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md).
+> **DO NEXT: STEP 6 — per-container confidence. It is the LAST step in this plan**, and re-ask
+> step 2's parked verdict question there. Note the sweep has already measured the per-side
+> container map's limit as a matching feature: it is ABSENT on 8 of the 12 long-γ mis-pairings and
+> it keeps a mis-pairing whose two sides share a container. That is a fact about the map used as a
+> DISCRIMINATOR; step 6 uses containers to scope a CONFIDENCE, which is a different use — but do
+> not carry the plan's old assumption that the container column is reliably available, and **decide
+> first what a pairing with NO container is judged by**. Start from
+> [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md); the handoff's *What REMAINS* item 5 has the
+> code pointers and the no-capture evaluation route.
 >
 > **Two things step 5 left open and deliberately did not close**, both in its DONE block: the slot
 > family is bigger than the shipped ceiling reaches (22 of the 43 slot pairs it KEEPS are
@@ -76,6 +78,15 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > 2026-09-15 file is kept as the pre-freeze before-picture and is comparable only to a run from
 > that day.
 > Session state: [`handoff-2026-09-16.md`](handoff-2026-09-16.md).
+>
+> **THE WITNESS MOVED AT STEP 5, AND ITS DATED RECORDS DELIBERATELY DID NOT.**
+> `messages-accountant-desktop` now reads **41 of 80 matched, 226 findings, rate 0.51** (run 12),
+> because step 5 refused its one oversized slot pair (`ZK` ↔ `VYŽADUJE AKCIU`, area ratio 6.5).
+> **Every "225 findings at 42 matched" inside a step 0–4 DONE block is a correct record of what
+> that step measured and is left alone**; what was corrected is every place that stated those
+> numbers as CURRENT — this plan's `Repro`/step-5 warnings, the handoff's Key facts, and
+> `reconcile.md`'s headline transcript and §R7 row. Its two γ figures are unchanged (98.7, 1062.6)
+> and both witnesses still emit six findings each.
 >
 > **Two numbers in this plan were wrong and are corrected below.** The step-0 baseline is
 > **225 findings at 42 matched**, not 223/43 — 223 was run 13, which still HAD the veto widening
@@ -1243,8 +1254,9 @@ already shipped.
 
 **Do NOT run the rest of `reconcile.md` to get this.** R5/R6 mean actually reconciling the pair —
 fixture and missing-feature work in the consuming repo — and that is not merely off-topic, it
-**destroys the instrument**: `messages-accountant-desktop`'s numbers (42 of 80, rate 0.53, γ 98.7,
-γ 1062.6, 30-of-37 placed) are quoted throughout this plan and both baselines, and reconciling the
+**destroys the instrument**: `messages-accountant-desktop`'s numbers (**41 of 80, rate 0.51, γ 98.7,
+γ 1062.6, 31-of-38 placed** — 42 / 0.53 / 30-of-37 before step 5 refused its one oversized slot
+pair) are quoted throughout this plan and both baselines, and reconciling the
 pair moves it into `polish` and re-dates every one of them. Do not fix the witness while it is
 still the witness. R3 reads; it changes nothing.
 
