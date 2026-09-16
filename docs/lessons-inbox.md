@@ -5,6 +5,30 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — the reconcile headline's COUNT is not the length of the list it introduces
+
+Measured on the witness, `messages-accountant-desktop` run 10:
+`matching.designOnly` is **38** while the report emits **37** `missing-element` findings, with
+`suppressed: 0` and no instance collapsing. A reconcile run puts that 38 in its headline
+(`unmatched: …`, shipped in `536dad2`), so the reader is told to account for 38 elements and handed
+a list that can only ever reach 37.
+
+**Cause, confirmed:** `presenceFindings` in `structural/checks.ts` skips any element narrower or
+shorter than `minElementSize` (4 px) — `if (el.box.w < min || el.box.h < min) continue` — while
+`matchingStats` counts the raw `match.designOnly`. The 38th here is `div-24`, a **1.09 × 22 px
+hairline divider**. Dropping it from the findings is right; presenting the two populations as one
+number is not.
+
+**Why this one matters more than its size.** The whole reconcile workstream rests on handing the
+judge a COMPLETE account — "these N comp elements have no counterpart" is the map's entire value
+proposition. A count that overstates the list by an unexplained one teaches the reader that the
+remainder is normal, and the next gap will be a real element. Same shape as the two harness defects
+step 2 found, and as the plan's own subject: **a report that looks complete.**
+
+**Fix is a decision, not a patch** — either count the same population in both places, or have the
+headline say both ("38 unmatched, 37 of them large enough to report"). Do it in the reconcile
+workstream, where the headline is the deliverable.
+
 ## 2026-09-16 — a corpus that measures ITSELF drifts with the clock, and the drift reads as a regression
 
 The `refdiff` corpus's implementation side is the annotator serving `fixtures/demo-root`, and the
