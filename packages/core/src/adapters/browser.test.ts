@@ -2,19 +2,62 @@ import type { Browser, Locator, Page } from "playwright"
 
 import { describe, expect, it, vi } from "vitest"
 
-import { closeQuietly, openPage, withGround } from "./browser.js"
+import { closeQuietly, FROZEN_CLOCK, openPage, withGround } from "./browser.js"
 
 describe("openPage", () => {
   const asBrowser = (newContext: unknown): Browser => ({ newContext }) as unknown as Browser
+  /** Every real page has `clock`; the mock needs it because `openPage` now uses it. */
+  const mockPage = (): { id: string; clock: { setFixedTime: ReturnType<typeof vi.fn> } } => ({
+    id: "page",
+    clock: { setFixedTime: vi.fn(async () => {}) },
+  })
 
   it("returns the context and page when the browser is healthy", async () => {
-    const page = { id: "page" }
+    const page = mockPage()
     const ctx = { newPage: vi.fn(async () => page) }
     const result = await openPage(
       asBrowser(async () => ctx),
       { viewport: { width: 10, height: 10 } },
     )
     expect(result).toEqual({ ctx, page })
+  })
+
+  /**
+   * A surface that renders RELATIVE TIME re-renders differently tomorrow, and that moves
+   * `matched`, not merely the findings — measured overnight on
+   * `refdiff-library-groups-desktop`: `20 d ago` → `19 d ago` reflowed a row and cost one
+   * pairing, 197 → 196, with nothing edited. See `FROZEN_CLOCK` for why an `ignore` rule
+   * cannot substitute.
+   *
+   * Pinned HERE rather than in each adapter because `openPage` is the single seam all
+   * three go through: storybook, live-url and dc-html each open their page with it and
+   * navigate afterwards, so a new adapter inherits the frozen clock without knowing it
+   * exists.
+   */
+  it("freezes the clock before the caller can navigate", async () => {
+    const page = mockPage()
+    const ctx = { newPage: vi.fn(async () => page) }
+    await openPage(
+      asBrowser(async () => ctx),
+      {},
+    )
+    expect(page.clock.setFixedTime).toHaveBeenCalledWith(FROZEN_CLOCK)
+  })
+
+  /**
+   * `null` is the opt-out, not `undefined`. Written the other way round first, and this
+   * test failed: an explicitly-passed `undefined` re-triggers the default parameter, so
+   * the escape hatch froze the clock anyway while reading as though it did not.
+   */
+  it("leaves the clock live when a caller passes null", async () => {
+    const page = mockPage()
+    const ctx = { newPage: vi.fn(async () => page) }
+    await openPage(
+      asBrowser(async () => ctx),
+      {},
+      null,
+    )
+    expect(page.clock.setFixedTime).not.toHaveBeenCalled()
   })
 
   /**

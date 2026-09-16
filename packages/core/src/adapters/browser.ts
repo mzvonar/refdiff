@@ -6,6 +6,7 @@
  * files must be served over http (file:// breaks the runtime's fetch).
  */
 
+import type { Bleed } from "../types.js"
 import type { AddressInfo } from "node:net"
 
 import { readFile } from "node:fs/promises"
@@ -14,7 +15,6 @@ import { extname, join, normalize, resolve, sep } from "node:path"
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright"
 
 import { bleedClip, NO_BLEED } from "../geometry.js"
-import type { Bleed } from "../types.js"
 import { DEFAULT_GROUND, GROUND_ATTR, GROUND_CSS, GROUND_STYLE_ID, type Ground } from "./ground.js"
 
 const MIME: Record<string, string> = {
@@ -134,14 +134,60 @@ export async function closeQuietly(close: () => Promise<unknown>): Promise<void>
 export async function openPage(
   browser: Browser,
   options: Parameters<Browser["newContext"]>[0],
+  // `null`, not `undefined`, is how a caller asks for a LIVE clock: an explicitly
+  // passed `undefined` re-triggers a default parameter, so the escape hatch would
+  // silently do nothing. A test pins that.
+  fixedTime: Date | null = FROZEN_CLOCK,
 ): Promise<{ ctx: BrowserContext; page: Page } | { error: string }> {
   try {
     const ctx = await browser.newContext(options)
-    return { ctx, page: await ctx.newPage() }
+    const page = await ctx.newPage()
+    // Before the caller navigates — every adapter opens its page here and goes
+    // to the URL afterwards, which is what makes this the one site that cannot
+    // be forgotten.
+    if (fixedTime !== null) await page.clock.setFixedTime(fixedTime)
+    return { ctx, page }
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/**
+ * The instant every capture believes it is, so a surface that renders RELATIVE
+ * TIME renders the same thing tomorrow. Time is frozen for the same reason
+ * `FREEZE_CSS` below freezes animation: a capture that moves on its own is not
+ * a measurement.
+ *
+ * Measured 2026-09-16, and this is why it exists: `refdiff-library-groups-desktop`
+ * went `matched` 197 → 196 and 560 → 561 findings **overnight, with nothing
+ * edited**. That corpus's implementation is the annotator serving
+ * `fixtures/demo-root`, whose Library page prints the AGE of the runs it holds;
+ * midnight turned `20 d ago` into `19 d ago`, the narrower label reflowed its
+ * row, two elements moved ~13 px and one pairing was lost. The uctoinak2 pairs
+ * have the same shape (`"August 2026 · uzávierka o 9 dní"`).
+ *
+ * That is exactly the signature `docs/plan-divergent-matching.md` step 2 calls a
+ * REGRESSION — `matched` falling while `d-only`/`i-only` rise — manufactured by
+ * the calendar. A guard that produces it on its own teaches a reader to explain
+ * the real thing away.
+ *
+ * **`ignore.textPatterns` is not an alternative and must not be offered as one.**
+ * Policy runs long after matching (`cli.ts`: match ~556, `applyPolicy` ~643) and
+ * `matchingStats` reads the RAW match result, so an ignore rule hides the finding
+ * about `19 d ago` while the reflow still costs the pairing.
+ *
+ * `setFixedTime` rather than `clock.install`: it pins what `Date.now()` and
+ * `new Date()` READ while leaving timers running, so a page that polls, animates
+ * or debounces still behaves — only its rendered dates stop moving.
+ *
+ * **The instant is 2026-09-15T12:00:00Z because that is the day
+ * `docs/baseline-matching-2026-09-15.md` was measured**, so the committed
+ * baseline stays the reproducible one. It is deliberately NOT tuned to whatever
+ * makes a comp agree: picking the instant to minimise findings would be cooking
+ * the measurement this workstream exists to keep honest. Changing it re-dates
+ * every pair at once, so it is a re-baseline, never a tweak.
+ */
+export const FROZEN_CLOCK = new Date("2026-09-15T12:00:00Z")
 
 /** CSS injected before every capture so animations never smear a shot. */
 export const FREEZE_CSS = `
