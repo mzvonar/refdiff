@@ -15,20 +15,34 @@ behaviour, so the next session acts on a false premise it has no reason to
 doubt.
 
 So: **any change to what the tool does, or to how it should be used, updates
-`SKILL.md` in the SAME change.** Not "later", not a follow-up issue. Concretely,
-these always travel together:
+the skill in the SAME change.** Not "later", not a follow-up issue.
+
+**The skill is SIX files since 2026-09-16, so "update the skill" now means
+"update the file that owns the subject" — and the grep below is what stops you
+updating the wrong one.** `SKILL.md` is the always-loaded part (bindings, the
+non-negotiable rules, the tool pre-flight, §0, §1, the phase read, and the
+routing table naming the other five); `reconcile.md` and `polish.md` are the
+two phase workflows; `sets.md` is §1b; `configuring.md` is `disabled` +
+`ignore` + `section`/`sections`/`gallery`; `setup.md` is vendoring, dev-mode
+setup and the per-repo environment traps. **A section that moves leaves the
+routing table in `SKILL.md` stale — fix it in the same change.**
+
+Concretely, these always travel together:
 
 | you changed | also update |
 | --- | --- |
-| a CLI flag (added / removed / renamed / re-scoped) | the `USAGE` string in `cli.ts` **and** every `SKILL.md` mention |
-| a default (e.g. which findings are suppressed) | `SKILL.md` — including any sentence that describes the old default as fact |
-| a policy/ignore semantic (`dataSlots`, `textPatterns`, `accepted`, `roles`, `regions`, `scope`) | the "Configuring a pair" table + the classification table in `SKILL.md` |
-| what a report field means (`confidence`, `delta`, `changeKind`, a finding type) | "Reading the measurements" + §1a in `SKILL.md` |
-| a new failure mode you had to diagnose the hard way | "Environment pre-flight" in `SKILL.md`, stated as the general shape |
-| the manifest shape (`manifest.ts`) | the manifest example in `SKILL.md` and `docs/architecture.md` |
+| a CLI flag (added / removed / renamed / re-scoped) | the `USAGE` string in `cli.ts` **and** every mention across `skills/refdiff/*.md` |
+| a default (e.g. which findings are suppressed) | whichever file states it — including any sentence that describes the old default as fact |
+| a policy/ignore semantic (`dataSlots`, `textPatterns`, `accepted`, `roles`, `regions`, `scope`) | the "Configuring a pair" table in `configuring.md` + the classification table in `polish.md` §2 |
+| what a report field means (`confidence`, `delta`, `changeKind`, a finding type) | "Reading the measurements" + §1a, both in `polish.md` |
+| what `phase` / `unmatched` / `matching` mean, or how a divergent pair is worked | §1a-0 in `SKILL.md` + `reconcile.md` |
+| a new failure mode you had to diagnose the hard way | "Environment pre-flight" in `setup.md`, stated as the general shape |
+| the manifest shape (`manifest.ts`) | the manifest example in `configuring.md` and `docs/architecture.md` |
 
-Grep before you call it done: `grep -n "<old-flag-or-term>" skills/ packages/ docs/`
-must come back empty (or only match a deliberate historical note).
+Grep before you call it done: `grep -rn "<old-flag-or-term>" skills/ packages/ docs/`
+must come back empty (or only match a deliberate historical note). **`-r`, and
+over the whole `skills/` tree** — a grep of `SKILL.md` alone now misses five
+sixths of the skill and reports clean.
 
 **A stale assertion is worse than a missing one.** When you remove or invert a
 behaviour, hunt the sentences that _described_ it — they read as authoritative
