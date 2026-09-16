@@ -6,8 +6,16 @@ workspace, TypeScript/ESM, two packages (`@refdiff/core`, `@refdiff/annotator`).
 **This is the canonical handoff for the CONSUMER-FINDINGS workstream** — four improvements found by
 running `reconcile.md` end to end for the first time, from the consumer side, against the pair that
 file was written against. It does not supersede anything: `handoff-2026-09-16.md` stays current for
-the MATCHER workstream and `handoff-2026-09-04.md` for the ANNOTATOR redesign. Nothing here has been
-started; the tree is clean at `dd869c4`.
+the MATCHER workstream and `handoff-2026-09-04.md` for the ANNOTATOR redesign.
+
+> **STATUS 2026-09-16 (later the same day): all four items are DONE and shipped as 1.3.0.** Both
+> open questions are answered in the commits that raised them. **One thing remains**, and it is
+> the only reason this file is still here: the `uctoinak2` half of item 1's re-baseline — 45 pairs
+> across the `uctoinak2` and `uctoinak2-storybook` corpora — was NOT measured, because the devbox
+> was at 2 GB available against 11 GB of swap with three sessions live and `dmesg` already holding
+> an OOM kill of that exact `design-live` next-server. See "What's DONE" for the commits and
+> "What REMAINS" for the one item. Everything below the status line is the original brief, kept
+> because it is the reasoning each fix was built against.
 
 ## State of play
 
@@ -35,11 +43,69 @@ stays in `uctoinak2`.
 
 ## What's DONE
 
-- Nothing in this repo. The run that produced these findings was a consumer session; its own
-  write-up is `uctoinak2:docs/lessons-inbox.md` (four entries dated 2026-09-16) and the two memories
-  `refdiff-reconcile-phase` / `messages-accountant-desktop-reconciled`.
+All four, on `main`, released as **1.3.0** (`.claude-plugin/plugin.json` and
+`claude-skills-public`'s `marketplace.json` both moved — see "Env gotchas"):
 
-## What REMAINS (in order)
+| item | commit | what landed |
+| --- | --- | --- |
+| 1 | `d2f642c` | `line-height: normal` resolves to its used value at extraction — a hidden probe carrying the element's own font signature, cached, removed before the capture returns. The FIRST of the two candidate fixes: resolving the keyword keeps the check comparing two like values, where the box-height fallback adds a second comparison whose input is already under the size check's tolerance. Real-chromium test, verified red without it. |
+| 1 | `88d410e` | the re-baseline, **separately** and to a NAMED file — both measurements fell on 2026-09-16, so regenerating the dated one would have destroyed the only before-picture. `baseline-matching-2026-09-16.md` is AMENDED with a pointer, not superseded. |
+| 2 | `91806e4` | `refdiff drift <run-dir>` — pure `package/drift.ts` + a thin CLI wrapper. `--axis y\|x`, `--step`, `--top`, `--json`. |
+| 3 | `9272c2a` | `CAPTURE_TIMEZONE` / `CAPTURE_LOCALE` pinned in `openPage` beside `FROZEN_CLOCK`, per-pair overridable with `timezoneId` / `locale` on the manifest entry. |
+| 4 | `686fc82` | `reconcile.md` R7 + R6's carve-out + R5's clock clause + the stopping bound's kept `(unmeasured)` tag; `SKILL.md`'s stale "run end to end against none" fixed too. |
+| — | `42d8cc6`, `claude-skills-public@7aeacaf` | the 1.3.0 release, both manifests. |
+
+**The open questions are answered, in the commits that raised them.** Item 1's re-baseline lands
+SEPARATELY and the old baseline is amended rather than superseded (above). Item 3's is "both": one
+pinned default because no evidence favours any market, plus a per-pair override because the consumer
+has a witness for one — and deliberately no CLI flag, since a run-wide override re-dates a whole set
+at once, which is a re-baseline wearing a flag.
+
+**Item 1's measured effect, on the 9 self-contained `refdiff` pairs:** 2233 → 2254 findings, ledger
++54 / −33, and **59 `typography` findings naming `line-height` where zero could before**. The −33 is
+identity-key churn on existing typography findings, not findings going away. **Nothing in the
+matching table moved on any pair** — that is the signature to expect, and a `matched` move would
+have meant the fix did something it was not supposed to.
+
+The run that produced these findings was a consumer session; its own write-up is
+`uctoinak2:docs/lessons-inbox.md` (four entries dated 2026-09-16) and the two memories
+`refdiff-reconcile-phase` / `messages-accountant-desktop-reconciled`.
+
+## What REMAINS
+
+**The `uctoinak2` half of item 1's re-baseline — 45 pairs, not measured.** The `refdiff` corpus (9
+pairs) was re-measured and is in `baseline-matching-2026-09-16-lineheight.md`; the `uctoinak2` (31
+route pairs) and `uctoinak2-storybook` (14 component pairs) corpora were skipped, and the generator
+records that inside the document with each one's reason and refresh command rather than dropping
+them, so their before-numbers are intact and labelled.
+
+Why skipped, not deferred by preference: the devbox held 2 GB available against 11 GB of swap in
+use, with three other sessions live, and `dmesg -T` already carries
+`Killed process … next-server` against `svc-adhoc-design-live@uctoinak2-messages-redesign` from
+2026-09-15 — the failure the baseline script's own comment says costs 31 pairs and the summary.
+
+To finish, on a quiet box:
+
+```bash
+cd /root/refdiff
+# 31 route pairs — the design-live server only
+setsid nohup /tmp/claude-0/start-design-server.sh > tmp/design-server.log 2>&1 &   # :3200
+DC_APP_URL=http://localhost:3200 node scripts/baseline-matching.ts --only uctoinak2 \
+  --out docs/baseline-matching-2026-09-16-lineheight.md
+# then STOP it before storybook — both on one box beside a capture browser is the OOM
+svc down design-live && svc up storybook       # in the messages-redesign worktree
+DC_STORYBOOK_URL=http://localhost:6007 node scripts/baseline-matching.ts --only uctoinak2-storybook \
+  --out docs/baseline-matching-2026-09-16-lineheight.md
+```
+
+Expect the same shape as the `refdiff` corpus: minors up, criticals/majors flat, the matching table
+untouched. A `matched` move on a uctoinak2 pair would be the finding. Writing to the same `--out`
+merges each corpus into the one document; the hand-written preamble at its top is not regenerated,
+so re-add it (or move it into the generator).
+
+---
+
+## The original brief (items 1–4, all now done — kept for the reasoning)
 
 ### 1. Line-height is compared, but essentially never on a `.dc.html` comp ← DO FIRST
 

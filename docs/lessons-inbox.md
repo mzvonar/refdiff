@@ -1798,3 +1798,45 @@ unfindable is a pointer, not a new measurement.
 **The caveat I owed and paid:** I recommended the flag before measuring it. Recommending a
 mechanism is not the same as verifying one, and the measurement that settles it is usually
 an hour's work. Say "I think X, let me price it" rather than "do X".
+
+## 2026-09-16 — A formatter hook can bury a 55-line fix in a 1015-line diff
+
+Editing `packages/core/src/adapters/extract.ts` through the Edit tool triggered a
+PostToolUse formatter that restyled the WHOLE file (semicolons → none). The repo has
+no formatter config and mixed style across files, so the reformat was gratuitous —
+and the commit came out at 696 insertions / 452 deletions for a change that is 57
+lines. Nobody reviews that; and it would conflict with any concurrent edit to the
+same file.
+
+Fix: restore the file from git and re-apply the real hunks with a shell-side write,
+which bypasses the hook. **Check `git show --stat` before believing a commit is
+small**, especially on a file whose existing style differs from the formatter's
+default. The tell is a changed-line count far larger than what you wrote.
+
+## 2026-09-16 — "It moves no measurement" is a claim about the world: probe it
+
+Item 3 pinned `timezoneId` / `locale` on the capture context, and the whole argument
+for choosing UTC / en-US was "that is what an unconfigured Linux box already
+produces, so nothing moves". That is exactly the kind of assumption that sits in a
+commit message unchallenged. Measured it instead: opened a default context and a
+pinned one in the same chromium and compared `navigator.language`,
+`navigator.languages`, `Intl.DateTimeFormat().resolvedOptions().timeZone` and
+`toLocaleString()` — identical. Two minutes, and the commit now states a
+measurement rather than a plausible story.
+
+The corollary held on the corpus too: the re-baseline's MATCHING table was byte-
+identical on all nine pairs, which is the shape a checks-only change must have. A
+prediction about the signature, made before the run, is what made the result
+readable.
+
+## 2026-09-16 — A re-baseline on the same day as its baseline needs a new NAME
+
+`scripts/baseline-matching.ts` writes `docs/baseline-matching-<today>.md` and says
+so. The line-height fix's before-picture was measured earlier the SAME day, so the
+default output path would have overwritten the only evidence the fix could be read
+against. Wrote the after-picture to `baseline-matching-2026-09-16-lineheight.md` and
+amended the dated file with a pointer.
+
+Worth considering: the generator could refuse to overwrite a file whose recorded
+commit differs from the current HEAD, which is precisely the case where the existing
+content is a different measurement rather than a stale copy of this one.
