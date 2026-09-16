@@ -5,6 +5,37 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — an instrument built for one SIDE of a comparison is not an instrument for the other
+
+Second instance in this workstream of the rule filed on 2026-09-15 as "an AGGREGATE score answers
+the question it was built for, not the one you are asking" — and the second instance is what makes
+it a rule rather than an anecdote.
+
+`groupByRegion` places findings under the smallest impl container that holds them, and it is right:
+a finding about a PAIR carries both boxes in impl world space, and the impl is what somebody is
+about to edit. The reconcile headline then reused it for a different population — the elements only
+one side HAS — and told the reader "`byRegion` groups them". Measured on the witness: it places
+**41 of 64 impl-only and 11 of 37 design-only**. Corpus-wide over the 24 `reconcile` pairs, **251 of
+1200** design-only, against **697** once each side is grouped by its OWN containers.
+
+**The failure is structural and it is worst exactly where the instrument is needed.** Every
+container comes from the impl tree; a `reconcile` pair is by definition one whose two layouts
+disagree; so a comp element falls in the gap between impl containers precisely where the comp draws
+something the implementation has nothing for. The mapping of design boxes into impl world space was
+fine and was checked — there was simply no impl container there to hold them.
+
+**The tell that was available and unread: an asymmetric hit rate.** 41/64 against 11/37 reads like a
+tuning problem (a floor to lower, a share to raise) and is not one — no constant separates them,
+because one side's containers do not exist on the other. **When a placement, join or lookup works
+much better on one side of a comparison than the other, ask what SUPPLIES the keys before reaching
+for a threshold.**
+
+Corollary, cheap and worth keeping: **a placement report must state its own miss rate.** The
+per-side map prints `N in no container of that side — this map does not place them`, because on a
+flat page of same-size cards it places 22 of 290, and the alternative — admitting the one surface
+covering 80% of the frame — would have produced a single group holding everything, which locates
+nothing while looking like a complete map. A short list of groups is not a short problem.
+
 ## 2026-09-16 — the ABSENCE side of a report is unread, and it is where the worst mis-pairing hid
 
 The matcher workstream has spent four sessions on one witness: a mis-pairing that produces six

@@ -6,8 +6,8 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-16).** Steps 0–4 DONE, plus RECONCILE STEP 1 (the clock freeze). Not pushed.
-> 476 core + 380 annotator green; `preflight-selftest.sh` 24/24.
+> **STATUS (2026-09-16).** Steps 0–4 DONE, plus RECONCILE STEPS 1 (the clock freeze) and 2 (the
+> per-side unmatched map). Not pushed. 488 core + 380 annotator green; `preflight-selftest.sh` 24/24.
 >
 > **THE REMAINING STEPS WERE REWRITTEN after step 2's corpus contradicted the plan's premise — read
 > [THE REFRAME](#the-reframe-2026-09-15-after-step-2--read-this-before-any-remaining-step) before
@@ -15,23 +15,26 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: BUILD reconcile step 2's SMALL version** — group the missing/extra findings by
-> container, **one grouping per side**, and stop. The cheap test ran (2026-09-16) and refuted the
-> full map's justification: a model reading only the comp, both screenshots and the raw
-> missing/extra list placed 57 of 59 texted unmatched elements, 4 of 4 correspondences, 0
-> contradicted claims. It also turned up **a second, worse witness** — a `via: "text"` pair at
-> γ 1062.6 yielding six unflagged findings — which is a STEP 5 input, not a step 2 one, and
+> **DO NEXT: RECONCILE STEP 3** — the `reconcile.md` workflow, and split the 1395-line `SKILL.md`
+> while doing it. Reconcile step 2's small version SHIPPED 2026-09-16 (see its DONE block): the
+> per-side unmatched map, `report.unmatched`, placing **697 of 1200** unmatched comp elements on the
+> 24 `reconcile` pairs where `byRegion` placed 251, with both filed headline defects fixed inside it.
+> The FULL correspondence map stays parked — the cheap test refuted its justification: a model
+> reading only the comp, both screenshots and the raw missing/extra list placed 57 of 59 texted
+> unmatched elements, 4 of 4 correspondences, 0 contradicted claims.
+> That test also turned up **a second, worse witness** — a `via: "text"` pair at
+> γ 1062.6 yielding six unflagged findings — which is a STEP 5 input, and
 > **whose obvious fix is already measured and REFUTED**: a γ ceiling on pass 1 cannot work,
 > because correct and wrong text pairs overlap (correct reach γ 873, wrong start at 686). Do not
-> go build one; step 5's block has the corpus-wide table. The discriminator is containment, which
-> is what step 2's per-side grouping starts producing.
+> go build one; step 5's block has the corpus-wide table. The discriminator is containment, and the
+> per-side container data step 2 now produces is its input.
 > The clock freeze is VERIFIED ON ALL THREE
 > CORPORA and re-baselined — 52 pairs, `matched` unmoved on every one, zero `auth-failed` (the
 > named risk); see reconcile step 1's DONE block for the two-run table and the three explained
-> movements. Plan steps 0–4 and RECONCILE STEP 1 are DONE; the reconcile
-> workstream now comes BEFORE step 5. Step 4 shipped the `reconcile` label and nothing about
-> how to act on it, and 24 of the 52 corpus pairs are in that phase; the workstream promotes the
-> parked structure map and gives the skill the workflow it lacks. When you do reach step 5, read
+> movements. Plan steps 0–4 and RECONCILE STEPS 1–2 are DONE; the reconcile
+> workstream comes BEFORE step 5. Step 4 shipped the `reconcile` label and nothing about
+> how to act on it, and 24 of the 52 corpus pairs are in that phase; step 2 gave it the inventory
+> and step 3 gives the skill the workflow it lacks. When you do reach step 5, read
 > step 4's DONE block first: it changed which confidence a threshold should read
 > (`max(confidenceX, confidenceY)`, not the joint score), and step 5 is written against the joint
 > one. Baseline:
@@ -777,10 +780,12 @@ present in one capture and not the next is a focus/transition race at capture ti
 (three consecutive captures of that pair). **Filed as the one known non-deterministic element in
 the corpus** — if it flaps again, it is a capture-quiescence bug, not drift.
 
-### Reconcile step 2 — the STRUCTURE MAP (promoting the parked container correspondence)
+### Reconcile step 2 — the STRUCTURE MAP (promoting the parked container correspondence) ✅ DONE 2026-09-16 (small version)
 
 **Goal.** Hand the judge the one thing it cannot build reliably by hand: a complete, measured
 account of which parts of the two surfaces correspond.
+
+> **SHIPPED as the small per-side grouping — see [the DONE block](#done-2026-09-16--the-small-version-shipped-and-it-is-measured-on-all-52-pairs) at the end of this section.**
 
 > **THE OPEN QUESTION IS ANSWERED — the cheap test ran 2026-09-16 and the full map is NOT earned.**
 > A fresh-context model reading only the comp, the two screenshots and the raw missing/extra list
@@ -913,6 +918,74 @@ plan has step 5 refusing *geometric* pairs below the confidence floor, and the s
 mis-pairing in the corpus is a **text** pair. It is also the first configuration the parked
 Lowe's ratio test would have caught, since the comp offers two candidates sharing the token and the
 matcher picks the wrong one — `Finding.ambiguityMargin` is still declared and unwritten.
+
+#### DONE 2026-09-16 — the small version shipped, and it is measured on all 52 pairs
+
+`groupUnmatched` / `describeUnmatched` in `package/regions.ts` (pure), `UnmatchedBreakdown` /
+`UnmatchedSide` in `types.ts`, `ComparisonReport.unmatched`, printed in the reconcile headline.
+**One grouping per side**: the comp's unmatched elements in the COMP's own containers, the
+implementation's in the implementation's. Both trees are already in impl world space
+(`alignStructural` maps the design side), and the comp's frame origin is the alignment offset, so
+the two groupings are in one coordinate space and are still never merged — they answer two
+different questions. `minGroup` is **1** here against `byRegion`'s 2: there the question is
+orientation and a lone finding is noise, here it is completeness and a comp column with one element
+in it is the divergence being hunted.
+
+**The measurement, over all 52 recorded pairs and computed exactly as `packageForModel` computes
+it** — from each run's own findings, suppressed list, matching block and element trees, so no
+capture was needed and nothing was re-derived:
+
+| population | placed by each side's OWN containers | placed by `byRegion`'s impl containers |
+| --- | --- | --- |
+| design-only, all 52 pairs (2250 listed) | **1358 (60%)** | 717 (32%) |
+| design-only, the 24 `reconcile` pairs (1200) | **697 (58%)** | 251 (21%) |
+| impl-only, all 52 pairs (1010 listed) | 584 (58%) | — (same containers) |
+
+On the canonical witness: **30 of 37** design-only placed in 6 comp containers against `byRegion`'s
+11, and 41 of 64 impl-only in 8 impl containers. That is the plan's own 11-of-37 number, moved.
+
+**Both filed defects are fixed inside the deliverable, as the handoff prescribed.**
+
+- **The count that could not be reconciled with its list.** The headline now names BOTH
+  populations — `38 design element(s) with no counterpart, in the comp's own containers (37 listed
+  below, 1 under the reporting floor)` — rather than counting one and pointing at the other.
+  `UnmatchedSide` carries `elements` / `reported` / `suppressed` / `belowFloor`, and they add up on
+  **all 52 pairs**. Choosing to say both rather than to re-count: `MatchingStats` is the instrument
+  a matcher change is judged by and its `designLeaves = matched + designOnly` invariant is load
+  bearing, so narrowing it to the reportable population would corrupt the guard to tidy a headline.
+  **The defect is much bigger than the 38-vs-37 that filed it: the two populations differ on 24 of
+  52 pairs, and the worst is `refdiff-compare-desktop` — 84 unmatched, 22 listed, 62 of them hidden
+  by the ignore policy.**
+- **The headline no longer tells the reader `byRegion` groups the raw material.** It points at the
+  per-side grouping; the reason `byRegion` cannot do this job is recorded in `UnmatchedBreakdown`'s
+  and `groupUnmatched`'s own doc comments, where the next person to reach for it will read it.
+
+**Where it does NOT work, named rather than tuned away.** `refdiff-library-groups-desktop` — the
+`refdiff` corpus's only `reconcile` pair — places **22 of 290 and 0 of 106**. Cause, measured: 139
+of its 303 impl elements are boxes under the 64 px container floor, and the one surface that would
+hold everything is refused at **0.797** of the frame. Raising `maxShare` would buy a single group
+holding all 106, which locates nothing and reads as a placed map — a worse report, not a better
+one. The 8 Storybook component pairs have no qualifying container on either side and get an empty
+map that says so. On 6 of 52 pairs the comp's own containers place FEWER than the impl's (1–8
+elements each; all component or small-mobile pairs whose comp tree has one or two containers), which
+the corpus totals decide against. **`containersOf`'s constants are untouched, so `byRegion` is
+unmoved on every pair.**
+
+**A map states its own miss rate.** `N in no container of that side — this map does not place them`
+is printed and `elsewhere` is written; an empty map is EMITTED rather than omitted, because
+`elsewhere: 37` ("37 unmatched, none placed") and a missing field are different claims. `unmatched`
+is absent in exactly two cases, both statements: no `matching` block to give `elements` a meaning,
+or nothing unmatched at all.
+
+**Verification.** `refdiff-library-groups-desktop` re-captured three times end to end: **197 matched
+/ 560 findings, `+0 / −0` every time** — the committed baseline, matching untouched (the change adds
+a report field and rewrites two console lines; `identityKey` reads neither). Tests **+12 → 488 core
++ 380 annotator**; `pnpm typecheck` clean; `preflight-selftest.sh` 24/24. `skills/refdiff/SKILL.md`
+§1a-0 rewritten: `report.unmatched`, an explicit "do not use `byRegion` for this" with the 251-vs-697
+number, the map's miss rate, and the two-population headline.
+
+**Not built, still parked:** the full correspondence map. The cheap test refuted its justification
+and nothing here re-opens it.
 
 ### Reconcile step 3 — the WORKFLOW, in its own file, written to be revised
 
