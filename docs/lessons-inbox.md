@@ -5,6 +5,66 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — a SCOPED version of a working measure is a new measure, and the scope is where it dies
+
+Step 6 proposed replacing one global alignment confidence with a per-container one: same formula,
+narrower scope, framed as a refinement. It reads like tuning. It is not — narrowing the scope
+changes both the sample the measure rests on and the population it is defined over, and both
+changes were fatal before any threshold was chosen.
+
+**The sample.** `estimateTransform` damps its score by `min(1, anchors/8)/anchors`, which exists so
+a fit resting on 3 anchors cannot claim certainty. Scoped to a container that damping stops being a
+guard against overconfidence and becomes a penalty for the container being SMALL: a container with
+3 pieces of evidence is capped at 0.375, below the 0.5 floor however perfectly the transform
+explains it. 396 of the 470 findings with any local evidence sit under that cap. The formula was
+unchanged and it now meant something else.
+
+**The population.** The global score is defined on every pair. The scoped one is defined where
+`containersOf` finds a container between its 64 px floor and its 0.7 frame-share ceiling — **460 of
+1017 gated-eligible findings had none**, so the step's own first question ("what is a pairing with
+no container judged by?") was not a detail to settle but 45% of the work, with only one principled
+answer available: the global confidence, i.e. the thing the step existed to stop trusting.
+
+Generalisable: **before scoping a measure, ask what its formula was compensating for and whether
+the compensation still applies at the new scope, then ask what fraction of the population the new
+scope is undefined on.** Both are answerable in an hour from recorded data, and either can kill the
+idea before a threshold is picked.
+
+## 2026-09-16 — audit the complement of your OWN refutation, or you will fix the wrong thing
+
+Per-container confidence failed, and the ready explanation was sitting there: the container map is
+sparse (`containersOf` places nothing on a flat page of same-size cards — already a known limit,
+already written down twice). That explanation implies a fix — a denser map, a lower floor, a higher
+share ceiling — and it is wrong.
+
+The complement test took twenty minutes: compute the SAME local score without containers, over the
+8 nearest text-proven pairings, which is defined on 83 of 85 labelled candidates instead of 62.
+**Strictly worse — 69 of 79 known-correct pairings broken instead of 43, and 9 of 9 on the
+independent pixels-only subset.** So the container map was never the problem. Locality does not
+discriminate, and any denser map would have reproduced the failure at greater cost.
+
+The standing rule is "audit the COMPLEMENT of any list-shaped report — including your own rule's".
+This is the same rule pointed at a NEGATIVE result: **a refutation names a cause, and that cause is
+itself a claim.** "X failed because of Y" hands the next person a fix for Y. Test whether removing
+Y reproduces the failure before writing the sentence down.
+
+## 2026-09-16 — a count of zero is not an answer; the REACH behind it is
+
+"Should an `unverified` finding count toward the verdict?" was parked at step 2 with the measurement
+"excluding them flips zero of 52 pairs", and re-asked at step 6 in the configuration expected to
+distinguish it. Still zero, in all 24 configurations — and re-running the same count would have
+produced the same uninformative "no change".
+
+The useful question was not *how many flip* but *how many COULD*. Measured: 51 of 52 pairs fail,
+4782 findings decide those verdicts, and the flag can reach **616 of them, 12.9%** — and all of them
+on ZERO pairs. Verdicts are decided by presence findings and text-proven pairings, neither of which
+any version of this flag touches. The question is unanswerable by construction on this corpus, which
+is a durable answer; "zero flipped" was a fact with a shelf life.
+
+Generalisable: **when a difference measures zero, measure the mechanism's REACH before concluding it
+does not matter.** Zero-because-it-cannot and zero-because-it-happens-not-to are different findings,
+and only the first closes a question.
+
 ## 2026-09-16 — splitting a document splits every CHECK written against it, and the half that still passes is the dangerous one
 
 `SKILL.md` went 1423 lines → six files. The mechanical risks were all handled in advance and none

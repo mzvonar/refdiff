@@ -96,6 +96,24 @@ from "no difference here". `position` and `spacing` are deliberately NOT
 flagged — a position finding IS the transform's claim and states its own
 evidence ("offset by (−70.7, 0.5)px" is visibly not drift).
 
+**A whole pair's value findings can be flagged while the pair is FINE, and the
+tell is `confidenceX` / `confidenceY`.** `alignment.confidence` is the JOINT
+score: it counts an anchor only when it agrees on BOTH axes, so a surface that
+lines up one way and packs differently the other collapses to a number that
+reads like failure. Measured over the 52-pair corpus: **21 of 52 pairs are below
+0.5 on the joint score and at or above it on their better axis, carrying 470 of
+the corpus's 644 flags** — nine of them pairs where 71–92% of leaves matched, the
+worst reading `confidence 0.00` beside `confidenceX 0.82` with 91% of leaves
+matched. **So before discounting a flagged finding, read the two per-axis numbers
+in the run header** — it prints `x 0.50 / y 0.07` beside the confidence exactly
+when this is happening, and the phase line repeats it as `best axis … (joint …)`.
+If one axis fits and the other does not, the flag is saying
+"the transform explains one axis", not "this pairing is junk", and the per-axis
+disagreement is usually itself the thing to fix. It is deliberately NOT fixed by
+gating on `max(confidenceX, confidenceY)` instead: that unflags the canonical
+witness, which reads joint 0.07 and max exactly 0.50 (refdiff
+`docs/r6-sweep-2026-09-16.md` §6).
+
 The shape to recognise: a comp label with no counterpart in the implementation
 pairs with whatever sits nearest, and emits five findings that read as
 actionable plus, LAST, the `text-content` one that gives it away. When a pair's

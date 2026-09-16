@@ -119,10 +119,37 @@ export const VALUE_FINDING_TYPES: ReadonlySet<FindingType> = new Set<FindingType
  * `position` and `spacing` are not gated. They still carry `via` and `gamma` so
  * a reader can weigh them, but a position finding IS the transform's own claim
  * and states its evidence in its own message ("offset by (-70.7, 0.5)px" is
- * visibly not drift); a colour delta offers no such tell. Steps 4 and 5 of
- * `docs/plan-divergent-matching.md` replace this global floor with a per-pair
- * ambiguity margin and a per-container confidence, at which point the exemption
- * above stops being a special case and becomes the general rule.
+ * visibly not drift); a colour delta offers no such tell.
+ *
+ * **This global floor was going to be replaced, and it is not. Both replacements
+ * are measured and REFUTED** — do not rebuild either from the idea alone:
+ *
+ *  - A per-pair AMBIGUITY MARGIN (Lowe's ratio test) is hostile to any layout
+ *    where position is the only discriminator and positions repeat uniformly,
+ *    which is the fine-detail loop's home ground. Parked with its measurement in
+ *    `docs/plan-divergent-matching.md`; only the reported diagnostic survives.
+ *  - A PER-CONTAINER confidence — "judge a pairing by the transform that formed
+ *    it, scoped to where it sits" — dies on availability and on its own corpus:
+ *    460 of 1017 gated-eligible findings sit in no container the placement can
+ *    name; the literal reading newly flags 91 findings to clear 4; and its best
+ *    configuration still makes three well-corresponding pairs worse, one of them
+ *    losing trust in 17 of its 22 value findings inside the container that holds
+ *    that pair's 20 text-PROVEN pairings. Scored against the corpus's 107 labels
+ *    it is anti-predictive — 5 of 6 known-wrong pairings caught by breaking 43 of
+ *    79 known-correct ones, five of the six decided by a container holding
+ *    exactly ONE anchor. A container-free version of the same score is strictly
+ *    worse, which rules out the container map as the explanation.
+ *    → `docs/r6-sweep-2026-09-16.md`, `scripts/r6-containers.ts`.
+ *
+ * So the exemption above stays a special case. What that measurement DID find is
+ * a defect in this function's INPUT rather than its shape: it reads the JOINT
+ * `alignment.confidence`, which counts an anchor only when it agrees on BOTH
+ * axes, and 21 of 52 corpus pairs fall below the floor on the joint score while
+ * sitting at or above it on their better axis — 470 of the corpus's 644 flags,
+ * 212 of them on pairs where 71–92% of leaves matched. Reading
+ * `max(confidenceX, confidenceY)` instead is ALSO refuted: it would unflag the
+ * canonical witness, which reads joint 0.07 and max exactly 0.50. Open, with its
+ * numbers, in `docs/r6-sweep-2026-09-16.md` §6.
  */
 export function isUnverified(
   type: FindingType,

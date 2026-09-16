@@ -6,13 +6,25 @@ report says about how much it trusts itself. Not the annotator, not the capture 
 **Each step below is executed in its own fresh context.** Everything a step needs is written here;
 nothing is carried in conversation. Read "The witness" and "Repro" first, then your step.
 
-> **STATUS (2026-09-16, later).** Steps 0–5 DONE **plus STEP 5b**, and **RECONCILE STEPS 1, 2 AND
-> 3**. **Step 5 shipped as a SLOT AREA-RATIO ceiling, not as the containment rule this plan
-> proposed — the sweep refuted containment in all three readings; step 5b then pointed at the
-> long TEXT pairings, which the sweep showed cannot be refused or flagged.** Next is STEP 6. Not
+> **STATUS (2026-09-16, last).** **THIS PLAN IS COMPLETE. Steps 0–6 DONE, plus STEP 5b and
+> RECONCILE STEPS 1–3.** Step 5 shipped as a SLOT AREA-RATIO ceiling, not the containment rule this
+> plan proposed — the sweep refuted containment in all three readings; step 5b then pointed at the
+> long TEXT pairings, which the sweep showed cannot be refused or flagged; and **STEP 6 IS REFUTED
+> — per-container confidence ships NOTHING to the gate** (write-up:
+> [`r6-sweep-2026-09-16.md`](r6-sweep-2026-09-16.md); the only source edit is a doc comment). Not
 > pushed. 492 core + 380 annotator green; `preflight-selftest.sh` 24/24.
 >
-> **READ [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md) BEFORE step 6**: it is the 107-label
+> **WHAT REMAINS IS NOT IN THIS PLAN.** Three questions outlive it, each with its numbers in the
+> step that found it: the `via: "text"` mis-pairing family (5 wrong of 79, no discriminator — every
+> feature tested is refuted, now including locality); the SLOT family's unmeasured RECALL (22 of the
+> 43 pairs step 5's ceiling keeps are token-disjoint); and the one step 6 found — **`isUnverified`
+> reads the JOINT confidence**, which costs 470 of 644 flags on 21 pairs, and whose obvious fix
+> (`max(confidenceX, confidenceY)`) is refuted by this plan's own canonical witness.
+>
+> **READ [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md) AND
+> [`r6-sweep-2026-09-16.md`](r6-sweep-2026-09-16.md) before proposing any matcher rule**: between
+> them they hold the corpus's only labelled ground truth and the list of discriminators already
+> measured and dead. The first is the 107-label
 > ground-truth set the corpus now has (it had 7), and three of this plan's standing claims died on
 > it — the γ ceiling's overlap is the whole band and not [686, 873]; containment does not
 > discriminate, because the container column is absent on 8 of the 12 wrong pairs; and mis-pairing
@@ -25,15 +37,14 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: STEP 6 — per-container confidence. It is the LAST step in this plan**, and re-ask
-> step 2's parked verdict question there. Note the sweep has already measured the per-side
-> container map's limit as a matching feature: it is ABSENT on 8 of the 12 long-γ mis-pairings and
-> it keeps a mis-pairing whose two sides share a container. That is a fact about the map used as a
-> DISCRIMINATOR; step 6 uses containers to scope a CONFIDENCE, which is a different use — but do
-> not carry the plan's old assumption that the container column is reliably available, and **decide
-> first what a pairing with NO container is judged by**. Start from
-> [`r3-sweep-2026-09-16.md`](r3-sweep-2026-09-16.md); the handoff's *What REMAINS* item 5 has the
-> code pointers and the no-capture evaluation route.
+> **STEP 6 IS DONE AND REFUTED — read its DONE block before reaching for containers again.** The
+> warning it inherited turned out to be the whole answer: the container map is ABSENT on 8 of the 12
+> long-γ mis-pairings *as a discriminator*, and **absent on 460 of 1017 gated-eligible findings as a
+> confidence scope** — the same miss rate one level down. Its first question ("what is a pairing
+> with NO container judged by") has no good answer because it is 45% of the population. And the
+> complement audit generalises it: the same score computed WITHOUT containers is strictly worse, so
+> **locality itself does not discriminate** — this is not a sparse-map problem to be fixed with a
+> denser map. Step 2's parked verdict question was re-asked there and stops being parked.
 >
 > **Two things step 5 left open and deliberately did not close**, both in its DONE block: the slot
 > family is bigger than the shipped ceiling reaches (22 of the 43 slot pairs it KEEPS are
@@ -1439,7 +1450,7 @@ they still read `unverified: false`. What changed is that the run now says which
 before believing them. Whether that is enough is a judgement the corpus cannot make, and the
 honest next measurement is whether a reader who has the list actually catches the mis-pairing.
 
-### Step 6 — per-container confidence (promoted: this is the one that HELPS the polish loop)
+### Step 6 — per-container confidence ✅ DONE 2026-09-16 — **REFUTED; nothing shipped to the gate**
 
 **Goal.** Stop using one global confidence to license geometry everywhere. A well-aligned thread rail
 inside a badly-aligned page should keep its geometry — today it does not, and that is a precision
@@ -1455,6 +1466,85 @@ loss on pairs the polish loop cares about.
 
 **Done.** No pair loses geometry wholesale; pairs with a locally-good container gain trustworthy
 findings inside it; the step-3 corpus shows the polish pairs unchanged or better.
+
+#### DONE 2026-09-16 — the criterion above is MEASURED AND NOT MET, in 24 configurations
+
+Full write-up: **[`r6-sweep-2026-09-16.md`](r6-sweep-2026-09-16.md)**. Read-only over all 52
+recorded pairs, no capture and no server; `scripts/r6-containers.ts` (the corpus-wide cost) and
+`scripts/r6-score.ts` (the falsification against the R3 labels). Step 6 touches `isUnverified` and
+nothing else, so **no pairing moves and `matched` cannot move** — the whole effect is a set of
+flags, and both scripts gate on reproducing the run they describe: **52/52 on the recorded
+`alignment` confidences to 4 dp, 52/52 on the recorded `matching` blocks, 0 dropped.**
+
+**The step's first question, answered first as instructed: there is no good answer, because the
+question is 45% of the population.** 460 of 1017 gated-eligible findings sit in NO container the
+shipped placement can name. The only principled fallback is the global confidence — and `trust` /
+`distrust` are not tuning choices, they decide nearly half the findings by fiat. Every
+configuration below uses `global`.
+
+| what was swept | options | result |
+| --- | --- | --- |
+| evidence set | `anchors` (888) · `textpairs` (1424) | denser does not help: 143 newly flagged at the literal reading |
+| reading | `global` residual · `refit` (minus the container's own median offset) | `refit` at 1 evidence is degenerate — it CLEARS the plan's second witness by construction |
+| damping | shipped `min(1,n/8)/n` · undamped | shipped caps a 3-evidence container at 0.375, below the floor however well it fits |
+| min evidence | 1 · 3 | at 3 the population halves again |
+
+- **The literal reading of this step is the worst row in the table: 91 newly flagged against 4
+  cleared.** The step exists to make the report trust MORE inside well-aligned regions; as written
+  it trusts less, twenty-three times over.
+- **At its BEST configuration (26 flagged / 51 cleared) the Done criterion above still fails.**
+  Three `polish` pairs ABOVE the floor get worse — `client-settings-accountant-desktop` 0 → 6,
+  `refdiff-compare-desktop-ghost` 0 → 3, and **`tx-picker-owner-desktop` 0 → 17 of its 22 value
+  findings**, which is a precision loss on the polish loop of exactly the kind this step was
+  PROMOTED over steps 3 and 4 for avoiding.
+- **Its container table is the whole argument in four lines.** `tx-picker-owner-desktop` has two
+  containers: one holds 8 text pairs, all agreeing, and scores 1.00; the other holds **20
+  text-PROVEN pairings** — the most proof of correspondence anywhere in the pair — and scores 0.45,
+  which is where the 17 come from. Positional agreement inside a reflowing list is low because the
+  list reflowed. (The tempting generalisation — *a local score reads reflow, not correspondence* —
+  is NOT confirmed as a monotone pattern across the corpus and is recorded as unconfirmed. What the
+  corpus does show is worse for the proposal: the score does not stabilise as its container gains
+  evidence, and its median sits below the floor in three of four buckets.)
+- **Scored against the 107 R3 labels it is anti-predictive**: 5 of 6 surviving known-wrong pairings
+  caught by breaking **43 of 79** known-correct ones — and five of those six are decided by a
+  container holding exactly ONE anchor, i.e. a coin toss. Stated limit: 5 of the 6 are `via: "text"`
+  and therefore exempt from this gate anyway, so the labelled population the gate could act on is
+  n = 1. **This half corroborates; the 1017-finding cost measurement carries the refutation.**
+- **AUDITED THE COMPLEMENT OF MY OWN RULE, and it is what makes this general.** "Containers are
+  unavailable" is a property of `containersOf`, not of locality, so the same score was computed
+  container-free — the 8 nearest text-proven pairings, defined on 83 of 85 candidates against 62.
+  **Strictly worse: 69 of 79 correct broken, and 9 of 9 on the independent pixels-only subset.**
+  Locality does not discriminate. That is the finding, not "the container map is too sparse".
+
+**Step 2's parked verdict question — re-asked here as instructed, and it stops being parked.** Still
+0 of 52 in all 24 configurations, and the count is no longer the answer: **51 of 52 pairs fail, 4782
+findings decide those verdicts, and this flag can reach 616 of them — 12.9%; on ZERO pairs does it
+reach all of them.** A verdict is decided by presence findings and text-proven pairings, which no
+version of this flag touches. Step 2's closest pair reproduces to the number
+(`settings-accountant-desktop`: 41 gating, 7 reachable, 7 flagged) and every one of the 34 standing
+is out of reach BY TYPE — 18 missing-element, 3 extra-element, 8 position, 1 spacing, 4 on text
+pairs. Answer unchanged: yes, leave it. It is now unanswerable by construction rather than
+undecided.
+
+**What the measurement found INSTEAD — filed with its numbers, deliberately not built.**
+`isUnverified` reads the JOINT `alignment.confidence`, which counts an anchor only when it agrees on
+BOTH axes — the reading step 4's DONE block already said a threshold should not use, and the one the
+phase signal was deliberately moved off. **21 of 52 pairs are below the floor on the joint score and
+at or above it on their better axis, carrying 470 of the corpus's 644 flags**; nine are `polish`
+pairs at match rate 0.71–0.92 carrying 212 flags, among them `tx-picker-owner-mobile` at joint 0.00
+/ `confidenceX` 0.82 — already documented as a threshold cliff, not a measurement. **And the obvious
+fix is refuted by this plan's own canonical witness:** `messages-accountant-desktop` reads joint 0.07
+and max exactly **0.50**, so `max(confidenceX, confidenceY)` would unflag the pair step 1 was built
+for. A located defect with a refuted first fix is a question, and it needs its own measurement phase
+— the nine pairs are separated from the witness by MATCH RATE, which is the strongest signal in this
+plan's own table AND the one a gate must never read (`phase.test.ts`). That tension is the next
+question, not this one's answer.
+
+**Shipped:** the two scripts, this write-up, and ONE source edit — `isUnverified`'s doc comment,
+which promised exactly these two replacements ("steps 4 and 5 … replace this global floor with a
+per-pair ambiguity margin and a per-container confidence") and now carries the refutation of both at
+the site where the next person will reach for them. No behaviour changed; 492 core + 380 annotator
+green, `pnpm typecheck` clean, and no re-baseline is owed because a doc comment cannot move a pair.
 
 ---
 
