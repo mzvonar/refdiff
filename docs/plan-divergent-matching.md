@@ -20,7 +20,11 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > full map's justification: a model reading only the comp, both screenshots and the raw
 > missing/extra list placed 57 of 59 texted unmatched elements, 4 of 4 correspondences, 0
 > contradicted claims. It also turned up **a second, worse witness** — a `via: "text"` pair at
-> γ 1062.6 yielding six unflagged findings — which is a STEP 5 input, not a step 2 one.
+> γ 1062.6 yielding six unflagged findings — which is a STEP 5 input, not a step 2 one, and
+> **whose obvious fix is already measured and REFUTED**: a γ ceiling on pass 1 cannot work,
+> because correct and wrong text pairs overlap (correct reach γ 873, wrong start at 686). Do not
+> go build one; step 5's block has the corpus-wide table. The discriminator is containment, which
+> is what step 2's per-side grouping starts producing.
 > The clock freeze is VERIFIED ON ALL THREE
 > CORPORA and re-baselined — 52 pairs, `matched` unmoved on every one, zero `auth-failed` (the
 > named risk); see reconcile step 1's DONE block for the two-run table and the three explained
