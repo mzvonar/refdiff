@@ -752,7 +752,7 @@ from a bordered comp box is written as the comp's number plus its border
 box (132 + 1 px, once per card row), which the fit absorbed as `scaleY
 0.9966` rather than an offset — an offset is one box, a scale is one box
 per row; found 2026-08-28 by undoing the fit on `elements.json` and walking
-`impl.y − raw.y` down the page (the skill's §1a). The comps' runtime interpolates every `{{label}}` as its own
+`impl.y − raw.y` down the page — the walk `refdiff drift` now ships (the skill's §1a). The comps' runtime interpolates every `{{label}}` as its own
 text node, so chip and tag labels are their own `<span>` inside the button
 (the extractor's leaf is the text, not our bordered element), and the rail
 and Library run `line-height:normal` (the comps set none; the report's 1.4
@@ -1289,6 +1289,19 @@ fall through to the area rule, as do unlabelled artboards.
   the root's files. Measured: Alert 153 findings → 10 causes, Button 201 → 16.
   Lossless in the only sense that matters: the rows point back to the per-cell
   reports, which stay the truth.
+- **Drift walk — built 2026-09-16.** Pure `package/drift.ts`:
+  `driftWalk({ alignment, design, impl })` undoes the alignment on one axis
+  (`raw = (coord − offset) / scale`; `elements.json` stores the design boxes
+  already mapped into impl space), pairs the two sides on text unique on BOTH,
+  and walks the residual in impl order. A FLAT residual is an offset — one box
+  above or beside the anchors; a residual that STEPS is that box repeated, one
+  step per repeat, and the element at the step is the fix. `refdiff drift
+  <run-dir> [--axis y|x] [--step px] [--top n] [--json]`. Shipped because the
+  skill has specified this walk step by step since 2026-08-28 and it was still
+  hand-written as a throwaway script twice — the Library card's `.thumb`
+  (132 + 1 px per row, absorbed as `scaleY 0.9966`) and
+  `messages-accountant-desktop` (2026-09-16, a line-height difference absorbed
+  as `scaleY 1.10`). Same reason `byRegion` was shipped.
 - **Set index — built 2026-09-04, chunk 2 of the gallery plan.** A run root
   can only show what was measured; it structurally cannot show ABSENCE, and
   absence is what misled us (`ds-button-stroke` 24 pairs / 36 skipped;

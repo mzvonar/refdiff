@@ -291,6 +291,7 @@ build".
 refdiff compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
 refdiff summary $OUT_ROOT      # sets / many pairs: one table + causes across pairs (sets.md)
+refdiff drift $RUN_DIR         # a scale/scaleY in the fit: which element is it about? (polish.md §1a)
 ```
 
 `--out` is a ROOT, always: the run dir is `$OUT_ROOT/<pair>/`, for one pair and

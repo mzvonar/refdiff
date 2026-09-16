@@ -58,6 +58,7 @@ import { ensureStorybook } from "./adapters/storybook-server.js"
 import { captureStorybook } from "./adapters/storybook.js"
 import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
+import { driftWalk, formatDriftWalk, type DriftAxis } from "./package/drift.js"
 import { packageForModel } from "./package/package-for-model.js"
 import { describeRegions, describeUnmatched } from "./package/regions.js"
 import { buildSetIndex, setIndexFileName, type SetIndex } from "./package/set-index.js"
@@ -81,6 +82,22 @@ import { matchElements, matchingStats } from "./structural/match.js"
 const USAGE = `Usage: refdiff compare [options]
        refdiff summary <out-root> [--json]
        refdiff accept <run-dir> [options]
+       refdiff drift <run-dir> [options]
+
+drift — undo the alignment fit and walk the residual down the page, to name the
+element a \`scale\` / \`scaleY\` is about. The fit absorbs a per-repeat step better
+than a per-element \`position\` finding does, so ONE box a pixel short in every row
+reports as a scale and names nothing. Reads \`elements.json\` only.
+
+  --axis <y|x>            which axis to walk (default y)
+  --step <px>             plateau tolerance; below this is sub-pixel rendering
+                          rather than a box model difference (default 0.5)
+  --top <n>               print only the first n rows (the steps are always all)
+  --json                  the whole walk as JSON
+
+Flat residual = an OFFSET, one box above or beside the anchors. A residual that
+steps = that box REPEATED, one step per repeat, and the element at the step is
+the fix.
 
 accept — record "we looked, and the implementation is right" for findings of
 one run, so the next run suppresses them visibly instead of re-reporting them.
@@ -1812,6 +1829,44 @@ async function summary(argv: string[]): Promise<void> {
   process.exit(runs.every((r) => r.report.verdict.pass) ? 0 : 1)
 }
 
+async function drift(argv: string[]): Promise<void> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      axis: { type: "string" },
+      step: { type: "string" },
+      top: { type: "string" },
+      json: { type: "boolean" },
+      help: { type: "boolean" },
+    },
+  })
+  if (values.help || positionals.length !== 1) {
+    console.log(USAGE)
+    if (!values.help) process.exit(2)
+    return
+  }
+  const runDir = resolve(positionals[0]!)
+  const file = join(runDir, "elements.json")
+  const raw = await readFile(file, "utf8").catch(() => undefined)
+  if (raw === undefined)
+    fail(`drift: no elements.json in ${runDir} — point at a RUN dir (the one holding findings.json)`)
+  const parsed = JSON.parse(raw) as Parameters<typeof driftWalk>[0]
+  const axis = (values.axis ?? "y") as DriftAxis
+  if (axis !== "y" && axis !== "x") fail(`drift: --axis must be y or x, got "${values.axis}"`)
+  const walk = driftWalk(parsed, {
+    axis,
+    ...(values.step !== undefined ? { stepTolerance: Number(values.step) } : {}),
+  })
+  if (values.json) {
+    console.log(JSON.stringify(walk, null, 2))
+    return
+  }
+  console.log(
+    formatDriftWalk(walk, ...(values.top !== undefined ? [{ top: Number(values.top) }] : [])),
+  )
+}
+
 const [command, ...rest] = process.argv.slice(2)
 switch (command) {
   case "compare":
@@ -1822,6 +1877,9 @@ switch (command) {
     break
   case "accept":
     await accept(rest)
+    break
+  case "drift":
+    await drift(rest)
     break
   case undefined:
   case "--help":

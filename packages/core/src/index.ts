@@ -251,6 +251,16 @@ export {
   type RegionSignals,
 } from "./pixel/classify.js"
 
+export {
+  DEFAULT_STEP_TOLERANCE,
+  driftWalk,
+  formatDriftWalk,
+  type DriftAxis,
+  type DriftOptions,
+  type DriftRow,
+  type DriftStep,
+  type DriftWalk,
+} from "./package/drift.js"
 export { packageForModel, type PackageOptions } from "./package/package-for-model.js"
 export {
   containersOf,

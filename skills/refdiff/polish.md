@@ -65,12 +65,25 @@ box above or beside the anchors (a topbar rendered without its border). A
 **scale** is that box REPEATED down the page: one card thumbnail 1 px short
 in every row of a three-row grid reads as `scaleY 0.9966`, not as three
 findings, because the fit absorbs a per-row step better than a per-element
-`position` would. To name the element, undo the fit — `elements.json` stores
-the design boxes already mapped into impl space, so raw `y = (y − offsetY) /
-scaleY` — pair design and impl by text, and walk `impl.y − raw.y` down the
-page: it is flat, then steps by the missing pixels at ONE element per
-repeat, and that element (its `height` + border, in the comp's box model) is
-the fix.
+`position` would. To name the element, **undo the fit — `refdiff drift
+<run-dir>`**. It reads `elements.json` (which stores the design boxes already
+mapped into impl space), takes raw `y = (y − offsetY) / scaleY`, pairs design
+and impl by text unique on both sides, and walks `impl.y − raw.y` down the
+page. Read the residual:
+
+- **flat at a constant** — an OFFSET, one box above or beside the anchors (a
+  topbar rendered without its border). Flat at a NON-ZERO value is still flat;
+  the constant is what the fit absorbed, not evidence of no drift.
+- **steps** — that box REPEATED, one step per repeat. The element at the step
+  (its `height`/`width` + border, in the comp's box model) is the fix.
+
+`--axis x` walks the other one, for a pair that reads "high y, low x";
+`--step <px>` moves the plateau tolerance (default 0.5, chosen because the
+case this exists for was a box ONE pixel short per row); `--json` gives the
+whole walk. **A leading difference lands here too** — see the `typography`
+entry under "Reading the measurements": until 2026-09-16 a comp's
+`line-height` was never compared, and the whole of it arrived as a `scaleY`.
+Do not hand-write this walk; it was hand-written twice before it was shipped.
 
 ### 1a-ii. Then ask what PAIRED the two elements a finding is about
 
