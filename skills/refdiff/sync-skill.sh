@@ -103,7 +103,27 @@ else
   echo "source ${SRC_REPO} is not a git checkout — cannot stamp a version" >&2; exit 2
 fi
 
-FILES="SKILL.md setup-dev.sh preflight.sh sync-skill.sh"
+# The vendored set is DERIVED from the skill directory, never listed.
+#
+# It WAS a hand-maintained list, and such a list fails silently in one direction only: a
+# file added to `skills/refdiff/` exists locally, is read by every test run in this repo,
+# and reaches no consumer — who then works from a skill missing a piece the rest of it
+# refers to, and reads the dangling reference as a file they failed to find rather than one
+# that was never sent. Nothing goes red. The list had already drifted:
+# `preflight-selftest.sh` was absent from it, and the CLAUDE.md snippet meant to catch that
+# matched a MENTION of the filename in a comment on line 79 and reported all-clear.
+#
+# Globbing inverts the default — a new file ships unless someone says otherwise — and the
+# one exception is named here, where a reader asking "what gets vendored?" is already
+# looking. `.skill-version` is GENERATED below, never copied from source.
+NOT_VENDORED="preflight-selftest.sh .skill-version"
+FILES=""
+for f in $(cd "$SRC" && ls -A); do
+  [ -f "$SRC/$f" ] || continue                        # directories are not part of the skill
+  case " $NOT_VENDORED " in *" $f "*) continue ;; esac
+  FILES="${FILES:+$FILES }$f"
+done
+[ -n "$FILES" ] || { echo "no files to vendor from ${SRC}" >&2; exit 2; }
 say "vendor ${SRC} → ${TARGET}"
 say "  ref=${REF} sha=${SHA:0:8}${DIRTY:+  (SOURCE IS DIRTY — the stamp will say so)}"
 
@@ -125,7 +145,12 @@ for f in $FILES; do
   [ -f "$SRC/$f" ] || { echo "missing in source: $f" >&2; exit 2; }
   cp "$SRC/$f" "$TARGET/$f"
 done
-chmod +x "$TARGET/setup-dev.sh" "$TARGET/preflight.sh" "$TARGET/sync-skill.sh"
+# Derived from what actually shipped, for the same reason the file list is: a hardcoded
+# chmod leaves a NEW script vendored but not executable, which surfaces to a consumer as
+# "permission denied" on a script the skill tells them to run.
+for f in $FILES; do
+  case "$f" in *.sh) chmod +x "$TARGET/$f" ;; esac
+done
 
 cat > "$TARGET/.skill-version" <<STAMP
 # refdiff skill — vendored copy, managed by sync-skill.sh. DO NOT edit by hand.

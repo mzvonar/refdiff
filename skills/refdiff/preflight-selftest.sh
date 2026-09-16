@@ -112,6 +112,47 @@ OUT=$(REFDIFF_SKIP_FRESHNESS=1 bash "$T/preflight.sh" 2>&1)
 M=$(factof "$OUT" skill_mode)
 case "$M" in vendored\ *) ok "the vendored copy reports itself vendored" ;; *) bad "round trip" "skill_mode='$M'" ;; esac
 
+# --- 9a. EVERY file in the skill dir was vendored, except the ones NOT_VENDORED names.
+#         The set used to be a hand-maintained list and had already drifted unnoticed; this
+#         row is what makes that unshippable. It asserts over the REAL directory, so it
+#         starts failing the moment a file is added there that does not arrive.
+MISSING=""
+for f in $(cd "$HERE" && ls -A); do
+  [ -f "$HERE/$f" ] || continue
+  case " preflight-selftest.sh .skill-version " in *" $f "*) continue ;; esac
+  [ -f "$T/$f" ] || MISSING="${MISSING:+$MISSING }$f"
+done
+[ -z "$MISSING" ] && ok "every non-excluded file in skills/refdiff/ reached the consumer" \
+  || bad "vendored set" "never arrived: $MISSING"
+
+# --- 9b. The exclusion is REAL. Without this row, 9a also passes on a sync that copies the
+#         directory indiscriminately — a different bug wearing the same green.
+[ -f "$T/preflight-selftest.sh" ] && bad "NOT_VENDORED" "preflight-selftest.sh was shipped" \
+  || ok "the dev-only self-test is NOT vendored"
+
+# --- 9c. A file nobody listed ANYWHERE still ships. 9a proves today's directory arrives;
+#         this proves the mechanism is a GLOB and not a list that happens to be current,
+#         which is the whole point — the next `reconcile.md` must ship without anyone
+#         remembering to edit sync-skill.sh.
+NEWSRC="$TMP/newfile-src"; mkdir -p "$NEWSRC/skills/refdiff"
+cp "$HERE"/*.sh "$HERE/SKILL.md" "$NEWSRC/skills/refdiff/"
+echo "# planted by the self-test" > "$NEWSRC/skills/refdiff/reconcile.md"
+git init -q -b main "$NEWSRC" >/dev/null 2>&1
+git -C "$NEWSRC" add -A
+git -C "$NEWSRC" -c user.email=selftest@refdiff -c user.name=selftest commit -qm planted
+OUT=$(bash "$NEWSRC/skills/refdiff/sync-skill.sh" "$TMP/consumer-new" --from "$NEWSRC" 2>&1); EXIT=$?
+NT="$TMP/consumer-new/.claude/skills/refdiff"
+if [ "$EXIT" = 0 ] && [ -f "$NT/reconcile.md" ]; then
+  ok "a NEW file ships with no edit to sync-skill.sh"
+else bad "new file not vendored" "exit=$EXIT present=$([ -f "$NT/reconcile.md" ] && echo yes || echo no): $OUT"; fi
+
+# --- 9d. The stamp records what was ACTUALLY sent. A stamp still naming four hardcoded
+#         files would be a quiet lie about a five-file copy, and the stamp is the only
+#         thing a consumer can read to learn what they got.
+FL=$(sed -n 's/^files=//p' "$NT/.skill-version" 2>/dev/null | head -1)
+case " $FL " in *" reconcile.md "*) ok "the stamp's files= names the new file" ;;
+  *) bad "stamp files=" "files='$FL'" ;; esac
+
 # --- 10..14. The ASK path. Upstream drift must PAUSE THE RUN and put the choice to the
 #        user — not print a line and carry on, which is what a warning at exit 0 is. These
 #        rows use a LOCAL git repo as "upstream" so they need no network and cannot flake.
