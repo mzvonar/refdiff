@@ -975,11 +975,46 @@ rewrite.
 > Cause: **pass 1 has no γ ceiling at all** ("wherever it moved"); `textMaxGamma` caps pass 1b only.
 > `normalizeForMatching` keeps the `✓`, so `"vybavené"` is unique on each side and pass 1 takes it
 > unconditionally. So this step, as written, would refuse well-evidenced geometric pairs at γ 30
-> while leaving a γ 1062 text pair standing. **Whatever this step does about geometry, a γ ceiling
-> on pass 1 is the cheaper and better-evidenced half** — and it is the first configuration where
-> the parked Lowe's ratio test would have helped, since the comp offers two `Vybavené`-bearing
-> candidates and the matcher picks the wrong one. Measure it against the corpus before assuming a
-> ceiling is safe: pass 1's whole point is that a moved element stays paired.
+> while leaving a γ 1062 text pair standing.
+>
+> **A γ CEILING ON PASS 1 IS REFUTED — measured 2026-09-16 across the whole corpus, do not build
+> it.** The shipped matcher was re-run over all 52 pairs' recorded leaf sets and **reproduced every
+> pair's `matching` block exactly (52/52)**, so the distribution below is the real one, not a
+> sample of the pairs that happened to emit findings. Of **1424 text-matched pairs**: p50 27.9,
+> p90 156.5, p99 544.0, max 1261.1.
+>
+> | γ ceiling | text pairs it would refuse | comparisons affected |
+> | --- | --- | --- |
+> | 200 | 79 | 20 |
+> | 300 | 27 | 12 |
+> | 500 | 15 | 10 |
+> | 800 | 6 | 6 |
+>
+> **The correct and the wrong pairs OVERLAP, so no ceiling separates them.** Certainly-correct
+> long-distance pairs reach **γ 873**: `refdiff-library-groups-desktop` pairs `"Stepper"` at
+> (109, 1664) with `"stepper"` at (109, 794) — verified as the same library row, same x, wrapped in
+> an identical box lattice (62/74/87 on both sides), moved up only because the list above it is
+> shorter. Below it and equally correct: the `docs-accountant-mobile` bottom nav
+> (`Portfólio` / `Správy` / `Požiadavky`, all three moving 1422 → 880 with their x order intact,
+> γ 576–605) and a unique 50-character sentence,
+> `"Org-nastavenia platia len pre vybranú organizáciu."`, at γ 442–544 on two settings pairs.
+> Certainly-WRONG pairs start at **γ 686**. A ceiling that catches the wrong ones destroys more
+> correct pairs than it saves, which is the REGRESSION signature step 2 defines.
+>
+> **The defect is bigger than one pair, which is why it still deserves a fix — just not this one.**
+> The `Vybavené` chip↔badge mis-pairing is on **four** pairs (`messages-accountant-desktop` 1063,
+> `-accountant-mobile` 822, `-owner-mobile` 763, `-owner-desktop` 686), and a further family is
+> unclassified: `"Požiadať o doklad"` at 1261 / 770 / 702 and `"Zavrieť obdobie"` at 823 on three
+> mobile pairs, plus `"Nahrať doklad"` at 778 — both sides isolated, with no lattice to judge them
+> by, so they are named as unclassified rather than guessed at.
+>
+> **What the data says the discriminator actually is: containment, not distance.** Every
+> certainly-correct long pair preserves its x and its local structure (Stepper's box lattice, the
+> ghost panel's 1079/1194 columns, the nav's x order); the wrong ones move on BOTH axes and change
+> role — a filter chip becomes a thread badge. That is container-scoped evidence, i.e. the PARKED
+> work, and it is the same per-side container data reconcile step 2 is about to produce. **So the
+> fix is downstream of step 2, not ahead of it** — which is also the first positive reason to keep
+> the plan's existing order rather than merely defaulting to it.
 
 > **Read step 4's DONE block before implementing this — it moves the threshold's own ground.** This
 > step is written against the JOINT `alignment.confidence`, and step 4 measured that the joint score
