@@ -661,12 +661,34 @@ divergence needs structural JUDGEMENT, and no measurement supplies it. So the ju
 the SKILL (instructions for a judge), and the TOOL's job is only to hand the judge measured facts.
 Nothing here becomes a gate, an auto-fix, or a matcher change.
 
-**The constraint that rules out the obvious shortcut.** A workflow that says "read the comp and the
-implementation and work it out" walks straight into the failure §0 of the skill already names:
-*"Reading `.dc.html` source to derive a layout is the failure this tool exists to remove — you
-become the comparator, and nothing you produce carries a number."* Reconcile needs the model to
-JUDGE over measured structure, not to re-derive structure by reading source. That is exactly why
-the structure map comes before the workflow, and why the workflow must cite it at every step.
+**Reading the comp is REQUIRED in reconcile, and the skill's blanket ban was over-scoped.** An
+earlier framing of this section said a workflow must not tell the model to "read the comp and work
+it out", citing §0's rule that *"reading `.dc.html` source to derive a layout is the failure this
+tool exists to remove"*. That rule is right about POLISH and wrong as a blanket, and the evidence
+against it is the naive phase this whole tool came out of: reading the comp and the screenshots
+produced **good general structure and bad details**. That is the exact complement of what refdiff
+does — refdiff mis-pairs across divergent structure and is excellent on details. Two instruments
+with opposite failure profiles should be pointed at the halves each is good at, not ranked.
+
+So: in `reconcile` the model reads the comp (`.dc.html` / the Figma frame) AND both `design.png` /
+`impl.png`, because that is where INTENT lives — "this is a thread rail with a filter row above it"
+is not recoverable from geometry and text at any resolution. What must survive from the old rule is
+narrower and still binding: **reading forms a hypothesis; the measurement adjudicates it.** The
+failure was never opening the file, it was opening the file and calling the answer settled. The
+rule is now scoped that way in the skill's frontmatter and §0.
+
+**What the structure map is FOR, then.** Not a replacement for reading — a checklist against it.
+Reading gives semantics and misses things silently; the map gives COMPLETENESS ("these 291 comp
+elements have no counterpart") which a model reading two files will not enumerate exhaustively.
+Read for intent, then let the map catch what the reading skipped.
+
+> **OPEN QUESTION, and step 2 must not assume the answer.** The plan's claim that "enumerating that
+> completely is exactly what a model reading two files does badly" is **asserted, never measured**,
+> and the naive-phase result is evidence partly against it. Before building the full map, run the
+> cheap test: on the witness, have a model reconcile from the comp + screenshots + the raw
+> missing/extra findings ALONE, and record what it misses. If it misses little, the map is a
+> convenience and should be small; if it misses whole regions, the map earns its cost. Measure
+> before building — that is this plan's own standing rule, and it applies to the plan.
 
 ### Reconcile step 1 — freeze the clock, so the guard stops lying ← FIRST
 
@@ -699,6 +721,11 @@ away. If date handling is worth testing, it is worth a test with an assertion.
 **Goal.** Hand the judge the one thing it cannot build reliably by hand: a complete, measured
 account of which parts of the two surfaces correspond.
 
+> **Start with the OPEN QUESTION above, not with code.** Whether a model reading the comp, the two
+> screenshots and the raw missing/extra findings actually needs this is unmeasured. Run that test
+> first; it costs one pair and it decides how much of this step to build — or whether the answer is
+> a much smaller "group the missing/extra findings by container" rather than a full map.
+
 Today the per-element truth exists — `missing-element` and `extra-element` findings carry text and
 boxes — but arrives flat, severity-sorted, mixed among 400 others. `byRegion` is the nearest lever
 and it groups FINDINGS, not structure.
@@ -714,14 +741,37 @@ and it groups FINDINGS, not structure.
 as three correspondences, and says the comp's relative-date column has no impl counterpart — the
 thing a reader currently reconstructs by hand from six scattered findings.
 
-### Reconcile step 3 — the WORKFLOW in the skill, written to be revised
+### Reconcile step 3 — the WORKFLOW, in its own file, written to be revised
 
 **Goal.** Make the skill feature-complete across the whole spectrum it already half-covers:
 **§0 does not exist yet → reconcile: exists but diverges → §1–6 corresponds (polish).**
 
-- A numbered, opinionated section in `skills/refdiff/SKILL.md`, in §0's shape: the steps, and for
-  each the failure it prevents. Anchored in the structure map's output at every step, so the model
-  judges over measured facts rather than re-reading `.dc.html`.
+**Split the skill while doing it.** `SKILL.md` is 1395 lines / 101 KB, and a session loads all of it
+to run a loop that needs perhaps a third. Reconcile and polish instructions in separate files is the
+point of the split, but it is not the biggest win — measured, the situational material is:
+`§1b Sets` 262 lines, the configuration reference (`ignore` 112 + `disabled` 39 + `sections` 98) 249,
+`Reading the measurements` 150, and setup/vendoring/env-preflight ~220. Proposed layout, to be
+confirmed against how it actually reads:
+
+| file | holds | loaded when |
+| --- | --- | --- |
+| `SKILL.md` | bindings, the non-negotiable rules, pre-flight, §0–§1, the phase read, routing | always |
+| `reconcile.md` | the new workflow | `phase: reconcile` |
+| `polish.md` | §1a, §1a-ii, §2–§6, Reading the measurements | `phase: polish` |
+| `sets.md` | §1b | a set / manifest run |
+| `configuring.md` | `ignore`, `disabled`, `section`/`sections`/`gallery` | declaring a pair |
+| `setup.md` | vendoring, dev-mode setup, env pre-flight | once per machine |
+
+> **The split has one trap, and it is this repo's favourite shape.** `sync-skill.sh` carries an
+> EXPLICIT list — `FILES="SKILL.md setup-dev.sh preflight.sh sync-skill.sh"` — so a new `.md` that
+> is not added to it silently never reaches a vendored consumer, while every local test passes.
+> Glob the skill directory instead of listing it, or add a check that fails when a file in the dir
+> is missing from `FILES`. Do not hand-extend the list and hope.
+
+- A numbered, opinionated workflow in `reconcile.md`, in §0's shape: the steps, and for each the
+  failure it prevents. **Step one is READ** — the comp and both `design.png` / `impl.png`, for
+  intent — and the measured missing/extra list (and the map, if step 2 shows it earns its place) is
+  the checklist against what the reading produced.
 - It must answer the questions the current four sentences duck: where to start when 291 elements
   are unmatched, how to tell "the impl is missing a feature" from "the same feature is built
   differently" from "the comp is stale", when to change the comp instead of the code (§3a already

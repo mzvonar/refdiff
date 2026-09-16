@@ -1,6 +1,6 @@
 ---
 name: refdiff
-description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design. It covers a surface that does NOT EXIST YET as much as a drifted one — "implement this comp", "build this design", "a new .dc.html / Figma frame landed", "implement the new layout / screen": stub the surface, register its pair, and let the delta drive it (§0). Also when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh); to "check the refdiff skill version", "is refdiff up to date", "sync/update the refdiff skill", or to vendor it into a repo (preflight.sh / sync-skill.sh). Run preflight.sh once before the first compare of a session: a dist behind src, or an annotator process older than dist, reports as +0/-0 and is indistinguishable from a fix that did nothing. Never eyeball two screenshots and never hand-derive a layout by reading the comp's source; every claim is a number from findings.json.
+description: Close the gap between a design frame (Claude Design .dc.html or Figma) and its implementation (Storybook story or live page) with the refdiff CLI in a bounded, measured loop — run compare → read findings.json (expected/actual first, crops second) → read the focused region and open annotations → fix → re-run → read delta → mark notes implemented. Use whenever asked to "match the design", "fix design parity / design drift", "make the story match the comp", "run refdiff", "work in the focused region", or to verify a UI change against its design. It covers a surface that does NOT EXIST YET as much as a drifted one — "implement this comp", "build this design", "a new .dc.html / Figma frame landed", "implement the new layout / screen": stub the surface, register its pair, and let the delta drive it (§0). Also when asked to "set up refdiff in dev mode", "install the refdiff CLI", or the `refdiff` command is missing on this machine (run setup-dev.sh); to "check the refdiff skill version", "is refdiff up to date", "sync/update the refdiff skill", or to vendor it into a repo (preflight.sh / sync-skill.sh). Run preflight.sh once before the first compare of a session: a dist behind src, or an annotator process older than dist, reports as +0/-0 and is indistinguishable from a fix that did nothing. In the POLISH phase never eyeball two screenshots and never hand-derive a layout by reading the comp's source — every claim there is a number from findings.json. In the RECONCILE phase reading the comp and both screenshots is the FIRST step and the measured missing/extra list is the checklist against it; the ban is scoped to polish, where the findings already are the specification.
 ---
 
 # refdiff — the bounded fix loop over its reports
@@ -277,9 +277,16 @@ while iteration < 5:
 
 The loop is the same for a NEW comp; only the first iteration looks different.
 There is nothing to measure yet, and that is a reason to STUB, never a reason
-to skip the harness and build the thing by reading the comp's markup. Reading
-`.dc.html` source to derive a layout is the failure this tool exists to remove:
-you become the comparator, and nothing you produce carries a number.
+to skip the harness and build the thing by reading the comp's markup.
+
+**Read the comp for STRUCTURE; never let reading it settle a DETAIL.** Opening
+the `.dc.html` (or the Figma frame, or the two screenshots) to work out what
+the surface *is* — a thread rail, a filter row, a detail pane — is legitimate
+and is how you write a useful stub. What is not legitimate is deriving spacing,
+colour, size or position that way and shipping it: there you became the
+comparator, and nothing you produced carries a number. The rule is about which
+QUESTIONS reading can answer, not about whether you may open the file. Once the
+pair is registered, the findings are the specification and reading stops.
 
 1. **Stub the surface** so the route renders SOMETHING deterministic — the
    nearest existing variant is ideal ("the new layout is the minimal one plus a
