@@ -1,12 +1,13 @@
 # The RECONCILE workflow — two surfaces that do not correspond yet
 
-> **PROVISIONAL — this is a hypothesis, not a method with a track record.** It was WRITTEN
-> against two pairs (§R7) and has been RUN end to end against **none**. Every step names the
-> failure it is there to prevent, and the numbers in it come from the 52-pair corpus behind
-> `docs/plan-divergent-matching.md`; the ones that are guesses are labelled **(unmeasured)**.
-> **Revise it after each real use, and name the pair that forced the revision** in §R7 — the
-> same anchor discipline as the rest of this repo. A step nobody has run is worth less than
-> the one pair that breaks it.
+> **PROVISIONAL — one end-to-end run, not yet a track record.** It was WRITTEN against two
+> pairs and has now been RUN end to end against **one** of them (§R7): `messages-accountant-desktop`
+> went reconcile → polish on 2026-09-16. Every step names the failure it is there to prevent, and
+> the numbers in it come from the 52-pair corpus behind `docs/plan-divergent-matching.md`; the
+> ones that are guesses are still labelled **(unmeasured)**, and one of them survived that run
+> without ever being reached (R6's stopping bound). **Revise it after each real use, and name the
+> pair that forced the revision** in §R7 — the same anchor discipline as the rest of this repo. A
+> step nobody has run is worth less than the one pair that breaks it.
 
 You are here because `report.phase` says `reconcile`: the two sides do not contain the same
 things, so the element-wise findings are mostly describing two structures being forced onto
@@ -199,6 +200,19 @@ Then, for each correspondence the map and the reading agree on:
    matched. Order counts too — refdiff pairs row N with row N, so a list in a different order
    reads as a finding on every pill of every row (measured on one Library page: 208 → 101
    findings and confidence 0.20 → 0.76 from the sort alone).
+
+   **A date is data too, and the harness has its own clock — anchor the fixture on WHICHEVER
+   SIDE COMPUTES IT.** Every capture runs at `FROZEN_CLOCK` (2026-09-15T12:00:00Z), in a pinned
+   zone and locale (UTC / en-US unless the entry overrides them — `configuring.md`). That
+   freeze reaches the BROWSER's `Date`, so a relative time computed client-side obeys it and one
+   computed on the SERVER and sent down as text does not. Moving a timestamp from the client to
+   the server therefore puts it out of `page.clock`'s reach entirely, with no error and no
+   report field saying so — a seeded "2 hours ago" quietly becomes "3 weeks ago" and takes its
+   anchor with it. Decide which side computes it before you seed: client-side, seed relative to
+   the frozen instant; server-side, the fixture needs a fixed date of its own. And if the comp
+   is drawn for a market, set `timezoneId` / `locale` on the entry — a fixture written in the
+   app's zone against a UTC capture is off by the offset on every timestamp (measured 2026-09-16,
+   two hours, on this file's own witness pair).
 2. **Whole one-sided regions**, biggest map group first. One decision per group.
 3. **Differently-built correspondences**, and leaf-shape ones LAST — anything that changes what
    pairs changes what every finding IS, so doing these first churns the delta under you.
@@ -220,6 +234,16 @@ matcher that got stricter and a matcher that fell apart move the finding count t
 reconcile iteration is progress when **`matched` rises and both `designOnly` and `implOnly`
 fall**. If `matched` drops, that is a REGRESSION unless you can argue it.
 
+**One argument is legitimate and has a measured shape: an ALIGNMENT fix RE-PAIRS, so it can
+lower the match rate while making the pair better.** Moving the two sides into correspondence
+changes which element is nearest which, and pairings that only ever rested on the old geometry
+are correctly lost. Measured on `messages-accountant-desktop` (2026-09-16), the change that
+flipped the pair into `polish` did exactly this: match rate **0.81 → 0.74** while best axis went
+**0.43 → 0.76**. Read the two together — an alignment fix that is working moves the AXIS up
+first, and the rate recovers on the next iteration as the re-pairing settles. A `matched` drop
+with the axis flat or falling has no such excuse. This is the one shape "unless you can argue
+it" was left open for; anything else still needs the argument written down.
+
 **The pair crosses into `polish` when `matchRate >= 0.70` AND `max(confidenceX, confidenceY) >=
 0.50`.** `phase.reason` names which clause failed and by how much — read it rather than
 recomputing: *"only 41 of 80 leaves matched (51%, floor 0.7)"* is a distance, not a verdict.
@@ -230,21 +254,51 @@ lines up horizontally and packs differently down the page still corresponds.
 
 - `phase: polish` → stop reconciling. Go to `polish.md` and start the bounded loop at
   iteration 0; reconcile's work does not count against its five.
-- **Three consecutive structural changes that do not move `matchRate` → stop and report**
-  **(unmeasured — this bound is a guess and is the first thing a real run should correct).**
+- **Three consecutive structural changes that do not move `matchRate` → stop and report.**
   What remains is a product decision, not a parity one: report it with the measurement and the
   question, per `polish.md` §6.
+  **(Still (unmeasured) after the first end-to-end run, because it was never REACHED.** On
+  `messages-accountant-desktop`, 2026-09-16, every structural change moved `matchRate`. So that
+  run says nothing about whether three is the right number: it is evidence about what stops a
+  CONVERGING pair — not this bound — and no evidence at all about a stuck one. Keep the tag
+  until a run actually hits it, and when one does, record what it hit rather than deleting the
+  label.)
 - A pair whose divergence is the comp's, not the implementation's, ends in a REPORT and an ASK,
   never in a fix. That is `polish.md` §3a's standing rule and it is not softened here.
 
 ## R7. The pairs this has been run against
 
-**Run end to end: none.** §R3 alone has been run, over the WHOLE corpus — see the row below.
-Written against these two, which are the range's ends:
+**Run end to end: one — `messages-accountant-desktop`, 2026-09-16**, from the consumer side
+(`uctoinak2`), which is the pair this file was written against. It went reconcile → polish:
+
+| signal | before | after |
+| --- | --- | --- |
+| phase | reconcile | polish |
+| match rate | 0.51 | 0.80 |
+| best axis fit | 0.50 | 0.86 |
+| joint confidence | 0.07 | 0.62 |
+| findings | 226 | 131 |
+| criticals | 36 | 12 |
+
+**The workflow held; four gaps were in the TOOL, not in these steps.** What that run changed
+here: R5's Data step gained the clock/zone clause (the single longest detour of the session was
+a leading difference the report could not name, and a relative timestamp that had moved to the
+server and out of `page.clock`'s reach); R6's progress rule gained the alignment carve-out (the
+change that crossed into `polish` LOWERED match rate 0.81 → 0.74 while the axis rose 0.43 →
+0.76); and R6's stopping bound stayed `(unmeasured)` because it was never reached. The tool
+fixes that run produced are `refdiff drift` (§1a's walk, hand-written a third time during it)
+and line-height being compared against a `.dc.html` comp at all.
+
+**What earned its place unchanged:** the `REGRESSION` line distinguishing a re-pairing from a
+reverted fix — *"the element's PARTNER changed, not the element"* — stopped this run chasing a
+phantom when a comp element became honestly unpaired.
+
+§R3 alone has additionally been run over the WHOLE corpus — see the row below. The file was
+written against these two pairs, which are the range's ends:
 
 | pair | signals | unmatched | the map places | what it is here for |
 | --- | --- | --- | --- | --- |
-| `messages-accountant-desktop` (uctoinak2) | rate 0.51 · axis 0.50 (joint 0.07) · share 0.46 | 39 design-only / 65 impl-only | 31 of 38 listed in 6 comp containers; 41 of 65 in 8 impl containers | the canonical witness — both mis-pairings (`Včera` ↔ `Otázky · 1` at γ 98.7, `Vybavené` ↔ `Vybavené` at γ 1062.6) and the cheap test's 57/59 reading are measured on it |
+| `messages-accountant-desktop` (uctoinak2) — **run end to end 2026-09-16** | rate 0.51 · axis 0.50 (joint 0.07) · share 0.46 | 39 design-only / 65 impl-only | 31 of 38 listed in 6 comp containers; 41 of 65 in 8 impl containers | the canonical witness — both mis-pairings (`Včera` ↔ `Otázky · 1` at γ 98.7, `Vybavené` ↔ `Vybavené` at γ 1062.6) and the cheap test's 57/59 reading are measured on it |
 | `refdiff-library-groups-desktop` (refdiff) | rate 0.65 · axis 0.89 (joint 0.56) · share 0.30 | 290 design-only / 106 impl-only | 22 of 290; **0 of 106** | the degenerate map — R2's second mode, where grouping is unavailable and reading is all you have |
 
 **When you revise this file, add the pair that forced it to this table and say which step it

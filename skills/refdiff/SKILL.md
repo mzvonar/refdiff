@@ -377,8 +377,10 @@ fresh-context model given the comp, both screenshots and the flat list placed 57
 elements by itself. What it lacked was organisation, not completeness.
 
 **So `reconcile` tells you WHICH loop you are in. `reconcile.md` is HOW.** That file is marked
-PROVISIONAL and says why: it was written against two pairs and run end to end against none, so
-it is a hypothesis with the failure each step prevents attached, and every real use revises it.
+PROVISIONAL and says why: it was written against two pairs and has been run end to end against
+ONE of them (`messages-accountant-desktop`, 2026-09-16, reconcile → polish — the numbers and what
+that run changed are in its §R7). So it is still a hypothesis with the failure each step prevents
+attached, and every real use revises it.
 What refdiff guarantees here is only that it will not let you spend an hour on a colour delta
 between two elements that were never the same element.
 
