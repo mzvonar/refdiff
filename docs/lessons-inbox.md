@@ -74,7 +74,7 @@ and the fourth chip is absent from the `missing-element` list. Absence from that
 evidence of presence; it means something claimed the element, and nothing tells you what.
 
 What it was: the comp's chip `"Vybavené"` (766, 92) paired with the implementation's thread badge
-`"Vybavené"` (351, 729) — **762 px apart, γ 1062.6** — yielding six findings (position, size,
+`"Vybavené"` (351, 729) — **415.0 left and 636.5 down, 759.9 px, γ 1062.6** — yielding six findings (position, size,
 colour, border, typography, border-radius). The canonical witness is the same defect at γ 98.7 and
 at least ends with a `text-content` line that gives it away. **This one has no tell at all, because
 the two strings are identical**, so there is no text-content finding to reach.

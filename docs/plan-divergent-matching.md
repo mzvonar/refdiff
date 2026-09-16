@@ -17,9 +17,15 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > into a model-driven `reconcile` and today's loop as `polish`, and the original steps 3 and 4 are parked
 > because they cost precision on the fine-detail case refdiff exists for. The old step 5 is promoted.
 >
-> **DO NEXT: STEP 5 — refuse pairs on weak evidence.** Read step 4's DONE block AND the γ-ceiling
-> refutation before touching it; the corpus's worst unflagged mis-pairings are TEXT pairs, so the
-> step's "text pairs are evidence about themselves" bullet is the one to re-argue. Then step 6.
+> **DO NEXT: STEP 5 — refuse pairs on weak evidence, and its MEASUREMENT PHASE IS FIRST.** Run
+> `reconcile.md` §R3 as a sweep over the 24 `reconcile` pairs to build the labelled set the step
+> needs: today it is **7 labels against 1424 text pairs**, and a discriminator fitted to the 7
+> examples that named it is not validated. No capture, no server — `matchElements` over each run
+> dir's `elements.json`, admissible only where it reproduces that pair's recorded `matching` block.
+> **Do not run the rest of `reconcile.md` to get it**: R5/R6 would reconcile the witness and re-date
+> every number this plan quotes. Then read step 4's DONE block AND the γ-ceiling refutation before
+> writing any code; the corpus's worst unflagged mis-pairings are TEXT pairs, so the step's "text
+> pairs are evidence about themselves" bullet is the one to re-argue. Then step 6.
 >
 > **RECONCILE STEP 3 SHIPPED 2026-09-16** (see its DONE block): `skills/refdiff/reconcile.md`, 227
 > lines, seven numbered steps, marked **PROVISIONAL and run against ZERO pairs** in its own header;
@@ -1136,7 +1142,10 @@ rewrite.
 > **THE SECOND BULLET IS THE ONE TO RE-ARGUE, and 2026-09-16 produced the counter-example.**
 > "Text pairs are evidence about themselves" is what leaves the corpus's sharpest mis-pairing
 > unflagged: on the witness, the comp's filter chip `"Vybavené"` is paired with the impl's thread
-> badge `"Vybavené"` **762 px away (γ 1062.6)**, `via: "text"`, `unverified: false`, producing six
+> badge `"Vybavené"` **415.0 px left and 636.5 px down — 759.9 px, γ 1062.6** (the "762" this block
+> carried until 2026-09-16 was a hand-rounded Euclidean figure; re-derived from the boxes,
+> design (766.03, 92.0) 61.07×14 against impl (351, 728.5) 52×12), `via: "text"`,
+> `unverified: false`, producing six
 > confident findings about two unrelated elements — the canonical witness's defect at 14× the
 > distance and with **no `text-content` tell**, because the strings are identical.
 >
@@ -1195,6 +1204,41 @@ rewrite.
 > changes what gets paired, so "both axes must be right" is at least arguable here in a way it was
 > not there. Whichever is chosen, argue it against the corpus and re-check the acceptance criterion
 > below, which is stated in terms of the joint score.
+
+#### Step 5's MEASUREMENT PHASE comes first — the R3 sweep (decided 2026-09-16, with Mato)
+
+**The blocker is ground truth, not code.** A containment discriminator has to be validated against
+a LABELLED set of text pairs, and the corpus's labelled set is currently **7 pairs against 1424**:
+4 certainly-wrong (`Vybavené` at 1063 / 822 / 763 / 686) and 3 certainly-correct (`Stepper` γ 873,
+the `docs-accountant-mobile` bottom nav 576–605, the 50-character settings sentence 442–544). The
+unclassified family beside them — `"Požiadať o doklad"` 1261 / 770 / 702, `"Zavrieť obdobie"` 823,
+`"Nahrať doklad"` 778 — is unclassified precisely because nobody has gone and looked. **Build a
+discriminator against 7 labels and you have fitted it to the examples that named it.**
+
+**So run `reconcile.md` §R3 as a SWEEP over the 24 `reconcile` pairs, and treat its output as this
+step's input.** R3 is the written-down form of the procedure that produced every confirmed label
+so far: ask which elements are missing FROM the unmatched list, then find what claimed them.
+It needs **no capture, no server and no library change** — `matchElements` re-run over each run
+dir's `elements.json`, with the "reproduces that pair's recorded `matching` block or the pair is
+dropped" rule as the admissibility gate (52/52 last time). The complement question is what found
+the corpus's worst mis-pairing in minutes after four sessions of reading the findings the report
+emits; the sweep is that question asked 24 times instead of once.
+
+Record, per candidate: the two boxes, `via`, γ, the axis decomposition (Δx / Δy separately — the
+hypothesis is that correct long pairs keep their x), and the CONTAINER on each side from
+`groupUnmatched`'s per-side map. That last column is the discriminator's actual feature, and it is
+already shipped.
+
+**Do NOT run the rest of `reconcile.md` to get this.** R5/R6 mean actually reconciling the pair —
+fixture and missing-feature work in the consuming repo — and that is not merely off-topic, it
+**destroys the instrument**: `messages-accountant-desktop`'s numbers (42 of 80, rate 0.53, γ 98.7,
+γ 1062.6, 30-of-37 placed) are quoted throughout this plan and both baselines, and reconciling the
+pair moves it into `polish` and re-dates every one of them. Do not fix the witness while it is
+still the witness. R3 reads; it changes nothing.
+
+**Done (measurement phase).** A labelled table materially larger than 7, covering the unclassified
+family, with the per-side container recorded for each — enough that a containment rule can be
+proposed AND falsified rather than illustrated.
 
 **Done.** The witness (confidence 0.07) emits `missing-element "Včera"` and
 `extra-element "Otázky · 1"` and none of the other four findings. **No pair at confidence ≥ 0.5
