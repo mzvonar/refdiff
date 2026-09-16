@@ -5,6 +5,20 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-16 — a handoff's "NOT pushed" is a claim about a REMOTE, and it goes stale silently
+
+Every handoff in this repo carries a push status, and on 2026-09-16 the one at the top said "NOT
+pushed" of commits that `origin/main` had already had for two sessions. Nothing detects the drift:
+the sentence is written by hand at commit time and is never re-derived, while the remote moves
+whenever anyone pushes. A stale "committed but not pushed" is the dangerous direction — it invites
+the next session to re-push, or worse to assume the work is still private and rewritable.
+
+The fix is not to write the line more carefully. **`git fetch && git log origin/main..HEAD` takes a
+second and is the only statement that is true when read**, so the handoff should say how to check
+rather than assert a value with no expiry. Same shape as this repo's standing rule that *a number
+written in a handoff is not a measurement* — here the number is a remote's position, and prose
+cannot track it.
+
 ## 2026-09-16 — a SCOPED version of a working measure is a new measure, and the scope is where it dies
 
 Step 6 proposed replacing one global alignment confidence with a per-container one: same formula,

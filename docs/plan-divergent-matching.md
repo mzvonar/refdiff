@@ -11,8 +11,9 @@ nothing is carried in conversation. Read "The witness" and "Repro" first, then y
 > plan proposed — the sweep refuted containment in all three readings; step 5b then pointed at the
 > long TEXT pairings, which the sweep showed cannot be refused or flagged; and **STEP 6 IS REFUTED
 > — per-container confidence ships NOTHING to the gate** (write-up:
-> [`r6-sweep-2026-09-16.md`](r6-sweep-2026-09-16.md); the only source edit is a doc comment). Not
-> pushed. 492 core + 380 annotator green; `preflight-selftest.sh` 24/24.
+> [`r6-sweep-2026-09-16.md`](r6-sweep-2026-09-16.md); the only source edit is a doc comment).
+> **PUSHED** — `origin/main` is at `48318a1`, the whole plan included. 492 core + 380 annotator
+> green; `preflight-selftest.sh` 24/24.
 >
 > **WHAT REMAINS IS NOT IN THIS PLAN.** Three questions outlive it, each with its numbers in the
 > step that found it: the `via: "text"` mis-pairing family (5 wrong of 79, no discriminator — every
