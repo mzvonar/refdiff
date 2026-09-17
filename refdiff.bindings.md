@@ -15,6 +15,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
 | viewing from a laptop / phone | `svc up annotator-tailnet` — the same read-only instance bound to the devbox's Tailscale IP only (`http://uctoinak-dev.tail31a8b9.ts.net:7390/`, `svc ports` for the port). Never `--host 0.0.0.0` here: the box has a public interface and no firewall. Tailscale Serve is NOT enabled on the tailnet (admin console), which is why a second instance rather than a proxy of 7379 |
 | run dir | `out/refdiff/<pair>/` (gitignored results; never served) |
+| viewport menu (2026-09-17) | the opened pair has two WIDTH siblings in the demo root, `onboarding-document-step-tablet` (run 45, stale) and `-mobile`, each with `breakpoint` in its findings.json and the opened pair's PNGs copied in; they are what the comparison tool's viewport menu lists (`vpm-` in `render.ts`). Four compare pairs measure it: the two existing ones (button closed) and `…-viewports` (menu open, `steps` on both sides). The Library shows ONE item per screen (`collapseBreakpoints`: the widest width's card, the others on its tooltip), so the demo root reads 12 items as the comps draw; the widths are switched in the comparison tool |
 | demo root | `fixtures/demo-root/` — COMMITTED. Regenerate the JSON with `node fixtures/make-demo-root.ts`; `--now` shifts every timestamp to the wall clock for a measure (the Library's relative "when" — regenerate WITHOUT it afterwards, never commit `--now` output); `--capture` re-shoots `design.png` / `impl.png` / `elements.json` for the opened pair from `design/refdiff/parts/` (needs the network) |
 | auth | none |
 
@@ -34,6 +35,25 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 
 ## Traps
 
+- **`vp-` is the view panel's CSS prefix** (`.vp-label`, `.vp-btn`, `.vp-row` in `render.ts`). The
+  viewport menu is `vpm-` because its first cut, named `vp-*`, inherited the panel's uppercase
+  label and its `space-between` rows: 44 findings on the open-menu pair, 14 after the rename,
+  none of them about the menu. Grep the CSS for a prefix before minting one.
+- **The mobile comp's header overflows itself by 6.6px** since the viewport button landed: 380px
+  of non-shrinking content in a 374px box, so its two right-hand icons sit past the padding and the
+  open menu (right-aligned to the button) with them. `TOOLBAR_HEADER_OVERFLOW` in the manifest
+  explains it on the two toolbar pairs; it is a design ask, not a layout to copy.
+- **The Fill button is a product decision the comps do not draw (2026-09-17).** Zoom pill and the
+  phone tool row, key `f`: the page as wide as the canvas allows with the fit's padding, top-aligned,
+  the wider side of a split setting the zoom (`fillView`). Its `extra-element` is accepted by text in
+  `COMPARE_IGNORE`, the two rows' new widths by measurement in `accepted.json` (142 → 172 desktop
+  pill, 216 → 245 phone row), and the phone row's closed gap is `TOOLBAR_FILL_ROW`. Re-measure those
+  three the day the comps gain the button.
+- **An unpainted click catcher is a `box` to the extractor and it PAIRS.** The phone comp covers
+  the canvas with one while the menu is open; without the same element the design's catcher paired
+  with the app's canvas and the canvas itself reported `missing-element` (critical). The app now
+  draws `#vpm-scrim` in the toolbar layout for the same reason the comp does.
+
 - **The served root is the fixture, the results root is `out/refdiff`** — two
   different directories on purpose. Serving `out/` would put every result
   dir in the Library as a card and change the impl with every run. The demo
@@ -42,6 +62,11 @@ node fixtures/make-demo-root.ts                           # the committed clock 
 - **Port 7378 may be taken** by another worktree's annotator on the devbox
   (`svc ports`). `svc up annotator` picks the next free port; pass that as
   `--app-url` or the compare captures the wrong app and every finding is noise.
+- The comparison-tool route is `#/<library item>?vp=<width>` since 2026-09-17: the item is a run
+  dir, or the entry its widths share, and the width is the query parameter, so the URL stays 1:1
+  with the Library and a width switch changes only `vp` (`resolvePairRoute`). A run dir named
+  outright still opens and is rewritten to the item form; `COMPARE_ROUTE` relies on that. The
+  switch carries the zoom and the pan over (`carriedView`); any other route change opens fitted.
 - The comparison-tool route is a hash route (`/#/<run-dir>`). It must name a
   dir that exists under the demo root (`onboarding-document-step`); a missing
   dir renders the index instead and compares "fine" against the wrong comp.

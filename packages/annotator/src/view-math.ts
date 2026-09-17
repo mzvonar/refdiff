@@ -415,6 +415,23 @@ export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6, inset:
   }
 }
 
+/**
+ * Fill the pane's WIDTH: the zoom that puts the world box's full width inside the pane with
+ * `pad` of air on both sides, top-aligned so the reader scrolls down the page. Split mode is
+ * why it takes the WORLD box rather than one side: the box is the union of both sides, so the
+ * wider one sets the zoom and neither is cropped while the panes move in lockstep. The cap
+ * is loose on purpose — fill means fill, a narrow component may well come out large.
+ */
+export function fillView(world: VBox, pane: Size, pad = 24, maxZoom = 4, inset: Insets = NO_INSETS): View {
+  const availW = Math.max(1, pane.w - inset.left - inset.right - 2 * pad)
+  const z = Math.min(maxZoom, availW / Math.max(1e-6, world.w))
+  return {
+    z,
+    tx: inset.left + pad + (availW - world.w * z) / 2 - world.x * z,
+    ty: inset.top + pad - world.y * z,
+  }
+}
+
 /** Zoom by `factor` keeping the world point under screen (px, py) fixed. */
 export function zoomAt(
   view: View,

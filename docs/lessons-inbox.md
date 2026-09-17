@@ -1840,3 +1840,38 @@ amended the dated file with a pointer.
 Worth considering: the generator could refuse to overwrite a file whose recorded
 commit differs from the current HEAD, which is precisely the case where the existing
 content is a different measurement rather than a stale copy of this one.
+## 2026-08-31 — research briefs: a summariser's numbers are not the paper's numbers (specdiff brainstorm)
+
+Compiling the "refdiff for specs" brief, one research stream's fetch tool
+returned precision/recall figures for a paper (R2Code, arXiv 2604.22432) that
+do not appear in the paper; the stream caught it only because it converted the
+PDF locally and read the table. A second stream discarded numbers for two
+other papers for the same reason. The fabricated figures were plausible
+("~0.65") and would have gone into a table beside verified ones.
+
+Rule: **a number in a research doc carries its provenance** — verified in the
+primary text, from the abstract only, or from a secondary summary — and a
+secondary-only number is marked as such or left out. `docs/research.md` was
+built without this marking; `docs/research-spec.md` (if the brief lands there)
+should have it from the start.
+
+Route: `.claude/skills/*` if a research skill ever exists; otherwise CLAUDE.md
+"Tests"-adjacent as a one-liner about evidence docs, or discard if judged
+one-off.
+
+## 2026-09-17 — explain rules with an absolute `region` do not survive a second breakpoint
+
+Measuring one screen at several widths (manifest `viewports`) showed that every
+`explain` rule keyed on `region: { x, y, w, h }` is tied to one layout: at
+another width those pixels hold different elements and the rule excuses them.
+`within: { role }` anchors to an element and carries across. Rule of thumb for
+the skill: a region rule belongs on the width that measured it, an element rule
+on the entry. Candidate home: SKILL.md "One screen at several widths".
+
+## 2026-09-17 — a CSS prefix is a namespace; grep before minting one
+
+The viewport menu's first cut used `vp-*` class names. `vp-` was already the view panel's
+prefix, so `.vp-label` gave the header button an uppercase grey label and `.vp-row` laid the
+menu rows out `space-between`: 44 findings on the open-menu pair, of which 30 were the
+collision. Nothing in the loop says "name clash" — it reads as drift. One grep
+(`grep -o "\.vp-[a-z]*" render.ts | sort -u`) before writing the CSS would have cost nothing.

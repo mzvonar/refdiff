@@ -14,6 +14,21 @@ export interface PairSummary {
   /** Directory under the out root — the route and the artifact path prefix. */
   dir: string
   pair: string
+  /** The manifest entry's title, when the report carries one. */
+  title?: string
+  /**
+   * Which entry and breakpoint this run dir measures, when the entry declared
+   * `viewports` — the fact that makes two dirs "one screen at two widths"
+   * without parsing their names. Absent on single-width pairs and on reports
+   * written before core recorded it.
+   */
+  breakpoint?: { entry: string; viewport: string; width: number; height: number }
+  /**
+   * Set by `collapseBreakpoints` on the one card that stands for an entry's widths: every
+   * width the entry was measured at, wide to narrow, each with its run dir. The Library shows
+   * one item per screen; the comparison tool's viewport menu is where the widths are switched.
+   */
+  widths?: { viewport: string; width: number; height: number; dir: string }[]
   pass: boolean
   critical: number
   major: number
@@ -193,6 +208,82 @@ export function staleCells(entries: readonly PairEntry[]): Set<string> {
     if (n !== undefined && e.run < n) out.add(e.dir)
   }
   return out
+}
+
+/**
+ * One Library item per SCREEN: the run dirs that share a `breakpoint.entry` collapse into the
+ * widest one, which carries `widths` for the rest. Measured 2026-09-17: four widths of one
+ * workbench read as four unrelated cards, and the viewport menu on the opened pair already
+ * switches between them, so the Library listing them all was clutter, not information. Order
+ * is the first sibling's place in the list; a broken dir stays its own item (it has no
+ * `breakpoint` to collapse under).
+ */
+export function collapseBreakpoints(entries: readonly PairEntry[]): PairEntry[] {
+  const widest = new Map<string, PairSummary>()
+  for (const e of entries) {
+    if (isBroken(e) || e.breakpoint === undefined) continue
+    const cur = widest.get(e.breakpoint.entry)
+    if (cur === undefined || e.breakpoint.width > cur.breakpoint!.width) widest.set(e.breakpoint.entry, e)
+  }
+  const out: PairEntry[] = []
+  const placed = new Set<string>()
+  for (const e of entries) {
+    if (isBroken(e) || e.breakpoint === undefined) { out.push(e); continue }
+    const key = e.breakpoint.entry
+    if (placed.has(key)) continue
+    placed.add(key)
+    const lead = widest.get(key)!
+    const widths = entries
+      .filter((s): s is PairSummary => !isBroken(s) && s.breakpoint !== undefined && s.breakpoint.entry === key)
+      .map((s) => ({ viewport: s.breakpoint!.viewport, width: s.breakpoint!.width, height: s.breakpoint!.height, dir: s.dir }))
+      .sort((a, b) => b.width - a.width)
+    out.push(widths.length > 1 ? { ...lead, widths } : lead)
+  }
+  return out
+}
+
+/**
+ * The pair route, `#/<id>?vp=<viewport>`: the id is the LIBRARY item — a run dir, or the entry
+ * an item's widths share — and the width is a query parameter, so the URL stays 1:1 with the
+ * Library and switching widths changes only `vp`. Resolves to the run dir to open and the
+ * canonical hash for it (a link to a width's dir by name still opens, and is rewritten to the
+ * entry form). `null` when nothing in the list answers to the id.
+ */
+export function resolvePairRoute(
+  entries: readonly PairEntry[],
+  id: string,
+  vp: string | null,
+): { dir: string; hash: string } | null {
+  const summaries = entries.filter((e): e is PairSummary => !isBroken(e))
+  const byDir = entries.find((e) => e.dir === id)
+  const entryOf = (e: PairEntry) => (!isBroken(e) && e.breakpoint ? e.breakpoint.entry : null)
+  const entry = byDir ? entryOf(byDir) : summaries.some((e) => e.breakpoint?.entry === id) ? id : null
+  if (entry === null) return byDir ? { dir: byDir.dir, hash: "#/" + encodeURIComponent(byDir.dir) } : null
+  const widths = summaries.filter((e) => e.breakpoint?.entry === entry).sort((a, b) => b.breakpoint!.width - a.breakpoint!.width)
+  const wanted = vp ?? (byDir && !isBroken(byDir) && byDir.breakpoint ? byDir.breakpoint.viewport : null)
+  const pick = widths.find((e) => e.breakpoint!.viewport === wanted) ?? widths[0]
+  if (!pick) return null
+  return { dir: pick.dir, hash: "#/" + encodeURIComponent(entry) + "?vp=" + encodeURIComponent(pick.breakpoint!.viewport) }
+}
+
+/** `#/<id>?vp=<viewport>` → its two parts; `null` for the index. */
+export function parsePairRoute(hash: string): { id: string; vp: string | null } | null {
+  const raw = hash.replace(/^#\/?/, "")
+  if (!raw) return null
+  const q = raw.indexOf("?")
+  const id = decodeURIComponent(q < 0 ? raw : raw.slice(0, q))
+  const vp = q < 0 ? null : new URLSearchParams(raw.slice(q + 1)).get("vp")
+  return { id, vp }
+}
+
+/** The Library link of an item: the entry for a width's card, the dir for everything else. */
+export function pairHref(p: PairEntry): string {
+  return "#/" + encodeURIComponent(!isBroken(p) && p.breakpoint ? p.breakpoint.entry : p.dir)
+}
+
+/** "Desktop 1440×900 · Laptop 1280×800" — the card's tooltip when it stands for several widths. */
+export function widthsLabel(widths: readonly { viewport: string; width: number; height: number }[]): string {
+  return widths.map((w) => w.viewport.charAt(0).toUpperCase() + w.viewport.slice(1) + " " + w.width + "×" + w.height).join(" · ")
 }
 
 /** The comp's `match`: source, then text, then state — a broken run only under "Any state". */
@@ -727,7 +818,9 @@ export function pairCard(pair: PairEntry, href: string, layout: LibraryLayout = 
   if (isBroken(pair)) return brokenCard(pair, layout)
   const verdict =
     '<span class="verdict ' + (pair.pass ? "pass" : "fail") + '">' + (pair.pass ? "Pass" : "Fail") + "</span>"
-  const open = '<a class="card" data-pair="' + escapeHtml(pair.dir) + '" href="' + escapeHtml(href) + '">'
+  const open =
+    '<a class="card" data-pair="' + escapeHtml(pair.dir) + '" href="' + escapeHtml(href) + '"' +
+    (pair.widths ? ' title="' + escapeHtml(widthsLabel(pair.widths)) + '"' : "") + ">"
   const name = '<span class="name">' + escapeHtml(pair.pair) + "</span>"
   if (layout === "mobile") {
     return (

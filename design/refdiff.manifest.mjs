@@ -292,6 +292,11 @@ COMPARE_IGNORE.textPatterns.push(
   "^\\d+ suppressed by preset rules$",
 )
 COMPARE_IGNORE.accepted.push(
+  {
+    type: "extra-element",
+    text: "fit_width",
+    reason: "the Fill button (zoom pill and the phone tool row, 2026-09-17): fills the canvas width with padding, the wider side of a split setting the zoom — a product decision the comps do not draw yet",
+  },
   // gap 33, the app's side of the same off-by-one: the comp's ×15 / ×6 are excused above, so the
   // app's ×14 / ×5 (the true count of distinct places) would otherwise read as extra elements.
   {
@@ -361,10 +366,31 @@ const PHONE_SHEET_EXPLAIN = {
     "the phone's rail, opened by this pair's steps: the comp's demo row order shifts the sheet's rows against the app's exactly as it does the desktop rail — design ask 1",
 }
 
+// Measured 2026-09-17 with the viewport button in the mobile comp's header: back 32 + brand 16 +
+// segment 226 + viewport 32 + theme 32 + six gaps of 7 = 380 in a 374px content box, every item
+// flex-shrink 0, so the comp's header OVERFLOWS its own padding by 6.6px and its two right-hand
+// icons sit 6.6px further right than an 8px padding allows (theme icon x 363.1, right edge 388.6
+// in a 390 frame). The app keeps its padding and its icons land 6.6px left of the comp's. A
+// design ask (narrow the segment or drop a gap), not a layout to copy.
+const TOOLBAR_HEADER_OVERFLOW = {
+  types: ["position", "spacing", "pixel-region"],
+  region: { x: 0, y: 0, w: 390, h: 44 },
+  cause: "mobile comp header overflows by 6.6px",
+  reason: "the comp's toolbar header content is 380px wide in a 374px box with nothing allowed to shrink; its viewport and theme icons overflow the right padding by 6.6px (measured: desktop_windows and light_mode offset -6.6, 0 on the app side)",
+}
+// The Fill button (2026-09-17) widens the phone tool row by one 28px tool, so the row's gap to the
+// pane-swap button beside it closes: 3.1px against the comp's. The row's own size and the button
+// are accepted by measurement (accepted.json); a gap cannot be, so it is explained here.
+const TOOLBAR_FILL_ROW = {
+  types: ["spacing"],
+  region: { x: 0, y: 780, w: 390, h: 64 },
+  cause: "Fill button widens the tool row",
+  reason: "the tool row carries one more 28px button than the comp's, so its gap to the pane-swap button beside it is 3.1px (comp: wider); a product decision the comps do not draw yet",
+}
 const TOOLBAR_IGNORE = {
   textPatterns: COMPARE_IGNORE.textPatterns,
   contentsOf: COMPARE_IGNORE.contentsOf,
-  explain: COMPARE_IGNORE.explain,
+  explain: [...COMPARE_IGNORE.explain, TOOLBAR_HEADER_OVERFLOW, TOOLBAR_FILL_ROW],
   accepted: COMPARE_IGNORE.accepted,
 }
 
@@ -553,6 +579,35 @@ export const manifest = [
     design: { file: "RefDiff Mobile.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark" },
     app: { source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes" },
     ignore: TOOLBAR_IGNORE,
+  },
+  // The viewport menu OPEN (2026-09-17): the comps close it by default, so the two pairs above
+  // measure the header button alone and these two the list — one row per width of the opened
+  // pair (Desktop / Tablet / Mobile from the demo root's three `breakpoint` dirs), the count
+  // pill, the check on the active one and the tablet's stale warning. Steps on BOTH sides, as
+  // the ghost pairs do: the comp's button is reached by its label (desktop) or its icon (mobile).
+  {
+    id: "refdiff-compare-desktop-viewports",
+    title: "RefDiff \u00b7 Comparison tool (desktop) \u2014 viewport menu open",
+    design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool", steps: [{ clickText: "Desktop" }, { wait: 300 }] },
+    app: { source: "live", route: COMPARE_ROUTE, viewport: desktop, waitFor: "#panes", steps: [{ click: "#vpm-toggle" }, { wait: 300 }] },
+    ignore: COMPARE_IGNORE,
+  },
+  {
+    id: "refdiff-compare-mobile-toolbar-viewports",
+    title: "RefDiff \u00b7 Comparison tool (mobile, toolbar layout) \u2014 viewport menu open",
+    design: { file: "RefDiff Mobile.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark", steps: [{ clickText: "desktop_windows" }, { wait: 300 }] },
+    app: { source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes", steps: [{ click: "#vpm-toggle" }, { wait: 300 }] },
+    // The open menu hangs from the button's right edge, so the comp's 6.6px header overflow
+    // (TOOLBAR_HEADER_OVERFLOW) moves the whole menu too: the same cause, one region taller —
+    // positions and gaps only, so a row's size, colour and text still compare.
+    ignore: {
+      ...TOOLBAR_IGNORE,
+      explain: [
+        ...TOOLBAR_IGNORE.explain,
+        { types: ["position", "spacing"], region: { x: 0, y: 44, w: 390, h: 300 }, cause: "mobile comp header overflows by 6.6px",
+          reason: "the menu is right-aligned to the viewport button, so it sits 6.6px left of the comp's with it (measured: the menu surface to the strip's close 22px against 15.4)" },
+      ],
+    },
   },
   {
     // The GHOST language (2026-09-02), and the first pair that measures a state

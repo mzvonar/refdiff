@@ -43,6 +43,8 @@ export interface RunRow {
   suppressed: number
   pass: boolean
   confidence: number
+  /** The impl capture's CSS px — the breakpoint this row measured. One screen at three widths is three rows. */
+  size: { width: number; height: number }
   /**
    * How many of `findings` rest on a pairing the alignment cannot vouch for
    * (`Finding.unverified`). Counted apart from the total because they are not
@@ -164,6 +166,7 @@ export function runRow(dir: string, r: ComparisonReport): RunRow {
     suppressed: r.suppressed.length,
     pass: r.verdict.pass,
     confidence: r.alignment.confidence,
+    size: { width: r.impl.width, height: r.impl.height },
     unverified: r.findings.filter((f) => f.unverified === true).length,
     via: {
       text: r.findings.filter((f) => f.via === "text").length,
@@ -563,20 +566,22 @@ export function renderSummary(s: SetSummary, options: { title?: string } = {}): 
   )
 
   const dirWidth = Math.max(4, ...s.runs.map((r) => r.dir.length))
+  const sizes = s.runs.map((r) => `${r.size.width}×${r.size.height}`)
+  const sizeWidth = Math.max(4, ...sizes.map((z) => z.length))
   const aligns = s.runs.map((r) => formatAlignment(r.alignment))
   const alignWidth = Math.max(5, ...aligns.map((a) => a.length))
   lines.push(
-    `| ${pad("pair", dirWidth)} | verdict | findings (c/M/m) | inst | supp | unver | conf | ${pad("align", alignWidth)} | delta |`,
+    `| ${pad("pair", dirWidth)} | ${pad("size", sizeWidth)} | verdict | findings (c/M/m) | inst | supp | unver | conf | ${pad("align", alignWidth)} | delta |`,
   )
   lines.push(
-    `|${"-".repeat(dirWidth + 2)}|---------|------------------|------|------|-------|------|${"-".repeat(alignWidth + 2)}|-------|`,
+    `|${"-".repeat(dirWidth + 2)}|${"-".repeat(sizeWidth + 2)}|---------|------------------|------|------|-------|------|${"-".repeat(alignWidth + 2)}|-------|`,
   )
   s.runs.forEach((r, i) => {
     const delta = r.delta
       ? `+${r.delta.introduced}/−${r.delta.resolved}${r.delta.regressions > 0 ? ` R${r.delta.regressions}` : ""}`
       : "-"
     lines.push(
-      `| ${pad(r.dir, dirWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${lpad(String(r.unverified ?? 0), 5)} | ${r.confidence.toFixed(2)} | ${pad(aligns[i]!, alignWidth)} | ${pad(delta, 5)} |`,
+      `| ${pad(r.dir, dirWidth)} | ${pad(sizes[i]!, sizeWidth)} | ${pad(r.pass ? "PASS" : "FAIL", 7)} | ${lpad(`${r.findings} (${r.critical}/${r.major}/${r.minor})`, 16)} | ${lpad(String(r.instances), 4)} | ${lpad(String(r.suppressed), 4)} | ${lpad(String(r.unverified ?? 0), 5)} | ${r.confidence.toFixed(2)} | ${pad(aligns[i]!, alignWidth)} | ${pad(delta, 5)} |`,
     )
   })
   lines.push("")

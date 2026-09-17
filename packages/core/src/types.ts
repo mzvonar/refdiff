@@ -674,6 +674,15 @@ export interface Alignment {
 /** Full result of one pair comparison — serialized as findings.json. */
 export interface ComparisonReport {
   pair: string
+  /** The manifest entry's title, when it had one — what a reader calls this pair. */
+  title?: string
+  /**
+   * Set when the manifest entry declared `viewports`: which entry this run dir
+   * measures and at which of its breakpoints. It is what lets a reader put one
+   * screen's widths side by side without parsing the pair id, and it is absent
+   * from every single-width pair and every report written before it existed.
+   */
+  breakpoint?: { entry: string; viewport: string; width: number; height: number }
   createdAt: string
   /**
    * 1-based ordinal of this run of this pair. Derived, never stored separately:

@@ -29,6 +29,34 @@ input{outline:none}
         <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
       </div>
       <div style="flex:1;min-width:4px"></div>
+      <div style="position:relative;flex-shrink:0">
+        <div style="{{vpBtnStyle}}" onClick="{{vpToggle}}" title="{{vpTip}}">
+          <span class="msi" style="font-size:19px">{{vpIcon}}</span>
+          <sc-if value="{{vpStaleShow}}" hint-placeholder-val="{{false}}"><div style="position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:999px;background:#f5a623;border:1.5px solid var(--bg1)"></div></sc-if>
+        </div>
+        <sc-if value="{{vpOpen}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute;top:calc(100% + 6px);right:0;width:252px;background:var(--bg1);border:1px solid var(--line);border-radius:11px;padding:4px;box-shadow:0 10px 30px rgba(0,0,0,0.35);z-index:40">
+            <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--txt2)">Viewport</div>
+            <sc-for list="{{vpOpts}}" as="v" hint-placeholder-count="3">
+              <div style="{{v.style}}" onClick="{{v.onClick}}">
+                <span class="msi" style="{{v.iconStyle}}">{{v.icon}}</span>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div style="display:flex;align-items:center;gap:7px">
+                    <span style="font-size:12px;font-weight:600">{{v.name}}</span>
+                    <span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{v.dim}}</span>
+                  </div>
+                  <sc-if value="{{v.staleShow}}" hint-placeholder-val="{{false}}">
+                    <span style="display:flex;align-items:flex-start;gap:5px;font-size:11px;line-height:1.35;color:#f5a623"><span class="msi" style="font-size:13px;margin-top:1px">warning</span>{{v.staleText}}</span>
+                  </sc-if>
+                </div>
+                <span style="{{v.countStyle}}">{{v.count}}</span>
+                <sc-if value="{{v.checkShow}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:16px;color:var(--acc)">check</span></sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:7px 10px 8px;font-size:10.5px;color:var(--txt2);border-top:1px solid var(--line);margin-top:2px">Counts show findings at each width</div>
+          </div>
+        </sc-if>
+      </div>
       <div style="{{setBtnStyle}}" onClick="{{themeToggle}}" title="{{themeTip}}"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
     </div>
     <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
@@ -332,6 +360,11 @@ const ALIGN = {
   'top-right': { label: 'Top right', icon: 'north_east', desc: 'Locks views by the top-right corner \u2014 useful for right-aligned or RTL layouts.' }
 };
 const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
+const VPS = [
+  { id: 'desktop', label: 'Desktop', icon: 'desktop_windows', w: 1440, h: 900 },
+  { id: 'tablet', label: 'Tablet', icon: 'tablet_mac', w: 768, h: 1024, stale: 45 },
+  { id: 'mobile', label: 'Mobile', icon: 'smartphone', w: 390, h: 844 }
+];
 
 class Component extends DCLogic {
   constructor(p) {
@@ -339,7 +372,7 @@ class Component extends DCLogic {
     this.refA = React.createRef(); this.refB = React.createRef();
     this._drag = null; this._wh = null; this._bt = null;
     this.state = {
-      theme: null, layout: null, pane: 'design', variant: 'none', blinkOn: true,
+      theme: null, layout: null, pane: 'design', variant: 'none', blinkOn: true, vp: 'desktop', vpOpen: false,
       layer: 'all', railTab: 'findings', railOpen: false, panelOpen: false, settingsOpen: false,
       strobe: false, ovlOp: { onion: 0.55, diff: 1 },
       tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
@@ -352,17 +385,19 @@ class Component extends DCLogic {
         { id: 'f2', num: 2, sev: 'high', title: 'Dropzone inner padding reduced', prop: 'padding', expected: '32px', actual: '20px', rect: { x: 36, y: 368, w: 608, h: 190 }, status: 'open', comment: '' },
         { id: 'f3', num: 3, sev: 'medium', title: 'Heading font-size drift', prop: 'font-size', expected: '28px', actual: '24px', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
         { id: 'g1', num: 7, sev: 'medium', title: 'Label color drift', cause: 'Muted label token resolves to the wrong grey', prop: 'color', expected: '#6B7280', actual: '#94A3B8', rect: { x: 56, y: 214, w: 120, h: 16 }, inst: REP(14, i => ({ x: 56 + (i % 3) * 196, y: 214 + ((i / 3) | 0) * 36, w: 120, h: 16 })), status: 'open', comment: '' },
-        { id: 'g2', num: 8, sev: 'low', reg: true, regRun: 45, title: 'Row baseline shifted 23px', cause: 'Section padding change pushes the whole row down', prop: 'translateY', expected: '0px', actual: '23px', rect: { x: 36, y: 380, w: 608, h: 22 }, inst: REP(5, i => ({ x: 36, y: 414 + i * 34, w: 608, h: 22 })), status: 'open', comment: '' },
+        { id: 'g2', num: 8, sev: 'low', vps: ['desktop', 'tablet'], reg: true, regRun: 45, title: 'Row baseline shifted 23px', cause: 'Section padding change pushes the whole row down', prop: 'translateY', expected: '0px', actual: '23px', rect: { x: 36, y: 380, w: 608, h: 22 }, inst: REP(5, i => ({ x: 36, y: 414 + i * 34, w: 608, h: 22 })), status: 'open', comment: '' },
         { id: 's1', num: 9, sev: 'low', sup: true, rule: 'Preset \u00b7 font smoothing', title: 'Text renders 0.4px wider', prop: 'font-smooth', expected: 'antialiased', actual: 'auto', rect: { x: 36, y: 130, w: 430, h: 40 }, status: 'open', comment: '' },
         { id: 's2', num: 10, sev: 'low', sup: true, rule: 'Preset \u00b7 scrollbar gutter', title: 'Content 15px narrower', prop: 'width', expected: '680px', actual: '665px', rect: { x: 0, y: 0, w: 680, h: 740 }, status: 'open', comment: '' },
         { id: 's3', num: 11, sev: 'medium', sup: true, rule: 'Preset \u00b7 dynamic copy', title: 'Placeholder copy differs', prop: 'content', expected: 'Front side of ID', actual: 'Front of document', rect: { x: 56, y: 470, w: 300, h: 22 }, status: 'open', comment: '' },
         { id: 'f4', num: 4, sev: 'medium', title: 'Card corner radius mismatch', prop: 'border-radius', expected: '12px', actual: '6px', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' },
-        { id: 'f5', num: 5, sev: 'low', title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
+        { id: 'f5', num: 5, sev: 'low', vps: ['desktop', 'tablet'], title: 'Step indicator gap tighter', prop: 'gap', expected: '24px', actual: '16px', rect: { x: 36, y: 84, w: 430, h: 26 }, status: 'open', comment: '' },
         { id: 'f6', num: 6, sev: 'low', title: 'Footer text color drift', prop: 'color', expected: '#6B7280', actual: '#9CA3AF', rect: { x: 36, y: 664, w: 608, h: 24 }, status: 'open', comment: '' },
         { id: 'o1', num: 12, sev: 'high', oneSide: 'design', title: 'Retake photo button missing', cause: 'Element exists in the design ref but is absent from the impl DOM', prop: 'element', expected: 'present', actual: 'missing', rect: { x: 332, y: 586, w: 200, h: 48 }, status: 'open', comment: '' },
-        { id: 'o2', num: 13, sev: 'medium', oneSide: 'design', title: 'Field hint tooltip missing', prop: 'element', expected: 'present', actual: 'missing', rect: { x: 476, y: 136, w: 26, h: 26 }, status: 'open', comment: '' },
+        { id: 'o2', num: 13, sev: 'medium', vps: ['desktop'], oneSide: 'design', title: 'Field hint tooltip missing', prop: 'element', expected: 'present', actual: 'missing', rect: { x: 476, y: 136, w: 26, h: 26 }, status: 'open', comment: '' },
         { id: 'o3', num: 14, sev: 'medium', oneSide: 'impl', title: 'Debug ribbon not in design', cause: 'Impl renders an element with no counterpart in the design ref', prop: 'element', expected: '\u2014', actual: 'present', rect: { x: 540, y: 16, w: 104, h: 30 }, status: 'open', comment: '' },
-        { id: 'o4', num: 15, sev: 'low', oneSide: 'impl', title: 'Extra divider above footer', prop: 'element', expected: '\u2014', actual: 'present', rect: { x: 36, y: 648, w: 608, h: 3 }, status: 'open', comment: '' }],
+        { id: 'o4', num: 15, sev: 'low', oneSide: 'impl', title: 'Extra divider above footer', prop: 'element', expected: '\u2014', actual: 'present', rect: { x: 36, y: 648, w: 608, h: 3 }, status: 'open', comment: '' },
+        { id: 'v1', num: 16, sev: 'high', vps: ['mobile'], title: 'Continue button clipped at 390px', cause: 'Fixed 280px width overflows the mobile content column', prop: 'width', expected: '100%', actual: '280px', rect: { x: 36, y: 586, w: 280, h: 48 }, status: 'open', comment: '' },
+        { id: 'v2', num: 17, sev: 'medium', vps: ['tablet'], title: 'Card grid collapses to one column', cause: 'Breakpoint fires at 800px instead of 768px', prop: 'grid-template-columns', expected: '2 columns', actual: '1 column', rect: { x: 36, y: 204, w: 608, h: 140 }, status: 'open', comment: '' }],
       items: [
         { id: 'c1', num: 1, status: 'implemented', text: 'Logo should use the darker navy from the brand kit', reply: 'Fetched brand token \u2014 logo color maps to #1E2A5A. Queued for the next impl build.', note: '', rect: { x: 36, y: 14, w: 150, h: 36 } },
         { id: 'c2', num: 2, status: 'open', saveErr: 'Out root is read-only \u00b7 PUT /api/comments 403', text: 'Check spacing between document cards at tablet width', reply: '', note: '', rect: { x: 36, y: 204, w: 608, h: 140 } },
@@ -477,7 +512,9 @@ class Component extends DCLogic {
     const isMin = true, isDef = false;
     const V = S.variant;
     const inFocus = f => !S.focusRect || this.inter(f.rect, S.focusRect) || (f.inst || []).some(r => this.inter(r, S.focusRect));
-    const base = S.findings.filter(f => S.sevOn[f.sev] && inFocus(f));
+    const inVp = f => !f.vps || f.vps.includes(S.vp);
+    const cur = VPS.find(v => v.id === S.vp);
+    const base = S.findings.filter(f => S.sevOn[f.sev] && inFocus(f) && inVp(f));
     const supList = base.filter(f => f.sup);
     const active = base.filter(f => !f.sup && (!S.regOnly || f.reg));
     const vis = S.showSup ? active.concat(supList) : active;
@@ -556,7 +593,7 @@ class Component extends DCLogic {
       : { position: 'absolute', left: 0, right: 0, bottom: 0, height: S.railOpen ? '52%' : 44, background: 'var(--bg1)', borderTop: '1px solid var(--line)', zIndex: 20, display: 'flex', flexDirection: 'column', transition: 'height 0.25s ease', borderRadius: '12px 12px 0 0', boxShadow: '0 -6px 24px rgba(0,0,0,0.25)', overflow: 'hidden' };
     const tabStyle = act => ({ flex: 1, textAlign: 'center', padding: '9px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', borderBottom: act ? '2px solid var(--acc)' : '2px solid transparent' });
     const sevChips = ['high', 'medium', 'low'].map(sv => {
-      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv && !f.sup).length;
+      const on = S.sevOn[sv], n = S.findings.filter(f => f.sev === sv && !f.sup && inVp(f)).length;
       return { label: SEVL[sv] + ' ' + n, onClick: () => this.setState(s => ({ sevOn: { ...s.sevOn, [sv]: !s.sevOn[sv] } })), style: { display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', border: '1px solid ' + (on ? SEV[sv] : 'var(--line)'), color: on ? SEV[sv] : 'var(--txt2)', background: 'transparent', opacity: on ? 1 : 0.6 }, dotStyle: { width: 7, height: 7, borderRadius: '50%', background: on ? SEV[sv] : 'var(--bg3)' } };
     });
     const selId = S.selected ? S.selected.id : null;
@@ -620,8 +657,27 @@ class Component extends DCLogic {
       themeIcon: light ? 'dark_mode' : 'light_mode',
       themeTip: light ? 'Switch to dark theme' : 'Switch to light theme',
       panelOpen: S.panelOpen, settingsOpen: S.settingsOpen,
-      scrimShow: S.settingsOpen || S.alignOpen,
-      scrimClose: () => this.setState({ panelOpen: false, settingsOpen: false, alignOpen: false }),
+      scrimShow: S.settingsOpen || S.alignOpen || S.vpOpen,
+      scrimClose: () => this.setState({ panelOpen: false, settingsOpen: false, alignOpen: false, vpOpen: false }),
+      vpOpen: S.vpOpen,
+      vpToggle: () => this.setState(s => ({ vpOpen: !s.vpOpen, alignOpen: false, settingsOpen: false, panelOpen: false })),
+      vpBtnStyle: { position: 'relative', width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: S.vpOpen ? '#fff' : 'var(--txt2)', background: S.vpOpen ? 'var(--acc)' : 'transparent', flexShrink: 0 },
+      vpIcon: cur.icon,
+      vpStaleShow: !!cur.stale,
+      vpTip: 'Compare viewport \u2014 ' + cur.label + ' ' + cur.w + '\u00d7' + cur.h + (cur.stale ? '. Impl capture from run ' + cur.stale + ' \u2014 outdated.' : ''),
+      vpOpts: VPS.map(v => {
+        const act = S.vp === v.id;
+        return {
+          name: v.label, dim: v.w + '\u00d7' + v.h, icon: v.icon,
+          count: String(S.findings.filter(f => !f.sup && (!f.vps || f.vps.includes(v.id))).length),
+          countStyle: { fontSize: 10.5, fontWeight: 700, fontFamily: "'IBM Plex Mono',monospace", padding: '1px 7px', borderRadius: 999, background: 'var(--bg3)', color: 'var(--txt2)', flexShrink: 0 },
+          staleShow: !!v.stale, staleText: 'Impl capture from run ' + v.stale + ' \u2014 outdated, re-capture to refresh',
+          iconStyle: { fontSize: 17, color: act ? 'var(--acc)' : 'var(--txt2)', flexShrink: 0, marginTop: 1 },
+          checkShow: act,
+          style: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: act ? 'var(--bg2)' : 'transparent' },
+          onClick: () => this.setState({ vp: v.id, vpOpen: false, selected: null, focusRect: null })
+        };
+      }),
       themeBtns, variantBtns, layerBtns, toolBtns,
       toolStripStyle: { position: 'absolute', left: 8, bottom: 56, display: 'flex', gap: 2, background: 'var(--bg1)', border: '1px solid var(--line)', borderRadius: 10, padding: 4, zIndex: 15, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
       fitBtnStyle: { width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--txt2)', flexShrink: 0 },
@@ -671,7 +727,7 @@ class Component extends DCLogic {
       alignTip: 'Align mode: ' + ALIGN[S.alignMode].label + ' \u2014 ' + ALIGN[S.alignMode].desc + (confWarn ? ' \u2014 anchor confidence ' + Math.round(conf * 100) + '%, positions unreliable.' : ''),
       alignChev: S.alignOpen ? 'expand_less' : 'expand_more',
       alignOpen: S.alignOpen,
-      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen, panelOpen: false, settingsOpen: false })),
+      alignMenuToggle: () => this.setState(s => ({ alignOpen: !s.alignOpen, panelOpen: false, settingsOpen: false, vpOpen: false })),
       lockRowStyle: { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', margin: '0 0 2px', borderBottom: '1px solid var(--line)' },
       lockRowIcon: S.lockstep ? 'link' : 'link_off',
       lockRowLabel: S.lockstep ? 'Lockstep on' : 'Lockstep off',

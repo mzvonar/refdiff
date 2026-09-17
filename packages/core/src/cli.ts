@@ -56,7 +56,7 @@ import { captureLiveUrl } from "./adapters/live-url.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { ensureStorybook } from "./adapters/storybook-server.js"
 import { captureStorybook } from "./adapters/storybook.js"
-import { parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
+import { pairMatches, parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
 import { driftWalk, formatDriftWalk, type DriftAxis } from "./package/drift.js"
 import { packageForModel } from "./package/package-for-model.js"
@@ -177,14 +177,20 @@ Common to one pair:
 
 Manifest mode (uctoinak manifest.mjs shape, optional \`ignore\` per pair;
 design { file, frame } or { kind: "figma", fileKey, nodeId, variants? }; app
-{ source: "storybook", storyId } or { source: "live", route, role? }).
+{ source: "storybook", storyId } or { source: "live", route, role? }). An
+entry measured at several breakpoints declares viewports: [{ id, width,
+height, ignore?, disabled? }] instead of app.viewport and expands into one
+pair per width, <id>-<viewport id>, the entry's ignore merged with each
+width's own (an absolute region holds at one width; within: { role } at all).
 A figma design with variants { selector, maps?, only?, omit? } names a
 COMPONENT_SET: the entry expands into one pair per variant COMPONENT, each
 against the story cell the selector template renders from the variant's
 properties ('[data-rowkey="fill:{variant|tone}:…"][data-col="{State}"]'):
   --manifest <file>       run every pair of the manifest
   --design-dir <dir>      directory the manifest's design.file names live in
-  --pair <id[,id…]>       run only these manifest ids (repeatable)
+  --pair <id[,id…]>       run only these manifest ids (repeatable); an entry
+                          with viewports runs every width under its id, one
+                          width under <id>-<viewport id>
 
 Live app (both modes):
   --app-url <origin>      origin for relative live routes (default $REFDIFF_APP_URL)
@@ -727,6 +733,11 @@ async function runPair(
   const report = await packageForModel(aligned, findings, {
     outDir: o.outDir,
     failThreshold: o.failThreshold,
+    // The entry's title and breakpoint ride into the report: a run dir is named
+    // by its pair id, and the id alone cannot say which other dirs are the same
+    // screen at another width.
+    ...(spec.title !== undefined ? { title: spec.title } : {}),
+    ...(spec.breakpoint !== undefined ? { breakpoint: spec.breakpoint } : {}),
     suppressed,
     policy,
     ...(diffMaskPath !== undefined ? { diffMaskPath } : {}),
@@ -1456,7 +1467,9 @@ async function compare(argv: string[]): Promise<void> {
     // cell-level selectors are kept for the post-expansion filter. Without it the only
     // way to re-measure one cell of a 34-cell set was to re-run all 34, Figma calls
     // included, which is the cost the fix loop pays most often.
-    specs = only ? all.filter((p) => only.some((sel) => entryOf(sel) === p.id)) : all
+    // An entry with `viewports` is several pairs already (`<id>-<viewport id>`), and
+    // its id names them all: `pairMatches` reads the pair's `breakpoint.entry`.
+    specs = only ? all.filter((p) => only.some((sel) => pairMatches(p, entryOf(sel)))) : all
     cellSelectors = only?.filter((sel) => sel.includes("--")) ?? []
     wholeEntries = new Set(only?.filter((sel) => !sel.includes("--")) ?? [])
     if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`)
@@ -1561,7 +1574,12 @@ async function compare(argv: string[]): Promise<void> {
       // An entry named without `--` stays WHOLE, so `--pair alert,button-ghost--<cell>`
       // means all of alert and one cell of button-ghost. A non-set entry never expands,
       // so its id has no `--` and it matches through wholeEntries like any other.
-      specs = expanded.filter((p) => wanted.has(p.id) || wholeEntries.has(entryOf(p.id)))
+      specs = expanded.filter(
+        (p) =>
+          wanted.has(p.id) ||
+          wholeEntries.has(entryOf(p.id)) ||
+          (p.breakpoint !== undefined && wholeEntries.has(p.breakpoint.entry)),
+      )
       if (specs.length === 0) {
         fail(
           `no pair matched ${[...wanted].join(", ")} after variant expansion — check the cell id against <out-root>/<entry>.set.json`,

@@ -1354,6 +1354,34 @@ fall through to the area rule, as do unlabelled artboards.
   to compare against, and taking the largest ordinal on screen for one would
   mark every cell of a young pair stale against a run it was never behind.
   Both ends of a span, and the staleness test, are computed WITHIN a group.
+- **The comparison tool's viewport menu — built 2026-09-17 against `RefDiff Comparison
+  Tool.dc.html` / `RefDiff Mobile.dc.html` (their `VPS`).** A header button names the width the
+  open run dir measured (`report.breakpoint`), and opens the list of the screen's widths: the run
+  dirs on `/api/pairs` that share `breakpoint.entry`, sorted wide to narrow, each with its finding
+  count, a check on the open one and a stale warning when its `run` is behind the newest sibling
+  (the Library's `staleCells` rule). Picking a width opens that run dir — each width IS its own
+  pair, with its own findings, captures and notes, so nothing is filtered client-side (the comp's
+  `vps` per finding is its demo shorthand for that). Hidden on a single-width pair and in an
+  emitted report.html. The phone layout renders the button as the icon alone and covers the
+  canvas with an unpainted click catcher while the menu is open, both because the comp does and
+  because the extractor pairs them (see the bindings' traps). Measured to convergence: the two
+  open-menu pairs went 44 → 14 and 46 → 6 unexplained, and both toolbar pairs PASS.
+- **One screen at several widths — `viewports`, built 2026-09-17.** A manifest
+  entry declares `viewports: [{ id, width, height, ignore?, disabled? }]` in
+  place of `app.viewport` and `parseManifest` expands it into one `PairSpec`
+  per width, `<id>-<viewport id>`, carrying `breakpoint: { entry, viewport, width, height }`
+  (written into `findings.json` with the entry's `title`, so a run dir can name its siblings);
+  `--pair <entry id>` selects them all (`selectPairs`), and `summary` shows the
+  impl size per row. Nothing downstream changed: a pair is a pair, the run dir
+  is the pair id, the annotator sees N pairs. The decisions: the size is
+  declared ONCE (`viewports` beside `app.viewport` is refused); the entry's
+  `ignore` is merged under each width's own with `mergePolicies` (lists
+  concatenate, `scope`/`dataSlots` override), because an absolute `region`
+  rule is tied to one layout while a `within: { role }` rule is not; and a
+  malformed width FAILS the manifest, the `gallery` call — a width dropped for
+  a typo is a breakpoint that silently goes unmeasured. Not done: a design-side
+  size per width (a fixed artboard per breakpoint would need `design` per
+  viewport); today the comp must be fluid.
 - **Manifest hierarchy and grid declarations — built 2026-09-04, chunk 4 of
   the gallery plan.** The manifest gains three optional declarations, none of
   which changes a measurement: `section: "Core components/Buttons"` per entry,

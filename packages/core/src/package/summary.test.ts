@@ -154,7 +154,7 @@ describe("summarizeReports", () => {
       "3 pairs: 1 PASS / 2 FAIL — 5 findings covering 7 instances, 0 suppressed; delta +1 / −2, 1 REGRESSION(S)",
     )
     expect(text).toMatch(
-      /\| alert--success\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \|\s+0 \| 0\.00 \| 1 \/ 0,0\s+\| \+1\/−2 R1 \|/,
+      /\| alert--success\s+\| 792×50\s+\| FAIL\s+\|\s+2 \(0\/2\/0\) \|\s+4 \|\s+0 \|\s+0 \| 0\.00 \| 1 \/ 0,0\s+\| \+1\/−2 R1 \|/,
     )
     expect(text).toContain("| major | size | text | 2/3 | 2 | w 500..692→200..302, h 19→15 |")
     expect(text).toContain(
@@ -316,7 +316,9 @@ describe("the align column — the transform beside the confidence", () => {
     expect(s.groups.map((g) => [g.type, g.pairs])).toEqual([["alignment", ["a", "b"]]])
     const text = renderSummary(s)
     expect(text).toContain("| align")
-    expect(text).toMatch(/\| a\s+\| PASS\s+\|.*\| 0\.90 \| 1\.002 \/ −0\.5,−2\.0 \| -\s+\|/)
-    expect(text).toMatch(/\| b\s+\| PASS\s+\|.*\| 0\.90 \| 1×1\.001 \/ 0,−0\.5\s+\| -\s+\|/)
+    // The size column sits between the pair and the verdict: one screen at three widths is three rows.
+    expect(s.runs[0]?.size).toEqual({ width: 792, height: 50 })
+    expect(text).toMatch(/\| a\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1\.002 \/ −0\.5,−2\.0 \| -\s+\|/)
+    expect(text).toMatch(/\| b\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1×1\.001 \/ 0,−0\.5\s+\| -\s+\|/)
   })
 })

@@ -17,6 +17,38 @@
         "reason": "The Toolbar comp draws no delta strip, so its 'close' glyph has no counterpart; the app renders the strip as in the default layout. Measured: #delta-strip is 66px (y=45..111), which is the whole of the +60.6px offset on the Show row and the canvas offsets below it — those positions stay VISIBLE as the comp's gap, because a position rule would lapse on the next capture. Same ruling as the Minimal comp (Mato, 2026-08-29) and the 'everything stays as minimal' brief for this layout, 2026-09-02.",
         "key": "extra-element|text|text:close",
         "decidedAt": "2026-09-02T17:39:28.947Z"
+      },
+      {
+        "type": "size",
+        "role": "surface",
+        "expected": {
+          "w": 216,
+          "h": 36
+        },
+        "actual": {
+          "w": 245,
+          "h": 36
+        },
+        "reason": "the phone tool row grew by the Fill button: 216 -> 245 measured on refdiff-compare-mobile-toolbar, 2026-09-17; the comps do not draw Fill yet",
+        "key": "size|surface|[[\"h\",36],[\"w\",216]]|[[\"h\",36],[\"w\",245]]",
+        "decidedAt": "2026-09-17T09:21:42.693Z"
+      }
+    ],
+    "refdiff-compare-desktop": [
+      {
+        "type": "size",
+        "role": "surface",
+        "expected": {
+          "w": 142,
+          "h": 36
+        },
+        "actual": {
+          "w": 172,
+          "h": 36
+        },
+        "reason": "the zoom pill grew by the Fill button (28px + 2px gap): 142 -> 172 measured on refdiff-compare-desktop, 2026-09-17; the comps do not draw Fill yet",
+        "key": "size|surface|[[\"h\",36],[\"w\",142]]|[[\"h\",36],[\"w\",172]]",
+        "decidedAt": "2026-09-17T09:21:42.417Z"
       }
     ]
   }

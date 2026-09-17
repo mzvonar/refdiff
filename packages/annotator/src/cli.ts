@@ -640,6 +640,8 @@ async function summarisePairs(runs: RunDir[]): Promise<(PairSummary | BrokenPair
     out.push({
       dir: run.name,
       pair: report.pair,
+      ...(report.title !== undefined ? { title: report.title } : {}),
+      ...(report.breakpoint !== undefined ? { breakpoint: report.breakpoint } : {}),
       pass: report.verdict.pass,
       critical: sev("critical"),
       major: sev("major"),

@@ -139,6 +139,10 @@ export const VIEWPORT_META =
  */
 export const REPORT_BODY = `<header id="hdr" class="topbar">
   <div class="tb-left" id="hdr-left"></div>
+  <div class="vpm-wrap" id="vpm-wrap" hidden>
+    <button type="button" class="vpm-btn" id="vpm-toggle" aria-expanded="false" aria-controls="vpm-menu" title="Compare viewport"></button>
+    <div class="vpm-menu" id="vpm-menu" hidden></div>
+  </div>
   <div class="seg" id="seg-layout" role="group" aria-label="layout">
     <button type="button" data-layout="split" title="both sides side by side">Split</button>
     <button type="button" data-layout="full" title="one side at a time">Full</button>
@@ -197,8 +201,10 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
         <button type="button" id="strobe-toggle" class="tool" aria-pressed="false" title="Strobe — pulse the differences in colour (s)"><span class="msi" aria-hidden="true">flare</span></button>
         <span class="tool-sep" aria-hidden="true"></span>
         <button type="button" id="fit-m" class="tool fit-m" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
+        <button type="button" id="fill-m" class="tool fill-m" title="Fill the width (f)"><span class="msi" aria-hidden="true">fit_width</span></button>
       </div>
       <div class="panes" id="panes">
+        <div class="vpm-scrim" id="vpm-scrim" hidden></div>
         <div class="view-panel" id="view-panel" hidden>
           <div class="vp-row"><span class="vp-label">Compare</span>
             <div class="seg seg-p" id="seg-variant-m" role="group" aria-label="comparison overlay">
@@ -244,6 +250,7 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
           <span id="zoom-pct" class="pct">100%</span>
           <button type="button" id="zoom-in" title="Zoom in (+)"><span class="msi" aria-hidden="true">add</span></button>
           <button type="button" id="fit" title="Fit to view (0)"><span class="msi" aria-hidden="true">fit_screen</span></button>
+          <button type="button" id="fill" title="Fill the width (f)"><span class="msi" aria-hidden="true">fit_width</span></button>
         </div>
         <div class="side-fab" id="side-switch" role="group" aria-label="which side" title="Switch design / implementation — either half flips it"><button type="button" data-side="design">Design</button><button type="button" data-side="impl">Impl</button></div>
         <button type="button" class="pane-swap" id="pane-swap" title="Switch design / implementation"><span class="msi" aria-hidden="true">swap_horiz</span><span id="pane-swap-label">Design</span></button>
@@ -367,7 +374,45 @@ body { display:flex; flex-direction:column; }
   padding:10px 10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.35); display:flex; flex-direction:column; gap:6px; }
 .settings-menu[hidden] { display:none; }
 .sm-label { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--txt2); }
+
 .sm-label.gap { margin-top:6px; }
+/* The viewport menu (the comps' VPS, 2026-09-17): a header button naming the width this run
+   measured, opening the list of the screen's widths with each one's finding count, a check on
+   the active one and a stale warning on a width whose capture is behind. Numbers are the desktop
+   comp's; the toolbar layout turns the button into the 32px icon its own comp draws. Hidden on a
+   single-width pair and in an emitted report.html: there are no siblings to list. Named vpm-
+   because vp- is the view panel's prefix (.vp-label, .vp-btn, .vp-row above) and the first cut
+   inherited its uppercase label and its row layout from those rules. line-height:normal is
+   the comps' (no line-height set anywhere in them; the app's global is 1.4). */
+.vpm-wrap { position:relative; flex-shrink:0; }
+.vpm-wrap[hidden] { display:none; }
+.vpm-btn { display:flex; align-items:center; gap:6px; height:30px; padding:0 7px 0 9px; border-radius:8px; border:1px solid var(--line); background:var(--bg2); color:var(--txt); cursor:pointer; flex-shrink:0; box-sizing:border-box; font:inherit; line-height:normal; }
+.vpm-btn.on { background:var(--bg3); }
+.vpm-btn .msi { font-size:17px; color:var(--txt2); }
+.vpm-btn .vpm-chev { font-size:15px; }
+.vpm-btn .vpm-label { font-size:12px; font-weight:600; }
+.vpm-btn .vpm-dim { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--txt2); }
+.vpm-btn .vpm-stale { width:7px; height:7px; border-radius:999px; background:#f5a623; flex-shrink:0; }
+.vpm-menu { position:absolute; top:calc(100% + 6px); left:0; width:calc(266px + 10px); background:var(--bg1); border:1px solid var(--line); border-radius:11px; padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:40; line-height:normal; }
+.vpm-menu[hidden] { display:none; }
+.vpm-menu h3 { margin:0; padding:8px 10px 4px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); }
+.vpm-row { display:flex; align-items:flex-start; gap:9px; width:100%; padding:8px 10px; border:0; border-radius:8px; background:transparent; color:var(--txt); cursor:pointer; text-align:left; font:inherit; line-height:normal; box-sizing:border-box; }
+.vpm-row.on { background:var(--bg2); }
+.vpm-row .vpm-ico { font-size:17px; color:var(--txt2); flex-shrink:0; margin-top:1px; }
+.vpm-row.on .vpm-ico { color:var(--acc); }
+.vpm-body { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.vpm-head { display:flex; align-items:center; gap:7px; }
+.vpm-name { font-size:12px; font-weight:600; }
+.vpm-rdim { font-size:10.5px; font-family:'IBM Plex Mono',monospace; color:var(--txt2); }
+.vpm-warn { display:flex; align-items:flex-start; gap:5px; font-size:11px; line-height:1.35; color:#f5a623; }
+.vpm-warn .msi { font-size:13px; margin-top:1px; }
+.vpm-count { font-size:10.5px; font-weight:700; font-family:'IBM Plex Mono',monospace; padding:1px 7px; border-radius:999px; background:var(--bg3); color:var(--txt2); flex-shrink:0; }
+.vpm-row .vpm-check { font-size:16px; color:var(--acc); }
+.vpm-foot { padding:7px 10px 8px; font-size:10.5px; color:var(--txt2); border-top:1px solid var(--line); margin-top:2px; }
+/* The phone comp covers the canvas with an unpainted click catcher while the menu is open, so a
+   tap anywhere closes it and no canvas gesture leaks through; the desktop comp has none. */
+.vpm-scrim { position:absolute; inset:0; z-index:12; }
+.vpm-scrim[hidden] { display:none; }
 .seg.seg-full { width:100%; }
 .seg.seg-full button, .seg.seg-p button { flex:1; text-align:center; padding:3px 9px; font-size:11px; line-height:15px; }
 .seg.seg-p button { flex:none; }
@@ -598,7 +643,7 @@ main { flex:1; display:flex; min-height:0; position:relative; }
 .tool:hover { background:var(--bg3); }
 .tool.on { color:#fff; background:var(--acc); }
 /* The minimal layout's strip carries the fit button after a divider; the other layouts keep the zoom pill. */
-.tool-sep, .tool.fit-m { display:none; }
+.tool-sep, .tool.fit-m, .tool.fill-m { display:none; }
 /* touch-action on the WHOLE canvas area, not just the panes: the floating pills sit over it as
    siblings, and a pinch finger landing on one must not hand the gesture to the browser. */
 .panes { flex:1; display:flex; min-height:0; min-width:0; position:relative; background:var(--canvas); touch-action:none; }
@@ -985,7 +1030,7 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
   body.layout-minimal .tool { width:28px; height:28px; }
   body.layout-minimal .tool .msi { font-size:16px; }
   body.layout-minimal .tool-sep { display:block; width:1px; height:18px; background:var(--line); margin:0 2px; flex-shrink:0; }
-  body.layout-minimal .tool.fit-m { display:flex; }
+  body.layout-minimal .tool.fit-m, body.layout-minimal .tool.fill-m { display:flex; }
   body.layout-minimal .pane-swap, body.layout-minimal .rail-btn { display:flex; }
   body.layout-minimal .op-pill { bottom:54px; }
   body.layout-minimal .align-wrap { top:8px; right:8px; }
@@ -1065,6 +1110,17 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
      tb-left 55 + button padding 9 (segment 219 wide, not 229) centres the segment at 97 --
      the comp's edge, putting Off at 109 and Diff at 285. Both numbers are measured. */
   body.layout-toolbar .tb-left { flex:0 0 auto; }
+  /* The mobile comp draws the viewport button AFTER the centred segment as a 32px icon with the
+     stale dot in its corner, and its menu hangs from the right edge. The button's DOM is the
+     icon alone there (renderViewport), so it extracts like the comp's single-child div. */
+  body.layout-toolbar .vpm-wrap { order:1; }
+  body.layout-toolbar .tb-right { order:2; }
+  body.layout-toolbar .vpm-btn { position:relative; width:32px; height:32px; padding:0; border:0; border-radius:7px; background:transparent; justify-content:center; color:var(--txt2); }
+  body.layout-toolbar .vpm-btn.on { background:var(--acc); }
+  body.layout-toolbar .vpm-btn .msi { font-size:19px; }
+  body.layout-toolbar .vpm-btn.on .msi { color:#fff; }
+  body.layout-toolbar .vpm-btn .vpm-stale { position:absolute; top:3px; right:3px; width:8px; height:8px; border:1.5px solid var(--bg1); }
+  body.layout-toolbar .vpm-menu { left:auto; right:0; width:calc(252px + 10px); }
   /* 9px HORIZONTAL is that measured padding. 3px vertical + line-height 15 is the comp's
      segment HEIGHT: its segment renders 219x27 where .seg button's 5px/16px made the app's
      219x32, and that 5px surplus was also the whole of the gap finding below it (impl 7px to
@@ -1177,7 +1233,7 @@ const state = {
   // the header). 'minimal' and 'default' are still reachable by ?layout= — the two comps that
   // describe them are still pairs — but nothing in the UI offers them, which is what makes this a
   // single layout rather than a third choice.
-  mlayout: 'toolbar', settingsOpen: false, viewOpen: false,
+  mlayout: 'toolbar', settingsOpen: false, viewOpen: false, vpOpen: false,
 };
 // The comps' breakpoints: under 760px the phone layout (one side at a time,
 // the tools float over the canvas), under 1120px the topbar shortens.
@@ -1234,8 +1290,75 @@ function setPhoneLayout(layout) {
   applyLayout(); applyAlignMode(); renderRailSummary(); renderFocusChip();
   if (state.userMoved) applyView(); else fit();
 }
+// ---- the viewport menu (the comps' VPS, 2026-09-17): one screen at several widths ----
+// The run dirs that share this report's breakpoint.entry are the widths; /api/pairs is the
+// only place that knows them, so the menu loads lazily and stays hidden on a single-width pair
+// and in an emitted report.html (no server, no siblings). Picking a width OPENS that run dir:
+// each width is its own pair with its own findings, captures and notes.
+let vps = null;
+// The view to open the next run dir with: set by the viewport menu so switching widths keeps
+// the zoom and the pan (the same canvas transform; world units are CSS px on both), read once
+// by openReport and cleared. Any other route change opens fitted, as before.
+let carriedView = null;
+const vpIcon = (w) => (w >= 1024 ? 'desktop_windows' : w >= 600 ? 'tablet_mac' : 'smartphone');
+const vpName = (id) => id.charAt(0).toUpperCase() + id.slice(1);
+const vpDim = (v) => v.w + '\u00d7' + v.h;
+const currentDir = () => page.base.replace(/\/$/, '');
+function setVpOpen(open) {
+  state.vpOpen = open;
+  if (open) { if (state.settingsOpen) setSettingsOpen(false); if (state.alignOpen) toggleAlignMenu(false); }
+  $('vpm-toggle').classList.toggle('on', open);
+  $('vpm-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  const chev = $('vpm-chev'); if (chev) chev.textContent = open ? 'expand_less' : 'expand_more';
+  $('vpm-menu').hidden = !open;
+  $('vpm-scrim').hidden = !(open && toolbarOn());
+}
+function renderViewport() {
+  const cur = vps && vps.find((v) => v.dir === currentDir());
+  $('vpm-wrap').hidden = !cur;
+  if (!cur) return;
+  // The desktop comp's button carries icon, label, size, stale dot and chevron; the mobile
+  // comp's is the icon with the dot in its corner. Built per layout so each is the comp's DOM.
+  const stale = cur.stale ? '<span class="vpm-stale" id="vpm-stale" aria-hidden="true"></span>' : '';
+  $('vpm-toggle').innerHTML = toolbarOn()
+    ? '<span class="msi" id="vpm-icon" aria-hidden="true">' + vpIcon(cur.w) + '</span>' + stale
+    : '<span class="msi" id="vpm-icon" aria-hidden="true">' + vpIcon(cur.w) + '</span><span class="vpm-label" id="vpm-label">' + esc(vpName(cur.id)) + '</span><span class="vpm-dim" id="vpm-dim">' + vpDim(cur) + '</span>' + stale + '<span class="msi vpm-chev" id="vpm-chev" aria-hidden="true">' + (state.vpOpen ? 'expand_less' : 'expand_more') + '</span>';
+  $('vpm-toggle').title = 'Compare viewport \u2014 ' + vpName(cur.id) + ' ' + vpDim(cur) + (cur.stale ? '. Impl capture from run ' + cur.run + ' \u2014 outdated.' : '');
+  // The pane labels name the width too ("DESIGN · 1440"); a label already carrying the
+  // image-missing note keeps it.
+  for (const [id, base] of [['label-design', 'DESIGN'], ['label-impl', 'IMPLEMENTATION']]) {
+    const el = $(id);
+    if (!/image missing/.test(el.textContent)) el.textContent = base + ' \u00b7 ' + cur.w;
+  }
+  $('vpm-menu').innerHTML = '<h3>Viewport</h3>' + vps.map((v) => {
+    const act = v.dir === cur.dir;
+    return '<button type="button" class="vpm-row' + (act ? ' on' : '') + '" data-dir="' + esc(v.dir) + '" data-vp="' + esc(v.id) + '" aria-pressed="' + (act ? 'true' : 'false') + '">' +
+      '<span class="msi vpm-ico" aria-hidden="true">' + vpIcon(v.w) + '</span>' +
+      '<span class="vpm-body"><span class="vpm-head"><span class="vpm-name">' + esc(vpName(v.id)) + '</span><span class="vpm-rdim">' + vpDim(v) + '</span></span>' +
+      (v.stale ? '<span class="vpm-warn"><span class="msi" aria-hidden="true">warning</span>Impl capture from run ' + v.run + ' \u2014 outdated, re-capture to refresh</span>' : '') +
+      '</span><span class="vpm-count">' + v.count + '</span>' +
+      (act ? '<span class="msi vpm-check" aria-hidden="true">check</span>' : '') + '</button>';
+  }).join('') + '<div class="vpm-foot">Counts show findings at each width</div>';
+}
+async function loadViewports() {
+  vps = null; setVpOpen(false); renderViewport();
+  const bp = report.breakpoint;
+  if (!bp || sheet) return;
+  let data;
+  try { const res = await fetch('api/pairs'); if (!res.ok) return; data = await res.json(); } catch (e) { return; }
+  const sib = (data.pairs || []).filter((p) => !p.broken && p.breakpoint && p.breakpoint.entry === bp.entry);
+  if (!sib.length) return;
+  // Stale the way the Library's variant sheet calls a cell stale: a run number behind the
+  // newest among the siblings (the Library's staleCells).
+  const newest = Math.max(...sib.map((p) => p.run || 0));
+  vps = sib
+    .map((p) => ({ dir: p.dir, id: p.breakpoint.viewport, w: p.breakpoint.width, h: p.breakpoint.height, count: p.findings, run: p.run, stale: p.run !== undefined && p.run < newest }))
+    .sort((a, b) => b.w - a.w);
+  renderViewport();
+}
 function setSettingsOpen(open) {
   state.settingsOpen = open;
+  if (open && state.vpOpen) setVpOpen(false);
   $('settings-toggle').classList.toggle('on', open);
   $('settings-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
   $('settings-menu').hidden = !open;
@@ -1560,6 +1683,7 @@ function applyLayout() {
   document.body.classList.toggle('single', single());
   document.body.classList.toggle('layout-minimal', minimalOn());
   document.body.classList.toggle('layout-toolbar', toolbarOn());
+  if (vps) renderViewport();
   // In the toolbar layout the view panel is not a popover but the layout's own floating
   // Show control, so it is always open (there is no tune button to reopen it).
   if (toolbarOn() && !state.viewOpen) setViewOpen(true);
@@ -1742,7 +1866,7 @@ function cycleAlign(step) {
   const i = ALIGN_MODES.indexOf(state.align);
   setAlign(ALIGN_MODES[(i + (step || 1) + ALIGN_MODES.length) % ALIGN_MODES.length]);
 }
-function toggleAlignMenu(open) { state.alignOpen = open === undefined ? !state.alignOpen : open; applyAlignMode(); }
+function toggleAlignMenu(open) { state.alignOpen = open === undefined ? !state.alignOpen : open; if (state.alignOpen && state.vpOpen) setVpOpen(false); applyAlignMode(); }
 // The lock (gap 22): off, the design pane pans and zooms on its own.
 function applyLock() {
   const b = $('align-lock');
@@ -1853,6 +1977,10 @@ function applyView() {
 }
 // The comps' fit margins: 24px (the Tool comp's r.width − 48), 16px in the minimal layout (the Minimal comp's r.width − 32).
 function fit() { setView(fitView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 1.6, paneInsetsNow())); state.userMoved = false; applyView(); }
+// Fill: the page as wide as the canvas allows, top-aligned, and the reader scrolls. The world box
+// is the union of both sides, so in a split the wider one sets the zoom and neither is cropped.
+// A deliberate view (userMoved), so a resize does not snap it back to the fit.
+function fill() { setView(fillView(worldBox(), paneSize(), minimalOn() ? 16 : 24, 4, paneInsetsNow())); state.userMoved = true; applyView(); }
 
 // ---- topbar + delta strip -------------------------------------------------
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -2849,6 +2977,14 @@ function wire() {
   // The phone's settings popover closes on a tap anywhere else; the minimal layout's view panel
   // does NOT — see the pointerdown handler below.
   $('settings-toggle').addEventListener('click', () => setSettingsOpen(!state.settingsOpen));
+  $('vpm-toggle').addEventListener('click', () => setVpOpen(!state.vpOpen));
+  $('vpm-menu').addEventListener('click', (e) => {
+    const r = e.target.closest('[data-dir]');
+    if (!r) return;
+    setVpOpen(false);
+    // The route names the Library item and the width: #/<entry>?vp=<viewport>.
+    if (r.dataset.dir !== currentDir()) { carriedView = { z: state.view.z, tx: state.view.tx, ty: state.view.ty }; location.hash = '#/' + encodeURIComponent(report.breakpoint.entry) + '?vp=' + encodeURIComponent(r.dataset.vp); }
+  });
   $('seg-mlayout').addEventListener('click', (e) => { const b = e.target.closest('[data-mlayout]'); if (b) setPhoneLayout(b.dataset.mlayout); });
   $('seg-theme').addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (b) { applyTheme(b.dataset.theme); saveTheme(); } });
   $('view-toggle').addEventListener('click', () => setViewOpen(!state.viewOpen));
@@ -2859,8 +2995,10 @@ function wire() {
     // it on the first pan or pinch meant re-opening it for every single change, so it stays until
     // the tune button (or Escape, or leaving the minimal layout) puts it away.
     if (state.settingsOpen && !inside('.settings-wrap')) setSettingsOpen(false);
+    if (state.vpOpen && !inside('.vpm-wrap')) setVpOpen(false);
   });
   $('fit-m').addEventListener('click', fit);
+  $('fill-m').addEventListener('click', fill);
   $('pane-swap').addEventListener('click', toggleSide);
   $('rail-btn').addEventListener('click', () => openRail(!document.body.classList.contains('rail-open')));
   $('move-toggle').addEventListener('click', setPan);
@@ -2957,6 +3095,7 @@ function wire() {
   $('zoom-in').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
   $('zoom-out').addEventListener('click', () => { const p = paneSize(); setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); });
   $('fit').addEventListener('click', fit);
+  $('fill').addEventListener('click', fill);
   $('diff-toggle').addEventListener('click', () => setDiff(!state.diff));
   $('dim-toggle').addEventListener('click', () => setDim(!state.dim));
   $('strobe-toggle').addEventListener('click', () => setStrobe(!state.strobe));
@@ -2974,6 +3113,7 @@ function wire() {
     if (e.key === '+' || e.key === '=') { setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
     else if (e.key === '-') { setView(zoomAt(state.view, 0.8, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
     else if (e.key === '0') fit();
+    else if (e.key === 'f') fill();
     else if (e.key === 'n' || e.key === 'r') setAnnMode(ann.mode ? null : 'draw');
     else if (e.key === 'l') setLock(!state.lock);
     else if (e.key === 'a' || e.key === 'A') cycleAlign(e.key === 'A' ? -1 : 1);
@@ -3452,7 +3592,9 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   ann.elements = { design: [], impl: [] }; ann.elementsLoaded = false;
   ann.unsaved = new Set(); ann.saveError = null; ann.noteDrafts = {};
   triage.unsaved = new Set(); triage.saveError = null; triage.noteDrafts = {}; focusSaveError = null;
-  state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; state.selected = null; state.q = ''; state.tab = 'findings';
+  // A width switch carries its view over (a deliberate one, so nothing below re-fits it).
+  if (carriedView) { setView(carriedView); state.userMoved = true; carriedView = null; } else { state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; }
+  state.selected = null; state.q = ''; state.tab = 'findings';
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; state.focusEdit = false; focusBand = null; focusDrag = null;
   state.diffIndex = -1; state.regOnly = false; state.deltaDismissed = false; state.alignOpen = false;
@@ -3464,6 +3606,7 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   document.title = report.pair + ' — refdiff';
   renderTopbar(); renderDeltaStrip(); renderRail();
   if (!wired) { wire(); wired = true; }
+  loadViewports();
   applyLayout(); applySide(); applyNarrow(); applyAspect(); setFocusing(false); renderFocusChip(); renderFocusBand();
   // UNCONDITIONAL, and out here rather than in the array so the two image slots keep
   // their positions (okD / okI below read 0 and 1). renderCellShots empties both cell
@@ -3497,7 +3640,8 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
     if (!sheet && !okD) $('label-design').textContent += ' — image missing';
     if (!sheet && !okI) $('label-impl').textContent += ' — image missing';
     setLab(state.lab);
-    renderRail(); renderMarks(); renderAnnMarks(); renderFocusChip(); fit();
+    renderRail(); renderMarks(); renderAnnMarks(); renderFocusChip();
+    if (state.userMoved) applyView(); else fit();
   });
 }
 `

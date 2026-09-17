@@ -35,6 +35,10 @@ import { containersOf, groupByRegion, groupUnmatched } from "./regions.js"
 import { verdictOf } from "./verdict.js"
 
 export interface PackageOptions {
+  /** The manifest entry's title, carried into the report verbatim. */
+  title?: string
+  /** The entry and breakpoint this pair measures (`PairSpec.breakpoint`), carried verbatim. */
+  breakpoint?: { entry: string; viewport: string; width: number; height: number }
   /** Run directory: findings.json, crops and element trees land here. */
   outDir: string
   /** Lowest severity that fails the deterministic gate. Default "major". */
@@ -86,6 +90,8 @@ export async function packageForModel(
   pair: AlignedPair,
   findings: readonly Finding[],
   {
+    title,
+    breakpoint,
     outDir,
     failThreshold = "major",
     cropPadding = 12,
@@ -188,6 +194,8 @@ export async function packageForModel(
 
   const report: ComparisonReport = {
     pair: pair.id,
+    ...(title !== undefined ? { title } : {}),
+    ...(breakpoint !== undefined ? { breakpoint } : {}),
     createdAt: new Date().toISOString(),
     // The previous report IS the counter — no side file to fall out of step with
     // the run dir it describes.

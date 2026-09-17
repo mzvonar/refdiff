@@ -49,6 +49,55 @@ one key.
   `DISABLED_COMPS` list rather than with `contains`, because an empty list is
   indistinguishable from a clean tree.
 
+## One screen at several widths — `viewports`
+
+A responsive page is one comp and several layouts: a wide shell above one
+breakpoint, a drawer below another. Each layout is its own measurement, and a
+fix that matches one width can break the other (`polish.md` §4, the two-pairs
+rule). Declare the widths ONCE on the entry, in place of `app.viewport`:
+
+```js
+{
+  id: "dashboard",
+  title: "Account · Dashboard",
+  design: { file: "Dashboard.dc.html", frame: "dashboard" },
+  app: { source: "live", route: "/dashboard", fullPage: true, waitFor: "main h1" },
+  viewports: [
+    { id: "desktop", width: 1440, height: 900, ignore: { explain: [ /* rules that hold at this width only */ ] } },
+    { id: "laptop", width: 1280, height: 800 },
+    { id: "narrow", width: 1024, height: 800, disabled: "the drawer comp is not fetched yet" },
+  ],
+  ignore: { /* rules that hold at every width */ },
+}
+```
+
+- It expands into one pair per width, **`<id>-<viewport id>`**
+  (`dashboard-desktop`, `dashboard-laptop`), titled `<title> — desktop 1440×900`.
+  Each pair carries `breakpoint: { entry, viewport, width, height }`, which
+  `findings.json` records too, and its run dir is the
+  pair id, so the three widths sit as three rows in `refdiff summary` (the
+  `size` column is the impl capture's CSS px).
+- **`--pair dashboard` runs every width; `--pair dashboard-laptop` runs one.**
+  Naming the entry is how "run both" stays one word.
+- **The entry's `ignore` is merged with each width's own**: lists concatenate,
+  `scope` and `dataSlots` on the width override. Put a rule where it holds:
+  an absolute `region` is tied to ONE layout and belongs on that width; a
+  `within: { role }` rule is anchored to an element and belongs on the entry.
+  A desktop region copied onto a mobile width excuses whatever happens to
+  land in those pixels there.
+- `disabled: "<why>"` on one width turns it off with a reason, exactly like the
+  entry's own — it lands in `skipped` as `<id>-<viewport id>`.
+- `viewports` beside `app.viewport` is refused: the size is declared once. A
+  malformed member FAILS the manifest (unknown key, missing id, a duplicate id,
+  an id containing `--`, a non-positive size) — the `gallery` call, because a
+  width dropped for a typo is a breakpoint that silently goes unmeasured.
+- `bleed`, `ground`, `timezoneId` and `locale` stay on the entry and reach every
+  width unchanged: they are properties of the component and its data, not of a
+  layout.
+- The comp must be fluid for this to mean anything: a fixed artboard renders
+  the same at every width and the pairs differ only on the impl side. A fluid
+  comp is captured AT the pair viewport (`setup.md`, the full-bleed trap).
+
 ## Configuring a pair — the `ignore` block
 
 Every pair in a manifest may carry an `ignore` block. It is the durable place

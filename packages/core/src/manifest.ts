@@ -9,6 +9,11 @@
  * App entries: `{ source: "storybook", storyId, overlay?, selector?, viewport? }` or
  * `{ source: "live", route | url, role?, viewport?, selector?, waitFor? }`.
  *
+ * An entry may declare `viewports: [{ id, width, height, ignore?, disabled? }]`
+ * instead of `app.viewport`: one screen measured at several breakpoints. It
+ * expands into one pair per viewport, `<id>-<viewport id>`, each with the
+ * entry's `ignore` merged with the viewport's own — see `readViewports`.
+ *
  * An entry may also declare where it BELONGS and how its cells lay out:
  * `section: "Core components/Buttons"` (a flat path, never a nested tree) and
  * `gallery: { columns?, rows?, order?, labels? }` for a variant set. The
@@ -37,6 +42,7 @@ import type {
 import { err, ok, type Result } from "./result.js"
 import { readGround, type Ground } from "./adapters/ground.js"
 import { readSteps } from "./adapters/steps.js"
+import { mergePolicies } from "./policy.js"
 
 /**
  * A figma design may carry `variants`: the node is a COMPONENT_SET and the
@@ -112,6 +118,28 @@ export interface PairSpec {
    */
   timezoneId?: string
   locale?: string
+  /**
+   * Set when the entry declared `viewports`: the entry this pair expanded from
+   * and which of its breakpoints it measures. The annotator and `summary` use
+   * it to put one screen's widths side by side; `--pair <entry id>` selects
+   * every pair that carries the entry.
+   */
+  breakpoint?: { entry: string; viewport: string; width: number; height: number }
+}
+
+/**
+ * One breakpoint of an entry that declares `viewports`. `ignore` is merged ON
+ * TOP of the entry's block (lists concatenate, `scope` and `dataSlots` override),
+ * which is where the rules that only hold at one width go — an absolute
+ * `region` is tied to one layout, an element-anchored `within: { role }` is
+ * not. `disabled` turns one width off with a reason, like the entry's own.
+ */
+export interface ViewportEntry {
+  id: string
+  width: number
+  height: number
+  ignore?: IgnorePolicy
+  disabled?: string
 }
 
 /**
@@ -187,6 +215,75 @@ function readViewport(v: unknown): Viewport | undefined {
   if (!isRecord(v)) return undefined
   const { width, height } = v
   return typeof width === "number" && typeof height === "number" ? { width, height } : undefined
+}
+
+const VIEWPORT_KEYS = ["id", "width", "height", "ignore", "disabled"] as const
+
+/**
+ * `viewports: [{ id, width, height, ignore?, disabled? }]` — absent → undefined.
+ *
+ * Malformed is an ERROR, never a drop, and an unknown key is an error too —
+ * the `gallery` call, for the same reason: a viewport dropped for a typo
+ * (`widht`) is a breakpoint that silently goes unmeasured, and a pair that does
+ * not run is the failure this tool reports nowhere. The id becomes part of the
+ * pair id and so of a run directory name, hence the character check; `--` is
+ * the variant-cell separator (`entryOf` in the CLI), so it is refused too.
+ */
+export function readViewports(v: unknown): Result<ViewportEntry[] | undefined, string> {
+  if (v === undefined) return ok(undefined)
+  if (!Array.isArray(v) || v.length === 0) {
+    return err("viewports must be a non-empty array of { id, width, height, ignore?, disabled? }")
+  }
+  const out: ViewportEntry[] = []
+  const seen = new Set<string>()
+  for (const [i, raw] of v.entries()) {
+    if (!isRecord(raw)) return err(`viewports[${i}] must be an object { id, width, height }`)
+    const unknown = Object.keys(raw).filter((k) => !(VIEWPORT_KEYS as readonly string[]).includes(k))
+    if (unknown.length > 0) {
+      return err(`viewports[${i}]: unknown key ${unknown.join(", ")} (${VIEWPORT_KEYS.join(", ")})`)
+    }
+    const id = raw["id"]
+    if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) || id.includes("--")) {
+      return err(`viewports[${i}]: id must be a short name like "desktop" or "mobile" (letters, digits, . _ -; never --)`)
+    }
+    if (seen.has(id)) return err(`viewports[${i}]: "${id}" is declared twice`)
+    seen.add(id)
+    const { width, height } = raw
+    if (typeof width !== "number" || typeof height !== "number" || width <= 0 || height <= 0) {
+      return err(`viewports[${i}] ("${id}"): width and height must be positive numbers`)
+    }
+    const disabled = readDisabled(raw["disabled"])
+    if (!disabled.ok) return err(`viewports[${i}] ("${id}"): ${disabled.error}`)
+    if (raw["ignore"] !== undefined && !isRecord(raw["ignore"])) {
+      return err(`viewports[${i}] ("${id}"): ignore must be an object`)
+    }
+    const ignore = readPolicy(raw["ignore"])
+    out.push({
+      id,
+      width,
+      height,
+      ...(ignore ? { ignore } : {}),
+      ...(disabled.value !== undefined ? { disabled: disabled.value } : {}),
+    })
+  }
+  return ok(out)
+}
+
+/**
+ * Does a `--pair` selector name this pair? An id matches the pair itself, or —
+ * for a pair an entry with `viewports` expanded into — the entry. So `--pair
+ * workbench` runs `workbench-desktop` and `workbench-mobile`, and `--pair
+ * workbench-mobile` runs that one width: a fix that matches one width can break
+ * the other, and naming the entry is how "run both" stays one word. The CLI
+ * strips a variant-cell suffix (`--…`) before calling this.
+ */
+export const pairMatches = (pair: PairSpec, entryId: string): boolean =>
+  pair.id === entryId || (pair.breakpoint !== undefined && pair.breakpoint.entry === entryId)
+
+/** The pairs `--pair` names, in manifest order; every pair when nothing is named. */
+export function selectPairs(pairs: readonly PairSpec[], only: readonly string[] | undefined): PairSpec[] {
+  if (only === undefined) return [...pairs]
+  return pairs.filter((p) => only.some((sel) => pairMatches(p, sel)))
 }
 
 function readPolicy(v: unknown): IgnorePolicy | undefined {
@@ -588,15 +685,6 @@ export function parseManifest(
       continue
     }
     const app = entry["app"]
-    const viewport = isRecord(app) ? readViewport(app["viewport"]) : undefined
-    const ignore = readPolicy(entry["ignore"])
-    const design = entry["design"]
-    const scope =
-      ignore?.scope ??
-      (isRecord(design) && typeof design["scope"] === "string" ? design["scope"] : undefined)
-
-    const d = readDesign(design, scope, viewport)
-    if (!d.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${d.error}` })
     if (!isRecord(app) || typeof app["source"] !== "string") {
       return err({ kind: "invalid-entry", index, detail: `${id}: app needs { source }` })
     }
@@ -607,8 +695,18 @@ export function parseManifest(
       })
       continue
     }
-    const i = readImpl(app, viewport)
-    if (!i.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${i.error}` })
+    const viewports = readViewports(entry["viewports"])
+    if (!viewports.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${viewports.error}` })
+    if (viewports.value !== undefined && app["viewport"] !== undefined) {
+      return err({
+        kind: "invalid-entry",
+        index,
+        detail: `${id}: declares both viewports and app.viewport — the size is declared once, in viewports`,
+      })
+    }
+    const ignore = readPolicy(entry["ignore"])
+    const title = typeof entry["title"] === "string" ? entry["title"] : undefined
+    const design = entry["design"]
 
     let section: string | undefined
     if (entry["section"] !== undefined) {
@@ -618,18 +716,6 @@ export function parseManifest(
     }
     const gallery = readGallery(entry["gallery"])
     if (!gallery.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${gallery.error}` })
-    // A gallery IS a variant sheet: every field of it names a variant property,
-    // so on an entry with no set there is nothing for it to describe and it can
-    // only ever be a mistake — a `gallery` moved to the wrong entry, or one left
-    // behind when `variants` was removed. Refused here, where the message can
-    // name the entry, rather than ignored into an artifact nobody reads.
-    if (gallery.value !== undefined && !(d.value.kind === "figma" && d.value.variants !== undefined)) {
-      return err({
-        kind: "invalid-entry",
-        index,
-        detail: `${id}: gallery needs design.variants — it lays out a component SET's cells`,
-      })
-    }
 
     const bleed = entry["bleed"]
     if (bleed !== undefined && !(typeof bleed === "number" && bleed >= 0 && bleed <= 200)) {
@@ -668,19 +754,82 @@ export function parseManifest(
       }
     }
 
-    pairs.push({
-      id,
-      ...(typeof entry["title"] === "string" ? { title: entry["title"] } : {}),
-      design: d.value,
-      impl: i.value,
-      ...(bleed !== undefined ? { bleed } : {}),
-      ...(ground !== undefined ? { ground } : {}),
-      ...(typeof timezoneId === "string" ? { timezoneId } : {}),
-      ...(typeof locale === "string" ? { locale } : {}),
-      ...(ignore ? { ignore } : {}),
-      ...(section !== undefined ? { section } : {}),
-      ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),
-    })
+    // One screen, one width: the entry as written. Several widths: the same
+    // entry read once per viewport, each pair named `<id>-<viewport id>`. The
+    // per-entry fields above (bleed, ground, zone, locale) are properties of the
+    // COMPONENT and its data, so every width carries them unchanged.
+    const widths: {
+      pairId: string
+      title?: string
+      viewport?: Viewport
+      ignore?: IgnorePolicy
+      breakpoint?: PairSpec["breakpoint"]
+    }[] =
+      viewports.value === undefined
+        ? [
+            (() => {
+              const viewport = readViewport(app["viewport"])
+              return {
+                pairId: id,
+                ...(title !== undefined ? { title } : {}),
+                ...(viewport ? { viewport } : {}),
+                ...(ignore ? { ignore } : {}),
+              }
+            })(),
+          ]
+        : viewports.value.flatMap((vp) => {
+            const pairId = `${id}-${vp.id}`
+            if (vp.disabled !== undefined) {
+              skipped.push({ id: pairId, reason: `disabled — ${vp.disabled}` })
+              return []
+            }
+            const merged = ignore || vp.ignore ? mergePolicies(ignore, vp.ignore) : undefined
+            return [
+              {
+                pairId,
+                title: `${title ?? id} — ${vp.id} ${vp.width}×${vp.height}`,
+                viewport: { width: vp.width, height: vp.height },
+                ...(merged ? { ignore: merged } : {}),
+                breakpoint: { entry: id, viewport: vp.id, width: vp.width, height: vp.height },
+              },
+            ]
+          })
+
+    for (const w of widths) {
+      const scope =
+        w.ignore?.scope ??
+        (isRecord(design) && typeof design["scope"] === "string" ? design["scope"] : undefined)
+      const d = readDesign(design, scope, w.viewport)
+      if (!d.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${d.error}` })
+      const i = readImpl(app, w.viewport)
+      if (!i.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${i.error}` })
+      // A gallery IS a variant sheet: every field of it names a variant property,
+      // so on an entry with no set there is nothing for it to describe and it can
+      // only ever be a mistake — a `gallery` moved to the wrong entry, or one left
+      // behind when `variants` was removed. Refused here, where the message can
+      // name the entry, rather than ignored into an artifact nobody reads.
+      if (gallery.value !== undefined && !(d.value.kind === "figma" && d.value.variants !== undefined)) {
+        return err({
+          kind: "invalid-entry",
+          index,
+          detail: `${id}: gallery needs design.variants — it lays out a component SET's cells`,
+        })
+      }
+      pairs.push({
+        id: w.pairId,
+        ...(w.title !== undefined ? { title: w.title } : {}),
+        design: d.value,
+        impl: i.value,
+        ...(bleed !== undefined ? { bleed } : {}),
+        ...(ground !== undefined ? { ground } : {}),
+        ...(typeof timezoneId === "string" ? { timezoneId } : {}),
+        ...(typeof locale === "string" ? { locale } : {}),
+        ...(w.ignore ? { ignore: w.ignore } : {}),
+        ...(section !== undefined ? { section } : {}),
+        ...(gallery.value !== undefined ? { gallery: gallery.value } : {}),
+        ...(w.breakpoint !== undefined ? { breakpoint: w.breakpoint } : {}),
+      })
+    }
   }
   return ok({ pairs, skipped, sections: sections.value })
 }

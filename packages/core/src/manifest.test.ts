@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseManifest, readDisabled } from "./manifest.js";
+import { parseManifest, readDisabled, readViewports, selectPairs } from "./manifest.js";
 
 const entry = {
   id: "doc-detail-owner-desktop",
@@ -522,5 +522,122 @@ describe("parseManifest — a disabled entry", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.pairs.map((p) => p.id)).toEqual(["doc-detail-owner-desktop"]);
+  });
+});
+
+// One screen measured at three widths. The case: a fluid page comp with a
+// wide shell above 1400px and a drawer below it — every breakpoint is its own
+// layout, and a fix that matches one can break the other.
+describe("parseManifest — an entry with viewports", () => {
+  const shared = { types: ["color"], within: { role: "image" }, cause: "docker", reason: "no docker here" };
+  const wideOnly = { types: ["position"], region: { x: 0, y: 0, w: 1440, h: 100 }, cause: "copy", reason: "longer copy" };
+  const entry = {
+    id: "workbench",
+    title: "Workbench",
+    design: { file: "w.dc.html", frame: "wb" },
+    app: { source: "live", route: "/w/", waitFor: ".rail", fullPage: true },
+    viewports: [
+      { id: "desktop", width: 1440, height: 900, ignore: { explain: [wideOnly], scope: "#wide" } },
+      { id: "laptop", width: 1280, height: 800 },
+      { id: "narrow", width: 1024, height: 800, disabled: "the drawer comp is not fetched yet" },
+    ],
+    ignore: { explain: [shared], dataSlots: true },
+  };
+
+  it("expands into one pair per width, named <id>-<viewport>, the size on BOTH sides", () => {
+    const parsed = parseManifest([entry]);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.pairs.map((p) => p.id)).toEqual(["workbench-desktop", "workbench-laptop"]);
+    const [desktop, laptop] = parsed.value.pairs;
+    expect(desktop).toMatchObject({
+      title: "Workbench — desktop 1440×900",
+      design: { kind: "dc-html", file: "w.dc.html", frame: "wb", viewport: { width: 1440, height: 900 }, scope: "#wide" },
+      impl: { kind: "live-url", route: "/w/", waitFor: ".rail", fullPage: true, viewport: { width: 1440, height: 900 } },
+      breakpoint: { entry: "workbench", viewport: "desktop", width: 1440, height: 900 },
+    });
+    expect(laptop).toMatchObject({
+      title: "Workbench — laptop 1280×800",
+      design: { viewport: { width: 1280, height: 800 } },
+      impl: { viewport: { width: 1280, height: 800 } },
+      breakpoint: { entry: "workbench", viewport: "laptop", width: 1280, height: 800 },
+    });
+    expect(laptop!.design).not.toHaveProperty("scope");
+  });
+
+  it("merges the entry's ignore with each width's own — lists concatenate, scope overrides", () => {
+    const parsed = parseManifest([entry]);
+    if (!parsed.ok) return;
+    const [desktop, laptop] = parsed.value.pairs;
+    expect(desktop!.ignore).toEqual({ explain: [shared, wideOnly], dataSlots: true, scope: "#wide" });
+    expect(laptop!.ignore).toEqual({ explain: [shared], dataSlots: true });
+  });
+
+  it("diverts a disabled width into skipped under its pair id, the others still run", () => {
+    const parsed = parseManifest([entry]);
+    if (!parsed.ok) return;
+    expect(parsed.value.skipped).toEqual([
+      { id: "workbench-narrow", reason: "disabled — the drawer comp is not fetched yet" },
+    ]);
+  });
+
+  it("refuses viewports beside app.viewport — the size is declared once", () => {
+    const parsed = parseManifest([
+      { ...entry, app: { ...entry.app, viewport: { width: 1, height: 1 } } },
+    ]);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error).toMatchObject({ kind: "invalid-entry", index: 0 });
+    expect(parsed.error.detail).toContain("both viewports and app.viewport");
+  });
+
+  it("fails the manifest on a malformed member rather than dropping the width", () => {
+    const bad = (viewports: unknown) => {
+      const parsed = parseManifest([{ ...entry, viewports }]);
+      expect(parsed.ok).toBe(false);
+      return parsed.ok ? "" : parsed.error.detail;
+    };
+    expect(bad([])).toContain("non-empty");
+    expect(bad([{ id: "desktop", widht: 1440, height: 900 }])).toContain("unknown key widht");
+    expect(bad([{ width: 1440, height: 900 }])).toContain("id must be");
+    expect(bad([{ id: "a b", width: 1440, height: 900 }])).toContain("id must be");
+    expect(bad([{ id: "a--b", width: 1440, height: 900 }])).toContain("id must be"); // `--` is the variant-cell separator
+    expect(bad([{ id: "desktop", width: 0, height: 900 }])).toContain("positive numbers");
+    expect(bad([{ id: "d", width: 1, height: 1 }, { id: "d", width: 2, height: 2 }])).toContain("declared twice");
+    expect(bad([{ id: "d", width: 1, height: 1, disabled: true }])).toContain("REASON");
+  });
+
+  it("readViewports: absent is undefined, not an error", () => {
+    expect(readViewports(undefined)).toEqual({ ok: true, value: undefined });
+  });
+
+  it("leaves an entry without viewports exactly as before", () => {
+    const parsed = parseManifest([
+      { id: "one", design: { file: "d.dc.html", frame: "f" }, app: { source: "live", route: "/", viewport: { width: 800, height: 600 } } },
+    ]);
+    expect(parsed.ok && parsed.value.pairs[0]).toEqual({
+      id: "one",
+      design: { kind: "dc-html", file: "d.dc.html", frame: "f", viewport: { width: 800, height: 600 } },
+      impl: { kind: "live-url", route: "/", viewport: { width: 800, height: 600 } },
+    });
+  });
+});
+
+describe("selectPairs — what --pair names", () => {
+  const parsed = parseManifest([
+    { id: "wb", design: { file: "d.dc.html", frame: "f" }, app: { source: "live", route: "/" },
+      viewports: [{ id: "desktop", width: 1440, height: 900 }, { id: "mobile", width: 390, height: 800 }] },
+    { id: "list", design: { file: "d.dc.html", frame: "g" }, app: { source: "live", route: "/l" } },
+  ]);
+  const pairs = parsed.ok ? parsed.value.pairs : [];
+
+  it("an entry id runs every width it expanded into; a pair id runs one", () => {
+    expect(selectPairs(pairs, ["wb"]).map((p) => p.id)).toEqual(["wb-desktop", "wb-mobile"]);
+    expect(selectPairs(pairs, ["wb-mobile"]).map((p) => p.id)).toEqual(["wb-mobile"]);
+    expect(selectPairs(pairs, ["list", "wb-desktop"]).map((p) => p.id)).toEqual(["wb-desktop", "list"]);
+  });
+
+  it("no selection runs everything", () => {
+    expect(selectPairs(pairs, undefined).map((p) => p.id)).toEqual(["wb-desktop", "wb-mobile", "list"]);
   });
 });

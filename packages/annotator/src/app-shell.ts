@@ -127,6 +127,9 @@ ${APP_BOOT}
  */
 const APP_BOOT = String.raw`
 let pairs = [];
+// Every run dir the server lists, uncollapsed: the ROUTE resolves an item and a width against
+// this, while pairs (one item per screen) is what the Library draws.
+let allPairs = [];
 let currentPair = null;
 let currentSet = null;
 // From /api/pairs: a --read-only server refuses every PUT, and the report's rail says so up front.
@@ -149,10 +152,9 @@ const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: n
 // a root with no set index must not re-fetch on every re-render.
 const setNamesAsked = new Set();
 
-const routePair = () => {
-  const hash = location.hash.replace(/^#\/?/, '');
-  return hash ? decodeURIComponent(hash) : null;
-};
+// The pair route is #/<library item>?vp=<width> — see resolvePairRoute. A dir named outright
+// still opens (an old link), and is rewritten to the item form once resolved.
+const routePair = () => parsePairRoute(location.hash);
 
 const libMobile = () => lib.narrow;
 
@@ -251,7 +253,7 @@ function renderIndexView() {
   if (clear) clear.addEventListener('click', clearFilters);
   const cards = $('cards');
   const open = openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed });
-  cards.innerHTML = libraryTable(groups, (p) => '#/' + encodeURIComponent(p.dir), mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names, idPrefix);
+  cards.innerHTML = libraryTable(groups, pairHref, mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names, idPrefix);
   void loadSetNames(groups, open);
   const empty = $('index-empty');
   empty.hidden = !(shown === 0 && pairs.length > 0);
@@ -302,7 +304,10 @@ async function loadPairs() {
     const res = await fetch('api/pairs');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const body = await res.json();
-    pairs = sortEntries(body.pairs || []);
+    // One item per screen: an entry measured at several widths is its widest card here,
+    // and the comparison tool's viewport menu switches between the rest.
+    allPairs = body.pairs || [];
+    pairs = sortEntries(collapseBreakpoints(allPairs));
     serverReadOnly = body.readOnly === true;
     if (body.root) document.title = 'refdiff — ' + body.root;
     clearListError();
@@ -505,10 +510,10 @@ async function openPair(dir) {
   }
 }
 
-function route() {
+async function route() {
   const setId = routeSet();
-  const dir = setId ? null : routePair();
-  document.body.classList.toggle('route-index', !dir && !setId);
+  const pr = setId ? null : routePair();
+  document.body.classList.toggle('route-index', !pr && !setId);
   // A sheet opens in the REPORT view — same chrome, same world space, one extra
   // offset per cell. route-gallery is only the un-layoutable fallback now.
   if (setId) {
@@ -522,16 +527,20 @@ function route() {
     return;
   }
   document.body.classList.remove('route-gallery');
-  document.body.classList.toggle('route-report', !!dir);
+  document.body.classList.toggle('route-report', !!pr);
   currentSet = null;
-  if (!dir) {
+  if (!pr) {
     currentPair = null;
     document.title = 'refdiff';
     // The list is cheap and reflects runs finished since load — refresh it.
     void loadPairs();
     return;
   }
-  if (dir !== currentPair) void openPair(dir);
+  // The item → dir resolution needs the list: a deep link arrives without it.
+  if (!allPairs.length) await loadPairs();
+  const resolved = resolvePairRoute(allPairs, pr.id, pr.vp) || { dir: pr.id, hash: location.hash };
+  if (resolved.hash !== location.hash) history.replaceState(null, '', resolved.hash);
+  if (resolved.dir !== currentPair) void openPair(resolved.dir);
 }
 
 function measureNarrow() {

@@ -7,6 +7,10 @@ import {
   STATE_CHIPS,
   autoRetryMessage,
   cellsShown,
+  collapseBreakpoints,
+  pairHref,
+  parsePairRoute,
+  resolvePairRoute,
   classifyListError,
   countMessage,
   entryIdOf,
@@ -1066,5 +1070,68 @@ describe("the list-load error box (plan, section C)", () => {
 
   it("escapes what it quotes — the error text and the root are not trusted markup", () => {
     expect(errorBox(err({ tech: "<b>x</b>", root: "<i>" }))).not.toMatch(/<b>x<\/b>|<i>/)
+  })
+})
+
+describe("collapseBreakpoints — one Library item per screen", () => {
+  const w = (dir: string, entry: string, viewport: string, width: number, pass = true): PairSummary => ({
+    dir, pair: dir, pass, critical: 0, major: 0, minor: 0, findings: 0, suppressed: 0, confidence: 1, createdAt: "2026-09-17T10:00:00Z",
+    frame: { w: width, h: 800 }, designSource: "dc-html", implSource: "live-url", implRef: "/", openNotes: 0, notes: 0,
+    breakpoint: { entry, viewport, width, height: 800 },
+  })
+  const single: PairSummary = { ...w("button", "x", "desktop", 1000), breakpoint: undefined } as PairSummary
+  const broken: BrokenPair = { dir: "liveness", broken: true, reason: "truncated" }
+
+  it("keeps the widest width of an entry, in the first sibling's place, with every width on it", () => {
+    const out = collapseBreakpoints([w("wb-laptop", "wb", "laptop", 1280), single, w("wb-desktop", "wb", "desktop", 1440), broken, w("wb-phone", "wb", "phone", 390)])
+    expect(out.map((e) => e.dir)).toEqual(["wb-desktop", "button", "liveness"])
+    expect((out[0] as PairSummary).widths).toEqual([
+      { viewport: "desktop", width: 1440, height: 800, dir: "wb-desktop" },
+      { viewport: "laptop", width: 1280, height: 800, dir: "wb-laptop" },
+      { viewport: "phone", width: 390, height: 800, dir: "wb-phone" },
+    ])
+  })
+
+  it("leaves a single-width entry and a pair without breakpoint untouched — no `widths` to show", () => {
+    const one = w("cand-desktop", "cand", "desktop", 1440)
+    const out = collapseBreakpoints([one, single])
+    expect(out).toEqual([one, single])
+    expect((out[0] as PairSummary).widths).toBeUndefined()
+  })
+})
+
+describe("the pair route — #/<library item>?vp=<width>", () => {
+  const w = (dir: string, entry: string, viewport: string, width: number): PairSummary => ({
+    dir, pair: dir, pass: true, critical: 0, major: 0, minor: 0, findings: 0, suppressed: 0, confidence: 1, createdAt: "2026-09-17T10:00:00Z",
+    frame: { w: width, h: 800 }, designSource: "dc-html", implSource: "live-url", implRef: "/", openNotes: 0, notes: 0,
+    breakpoint: { entry, viewport, width, height: 800 },
+  })
+  const plain: PairSummary = { ...w("button", "x", "desktop", 1000), breakpoint: undefined } as PairSummary
+  const list = [w("wb-laptop", "wb", "laptop", 1280), w("wb-desktop", "wb", "desktop", 1440), plain, { dir: "liveness", broken: true, reason: "truncated" } as BrokenPair]
+
+  it("parses the id and the width, and the index as null", () => {
+    expect(parsePairRoute("#/wb?vp=laptop")).toEqual({ id: "wb", vp: "laptop" })
+    expect(parsePairRoute("#/wb")).toEqual({ id: "wb", vp: null })
+    expect(parsePairRoute("#/a%20b?vp=phone")).toEqual({ id: "a b", vp: "phone" })
+    expect(parsePairRoute("#/")).toBeNull()
+    expect(parsePairRoute("")).toBeNull()
+  })
+
+  it("resolves an item to its width's dir — the asked one, else the widest — and names the canonical hash", () => {
+    expect(resolvePairRoute(list, "wb", "laptop")).toEqual({ dir: "wb-laptop", hash: "#/wb?vp=laptop" })
+    expect(resolvePairRoute(list, "wb", null)).toEqual({ dir: "wb-desktop", hash: "#/wb?vp=desktop" })
+    expect(resolvePairRoute(list, "wb", "phone")).toEqual({ dir: "wb-desktop", hash: "#/wb?vp=desktop" })
+  })
+
+  it("still opens a width's dir named outright, rewritten to the item form; a plain dir and a broken one keep theirs", () => {
+    expect(resolvePairRoute(list, "wb-laptop", null)).toEqual({ dir: "wb-laptop", hash: "#/wb?vp=laptop" })
+    expect(resolvePairRoute(list, "button", null)).toEqual({ dir: "button", hash: "#/button" })
+    expect(resolvePairRoute(list, "liveness", null)).toEqual({ dir: "liveness", hash: "#/liveness" })
+    expect(resolvePairRoute(list, "nothing", null)).toBeNull()
+  })
+
+  it("links a Library item by its entry when it has widths, by its dir otherwise", () => {
+    expect(pairHref(list[1]!)).toBe("#/wb")
+    expect(pairHref(plain)).toBe("#/button")
   })
 })

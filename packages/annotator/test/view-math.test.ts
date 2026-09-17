@@ -18,6 +18,7 @@ import {
   rawDesignSize,
   designToWorld,
   designWorldBox,
+  fillView,
   fitView,
   focusView,
   FOCUS_MAX_ZOOM,
@@ -360,6 +361,24 @@ describe("designCaptureDpr", () => {
 })
 
 describe("view operations", () => {
+  it("fillView fills the pane's width and top-aligns — the wider side of a split sets the zoom", () => {
+    // A 400-wide union box (impl 300 wide, design 400 wide through the fit) in a 432px pane
+    // with 16px of air: zoom 1, the box spans x 16..416 and starts at y 16 — nothing cropped.
+    const v = fillView({ x: 0, y: 0, w: 400, h: 3000 }, { w: 432, h: 232 }, 16, Infinity)
+    expect(v).toEqual({ z: 1, tx: 16, ty: 16 })
+    // Half the width: zoom 2, still top-aligned; the pane height plays no part.
+    expect(fillView({ x: 0, y: 0, w: 200, h: 3000 }, { w: 432, h: 232 }, 16, Infinity)).toEqual({ z: 2, tx: 16, ty: 16 })
+    // Insets and the cap: a panel over the left edge shifts the box right; a cap holds the zoom and centres what is left.
+    const inset = fillView({ x: 0, y: 0, w: 200, h: 100 }, { w: 432, h: 232 }, 16, Infinity, { top: 10, right: 0, bottom: 0, left: 32 })
+    expect(inset.z).toBeCloseTo(368 / 200)
+    expect(inset.tx).toBeCloseTo(48)
+    expect(inset.ty).toBeCloseTo(26)
+    const capped = fillView({ x: 0, y: 0, w: 100, h: 100 }, { w: 432, h: 232 }, 16, 1.6)
+    expect(capped.z).toBe(1.6)
+    expect(capped.tx).toBeCloseTo(16 + (400 - 160) / 2)
+    expect(capped.ty).toBeCloseTo(16)
+  })
+
   it("fitView centres the world box with padding", () => {
     const v = fitView({ x: 0, y: 0, w: 200, h: 100 }, { w: 432, h: 232 }, 16, Infinity)
     expect(v.z).toBeCloseTo(2) // 400/200 = 2, 200/100 = 2 (uncapped for the centring check)

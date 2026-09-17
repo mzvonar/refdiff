@@ -277,10 +277,11 @@ repo bindings). Read `delta`:
   made before this identity existed churn exactly once on the next run.)
 
 **Two pairs of ONE surface are two views of one implementation — so the other pair's delta is part
-of reading this one's.** A `…-desktop` / `…-mobile` split is two manifest entries, two run dirs and
-two finding lists, and nothing in any of them says they render the same component. The fix you write
+of reading this one's.** A `…-desktop` / `…-mobile` split is two pairs — one entry's `viewports`
+list (`configuring.md`), or two entries — two run dirs and two finding lists, and only the
+`breakpoint` an expanded pair carries says they render the same component. The fix you write
 does: an unprefixed class lands at every width, and the pair you were not aiming at is the only
-thing that will tell you.
+thing that will tell you. `--pair <entry id>` runs every width of an entry declared once.
 
 So when a fix is meant for ONE breakpoint, **re-run BOTH and require `+0/−0` on the other**. That is
 a check, not a caution — a non-zero delta on the pair you did not target means the class went in

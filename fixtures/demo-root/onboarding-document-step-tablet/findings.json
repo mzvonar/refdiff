@@ -2,15 +2,15 @@
   "pair": "Onboarding — Document step",
   "breakpoint": {
     "entry": "onboarding-document-step",
-    "viewport": "desktop",
-    "width": 1440,
-    "height": 900
+    "viewport": "tablet",
+    "width": 768,
+    "height": 1024
   },
-  "createdAt": "2026-08-28T14:10:05.000Z",
-  "run": 47,
+  "createdAt": "2026-08-26T14:22:05.000Z",
+  "run": 45,
   "design": {
     "source": "figma",
-    "ref": "figma://veriflow/onboarding-document-step",
+    "ref": "figma://veriflow/onboarding-document-step-tablet",
     "width": 680,
     "height": 740,
     "dpr": 2,
@@ -554,27 +554,6 @@
       "key": "missing-element|box|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
     },
     {
-      "id": "o2",
-      "type": "missing-element",
-      "severity": "major",
-      "mark": 13,
-      "message": "Field hint tooltip missing",
-      "designBox": {
-        "x": 476,
-        "y": 136,
-        "w": 26,
-        "h": 26
-      },
-      "expected": {
-        "element": "present"
-      },
-      "actual": {
-        "element": "missing"
-      },
-      "role": "icon",
-      "key": "missing-element|icon|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
-    },
-    {
       "id": "o3",
       "type": "extra-element",
       "severity": "major",
@@ -615,6 +594,33 @@
       },
       "role": "box",
       "key": "extra-element|box|[[\"element\",\"—\"]]|[[\"element\",\"present\"]]"
+    },
+    {
+      "id": "v2",
+      "type": "size",
+      "severity": "major",
+      "mark": 17,
+      "designBox": {
+        "x": 36,
+        "y": 204,
+        "w": 608,
+        "h": 140
+      },
+      "implBox": {
+        "x": 36,
+        "y": 204,
+        "w": 608,
+        "h": 140
+      },
+      "expected": {
+        "grid-template-columns": "2 columns"
+      },
+      "actual": {
+        "grid-template-columns": "1 column"
+      },
+      "message": "Card grid collapses to one column",
+      "role": "box",
+      "key": "size|box|[[\"grid-template-columns\",\"2 columns\"]]|[[\"grid-template-columns\",\"1 column\"]]"
     }
   ],
   "suppressed": [
@@ -749,11 +755,9 @@
     "failThreshold": "major"
   },
   "delta": {
-    "previousRun": "2026-08-28T08:10:05.000Z",
-    "previousRunNumber": 46,
-    "resolved": [
-      "prev-1"
-    ],
+    "previousRun": "2026-08-26T08:22:05.000Z",
+    "previousRunNumber": 44,
+    "resolved": [],
     "introduced": [
       "f1",
       "f2",

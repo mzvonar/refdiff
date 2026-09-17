@@ -180,8 +180,9 @@ failure shapes that recur everywhere and impersonate product bugs.
   RELOADS there (a resize alone leaves any mount-time layout — a canvas that
   fits its artboard once, on load — where the wider window put it). The design
   capture line then reads `scope … fluid` and its css px equal the pair
-  viewport. A fluid comp WITHOUT `app.viewport` on the pair
-  captures at the 1560px default canvas: give every full-bleed pair a viewport.
+  viewport. A fluid comp WITHOUT `app.viewport` (or the entry's `viewports`,
+  `configuring.md`) captures at the 1560px default canvas: give every
+  full-bleed pair a viewport.
 - Storybook: token / global-CSS edits may not HMR — restart before trusting
   a re-run; confirm a color via the `color` finding, not the screenshot.
 - Live app: seeds present? auth working? A soft 404 compares "fine".

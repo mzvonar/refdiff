@@ -2,15 +2,15 @@
   "pair": "Onboarding — Document step",
   "breakpoint": {
     "entry": "onboarding-document-step",
-    "viewport": "desktop",
-    "width": 1440,
-    "height": 900
+    "viewport": "mobile",
+    "width": 390,
+    "height": 844
   },
   "createdAt": "2026-08-28T14:10:05.000Z",
   "run": 47,
   "design": {
     "source": "figma",
-    "ref": "figma://veriflow/onboarding-document-step",
+    "ref": "figma://veriflow/onboarding-document-step-mobile",
     "width": 680,
     "height": 740,
     "dpr": 2,
@@ -147,35 +147,6 @@
       "message": "Card corner radius mismatch",
       "role": "box",
       "key": "border-radius|box|[[\"borderRadius\",12]]|[[\"borderRadius\",6]]"
-    },
-    {
-      "id": "f5",
-      "type": "spacing",
-      "severity": "minor",
-      "mark": 5,
-      "designBox": {
-        "x": 36,
-        "y": 84,
-        "w": 430,
-        "h": 26
-      },
-      "implBox": {
-        "x": 36,
-        "y": 84,
-        "w": 430,
-        "h": 26
-      },
-      "expected": {
-        "gap": 24,
-        "axis": "x"
-      },
-      "actual": {
-        "gap": 16,
-        "axis": "x"
-      },
-      "message": "Step indicator gap tighter",
-      "role": "box",
-      "key": "spacing|box|[[\"axis\",\"x\"],[\"gap\",24]]|[[\"axis\",\"x\"],[\"gap\",16]]"
     },
     {
       "id": "f6",
@@ -431,108 +402,6 @@
       "key": "color|text|[[\"color\",\"#6B7280\"]]|[[\"color\",\"#94A3B8\"]]"
     },
     {
-      "id": "g2",
-      "type": "position",
-      "severity": "minor",
-      "mark": 8,
-      "designBox": {
-        "x": 36,
-        "y": 380,
-        "w": 608,
-        "h": 22
-      },
-      "implBox": {
-        "x": 36,
-        "y": 380,
-        "w": 608,
-        "h": 22
-      },
-      "expected": {
-        "x": 36,
-        "y": 380
-      },
-      "actual": {
-        "x": 36,
-        "y": 403
-      },
-      "message": "Row baseline shifted 23px",
-      "role": "box",
-      "instances": 5,
-      "members": [
-        {
-          "designBox": {
-            "x": 36,
-            "y": 414,
-            "w": 608,
-            "h": 22
-          },
-          "implBox": {
-            "x": 36,
-            "y": 414,
-            "w": 608,
-            "h": 22
-          }
-        },
-        {
-          "designBox": {
-            "x": 36,
-            "y": 448,
-            "w": 608,
-            "h": 22
-          },
-          "implBox": {
-            "x": 36,
-            "y": 448,
-            "w": 608,
-            "h": 22
-          }
-        },
-        {
-          "designBox": {
-            "x": 36,
-            "y": 482,
-            "w": 608,
-            "h": 22
-          },
-          "implBox": {
-            "x": 36,
-            "y": 482,
-            "w": 608,
-            "h": 22
-          }
-        },
-        {
-          "designBox": {
-            "x": 36,
-            "y": 516,
-            "w": 608,
-            "h": 22
-          },
-          "implBox": {
-            "x": 36,
-            "y": 516,
-            "w": 608,
-            "h": 22
-          }
-        },
-        {
-          "designBox": {
-            "x": 36,
-            "y": 550,
-            "w": 608,
-            "h": 22
-          },
-          "implBox": {
-            "x": 36,
-            "y": 550,
-            "w": 608,
-            "h": 22
-          }
-        }
-      ],
-      "key": "position|box|[[\"x\",36],[\"y\",380]]|[[\"x\",36],[\"y\",403]]"
-    },
-    {
       "id": "o1",
       "type": "missing-element",
       "severity": "critical",
@@ -552,27 +421,6 @@
       },
       "role": "box",
       "key": "missing-element|box|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
-    },
-    {
-      "id": "o2",
-      "type": "missing-element",
-      "severity": "major",
-      "mark": 13,
-      "message": "Field hint tooltip missing",
-      "designBox": {
-        "x": 476,
-        "y": 136,
-        "w": 26,
-        "h": 26
-      },
-      "expected": {
-        "element": "present"
-      },
-      "actual": {
-        "element": "missing"
-      },
-      "role": "icon",
-      "key": "missing-element|icon|[[\"element\",\"present\"]]|[[\"element\",\"missing\"]]"
     },
     {
       "id": "o3",
@@ -615,6 +463,33 @@
       },
       "role": "box",
       "key": "extra-element|box|[[\"element\",\"—\"]]|[[\"element\",\"present\"]]"
+    },
+    {
+      "id": "v1",
+      "type": "size",
+      "severity": "critical",
+      "mark": 16,
+      "designBox": {
+        "x": 36,
+        "y": 586,
+        "w": 280,
+        "h": 48
+      },
+      "implBox": {
+        "x": 36,
+        "y": 586,
+        "w": 280,
+        "h": 48
+      },
+      "expected": {
+        "width": "100%"
+      },
+      "actual": {
+        "width": "280px"
+      },
+      "message": "Continue button clipped at 390px",
+      "role": "box",
+      "key": "size|box|[[\"width\",\"100%\"]]|[[\"width\",\"280px\"]]"
     }
   ],
   "suppressed": [
@@ -751,9 +626,7 @@
   "delta": {
     "previousRun": "2026-08-28T08:10:05.000Z",
     "previousRunNumber": 46,
-    "resolved": [
-      "prev-1"
-    ],
+    "resolved": [],
     "introduced": [
       "f1",
       "f2",

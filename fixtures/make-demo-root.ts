@@ -28,7 +28,7 @@
  * beside the data, never guessed silently.
  */
 
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -57,6 +57,13 @@ const PARTS = resolve(HERE, "..", "design", "refdiff", "parts")
 export const DEMO_NOW = "2026-08-28T14:22:05.000Z"
 const MIN = 60_000
 const HOUR = 60 * MIN
+const DAY = 24 * HOUR
+
+/** A finding the comp shows at ONE width only (its `vps`), keyed like the opened pair's. */
+function vpFinding(id: string, mark: number, type: Finding["type"], severity: Severity, message: string, b: Box, expected: Record<string, string | number>, actual: Record<string, string | number>): Finding {
+  const f: Finding = { id, type, severity, mark, designBox: b, implBox: b, expected, actual, message, role: "box" }
+  return { ...f, key: identityKey(f) }
+}
 
 /** The opened pair — the comp's `doc`; the Comparison Tool draws this one. */
 export const OPENED_PAIR = "onboarding-document-step"
@@ -97,11 +104,29 @@ interface DemoItem {
   ago?: number
   /** Written with a truncated findings.json on purpose — the degraded card. */
   broken?: true
+  /**
+   * One of the opened pair's WIDTHS (the comps' viewport menu, 2026-09-17):
+   * the same screen measured at another breakpoint, so its report carries
+   * `breakpoint` and the opened pair's findings minus the ones the comp marks
+   * as absent at that width, plus the one it adds. The dir is a sibling of the
+   * opened pair's (`<entry>-<viewport>`, as core names them).
+   */
+  vp?: { id: string; width: number; height: number; run: number; omit: readonly string[]; extra: readonly Finding[] }
 }
+
+/** The comp's `VPS`: Desktop 1440×900, Tablet 768×1024 (stale, run 45), Mobile 390×844. */
+export const OPENED_BREAKPOINT = { entry: OPENED_PAIR, viewport: "desktop", width: 1440, height: 900 }
 
 /** `ITEMS` from `RefDiff Library.dc.html`, verbatim, in the comp's order. */
 export const ITEMS: readonly DemoItem[] = [
   { slug: OPENED_PAIR, name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 3, major: 5, minor: 4, comments: 4, confidence: 0.42, add: 3, res: 1, ago: 12 * MIN },
+  // The opened pair's other two widths — the comp's viewport menu lists Desktop 12, Tablet 12,
+  // Mobile 10 findings: tablet drops o2 and adds v2, mobile drops g2 / f5 / o2 and adds v1.
+  // Tablet is the STALE one: run 45 against the others' 47 ("Impl capture from run 45 — outdated").
+  { slug: OPENED_PAIR + "-tablet", name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 3, major: 5, minor: 4, comments: 0, confidence: 0.42, add: 1, res: 0, ago: 2 * DAY,
+    vp: { id: "tablet", width: 768, height: 1024, run: 45, omit: ["o2"], extra: [vpFinding("v2", 17, "size", "major", "Card grid collapses to one column", { x: 36, y: 204, w: 608, h: 140 }, { "grid-template-columns": "2 columns" }, { "grid-template-columns": "1 column" })] } },
+  { slug: OPENED_PAIR + "-mobile", name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 4, major: 4, minor: 2, comments: 0, confidence: 0.42, add: 1, res: 0, ago: 12 * MIN,
+    vp: { id: "mobile", width: 390, height: 844, run: 47, omit: ["g2", "f5", "o2"], extra: [vpFinding("v1", 16, "size", "critical", "Continue button clipped at 390px", { x: 36, y: 586, w: 280, h: 48 }, { width: "100%" }, { width: "280px" })] } },
   { slug: "onboarding-selfie-step", name: "Onboarding — Selfie step", route: "/onboarding/selfie", src: "figma", state: "analyzed", critical: 1, major: 3, minor: 0, comments: 1, confidence: 0.91, add: 1, res: 4, ago: 25 * MIN },
   { slug: "onboarding-review-step", name: "Onboarding — Review step", route: "/onboarding/review", src: "dc-html", state: "processing", critical: 0, major: 0, minor: 0, comments: 2, confidence: 0.88, add: 0, res: 0, ago: 30 * MIN },
   { slug: "button", name: "Button", route: "ds/Button", src: "dc-html", state: "analyzed", critical: 1, major: 0, minor: 1, comments: 0, confidence: 0.96, add: 1, res: 2, ago: 40 * MIN },
@@ -271,8 +296,10 @@ function genericFindings(item: DemoItem): Finding[] {
 }
 
 export function reportFor(item: DemoItem): ComparisonReport {
-  const opened = item.slug === OPENED_PAIR
-  const { findings, suppressed } = opened ? openedFindings() : { findings: genericFindings(item), suppressed: [] }
+  const opened = item.slug === OPENED_PAIR || item.vp !== undefined
+  const base = opened ? openedFindings() : { findings: genericFindings(item), suppressed: [] }
+  const findings = item.vp ? base.findings.filter((f) => !item.vp!.omit.includes(f.id)).concat(item.vp.extra) : base.findings
+  const suppressed = base.suppressed
   const createdAt = iso(item.ago ?? 0)
   const failing = findings.some((f) => f.severity === "critical" || f.severity === "major")
   // Every item has a previous run: the card's `+add / −res` (a `Steady
@@ -285,7 +312,7 @@ export function reportFor(item: DemoItem): ComparisonReport {
   // 2026-09-02, so the fixture must carry them too — otherwise the served app
   // falls back to the timestamp and the pair reports a text-content difference
   // against the comp's own label. 47/46 is the Tool comp's own demo pair.
-  const runNo = opened ? 47 : 12
+  const runNo = item.vp ? item.vp.run : opened ? 47 : 12
   const delta = item.broken
     ? undefined
     : {
@@ -297,6 +324,11 @@ export function reportFor(item: DemoItem): ComparisonReport {
       }
   return {
     pair: item.name,
+    // The opened pair and its two widths are one screen: `breakpoint` is what the
+    // viewport menu reads to list them, exactly as core writes it for a manifest
+    // entry with `viewports`.
+    ...(item.slug === OPENED_PAIR ? { breakpoint: OPENED_BREAKPOINT } : {}),
+    ...(item.vp ? { breakpoint: { entry: OPENED_PAIR, viewport: item.vp.id, width: item.vp.width, height: item.vp.height } } : {}),
     createdAt,
     run: runNo,
     design: {
@@ -758,6 +790,13 @@ async function main(): Promise<void> {
     }
     await writeFile(join(dir, "findings.json"), json)
     if (item.slug === OPENED_PAIR && capture) await captureOpened(dir)
+    // A width dir shows the opened pair's own captures: the comp draws the same artboard at
+    // every width, and a dir without PNGs would open as a broken pair.
+    if (item.vp) {
+      for (const f of ["design.png", "impl.png", "elements.json"]) {
+        try { await copyFile(join(ROOT, OPENED_PAIR, f), join(dir, f)) } catch { /* not captured yet */ }
+      }
+    }
     const elements = item.slug === OPENED_PAIR ? await readElements(dir) : undefined
     const snap = (shape: Shape) => {
       if (!elements) return undefined
