@@ -1,5 +1,156 @@
 # Plan — the harness (2026-08-26, updated 2026-08-28)
 
+## 17. Consumer-driven blind spots (2026-09-19) — 5 DONE (2026-09-20), 1 OPEN
+
+Found by a consumer session that ran the four `messages-*` pairs, read every
+finding, and was then shown three defects by a human who had simply looked at
+the screen. Each item names what the harness could not see and what it cost.
+
+**DONE — the `affordance` channel.** A comp's „＋" carrying `onClick` +
+`cursor:pointer`, shipped as a `<span aria-hidden>` with identical size, border,
+radius and colour: every measured property matched, the pair reported nothing,
+and the button opened nothing. `ElementNode.affordance` (pointer / interactive /
+hidden, DOM adapters only) plus a one-directional check. Reachability is measured
+from the nearest CONTROL at or above the element — asking the element itself made
+6 of the first 9 corpus findings false positives on the RECOMMENDED
+`<button aria-label><svg aria-hidden/></button>` pattern. Rate after that fix: 4
+findings over 5 pairs, 2 of them real drift (a comp anchor pill that is clickable
+where the implementation's is a static div). Gated by `unverified` like any other
+value finding — it is a claim about a pair, and 2 of the 4 sit on geometry-formed
+pairs at γ 77 and γ 91.
+
+**DONE — name the pairing-independent findings AT the confidence gate.**
+`pixel channel skipped (confidence 0.00 …)` now prints a second line:
+`↳ N finding(s) rest on NO pairing and are unaffected by this (…)`.
+`messages-accountant-desktop` correctly reported a major `extra-element` for an
+upload control the design draws nowhere; it sat in a 148-finding list on a
+0.00-confidence pair and was discounted with everything else, because §1a's "fix
+the alignment first" reads as "distrust the list" and nothing said which findings
+the alignment cannot touch. 49 of that pair's findings are in that set.
+
+**DONE (2026-09-20) — report UNCOVERED comp branches.** `adapters/dc-branches.ts`
+plus an in-page collector on the dc-html capture; printed under the design
+capture line and carried as `design.branches` in the report. The template is
+re-fetched from source and re-parsed IN THE PAGE, because the coverage test is
+"did any descendant of this `<sc-if>` reach the DOM" and the `data-dc-tpl`
+indices that answer it only reproduce under the same HTML parser the runtime
+used (it replaces `<x-dc>` on hydration, so the template is gone from the live
+DOM). Measured on the four `messages-*` pairs: 2e reports
+`16 conditional branches, 7 never true … r.isSys, … r.isDoc` — the two row
+renderers this item was written about, named by the harness on the first run.
+Best-effort by construction: no `<x-dc>`, an unreachable source or an
+unmatched frame yields nothing rather than failing the capture.
+
+### 17 — uncovered comp branches (original spec, for reference)
+
+**OPEN — report UNCOVERED comp branches.** `messages.dc.html` has five row
+renderers (`isDay` / `isSys` / `isReq` / `isMsg` / `isDoc`) and the comp's own
+`sel` state opens only threads t1 and t2. t3 and t4 are the only threads carrying
+`doc` or `sys` rows, so **no captured frame draws either, on either side** —
+verified across all four run dirs' `elements.json`. Two of five row types were
+invisible to a PASS and to a FAIL alike; both shipped undesigned. The dc runtime
+knows which `sc-if`s it evaluated, and a line reading `5 conditional branches, 2
+never true in any captured state: isSys, isDoc` is a property of the comp alone:
+no pairing, nothing to be wrong about. Cheaper than, and independent of,
+`D-REFDIFF-1`.
+
+**DONE (2026-09-20) — a container channel keyed on already-matched leaves.**
+`structural/containers.ts`, fed by a PARALLEL container list the DOM extractor
+now returns beside `elements` (`Capture.containers`, scaled by `normalize` and
+transformed by `alignStructural` exactly as the elements are).
+
+Two corrections to the spec, both found by reading the extractor:
+
+- **The containers were not in the model to pair.** The spec assumed they were.
+  `paintsDecoration` reads `borderTopWidth` / `-Style` / `-Color` ONLY, so a
+  wrapper whose whole paint is `border-bottom` is not a surface, is never
+  emitted, and the channel would have had nothing to key on. Measured on
+  `messages-owner-mobile`'s own `elements.json`: 45 design elements, of which
+  ONE surface (the bottom nav) and three boxes; not one rail row on either
+  side. The container list's admission rule is therefore paint on ANY side.
+- **It is a separate list, not more `elements`.** Widening what `elements`
+  holds would move the matcher, the pixel channel, the remainder and every
+  count in every report for a channel that pairs by matched-leaf identity and
+  needs none of them. Blast radius is now new findings only.
+
+The border check is per-side for the same reason the extraction is: a leaf's
+top-side scalars cannot tell `divide-y` (border-TOP on each child) from a
+comp's `border-bottom`. Ambiguous keys (nested wrappers around the same
+content) pair nothing on either side; a container needs ≥ 2 matched leaves and
+≤ 70 % of the frame.
+
+First-run measurement — `messages-owner-desktop`: 7 containers paired,
+3 findings (9 instances), and the headline one is REAL and previously unseen —
+comp 2e draws `border-bottom:1px solid #f6f0e7` on every rail row and the
+implementation draws none, on a surface a comp-parity pass had read and
+concluded separators were phone-only. `messages-owner-mobile`: 3 paired,
+0 findings (that drift is fixed). `settings-owner-desktop`: 2 paired, 0
+findings. `today-owner-desktop`: 0 paired (10 matched leaves in the whole pair)
+— the channel is silent rather than noisy when the matcher has little to say.
+
+### 17 — container channel (original spec, for reference)
+
+**OPEN — a container channel keyed on already-matched leaves.** The comp's phone
+rail row is `<div …border-bottom:1px solid #f2eadd>` wrapping an avatar and a
+text block: a container, and the matcher takes leaves. `messages-owner-mobile`
+had 45 design leaves, 42 matched, and exactly ONE `border` finding in the whole
+run — about a filter chip. The missing rule reached the report only as `f26`, a
+`pixel-region` reading *"5.62% of the frame differs OUTSIDE every matched element
+… 198 region(s)"*, which names the cause class and no element. Proposal: where
+design container D and impl container I contain the SAME matched leaf set they
+are the same container, and their `border*` / `background*` / `border-radius` /
+`padding` can be compared with pairing evidence that costs nothing.
+
+**DONE (2026-09-20) — rank `pixel-region` components by REPETITION, not size.**
+`pixel/repetition.ts`; the remainder finding leads with the strongest run
+(„5 regions of 351×1 repeating every 87px vertically, from (20, 214)"), still
+names the largest single region, and carries the run's boxes as `regions` so
+the crops a reader opens are the strips. Falls back to largest-first when
+nothing repeats.
+
+Two gates the spec did not have, both forced by the first real run — a run of
+same-size boxes at a regular pitch is, by default, TEXT:
+
+- **pitch ≥ 2× the member's own extent along the run axis.** Without it
+  `messages-owner-desktop` led with "6 regions of 7×9 repeating every 8.4px
+  horizontally" — six letters of one word.
+- **the member must be UI-sized** (longest side ≥ 24px, or aspect ≥ 8 for a
+  rule). The pitch gate alone still passed tracked and word-spaced text:
+  "7 regions of 5×8 every 13.2px" and "6 regions of 6×9 every 47.2px".
+
+With both, the two messages pairs report no run at all and fall back to
+largest-first, which is correct — the hairline drift that motivated this is
+fixed, so there is no layout rhythm left in either remainder.
+
+### 17 — pixel-region repetition (original spec, for reference)
+
+**OPEN — rank `pixel-region` components by REPETITION, not size.** The report
+lists the three LARGEST regions. Five identical ~350×1 strips at a constant
+vertical pitch is the signature of a missing repeated rule and a far stronger
+signal than one 147×57 blob; `N regions of identical size at a regular pitch`
+needs no new extraction. Same witness as the container item.
+
+**OPEN (still, and reproduced again 2026-09-20).** A run on an unchanged tree
+reported `+19 / −16, 17 REGRESSIONS` at confidence 0.57, with f2/f3/f6/f7 in
+BOTH the resolved and the introduced list — the same pair flipping between two
+fits, exactly as below. The delta on this pair is unreadable; `f23`/`f24`
+(the affordance findings the anchor-pill fix resolved) were checked in
+`delta.resolved` directly rather than believed from the summary line.
+
+**OPEN — bistable pairs make the delta unreadable, loudly.** After a change,
+`messages-owner-desktop` reported `+17 / −12, 17 REGRESSIONS`, confidence
+0.64 → 0.57. Re-run immediately with nothing touched: `+12 / −17, 12
+REGRESSIONS`, landing back on the pre-change numbers to the decimal — 98 findings
+(5/38/55), confidence 0.64, offset `(−24.9, −15.2)`. The pair flips between two
+alignment fits and every textless finding churns ids with it. Worse than a
+missing channel, because it produces a LOUD false alarm on the one signal the
+skill says to stop the plan for. Proposal: when the anchor set admits two fits
+within tolerance, say so (`alignment: bistable (2 fits within 3px …)`) and mark
+the whole delta unstable rather than emitting REGRESSIONs from it; short of that,
+a `--repeat 2` reporting only findings present in BOTH runs. The two
+low-confidence pairs behave this way; `messages-owner-mobile` and
+`messages-accountant-mobile` both repeat `+0/−0`.
+
 Status: items 1–16 DONE and proven (sessions 1–14); the annotator redesign
 (phases 0–6, `docs/plan-annotator-redesign.md`) is landed. What is left is
 listed in the canonical handoff, `docs/handoff-2026-08-28.md` ("What

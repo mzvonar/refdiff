@@ -211,6 +211,7 @@ export async function packageForModel(
       ...(design.bleed ? { bleed: design.bleed } : {}),
       ...(design.scope ? { scope: design.scope } : {}),
       ...(design.quality ? { quality: design.quality } : {}),
+      ...(design.branches ? { branches: design.branches } : {}),
     },
     impl: {
       source: impl.source,

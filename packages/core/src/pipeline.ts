@@ -6,6 +6,7 @@
  * docs/architecture.md "Pipeline".
  */
 
+import type { BranchCoverage } from "./adapters/dc-branches.js"
 import type { Ground } from "./adapters/ground.js"
 import type { CaptureStep } from "./adapters/steps.js"
 import type { Alignment, Bleed, Box, CaptureScope, ElementNode, MatchVia } from "./types.js"
@@ -243,6 +244,14 @@ export interface Capture {
   /** Leaf element tree, boxes in CSS px relative to the capture origin. */
   elements: ElementNode[]
   /**
+   * Painting CONTAINERS, in the same space — a parallel list the container
+   * channel pairs by matched-leaf identity. Deliberately NOT part of
+   * `elements`: the matcher, the pixel channel and every count in the report
+   * are keyed on that list. DOM adapters only; a Figma capture leaves it
+   * undefined and the channel skips the pair.
+   */
+  containers?: ElementNode[]
+  /**
    * Which node was captured, and why. Design: the frame's scope (explicit /
    * largest-child / frame). Impl: `explicit` when a `selector` narrowed the
    * capture to one node — together with an explicit design scope that makes
@@ -257,6 +266,13 @@ export interface Capture {
   bleed?: Bleed
   /** Figma only: the GIGO quality score, echoed even when the gate passed. */
   quality?: DesignQuality
+  /**
+   * dc-html only: the frame's `<sc-if>` branches and which of them THIS
+   * captured state drew. A branch that is never true has no design element, so
+   * it produces no finding and a PASS reads the same as a FAIL — see
+   * `adapters/dc-branches.ts`.
+   */
+  branches?: BranchCoverage
 }
 
 /** Typed capture failures — data, not exceptions. */
@@ -418,6 +434,17 @@ export function normalize(
             ...el,
             box: scaleBox(el.box, designScale),
           })),
+          // Same space as the elements, so the same scale: a container left
+          // unscaled would hold none of the leaves it holds on screen, and the
+          // container channel pairs by exactly that containment.
+          ...(pair.design.containers
+            ? {
+                containers: pair.design.containers.map((el) => ({
+                  ...el,
+                  box: scaleBox(el.box, designScale),
+                })),
+              }
+            : {}),
         }
   return { id: pair.id, design, impl: pair.impl, designScale }
 }

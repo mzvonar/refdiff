@@ -68,6 +68,16 @@ export interface ElementNode {
      * about dashedness). Figma says it with `strokeDashes`.
      */
     borderStyle: string
+    /**
+     * Per-side borders. The scalars above read the TOP side only, which is
+     * blind to the commonest container rule of all: a row separator is
+     * `border-bottom` and nothing else, so `borderWidth` is 0 and the element
+     * reads as unpainted. Set by the CONTAINER channel's extraction, where the
+     * side matters; leaf nodes keep the scalars.
+     */
+    borderSides: Partial<
+      Record<"top" | "right" | "bottom" | "left", { width: number; color: string; style: string }>
+    >
     /** As extracted (`0 2px 10px rgba(…)`); captured for every element, not just surfaces. */
     boxShadow: string
     /**
@@ -84,6 +94,33 @@ export interface ElementNode {
   }>
   /** Design-token name when the source resolves one (Figma variable etc.). */
   token?: Record<string, string>
+  /**
+   * Whether this element is drawn as, and behaves as, something you can click.
+   * Set by DOM-backed adapters only — Figma has no runtime and no a11y tree, so
+   * a Figma-sourced node leaves it undefined and the affordance check skips the
+   * pair rather than guessing.
+   *
+   * The three facts are deliberately separate, because they fail separately:
+   * a control can LOOK live and do nothing (`pointer` without `interactive`),
+   * or work with a mouse and be unreachable any other way (`interactive` but
+   * `hidden`). Only `pointer` is read on the design side — a comp is a
+   * rendering, not an application, so its handlers are the runtime's and its
+   * a11y tree is not a claim about the product's.
+   */
+  affordance?: {
+    /** Computed `cursor: pointer` — the design's own statement that this is clickable. */
+    pointer: boolean
+    /**
+     * Reachable as a control: a `button` / `a[href]` / `input` / `select` /
+     * `textarea`, an element carrying an ARIA `role` with a tabindex, or any
+     * element with a non-negative `tabindex`. Checked on the element AND its
+     * ancestors up to the capture root, because the clickable thing is often a
+     * wrapper around the glyph that got matched.
+     */
+    interactive: boolean
+    /** Inside an `aria-hidden` subtree, or `inert` — present to the eye, absent to everything else. */
+    hidden: boolean
+  }
 }
 
 export type FindingType =
@@ -106,6 +143,17 @@ export type FindingType =
    * shows. One per run, boxless, minor; it goes away when the sizes are right.
    */
   | "alignment"
+  /**
+   * The design draws this element as CLICKABLE and the implementation's
+   * counterpart is not — the one drift class where every measured property can
+   * match perfectly, because a dead control is pixel-identical to a live one.
+   *
+   * Measured on the case that motivated it: a comp's „＋" carrying `onClick`
+   * and `cursor:pointer`, implemented as a `<span aria-hidden>` with the same
+   * size, border, radius and colour. The pair produced ZERO findings and the
+   * button opened nothing.
+   */
+  | "affordance"
 
 export type Severity = "critical" | "major" | "minor"
 
@@ -719,6 +767,13 @@ export interface ComparisonReport {
     bleed?: Bleed
     /** Figma GIGO score (always echoed, even when the gate passed). */
     quality?: { score: number; leaves: number; bound: number; instances: number; detached: number }
+    /**
+     * dc-html: `<sc-if>` branches inside the frame, and the conditions none of
+     * whose `<sc-if>`s were true in this captured state. A branch that never
+     * draws has no design element and therefore produces no finding at all, so
+     * a PASS and a FAIL look identical on it — see `adapters/dc-branches.ts`.
+     */
+    branches?: { total: number; uncovered: string[] }
   }
   impl: {
     source: string

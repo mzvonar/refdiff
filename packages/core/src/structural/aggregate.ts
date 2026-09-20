@@ -81,6 +81,13 @@ function groupKey(f: Finding): string {
     case "text-content":
     case "alignment":
       return f.type
+    // An affordance finding's CAUSE is HOW the counterpart fails, not which
+    // element it is: "twelve icon buttons are `aria-hidden` spans" is one fix
+    // and should read as one line, where twelve separate findings read as
+    // twelve problems. Keyed on `actual` alone — `expected` is always
+    // `{ clickable: true }`, since the check only fires when the design says so.
+    case "affordance":
+      return `${f.type}|${String(f.actual?.["interactive"] ?? "")}|${String(f.actual?.["ariaHidden"] ?? "")}`
   }
 }
 

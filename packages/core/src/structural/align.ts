@@ -17,6 +17,7 @@
 import type { NormalizedPair, AlignedPair } from "../pipeline.js"
 import type { Alignment, ElementNode } from "../types.js"
 import type { RawFinding } from "./checks.js"
+
 import { normalizeForMatching as normText } from "./text.js"
 
 const MIN_ANCHORS = 3
@@ -30,7 +31,6 @@ const SCALE_MAX = 2
 const AGREE_PX = 10
 /** An axis fit is applied only when its median |residual| is below this. */
 const AXIS_RESIDUAL_MAX = 12
-
 
 /** Map of normalized text → element, keeping only texts unique on that side. */
 function uniqueTextIndex(elements: readonly ElementNode[]): Map<string, ElementNode> {
@@ -243,6 +243,22 @@ export function alignStructural(pair: NormalizedPair): AlignedPair {
               h: t.scaleY * el.box.h,
             },
           })),
+          // The containers ride the SAME transform as the elements: the
+          // container channel decides which leaves a container holds by
+          // containment, and an untransformed container holds none of them.
+          ...(pair.design.containers
+            ? {
+                containers: pair.design.containers.map((el) => ({
+                  ...el,
+                  box: {
+                    x: t.scaleX * el.box.x + t.offsetX,
+                    y: t.scaleY * el.box.y + t.offsetY,
+                    w: t.scaleX * el.box.w,
+                    h: t.scaleY * el.box.h,
+                  },
+                })),
+              }
+            : {}),
         }
       : pair.design
 

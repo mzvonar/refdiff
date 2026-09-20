@@ -127,6 +127,24 @@ gating on `max(confidenceX, confidenceY)` instead: that unflags the canonical
 witness, which reads joint 0.07 and max exactly 0.50 (refdiff
 `docs/r6-sweep-2026-09-16.md` §6).
 
+**"Fix the alignment first" is scoped to findings that REST ON A PAIRING, and the
+run now says which ones do not.** Under the `pixel channel skipped` line it
+prints a second one:
+
+```
+pixel channel skipped (confidence 0.00 < 0.5)
+  ↳ 49 finding(s) rest on NO pairing and are unaffected by this (34 extra-element, 15 missing-element) — read those first
+```
+
+`missing-element` and `extra-element` carry no `via` at all — they ARE the
+absence of a pairing — so the alignment cannot make them wrong, and they are
+exactly as good on a 0.00 pair as on a 1.00 one. Without that line a low
+confidence reads as "distrust the list", which is the expensive misreading:
+measured on `messages-accountant-desktop`, the run correctly reported a major
+`extra-element` for an upload control the design does not draw anywhere, inside
+a 148-finding list on a 0.00-confidence pair, and it was discounted along with
+everything else. A human found it by looking at the screen.
+
 The shape to recognise: a comp label with no counterpart in the implementation
 pairs with whatever sits nearest, and emits five findings that read as
 actionable plus, LAST, the `text-content` one that gives it away. When a pair's
@@ -504,4 +522,60 @@ items is now a typed finding — read it there:
   offset is one such box; a scale is one such box repeated down the page
   (§1a says how to find it). Fix the sizes; the transform snaps to `scale 1,
   offset 0` and the note goes.
+- **Clickability** → `affordance`: the design draws this element as a control
+  (`cursor: pointer`) and the implementation's counterpart is not one. **The
+  only class of drift where every measured property can match perfectly**, so
+  it is the one finding you cannot reach by looking harder at the others — a
+  dead button is pixel-identical to a live one. Three messages, three
+  different fixes: *not a control at all* (no button/link/tabindex), *styled
+  as clickable but not a control* (the nastiest — it looks live), and
+  *interactive but inside an `aria-hidden` subtree* (works with a mouse,
+  unreachable any other way).
+  DOM-backed pairs only: Figma has no runtime and no a11y tree, so a
+  Figma-sourced node carries no affordance and the check skips the pair rather
+  than reporting every control as dead. ONE-DIRECTIONAL — an implementation
+  that makes something interactive the comp draws flat (a whole row made
+  tappable) is routinely correct and is not reported. Reachability is measured
+  from the nearest CONTROL at or above the element, not from the element: an
+  `aria-hidden` glyph inside a labelled button is the recommended pattern, and
+  asking the glyph instead of the button was 6 of this check's first 9 corpus
+  findings, all of them on correct code. Gated by `unverified` like any other
+  value finding — it is a claim about a PAIR, and two of its four corpus
+  findings sit on geometry-formed pairs at γ 77 and γ 91.
+  Anchor: a comp's „＋" with `onClick` + `cursor:pointer`, shipped as a
+  `<span aria-hidden>` of identical size, border, radius and colour. The pair
+  produced zero findings; the button opened nothing; a human found it by
+  clicking it.
+- **Containers** → `border` / `color` / `border-radius` findings whose `role`
+  is `container`, reading „container at (x, y) W×H (N matched leaves)". The
+  matcher takes LEAVES, so design that lives on a wrapper — a row separator, a
+  card border, a panel background — is invisible to every other channel. Two
+  containers holding the same set of matched leaves are the same container, so
+  the pairing is the matcher's and adds no geometry guess of its own; a key
+  that identifies two wrappers on one side (nested wrappers around the same
+  content) pairs NOTHING rather than picking one. **Its border check is
+  SIDE-AWARE and the rest of the harness is not**: a leaf's `borderWidth` reads
+  the top side only, which is blind to a `border-bottom` row separator and
+  cannot tell `divide-y` (border-TOP on each child) from a comp's
+  `border-bottom`. DOM-backed pairs only. Needs ≥ 2 matched leaves per
+  container, and ignores wrappers covering > 70 % of the frame — page chrome
+  holds every leaf, so that key identifies nothing.
+  Anchor: `messages-owner-mobile` — 45 design leaves, 42 matched, and exactly
+  ONE `border` finding in the whole run, about a filter chip. The comp's five
+  hairline-separated rail rows reached the report only as a `pixel-region`
+  reading "5.62 % of the frame differs OUTSIDE every matched element … 198
+  region(s)": the cause class, and no element. On its first run the channel
+  also found the DESKTOP rail missing the same separator — a surface a
+  comp-parity pass had read and concluded the separators were phone-only.
+- **Uncovered comp branches** → printed under the design capture, and
+  `design.branches` in the report: „16 conditional branches, 7 never true in
+  this captured state: …". A `.dc.html` comp is a LIVE page, and an `<sc-if>`
+  the comp's own state never makes true draws no design element — so it
+  produces no finding and a PASS reads exactly like a FAIL. A property of the
+  comp alone (no pairing, nothing to be wrong about), so it is capture
+  metadata, not a finding. Read it when a variant looks suspiciously clean.
+  Anchor: `messages.dc.html` has five row renderers and its `sel` state opens
+  only t1 and t2; t3 and t4 are the only threads carrying `doc` or `sys` rows,
+  so no captured frame drew either, on either side. Two of five row types were
+  invisible to a PASS and to a FAIL alike, and both shipped undesigned.
 

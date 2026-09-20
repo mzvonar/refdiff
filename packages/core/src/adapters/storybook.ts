@@ -222,6 +222,7 @@ export async function captureStorybook(
       height,
       dpr: DPR,
       elements: extraction.elements,
+      containers: extraction.containers,
       ...(isNoBleed(bleed) ? {} : { bleed }),
       ...(source.selector !== undefined
         ? { scope: { mode: "explicit" as const, selector: source.selector } }

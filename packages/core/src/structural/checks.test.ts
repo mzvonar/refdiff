@@ -511,6 +511,100 @@ describe("pairing provenance", () => {
   })
 })
 
+// The one drift class where every measured property matches by construction: a
+// dead control is pixel-identical to a live one. Witness: a comp's „＋" carrying
+// `onClick` + `cursor:pointer`, shipped as a `<span aria-hidden>` of the same
+// size, border, radius and colour — zero findings on the real pair.
+describe("the affordance channel", () => {
+  const clickable = (over: Partial<ElementNode> = {}) =>
+    el("d", { affordance: { pointer: true, interactive: true, hidden: false }, ...over })
+
+  const affordances = (design: ElementNode, impl: ElementNode) =>
+    runTypedChecks(matched(design, impl)).filter((f) => f.type === "affordance")
+
+  it("reports a design control the implementation renders as a plain element", () => {
+    const findings = affordances(
+      clickable({ text: "＋" }),
+      el("i", { text: "＋", affordance: { pointer: false, interactive: false, hidden: true } }),
+    )
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.severity).toBe("major")
+    expect(findings[0]!.actual).toEqual({ clickable: "no", interactive: "no", ariaHidden: "yes" })
+    expect(findings[0]!.message).toContain("is not a control at all")
+  })
+
+  // The nastier half: it LOOKS live, so nothing about the picture is wrong.
+  it("reports an element styled as clickable that is not a control", () => {
+    const findings = affordances(
+      clickable({ text: "Zobraziť" }),
+      el("i", {
+        text: "Zobraziť",
+        affordance: { pointer: true, interactive: false, hidden: false },
+      }),
+    )
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.message).toContain("styled as clickable but is not a control")
+  })
+
+  it("reports a control only a mouse can reach", () => {
+    const findings = affordances(
+      clickable(),
+      el("i", { affordance: { pointer: true, interactive: true, hidden: true } }),
+    )
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.message).toContain("`aria-hidden`")
+  })
+
+  it("is quiet when the implementation is a reachable control", () => {
+    expect(
+      affordances(
+        clickable(),
+        el("i", { affordance: { pointer: true, interactive: true, hidden: false } }),
+      ),
+    ).toEqual([])
+  })
+
+  // One-directional by design — see `affordanceFindings`. An implementation that
+  // makes a whole row tappable where the comp draws a flat card is routinely
+  // right, and reporting it would bury the direction worth reading.
+  it("says nothing when the IMPLEMENTATION is the interactive one", () => {
+    expect(
+      affordances(
+        el("d", { affordance: { pointer: false, interactive: false, hidden: false } }),
+        el("i", { affordance: { pointer: true, interactive: true, hidden: false } }),
+      ),
+    ).toEqual([])
+  })
+
+  // Figma has no runtime and no a11y tree, so its nodes carry no `affordance` at
+  // all. Skipping the pair is the difference between "we cannot tell" and
+  // reporting every Figma-backed control as dead.
+  it("skips the pair when either side does not know", () => {
+    expect(affordances(clickable(), el("i"))).toEqual([])
+    expect(
+      affordances(
+        el("d"),
+        el("i", { affordance: { pointer: false, interactive: false, hidden: false } }),
+      ),
+    ).toEqual([])
+  })
+
+  it("ranks ahead of every value finding, just behind presence", () => {
+    const findings = runTypedChecks(
+      matched(
+        clickable({ text: "＋", style: { color: "rgb(0, 0, 0)" } }),
+        el("i", {
+          text: "＋",
+          box: { x: 90, y: 10, w: 200, h: 40 },
+          style: { color: "rgb(200, 10, 10)" },
+          affordance: { pointer: false, interactive: false, hidden: false },
+        }),
+      ),
+    )
+    expect(findings[0]!.type).toBe("affordance")
+  })
+})
+
 describe("the unverified gate", () => {
   const flagged = (findings: readonly { type: string; unverified?: true }[]): string[] =>
     findings.filter((f) => f.unverified === true).map((f) => f.type)

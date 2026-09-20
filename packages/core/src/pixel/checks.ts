@@ -15,10 +15,11 @@
 
 import type { ElementMatch } from "../pipeline.js"
 import type { Alignment, Box, Finding, FindingType, Severity } from "../types.js"
+import type { RemainderDiff } from "./diff.js"
 
 import { classifyRegion, describeChange, type RawImage } from "./classify.js"
 import { clusterMask, unionBox, type Cluster, type DiffMask } from "./cluster.js"
-import type { RemainderDiff } from "./diff.js"
+import { describeRun, repeatedRuns } from "./repetition.js"
 
 /** What the diff edge measured for one matched pair, in impl native pixels. */
 export interface MatchDiff {
@@ -291,24 +292,49 @@ export function remainderFinding(
   minRatio = 0.004,
 ): RawFinding | undefined {
   if (rem.diffRatio < minRatio || rem.clusters.length === 0) return undefined
-  const top = rem.clusters.slice(0, 6)
   const pct = (rem.diffRatio * 100).toFixed(2)
-  const where = top
-    .slice(0, 3)
-    .map((c) => `${Math.round(c.box.w)}×${Math.round(c.box.h)} at (${Math.round(c.box.x)}, ${Math.round(c.box.y)})`)
-    .join("; ")
+  const describeBox = (b: Box): string =>
+    `${Math.round(b.w)}×${Math.round(b.h)} at (${Math.round(b.x)}, ${Math.round(b.y)})`
+  // REPETITION first, size second. An evenly-spaced run of identical regions is
+  // ONE missing repeated rule and the strongest thing this finding can say; the
+  // largest blob is usually rasterisation residue, and ranking by size buries
+  // the run under it. Measured witness in repetition.ts.
+  const runs = repeatedRuns(rem.clusters)
+  const largest = rem.clusters.slice(0, 6)
+  const top = runs.length > 0 ? runs[0]!.boxes.slice(0, 6) : largest.map((c) => c.box)
+  const where =
+    runs.length > 0
+      ? `${describeRun(runs[0]!)}` +
+        `${runs.length > 1 ? ` (and ${runs.length - 1} further run(s))` : ""}` +
+        `; largest single region ${describeBox(largest[0]!.box)}`
+      : `largest: ${largest
+          .slice(0, 3)
+          .map((c) => describeBox(c.box))
+          .join("; ")}`
   return {
     type: "pixel-region",
     severity: rem.diffRatio >= 0.02 ? "major" : "minor",
     role: "frame",
     message:
       `${pct}% of the frame differs OUTSIDE every matched element — nothing in the element model ` +
-      `covers it, so no per-element finding can. ${rem.clusters.length} region(s); largest: ${where}. ` +
+      `covers it, so no per-element finding can. ${rem.clusters.length} region(s); ${where}. ` +
       `A container's background, border, radius or width is the usual cause: containers are not leaf ` +
       `elements, so they are never matched and never diffed.`,
     expected: { unexplainedDiffRatio: 0 },
-    actual: { unexplainedDiffRatio: Math.round(rem.diffRatio * 10000) / 10000, regions: rem.clusters.length },
-    regions: top.map((c) => c.box),
+    actual: {
+      unexplainedDiffRatio: Math.round(rem.diffRatio * 10000) / 10000,
+      regions: rem.clusters.length,
+      ...(runs.length > 0
+        ? {
+            repeatedRuns: runs.length,
+            repeatedCount: runs[0]!.count,
+            repeatedSize: `${runs[0]!.w}×${runs[0]!.h}`,
+            repeatedPitch: runs[0]!.pitch,
+            repeatedAxis: runs[0]!.axis,
+          }
+        : {}),
+    },
+    regions: top,
   }
 }
 

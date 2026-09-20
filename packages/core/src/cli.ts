@@ -31,6 +31,7 @@ import {
   type AcceptedFile,
 } from "./accepted.js"
 import { launchBrowser } from "./adapters/browser.js"
+import { describeBranchCoverage } from "./adapters/dc-branches.js"
 import { captureDcHtml } from "./adapters/dc-html.js"
 import {
   FigmaClient,
@@ -56,7 +57,13 @@ import { captureLiveUrl } from "./adapters/live-url.js"
 import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { ensureStorybook } from "./adapters/storybook-server.js"
 import { captureStorybook } from "./adapters/storybook.js"
-import { pairMatches, parseManifest, readAccepted, type LiveSpec, type PairSpec } from "./manifest.js"
+import {
+  pairMatches,
+  parseManifest,
+  readAccepted,
+  type LiveSpec,
+  type PairSpec,
+} from "./manifest.js"
 import { emptyLedger, parseLedger, recordResolved, type ResolvedLedger } from "./package/delta.js"
 import { driftWalk, formatDriftWalk, type DriftAxis } from "./package/drift.js"
 import { packageForModel } from "./package/package-for-model.js"
@@ -76,7 +83,8 @@ import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./po
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
 import { alignmentNote, alignStructural, rootSizeNote } from "./structural/align.js"
-import { finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
+import { colorDelta, finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
+import { runContainerChecks } from "./structural/containers.js"
 import { matchElements, matchingStats } from "./structural/match.js"
 
 const USAGE = `Usage: refdiff compare [options]
@@ -555,6 +563,12 @@ async function runPair(
         : ""
     }`,
   )
+  // A branch the comp never draws has no design element, so it can produce no
+  // finding at all — the one thing a clean run cannot tell a reader by itself.
+  const branchLine = d.branches ? describeBranchCoverage(d.branches) : null
+  if (branchLine !== null) {
+    console.log(`  ${branchLine}`)
+  }
 
   const impl = await captureImpl(browser, spec, o)
   if (!impl.ok) return err({ side: "impl", error: impl.error })
@@ -638,6 +652,27 @@ async function runPair(
   // a geometry-formed pair can be marked `unverified` rather than read as drift.
   const structural = runTypedChecks(match, { alignmentConfidence: confidence })
 
+  // Container channel: design that lives on a WRAPPER — a row separator, a card
+  // border, a panel background — which the leaf matcher cannot see. Paired by
+  // identical matched-leaf sets, so it adds no geometry guess of its own.
+  const container = runContainerChecks(
+    {
+      ...(aligned.design.containers ? { containers: aligned.design.containers } : {}),
+      frame: { x: 0, y: 0, w: aligned.design.width, h: aligned.design.height },
+    },
+    {
+      ...(aligned.impl.containers ? { containers: aligned.impl.containers } : {}),
+      frame: { x: 0, y: 0, w: aligned.impl.width, h: aligned.impl.height },
+    },
+    match.matches,
+    colorDelta,
+  )
+  if (container.pairs > 0 || container.findings.length > 0) {
+    console.log(
+      `container channel: ${container.pairs} container(s) paired by matched-leaf identity, ${container.findings.length} finding(s)`,
+    )
+  }
+
   // Pixel channel: AA-aware diff inside each matched box, gated on the
   // structural alignment being trustworthy. Never duplicates a structural
   // finding on the same pair.
@@ -649,6 +684,7 @@ async function runPair(
       console.log(
         `pixel channel skipped (confidence ${confidence.toFixed(2)} < ${PIXEL_DEFAULTS.minConfidence})`,
       )
+      reportPairingIndependent(structural)
     } else {
       const diffs = await diffMatches(aligned, match.matches)
       const { findings: pixelFindings, reported } = runPixelChecks(diffs, structural)
@@ -687,6 +723,7 @@ async function runPair(
   const { kept, suppressed } = applyPolicy(
     finalize([
       ...structural,
+      ...container.findings,
       ...pixel,
       ...(identity ? [identity] : []),
       ...(rootSize ? [rootSize] : []),
@@ -769,6 +806,36 @@ function provenanceTag(f: Finding): string {
   if (f.via === undefined) return ""
   const g = f.gamma !== undefined ? ` γ${f.gamma}` : ""
   return f.unverified ? `  [unverified · ${f.via}${g}]` : `  [${f.via}${g}]`
+}
+
+/**
+ * Printed with the low-confidence notice, and only there: the OTHER half of what
+ * that notice means.
+ *
+ * "Confidence 0.00" correctly tells a reader to distrust the pairings — and is
+ * then read as "distrust the list", which is wrong and expensive. A
+ * `missing-element` / `extra-element` rests on NO pairing at all (it is the
+ * absence of one), so the alignment cannot make it wrong; those findings are
+ * exactly as good on a 0.00 pair as on a 1.00 one.
+ *
+ * Measured on the pair that motivated it (`messages-accountant-desktop`,
+ * confidence 0.00, 148 findings): the run correctly reported a major
+ * `extra-element` for an upload control the design does not draw, and it was
+ * discounted along with everything else. Naming the trustworthy subset at the
+ * moment of the warning is the whole fix — one line, no new measurement.
+ */
+function reportPairingIndependent(findings: readonly Finding[]): void {
+  const unpaired = findings.filter((f) => f.via === undefined && f.type !== "alignment")
+  if (unpaired.length === 0) return
+  const byType = new Map<string, number>()
+  for (const f of unpaired) byType.set(f.type, (byType.get(f.type) ?? 0) + 1)
+  const breakdown = [...byType.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, n]) => `${n} ${type}`)
+    .join(", ")
+  console.log(
+    `  ↳ ${unpaired.length} finding(s) rest on NO pairing and are unaffected by this (${breakdown}) — read those first`,
+  )
 }
 
 /** How the run's findings are split by the evidence behind their pairings. */
@@ -1889,7 +1956,9 @@ async function drift(argv: string[]): Promise<void> {
   const file = join(runDir, "elements.json")
   const raw = await readFile(file, "utf8").catch(() => undefined)
   if (raw === undefined)
-    fail(`drift: no elements.json in ${runDir} — point at a RUN dir (the one holding findings.json)`)
+    fail(
+      `drift: no elements.json in ${runDir} — point at a RUN dir (the one holding findings.json)`,
+    )
   const parsed = JSON.parse(raw) as Parameters<typeof driftWalk>[0]
   const axis = (values.axis ?? "y") as DriftAxis
   if (axis !== "y" && axis !== "x") fail(`drift: --axis must be y or x, got "${values.axis}"`)

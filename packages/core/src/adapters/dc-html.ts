@@ -18,6 +18,7 @@ import type { Browser, Page } from "playwright"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
+import { isNoBleed } from "../geometry.js"
 import { err, ok, type Result } from "../result.js"
 import {
   captureUntilStable,
@@ -28,10 +29,10 @@ import {
   shootElement,
   waitForFonts,
 } from "./browser.js"
-import { isNoBleed } from "../geometry.js"
-import { describeStep, runSteps } from "./steps.js"
+import { branchCoverage, type BranchCoverage } from "./dc-branches.js"
 import { extractElementTree } from "./extract.js"
 import { CANVAS_SLACK, isFluidFrame, pickLargestChild, type ScopeCandidate } from "./scope.js"
+import { describeStep, runSteps } from "./steps.js"
 
 /**
  * Resolve the node to capture inside the frame, in priority order:
@@ -111,6 +112,73 @@ export async function resolveScope(
     selector: `${frameSelector} > [data-vc-scope]`,
     candidates: candidates.length,
   })
+}
+
+/**
+ * The frame's `<sc-if>` branches and which of them the captured state drew.
+ *
+ * Done in the PAGE because the template has to be parsed by the same HTML
+ * parser the dc-runtime used: `compileTemplate` stamps `data-dc-tpl` onto every
+ * element of `<x-dc>`'s innerHTML in document order, and only an identical
+ * parse reproduces those indices. The runtime replaces `<x-dc>` on hydration,
+ * so the template is re-fetched from the source rather than read off the live
+ * DOM (the same two lines `parseDcText` uses to find it).
+ *
+ * Best-effort: a comp with no `<x-dc>`, an unreachable source or a frame the
+ * template does not contain yields undefined and the capture reports nothing.
+ * This is metadata about the comp, never a gate.
+ */
+async function collectBranches(
+  page: Page,
+  url: string,
+  frameSelector: string,
+): Promise<BranchCoverage | undefined> {
+  try {
+    const raw = await page.evaluate(
+      async ({ src, sel }: { src: string; sel: string }) => {
+        const text = await (await fetch(src)).text()
+        const open = /<x-dc(?:\s[^>]*)?>/.exec(text)
+        const close = text.lastIndexOf("</x-dc>")
+        if (!open || close === -1 || close < open.index) return null
+        const tpl = document.createElement("template")
+        //! nosemgrep: direct-inner-html-assignment
+        tpl.innerHTML = text.slice(open.index + open[0].length, close)
+
+        const index = new Map<Element, number>()
+        let n = 0
+        const stamp = (node: Node): void => {
+          if (node.nodeType === 1) index.set(node as Element, n++)
+          for (const child of node.childNodes) stamp(child)
+        }
+        stamp(tpl.content)
+
+        const root = tpl.content.querySelector(sel)
+        if (!root) return null
+        const descendantsOf = (el: Element): number[] =>
+          Array.from(el.querySelectorAll("*")).flatMap((d) => {
+            const i = index.get(d)
+            return i === undefined ? [] : [i]
+          })
+
+        return {
+          branches: Array.from(root.querySelectorAll("sc-if")).map((el) => ({
+            name: (el.getAttribute("value") ?? "").replace(/[{}]/g, "").trim(),
+            index: index.get(el) ?? -1,
+            descendants: descendantsOf(el),
+          })),
+          rendered: Array.from(document.querySelectorAll("[data-dc-tpl]")).flatMap((el) => {
+            const value = Number(el.getAttribute("data-dc-tpl"))
+            return Number.isFinite(value) ? [value] : []
+          }),
+        }
+      },
+      { src: url, sel: frameSelector },
+    )
+    if (raw === null) return undefined
+    return branchCoverage(raw.branches, raw.rendered)
+  } catch {
+    return undefined
+  }
 }
 
 /** Attribute-selector value: only the quote and the backslash need escaping. */
@@ -300,6 +368,10 @@ export async function captureDcHtml(
       })
     }
 
+    // After the shot and the extraction, so a failure here cannot cost the
+    // capture: branch coverage is metadata about the comp, not part of the pair.
+    const branches = await collectBranches(page, url, selector)
+
     await mkdir(dirname(pngPath), { recursive: true })
     await writeFile(pngPath, png)
 
@@ -312,8 +384,10 @@ export async function captureDcHtml(
       height: extraction.height,
       dpr: DPR,
       elements: extraction.elements,
+      containers: extraction.containers,
       ...(isNoBleed(bleed) ? {} : { bleed }),
       scope,
+      ...(branches !== undefined ? { branches } : {}),
     })
   } catch (e) {
     return err({

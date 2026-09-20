@@ -82,6 +82,13 @@ export const VALUE_FINDING_TYPES: ReadonlySet<FindingType> = new Set<FindingType
   "border",
   "border-radius",
   "size",
+  // Affordance belongs here for the same reason the others do, and the evidence
+  // arrived with the channel's first run: two of its four corpus findings sit on
+  // a 0.00-confidence pair, formed by geometry alone at γ 77 and γ 91. "The
+  // design draws THIS as clickable" is a claim about a pair, and it is worth
+  // exactly what the pair is worth — a mis-paired label reported as a dead
+  // button is the same error as a mis-paired label reported as the wrong colour.
+  "affordance",
 ])
 
 /**
@@ -194,7 +201,13 @@ export function flattenOverWhite(c: Rgb): Rgb {
   return { mode: "rgb", r: c.r * a + (1 - a), g: c.g * a + (1 - a), b: c.b * a + (1 - a) }
 }
 
-function colorDelta(a: string, b: string): number | undefined {
+/**
+ * CIEDE2000 between two CSS colours, each flattened over white first.
+ * Exported so the container channel measures colour EXACTLY as this one does —
+ * a second implementation of "are these the same colour" is a second
+ * threshold, and only one of them would be the calibrated one.
+ */
+export function colorDelta(a: string, b: string): number | undefined {
   const ca = rgb(a)
   const cb = rgb(b)
   if (!ca || !cb) return undefined
@@ -502,7 +515,69 @@ function pairFindings(
     }
   }
 
+  out.push(...affordanceFindings(design, impl, boxes, label))
+
   return out
+}
+
+/**
+ * The design draws it as clickable; does the implementation's counterpart do
+ * anything?
+ *
+ * Runs only when BOTH sides know — a Figma node has no runtime and no a11y
+ * tree, so it leaves `affordance` undefined and this returns nothing rather
+ * than reporting every Figma pair as dead.
+ *
+ * ONE-DIRECTIONAL on purpose. Design-says-clickable + impl-is-not is a defect;
+ * the reverse (the implementation makes something interactive the comp draws
+ * flat) is routinely correct — a whole row made tappable, a label that focuses
+ * its field — and reporting it would bury the case worth reading. That
+ * asymmetry is the same one `missing-element` and `extra-element` already have,
+ * where only one of them is critical.
+ */
+function affordanceFindings(
+  design: ElementNode,
+  impl: ElementNode,
+  boxes: Record<string, unknown>,
+  label: string,
+): RawFinding[] {
+  const d = design.affordance
+  const i = impl.affordance
+  if (d === undefined || i === undefined || !d.pointer) return []
+  // Live and reachable — nothing to say.
+  if (i.interactive && !i.hidden) return []
+
+  // The two failures are different defects with different fixes, so they get
+  // different messages rather than one that covers both vaguely.
+  const cause = i.interactive
+    ? "is interactive but sits in an `aria-hidden` subtree, so only a mouse can reach it"
+    : i.pointer
+      ? "is styled as clickable but is not a control (no button/link/tabindex)"
+      : "is not a control at all (no button/link/tabindex, and no pointer cursor)"
+
+  return [
+    {
+      type: "affordance",
+      // MAJOR, not critical: the element is present and correct in every
+      // measurable way, so this is never a "the screen is wrong" finding — but
+      // it is the only channel that can see it, so it must not be minor either.
+      severity: "major",
+      ...boxes,
+      // Strings, not booleans: `expected`/`actual` are `Record<string, string |
+      // number>` because `refdiff accept` builds its suppression rules out of
+      // them, and a rule made of exact values LAPSES the moment either side
+      // changes — which is exactly what should happen here. Fix the button and
+      // `interactive` flips to "yes", so an accepted deviation stops applying
+      // rather than forgiving the element forever.
+      expected: { clickable: "yes" },
+      actual: {
+        clickable: "no",
+        interactive: i.interactive ? "yes" : "no",
+        ariaHidden: i.hidden ? "yes" : "no",
+      },
+      message: `design draws ${label} as clickable; the implementation ${cause}`,
+    },
+  ]
 }
 
 /**
@@ -641,11 +716,15 @@ const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, major: 1, minor:
 const TYPE_ORDER: Partial<Record<FindingType, number>> = {
   "missing-element": 0,
   "extra-element": 1,
-  position: 2,
-  spacing: 3,
-  size: 4,
-  color: 5,
-  border: 6,
+  // Straight after presence, and ahead of every value check, because it answers
+  // the same KIND of question: presence asks whether the thing is there,
+  // affordance asks whether it does anything. Both outrank "is it 2px left".
+  affordance: 2,
+  position: 3,
+  spacing: 4,
+  size: 5,
+  color: 6,
+  border: 7,
 }
 
 /**
