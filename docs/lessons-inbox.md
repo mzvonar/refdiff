@@ -1868,6 +1868,49 @@ another width those pixels hold different elements and the rule excuses them.
 the skill: a region rule belongs on the width that measured it, an element rule
 on the entry. Candidate home: SKILL.md "One screen at several widths".
 
+## 2026-09-20 — a plan item's PREMISE is as stale as anything else it cites
+
+§17's container-channel item was written from the SYMPTOM (a 198-region
+`pixel-region` blob) and inferred the cause: it assumed the containers were
+already in the element model and only needed pairing. They were not.
+`paintsDecoration` reads `borderTopWidth` / `-Style` / `-Color` ONLY, so a
+wrapper whose entire paint is `border-bottom` — the commonest container rule
+there is — is not a surface, is never emitted, and the proposed channel would
+have had nothing to key on. One look at the run's own `elements.json` settled
+it in a minute: 45 design elements, ONE surface, not one rail row on either
+side. Read the artifact an item is about before building what it proposes: the
+measurement in a plan item is evidence, its causal story is a hypothesis.
+
+Candidate home: `plan-next.md`'s preamble, or SKILL.md beside "every claim in
+the polish phase is a number from findings.json".
+
+## 2026-09-20 — "rank by repetition" is, by default, a text detector
+
+Every glyph in a word is the same size at a constant pitch, so the first cut of
+the remainder's repetition ranking led with "6 regions of 7×9 repeating every
+8.4px horizontally" — six letters of one word. Adding a pitch gate then let
+TRACKED and word-spaced text through ("7 regions of 5×8 every 13.2px",
+"6 regions of 6×9 every 47.2px"). It takes both: pitch ≥2× the member's own
+extent AND a UI-sized member (longest side ≥24px, or aspect ≥8 for a rule).
+
+The general shape is the keeper: any new ranking over pixel clusters will rank
+TEXT first unless told not to, because text is the most regular thing on the
+page. Check a new heuristic against a frame with a paragraph in it before
+believing its first output.
+
+## 2026-09-20 — a new channel's blast radius is decided by WHERE its input lives
+
+The container channel needed containers the extractor did not emit. Adding them
+to `elements` would have been one line — and would have moved the matcher, the
+pixel channel, the remainder and every count in every report across the whole
+corpus, for a channel that pairs by matched-leaf identity and needs none of
+them. A parallel `Capture.containers` list cost four extra plumbing sites
+(extract, pipeline, normalize, align) and kept the blast radius at "new
+findings only": the difference between a measurable change and a re-baseline.
+
+Candidate home: `architecture.md` beside the channel list, as the rule for
+adding the next one.
+
 ## 2026-09-17 — a CSS prefix is a namespace; grep before minting one
 
 The viewport menu's first cut used `vp-*` class names. `vp-` was already the view panel's

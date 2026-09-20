@@ -44,6 +44,7 @@ align            : NormalizedPair          -> AlignedPair             (NCC trans
 extractElements  : Capture                 -> ElementNode[]           (per side)
 matchElements    : (ElementNode[], ElementNode[]) -> ElementMatch[]
 runTypedChecks   : ElementMatch[]          -> Finding[]               (structural channel)
+runContainerChecks : (containers×2, ElementMatch[]) -> Finding[]      (container channel)
 applyPolicy      : (Finding[], IgnorePolicy) -> { kept, suppressed }  (suppressed stays in the report)
 aggregate        : Finding[]               -> Finding[]               (≥3 identical deltas → one finding ×N, all boxes kept)
 runPixelChecks   : (AlignedPair, ElementMatch[]) -> Finding[]         (pixel channel)
@@ -152,6 +153,67 @@ token, not just the raw value.
 This channel deterministically catches exactly what VLMs miss
 (line-height 4% VLM recall, radius 13% — research §1).
 
+It also carries the `affordance` check (`structural/checks.ts`
+`affordanceFindings`): the design draws an element as a control
+(`cursor: pointer`) and the implementation's counterpart is not one. The only
+drift class where every measured property can match perfectly — a dead button
+is pixel-identical to a live one — so no other channel can reach it.
+DOM-backed pairs only (a Figma node has no runtime and no a11y tree, so it
+leaves `affordance` undefined and the check skips rather than calling every
+control dead), and ONE-DIRECTIONAL: an implementation that makes something
+interactive the comp draws flat is routinely correct. Reachability is measured
+from the nearest CONTROL at or above the element, not from the element itself
+— asking the element made 6 of the first 9 corpus findings false positives on
+`<button aria-label><svg aria-hidden/></button>`.
+
+### Container channel (structural, pairing-free)
+
+Implemented in `core/src/structural/containers.ts`, fed by a PARALLEL container
+list the DOM extractor returns beside `elements` (`Capture.containers`, scaled
+by `normalize` and transformed by `alignStructural` exactly as the elements
+are).
+
+The matcher takes LEAVES, so design that lives on a wrapper — a row separator,
+a card border, a panel background — is invisible to every other channel.
+Measured witness: a phone rail whose comp draws each row as
+`<div …border-bottom:1px solid #f2eadd>` reported 42 of 45 design leaves
+matched and exactly ONE `border` finding in the whole run, about a filter chip;
+the missing rule reached the report only as a `pixel-region` naming 198 regions
+and no element.
+
+Two containers holding the same set of MATCHED LEAVES are the same container,
+so the pairing is the matcher's and adds no geometry guess on top of it — which
+is why this channel still reads on a pair whose alignment is weak. A key that
+identifies two wrappers on one side (nested wrappers around the same content)
+pairs NOTHING rather than picking one: which box a `border` finding names would
+otherwise be a coin toss. A container needs ≥2 matched leaves and ≤70% of the
+frame (page chrome holds every leaf, so its key identifies nothing).
+
+Its border check is PER SIDE and the rest of the harness is not: a leaf's
+`borderWidth` reads the top side only, which is blind to a `border-bottom` row
+separator and cannot tell `divide-y` (border-TOP on each child) from a comp's
+`border-bottom`. That is also why the container list's admission rule is wider
+than `isSurface`'s — `paintsDecoration` reads the top border only, so a wrapper
+whose whole paint is a bottom border is not a surface and was never extracted
+at all. The list is kept SEPARATE from `elements` deliberately: widening that
+one would move the matcher, the pixel channel, the remainder and every count in
+every report, for a channel that needs none of them.
+
+### Comp branch coverage (capture metadata, not a finding)
+
+`adapters/dc-branches.ts`, printed under the design capture and carried as
+`design.branches`. A `.dc.html` comp is a LIVE page: an `<sc-if>` its own state
+never makes true draws no design element, so it produces no finding and a PASS
+reads exactly like a FAIL. A property of the comp alone — no pairing, nothing
+to be wrong about — which is why it is metadata rather than a finding.
+Coverage is "did any descendant of this `<sc-if>` reach the DOM", answered
+through the `data-dc-tpl` indices the dc runtime stamps; the template is
+re-fetched from source and re-parsed IN THE PAGE, because only the same HTML
+parser reproduces those indices (the runtime replaces `<x-dc>` on hydration).
+Witness: a comp with five row renderers whose `sel` state opens two threads
+drew neither the `isSys` nor the `isDoc` row in any captured frame, on either
+side, and both shipped undesigned.
+
 ### Pixel channel (secondary, scoped)
 
 Implemented in `core/src/pixel/`. `diff.ts` (effectful edge, sharp +
@@ -177,6 +239,18 @@ behind the findings, painted on the impl canvas) and omitted entirely when
 none reported — an all-diffs mask measured 95.6 % text-rasterisation residue
 on a page pair: pixels no finding explains and no reader can act on.
 NCC translation refinement stays unbuilt until residue is measured.
+
+The whole-frame REMAINDER (difference lying outside every matched box, the
+backstop for what the element model cannot represent) ranks its regions by
+REPETITION before size (`pixel/repetition.ts`): an evenly-spaced run of
+identical regions is ONE missing repeated rule and the strongest thing that
+finding can say, where the largest blob is usually rasterisation residue. Two
+gates, both forced by the first real run, because a run of same-size boxes at a
+regular pitch is by default TEXT: the pitch must be ≥2× the member's own extent
+along the run axis (without it the report led with six letters of one word at
+an 8.4px pitch), and the member must be UI-sized — longest side ≥24px, or
+aspect ≥8 for a rule (the pitch gate alone still passed tracked and
+word-spaced text). No run ⇒ largest-first, as before.
 
 ### Agent packaging (the comprehension layer)
 
