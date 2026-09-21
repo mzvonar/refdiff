@@ -1,6 +1,7 @@
+import type { Finding } from "../types.js"
+
 import { describe, expect, it } from "vitest"
 
-import type { Finding } from "../types.js"
 import { verdictOf } from "./verdict.js"
 
 const f = (severity: Finding["severity"], explained?: string): Finding => ({

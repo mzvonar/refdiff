@@ -402,7 +402,13 @@ export function paneInsets(pane: VBox, panels: VBox[], eps = 1): Insets {
  * Zoom so `world` fits inside a pane of `pane` px with `pad` px of margin,
  * centred in the part of the pane that `inset` leaves visible (see paneInsets).
  */
-export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6, inset: Insets = NO_INSETS): View {
+export function fitView(
+  world: VBox,
+  pane: Size,
+  pad = 24,
+  maxZoom = 1.6,
+  inset: Insets = NO_INSETS,
+): View {
   // The comps' fit: 24px of air round the artboard, never blown up past 1.6× —
   // a small component fitted at 4× is a blur, not a reference.
   const availW = Math.max(1, pane.w - inset.left - inset.right - 2 * pad)
@@ -422,7 +428,13 @@ export function fitView(world: VBox, pane: Size, pad = 24, maxZoom = 1.6, inset:
  * wider one sets the zoom and neither is cropped while the panes move in lockstep. The cap
  * is loose on purpose — fill means fill, a narrow component may well come out large.
  */
-export function fillView(world: VBox, pane: Size, pad = 24, maxZoom = 4, inset: Insets = NO_INSETS): View {
+export function fillView(
+  world: VBox,
+  pane: Size,
+  pad = 24,
+  maxZoom = 4,
+  inset: Insets = NO_INSETS,
+): View {
   const availW = Math.max(1, pane.w - inset.left - inset.right - 2 * pad)
   const z = Math.min(maxZoom, availW / Math.max(1e-6, world.w))
   return {
@@ -787,7 +799,12 @@ export function cellPlacement(
     h: raw.h * sy,
   }
   return {
-    design: { box: designBox, png: withBleed(designBox, bleedOf(design), sx, sy), scale: sx, scaleY: sy },
+    design: {
+      box: designBox,
+      png: withBleed(designBox, bleedOf(design), sx, sy),
+      scale: sx,
+      scaleY: sy,
+    },
     impl: { box: implBox, png: withBleed(implBox, bleedOf(impl), 1, 1), scale: 1, scaleY: 1 },
   }
 }

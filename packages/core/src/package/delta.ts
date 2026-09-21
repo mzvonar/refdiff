@@ -26,59 +26,64 @@
  * halt on it.
  */
 
-import type { Box, ComparisonReport, Finding, RepairedNote } from "../types.js";
+import type { Box, ComparisonReport, Finding, RepairedNote } from "../types.js"
 
 export interface DeltaOptions {
   /** Max distance (px, per edge) between boxes that still count as the same place (textless findings). Default 5. */
-  boxTolerance?: number;
+  boxTolerance?: number
 }
 
-export type ReportDelta = NonNullable<ComparisonReport["delta"]>;
+export type ReportDelta = NonNullable<ComparisonReport["delta"]>
 
 const canon = (r: Record<string, string | number> | undefined): string =>
-  JSON.stringify(Object.entries(r ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  JSON.stringify(Object.entries(r ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
 
 /** Types whose expected/actual are coordinates — meaningless as identity once the text is known. */
-const COORDINATE_TYPES = new Set<Finding["type"]>(["position", "missing-element", "extra-element", "spacing"]);
+const COORDINATE_TYPES = new Set<Finding["type"]>([
+  "position",
+  "missing-element",
+  "extra-element",
+  "spacing",
+])
 
 /** Everything about a finding that is not geometry — must match exactly. */
 export const identityKey = (f: Finding): string => {
-  const head = `${f.type}|${f.role ?? ""}`;
+  const head = `${f.type}|${f.role ?? ""}`
   // One per run and its numbers move with every hairline change: the note is
   // the same finding until the fit IS the identity (then it is `resolved`).
-  if (f.type === "alignment") return head;
+  if (f.type === "alignment") return head
   // A pixel-region's `actual` is a MEASUREMENT of the same box — diffRatio,
   // diffPixels, clusters — and it moves on every capture, so keying on it makes
   // the region resolve and re-introduce itself under its own id whenever the
   // number twitches (measured: one box went 15.9% → 16.2% and the delta read
   // `+1 / −1`, twice in one session). The KIND of difference is the identity;
   // the box (this finding is textless) is what tells two regions apart.
-  if (f.type === "pixel-region") return `${head}|${String(f.actual?.["changeKind"] ?? "")}`;
+  if (f.type === "pixel-region") return `${head}|${String(f.actual?.["changeKind"] ?? "")}`
   if (f.text !== undefined) {
-    const axis = f.type === "spacing" ? `|${String(f.expected?.["axis"] ?? "")}` : "";
+    const axis = f.type === "spacing" ? `|${String(f.expected?.["axis"] ?? "")}` : ""
     return COORDINATE_TYPES.has(f.type)
       ? `${head}|text:${f.text}${axis}`
-      : `${head}|${canon(f.expected)}|${canon(f.actual)}|text:${f.text}`;
+      : `${head}|${canon(f.expected)}|${canon(f.actual)}|text:${f.text}`
   }
-  return `${head}|${canon(f.expected)}|${canon(f.actual)}`;
-};
+  return `${head}|${canon(f.expected)}|${canon(f.actual)}`
+}
 
 /** Does this identity need a box to be complete? (No text → geometry is all it has.) */
-const needsBox = (f: Pick<Finding, "text">): boolean => f.text === undefined;
+const needsBox = (f: Pick<Finding, "text">): boolean => f.text === undefined
 
 /** The impl box is world space and does not move with the alignment; design as fallback. */
-const anchor = (f: Finding): Box | undefined => f.implBox ?? f.designBox;
+const anchor = (f: Finding): Box | undefined => f.implBox ?? f.designBox
 
 /** Largest per-edge distance between two boxes; Infinity when only one has a box. */
 export function boxDistance(a: Box | undefined, b: Box | undefined): number {
-  if (a === undefined && b === undefined) return 0;
-  if (a === undefined || b === undefined) return Infinity;
+  if (a === undefined && b === undefined) return 0
+  if (a === undefined || b === undefined) return Infinity
   return Math.max(
     Math.abs(a.x - b.x),
     Math.abs(a.y - b.y),
     Math.abs(a.x + a.w - (b.x + b.w)),
     Math.abs(a.y + a.h - (b.y + b.h)),
-  );
+  )
 }
 
 /**
@@ -90,32 +95,36 @@ export function diffFindings(
   next: readonly Finding[],
   { boxTolerance = 5 }: DeltaOptions = {},
 ): { resolved: string[]; introduced: string[] } {
-  const remaining = new Map<string, Finding[]>();
+  const remaining = new Map<string, Finding[]>()
   for (const f of prev) {
-    const key = identityKey(f);
-    remaining.set(key, [...(remaining.get(key) ?? []), f]);
+    const key = identityKey(f)
+    remaining.set(key, [...(remaining.get(key) ?? []), f])
   }
-  const introduced: string[] = [];
+  const introduced: string[] = []
   for (const f of next) {
-    const candidates = remaining.get(identityKey(f)) ?? [];
-    let best = -1;
-    let bestDistance = Infinity;
-    const limit = needsBox(f) ? boxTolerance : Infinity;
+    const candidates = remaining.get(identityKey(f)) ?? []
+    let best = -1
+    let bestDistance = Infinity
+    const limit = needsBox(f) ? boxTolerance : Infinity
     candidates.forEach((c, i) => {
-      const d = boxDistance(anchor(c), anchor(f));
+      const d = boxDistance(anchor(c), anchor(f))
       if (d <= limit && d < bestDistance) {
-        best = i;
-        bestDistance = d;
+        best = i
+        bestDistance = d
       }
-    });
-    if (best === -1) introduced.push(f.id);
-    else remaining.set(identityKey(f), candidates.filter((_, i) => i !== best));
+    })
+    if (best === -1) introduced.push(f.id)
+    else
+      remaining.set(
+        identityKey(f),
+        candidates.filter((_, i) => i !== best),
+      )
   }
-  const resolved = [...remaining.values()].flat().map((f) => f.id);
+  const resolved = [...remaining.values()].flat().map((f) => f.id)
   // Keep the previous run's own order for readability.
-  const prevOrder = new Map(prev.map((f, i) => [f.id, i]));
-  resolved.sort((a, b) => (prevOrder.get(a) ?? 0) - (prevOrder.get(b) ?? 0));
-  return { resolved, introduced };
+  const prevOrder = new Map(prev.map((f, i) => [f.id, i]))
+  resolved.sort((a, b) => (prevOrder.get(a) ?? 0) - (prevOrder.get(b) ?? 0))
+  return { resolved, introduced }
 }
 
 /**
@@ -130,11 +139,11 @@ export function diffReports(
   options: DeltaOptions = {},
   ledger?: ResolvedLedger,
 ): ReportDelta {
-  const delta = diffFindings(prev.findings, next.findings, options);
+  const delta = diffFindings(prev.findings, next.findings, options)
   const regressions = ledger
     ? findRegressions(ledger, next.findings, delta.introduced, prev.findings, options)
-    : [];
-  const repaired = repairedNotes(prev.findings, next.findings, delta, regressions);
+    : []
+  const repaired = repairedNotes(prev.findings, next.findings, delta, regressions)
   return {
     previousRun: prev.createdAt,
     // Absent on a report written before runs were numbered: the reader falls back
@@ -143,7 +152,7 @@ export function diffReports(
     ...delta,
     ...(regressions.length > 0 ? { regressions } : {}),
     ...(repaired.length > 0 ? { repaired } : {}),
-  };
+  }
 }
 
 /**
@@ -168,25 +177,29 @@ export function repairedNotes(
   delta: { resolved: readonly string[] },
   regressions: readonly string[],
 ): RepairedNote[] {
-  const resolved = new Set(delta.resolved);
-  const byId = new Map(next.map((f) => [f.id, f]));
-  const out: RepairedNote[] = [];
+  const resolved = new Set(delta.resolved)
+  const byId = new Map(next.map((f) => [f.id, f]))
+  const out: RepairedNote[] = []
   for (const id of regressions) {
-    const f = byId.get(id);
-    if (f === undefined || f.text === undefined) continue;
-    if (f.type !== "missing-element" && f.type !== "extra-element") continue;
+    const f = byId.get(id)
+    if (f === undefined || f.text === undefined) continue
+    if (f.type !== "missing-element" && f.type !== "extra-element") continue
     const kin = prev.filter(
-      (p) => resolved.has(p.id) && p.text === f.text && p.type !== "missing-element" && p.type !== "extra-element",
-    );
-    if (kin.length === 0) continue;
+      (p) =>
+        resolved.has(p.id) &&
+        p.text === f.text &&
+        p.type !== "missing-element" &&
+        p.type !== "extra-element",
+    )
+    if (kin.length === 0) continue
     out.push({
       id,
       text: f.text,
       resolved: kin.map((p) => p.id),
       types: [...new Set(kin.map((p) => p.type))],
-    });
+    })
   }
-  return out;
+  return out
 }
 
 /* ---------------------------------------------------------- ledger -- */
@@ -196,22 +209,22 @@ export function repairedNotes(
  * if it ever comes back (identity key + place), plus what it said.
  */
 export interface LedgerEntry {
-  key: string;
+  key: string
   /** Set when the identity is by text — the box is then a tie-break, not a requirement. */
-  text?: string;
-  box?: Box;
-  message: string;
+  text?: string
+  box?: Box
+  message: string
   /** `createdAt` of the run that no longer showed it. */
-  resolvedAt: string;
+  resolvedAt: string
 }
 
 /** Everything every run of one pair has resolved so far (`resolved-ledger.json`). */
 export interface ResolvedLedger {
-  pair: string;
-  entries: LedgerEntry[];
+  pair: string
+  entries: LedgerEntry[]
 }
 
-export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [] });
+export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [] })
 
 /**
  * Does a ledger entry name this finding? The key must match; the box is
@@ -221,11 +234,13 @@ export const emptyLedger = (pair: string): ResolvedLedger => ({ pair, entries: [
  * a real regression.
  */
 const matchesEntry = (e: LedgerEntry, f: Finding, tolerance: number, requireBox = false): boolean =>
-  e.key === identityKey(f) && (!(needsBox(e) || requireBox) || boxDistance(e.box, anchor(f)) <= tolerance);
+  e.key === identityKey(f) &&
+  (!(needsBox(e) || requireBox) || boxDistance(e.box, anchor(f)) <= tolerance)
 
 /** The same identity `diffFindings` pairs by: key, plus the box within tolerance for a textless finding. */
 const sameIdentity = (a: Finding, b: Finding, tolerance: number): boolean =>
-  identityKey(a) === identityKey(b) && (!needsBox(a) || boxDistance(anchor(a), anchor(b)) <= tolerance);
+  identityKey(a) === identityKey(b) &&
+  (!needsBox(a) || boxDistance(anchor(a), anchor(b)) <= tolerance)
 
 /**
  * Pure: ids (of `next`) among `introduced` that are ABSENT from `prev` under
@@ -241,19 +256,19 @@ export function findRegressions(
   prev: readonly Finding[],
   { boxTolerance = 5 }: DeltaOptions = {},
 ): string[] {
-  const byId = new Map(next.map((f) => [f.id, f]));
-  const keyCount = new Map<string, number>();
+  const byId = new Map(next.map((f) => [f.id, f]))
+  const keyCount = new Map<string, number>()
   for (const f of next) {
-    const key = identityKey(f);
-    keyCount.set(key, (keyCount.get(key) ?? 0) + 1);
+    const key = identityKey(f)
+    keyCount.set(key, (keyCount.get(key) ?? 0) + 1)
   }
   return introduced.filter((id) => {
-    const f = byId.get(id);
-    if (f === undefined) return false;
-    if (prev.some((p) => sameIdentity(p, f, boxTolerance))) return false;
-    const requireBox = (keyCount.get(identityKey(f)) ?? 0) > 1;
-    return ledger.entries.some((e) => matchesEntry(e, f, boxTolerance, requireBox));
-  });
+    const f = byId.get(id)
+    if (f === undefined) return false
+    if (prev.some((p) => sameIdentity(p, f, boxTolerance))) return false
+    const requireBox = (keyCount.get(identityKey(f)) ?? 0) > 1
+    return ledger.entries.some((e) => matchesEntry(e, f, boxTolerance, requireBox))
+  })
 }
 
 /**
@@ -268,30 +283,30 @@ export function recordResolved(
   resolvedAt: string,
   { boxTolerance = 5 }: DeltaOptions = {},
 ): ResolvedLedger {
-  const resolved = new Set(delta.resolved);
-  const entries = [...ledger.entries];
+  const resolved = new Set(delta.resolved)
+  const entries = [...ledger.entries]
   for (const f of prev.findings) {
-    if (!resolved.has(f.id)) continue;
-    const existing = entries.findIndex((e) => matchesEntry(e, f, boxTolerance));
-    const box = anchor(f);
+    if (!resolved.has(f.id)) continue
+    const existing = entries.findIndex((e) => matchesEntry(e, f, boxTolerance))
+    const box = anchor(f)
     const entry: LedgerEntry = {
       key: identityKey(f),
       ...(f.text !== undefined ? { text: f.text } : {}),
       ...(box !== undefined ? { box } : {}),
       message: f.message,
       resolvedAt,
-    };
-    if (existing === -1) entries.push(entry);
-    else entries[existing] = { ...entries[existing]!, resolvedAt };
+    }
+    if (existing === -1) entries.push(entry)
+    else entries[existing] = { ...entries[existing]!, resolvedAt }
   }
-  return { pair: ledger.pair, entries };
+  return { pair: ledger.pair, entries }
 }
 
 /** Parse a ledger file's JSON; anything malformed → a fresh ledger for `pair`. */
 export function parseLedger(raw: unknown, pair: string): ResolvedLedger {
-  if (typeof raw !== "object" || raw === null) return emptyLedger(pair);
-  const r = raw as { pair?: unknown; entries?: unknown };
-  if (r.pair !== pair || !Array.isArray(r.entries)) return emptyLedger(pair);
+  if (typeof raw !== "object" || raw === null) return emptyLedger(pair)
+  const r = raw as { pair?: unknown; entries?: unknown }
+  if (r.pair !== pair || !Array.isArray(r.entries)) return emptyLedger(pair)
   const entries = r.entries.filter(
     (e: unknown): e is LedgerEntry =>
       typeof e === "object" &&
@@ -299,6 +314,6 @@ export function parseLedger(raw: unknown, pair: string): ResolvedLedger {
       typeof (e as LedgerEntry).key === "string" &&
       typeof (e as LedgerEntry).message === "string" &&
       typeof (e as LedgerEntry).resolvedAt === "string",
-  );
-  return { pair, entries };
+  )
+  return { pair, entries }
 }

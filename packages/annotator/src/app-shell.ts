@@ -598,7 +598,6 @@ document.addEventListener('keydown', (e) => {
 void loadPairs().then(route);
 `
 
-
 /**
  * The Library's CSS, the comp's values under the comp's token names. The
  * comp sets no line-height on its root (browser \`normal\`), so the Library

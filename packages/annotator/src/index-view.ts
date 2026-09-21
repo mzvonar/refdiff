@@ -223,19 +223,31 @@ export function collapseBreakpoints(entries: readonly PairEntry[]): PairEntry[] 
   for (const e of entries) {
     if (isBroken(e) || e.breakpoint === undefined) continue
     const cur = widest.get(e.breakpoint.entry)
-    if (cur === undefined || e.breakpoint.width > cur.breakpoint!.width) widest.set(e.breakpoint.entry, e)
+    if (cur === undefined || e.breakpoint.width > cur.breakpoint!.width)
+      widest.set(e.breakpoint.entry, e)
   }
   const out: PairEntry[] = []
   const placed = new Set<string>()
   for (const e of entries) {
-    if (isBroken(e) || e.breakpoint === undefined) { out.push(e); continue }
+    if (isBroken(e) || e.breakpoint === undefined) {
+      out.push(e)
+      continue
+    }
     const key = e.breakpoint.entry
     if (placed.has(key)) continue
     placed.add(key)
     const lead = widest.get(key)!
     const widths = entries
-      .filter((s): s is PairSummary => !isBroken(s) && s.breakpoint !== undefined && s.breakpoint.entry === key)
-      .map((s) => ({ viewport: s.breakpoint!.viewport, width: s.breakpoint!.width, height: s.breakpoint!.height, dir: s.dir }))
+      .filter(
+        (s): s is PairSummary =>
+          !isBroken(s) && s.breakpoint !== undefined && s.breakpoint.entry === key,
+      )
+      .map((s) => ({
+        viewport: s.breakpoint!.viewport,
+        width: s.breakpoint!.width,
+        height: s.breakpoint!.height,
+        dir: s.dir,
+      }))
       .sort((a, b) => b.width - a.width)
     out.push(widths.length > 1 ? { ...lead, widths } : lead)
   }
@@ -257,13 +269,24 @@ export function resolvePairRoute(
   const summaries = entries.filter((e): e is PairSummary => !isBroken(e))
   const byDir = entries.find((e) => e.dir === id)
   const entryOf = (e: PairEntry) => (!isBroken(e) && e.breakpoint ? e.breakpoint.entry : null)
-  const entry = byDir ? entryOf(byDir) : summaries.some((e) => e.breakpoint?.entry === id) ? id : null
-  if (entry === null) return byDir ? { dir: byDir.dir, hash: "#/" + encodeURIComponent(byDir.dir) } : null
-  const widths = summaries.filter((e) => e.breakpoint?.entry === entry).sort((a, b) => b.breakpoint!.width - a.breakpoint!.width)
-  const wanted = vp ?? (byDir && !isBroken(byDir) && byDir.breakpoint ? byDir.breakpoint.viewport : null)
+  const entry = byDir
+    ? entryOf(byDir)
+    : summaries.some((e) => e.breakpoint?.entry === id)
+      ? id
+      : null
+  if (entry === null)
+    return byDir ? { dir: byDir.dir, hash: "#/" + encodeURIComponent(byDir.dir) } : null
+  const widths = summaries
+    .filter((e) => e.breakpoint?.entry === entry)
+    .sort((a, b) => b.breakpoint!.width - a.breakpoint!.width)
+  const wanted =
+    vp ?? (byDir && !isBroken(byDir) && byDir.breakpoint ? byDir.breakpoint.viewport : null)
   const pick = widths.find((e) => e.breakpoint!.viewport === wanted) ?? widths[0]
   if (!pick) return null
-  return { dir: pick.dir, hash: "#/" + encodeURIComponent(entry) + "?vp=" + encodeURIComponent(pick.breakpoint!.viewport) }
+  return {
+    dir: pick.dir,
+    hash: "#/" + encodeURIComponent(entry) + "?vp=" + encodeURIComponent(pick.breakpoint!.viewport),
+  }
 }
 
 /** `#/<id>?vp=<viewport>` → its two parts; `null` for the index. */
@@ -282,8 +305,15 @@ export function pairHref(p: PairEntry): string {
 }
 
 /** "Desktop 1440×900 · Laptop 1280×800" — the card's tooltip when it stands for several widths. */
-export function widthsLabel(widths: readonly { viewport: string; width: number; height: number }[]): string {
-  return widths.map((w) => w.viewport.charAt(0).toUpperCase() + w.viewport.slice(1) + " " + w.width + "×" + w.height).join(" · ")
+export function widthsLabel(
+  widths: readonly { viewport: string; width: number; height: number }[],
+): string {
+  return widths
+    .map(
+      (w) =>
+        w.viewport.charAt(0).toUpperCase() + w.viewport.slice(1) + " " + w.width + "×" + w.height,
+    )
+    .join(" · ")
 }
 
 /** The comp's `match`: source, then text, then state — a broken run only under "Any state". */
@@ -391,7 +421,8 @@ function severityBadges(c: { critical: number; major: number; minor: number }): 
     ["major", c.major, "Major"],
     ["minor", c.minor, "Minor"],
   ] as const) {
-    if (n > 0) out.push('<span class="badge ' + sev + '"><i class="dot"></i>' + label + " " + n + "</span>")
+    if (n > 0)
+      out.push('<span class="badge ' + sev + '"><i class="dot"></i>' + label + " " + n + "</span>")
   }
   if (out.length === 0) out.push('<span class="badge none">No findings</span>')
   return out.join("")
@@ -451,7 +482,11 @@ function thumbnail(p: PairSummary, layout: LibraryLayout): string {
   if (p.implPng)
     return '<img class="' + cls + '" src="' + escapeHtml(p.implPng) + '" alt="" loading="lazy">'
   // The mobile plate IS the tile (same 44×56 slot); the desktop plate sits on the band.
-  return '<div class="' + (layout === "mobile" ? "tile plate" : "plate") + '"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>'
+  return (
+    '<div class="' +
+    (layout === "mobile" ? "tile plate" : "plate") +
+    '"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>'
+  )
 }
 
 /**
@@ -646,8 +681,7 @@ export function groupEntries(
 
 /** Alphabetical, numeric-aware, and deterministic on a case-only difference. */
 const byGroupName = (a: string, b: string): number =>
-  a.localeCompare(b, "en", { numeric: true, sensitivity: "base" }) ||
-  (a < b ? -1 : a > b ? 1 : 0)
+  a.localeCompare(b, "en", { numeric: true, sensitivity: "base" }) || (a < b ? -1 : a > b ? 1 : 0)
 
 /**
  * The leading `-`-delimited segment EVERY group shares, or `""` when they do
@@ -682,9 +716,7 @@ export function commonIdPrefix(ids: readonly string[]): string {
 
 /** What a row calls itself: its id, less a prefix every row shares. */
 export const groupLabel = (id: string, prefix: string): string =>
-  prefix !== "" && id.startsWith(prefix) && id.length > prefix.length
-    ? id.slice(prefix.length)
-    : id
+  prefix !== "" && id.startsWith(prefix) && id.length > prefix.length ? id.slice(prefix.length) : id
 
 /** The head row keeps counting COMPARISONS, not groups. */
 export function cellsShown(groups: LibraryGroup[]): number {
@@ -781,7 +813,8 @@ export function groupWhen(cells: PairEntry[], now: number): string {
 export function brokenCard(pair: BrokenPair, layout: LibraryLayout): string {
   const dir = escapeHtml(pair.dir)
   const name = '<span class="name">' + escapeHtml(pair.pair ?? pair.dir) + "</span>"
-  const warn = '<span class="warn"><span class="msi" aria-hidden="true">warning</span>Couldn’t read this run</span>'
+  const warn =
+    '<span class="warn"><span class="msi" aria-hidden="true">warning</span>Couldn’t read this run</span>'
   const tech = '<span class="tech mono">' + escapeHtml(pair.reason) + "</span>"
   if (layout === "mobile") {
     return (
@@ -814,13 +847,27 @@ export function brokenCard(pair: BrokenPair, layout: LibraryLayout): string {
  * the row: 44×56 tile, name + verdict, source + badges + comments, trend +
  * delta — no state pill, no route, no "when" (the comp draws none).
  */
-export function pairCard(pair: PairEntry, href: string, layout: LibraryLayout = "desktop", now: number = Date.now()): string {
+export function pairCard(
+  pair: PairEntry,
+  href: string,
+  layout: LibraryLayout = "desktop",
+  now: number = Date.now(),
+): string {
   if (isBroken(pair)) return brokenCard(pair, layout)
   const verdict =
-    '<span class="verdict ' + (pair.pass ? "pass" : "fail") + '">' + (pair.pass ? "Pass" : "Fail") + "</span>"
+    '<span class="verdict ' +
+    (pair.pass ? "pass" : "fail") +
+    '">' +
+    (pair.pass ? "Pass" : "Fail") +
+    "</span>"
   const open =
-    '<a class="card" data-pair="' + escapeHtml(pair.dir) + '" href="' + escapeHtml(href) + '"' +
-    (pair.widths ? ' title="' + escapeHtml(widthsLabel(pair.widths)) + '"' : "") + ">"
+    '<a class="card" data-pair="' +
+    escapeHtml(pair.dir) +
+    '" href="' +
+    escapeHtml(href) +
+    '"' +
+    (pair.widths ? ' title="' + escapeHtml(widthsLabel(pair.widths)) + '"' : "") +
+    ">"
   const name = '<span class="name">' + escapeHtml(pair.pair) + "</span>"
   if (layout === "mobile") {
     return (
@@ -843,7 +890,12 @@ export function pairCard(pair: PairEntry, href: string, layout: LibraryLayout = 
   // The state pill is the comp's run-state vocabulary; refdiff knows two of
   // its four words (gap 24): Clean = a passing run with nothing found.
   const clean = pair.pass && pair.findings === 0
-  const state = '<span class="state ' + (clean ? "clean" : "analyzed") + '">' + (clean ? "Clean" : "Analyzed") + "</span>"
+  const state =
+    '<span class="state ' +
+    (clean ? "clean" : "analyzed") +
+    '">' +
+    (clean ? "Clean" : "Analyzed") +
+    "</span>"
   return (
     open +
     '<div class="thumb">' +
@@ -939,7 +991,15 @@ function rollupBadges(c: GroupRollup): string {
   ] as const)
     if (n > 0)
       out.push(
-        '<span class="rb ' + sev + '" title="' + label + " " + n + '"><i class="dot"></i>' + n + "</span>",
+        '<span class="rb ' +
+          sev +
+          '" title="' +
+          label +
+          " " +
+          n +
+          '"><i class="dot"></i>' +
+          n +
+          "</span>",
       )
   if (out.length === 0) out.push('<span class="rb clean" title="No findings">Clean</span>')
   return out.join("")
@@ -960,8 +1020,7 @@ function cellBadge(c: PairSummary): string {
 
 /** Filled by severity, a hollow green ring when the cell is clean. */
 function verdictDot(c: PairSummary): string {
-  const sev =
-    c.critical > 0 ? "critical" : c.major > 0 ? "major" : c.minor > 0 ? "minor" : "clean"
+  const sev = c.critical > 0 ? "critical" : c.major > 0 ? "major" : c.minor > 0 ? "minor" : "clean"
   return '<i class="vdot ' + sev + '" aria-hidden="true"></i>'
 }
 
@@ -989,7 +1048,9 @@ const brokenNote = (n: number): string =>
 /** The real capture at 34x24 (decision D6), the comp's plate when the run has none. */
 function cellThumb(c: PairSummary): string {
   if (c.implPng)
-    return '<div class="lcthumb"><img src="' + escapeHtml(c.implPng) + '" alt="" loading="lazy"></div>'
+    return (
+      '<div class="lcthumb"><img src="' + escapeHtml(c.implPng) + '" alt="" loading="lazy"></div>'
+    )
   return '<div class="lcthumb blank" aria-hidden="true"></div>'
 }
 
@@ -1006,7 +1067,8 @@ function measuredGroup(g: LibraryGroup, now: number): string {
   const when = groupWhen(g.cells, now)
   const whenLine = (extra: string): string =>
     when || extra ? '<span class="lwhen">' + escapeHtml(when) + extra + "</span>" : ""
-  if (g.span.max === undefined) return '<span class="lwhen">' + escapeHtml(when || "never") + "</span>"
+  if (g.span.max === undefined)
+    return '<span class="lwhen">' + escapeHtml(when || "never") + "</span>"
   if (g.span.mixed)
     return (
       '<div class="lspan mono" title="' +
@@ -1260,7 +1322,9 @@ export function groupRow(
       '" data-group="' +
       id +
       '"' +
-      (expandable ? ' role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '"' : "") +
+      (expandable
+        ? ' role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '"'
+        : "") +
       ">"
   const headClose = rowIsLink ? "</a>" : "</div>"
   if (layout === "mobile")

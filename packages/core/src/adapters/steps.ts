@@ -54,7 +54,8 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 export function readStep(v: unknown): CaptureStep | undefined {
   if (!isRecord(v)) return undefined
   if (typeof v["click"] === "string" && v["click"] !== "") return { click: v["click"] }
-  if (typeof v["clickText"] === "string" && v["clickText"] !== "") return { clickText: v["clickText"] }
+  if (typeof v["clickText"] === "string" && v["clickText"] !== "")
+    return { clickText: v["clickText"] }
   if (typeof v["press"] === "string" && v["press"] !== "") return { press: v["press"] }
   if (typeof v["wait"] === "number" && Number.isFinite(v["wait"]) && v["wait"] >= 0) {
     return { wait: v["wait"] }
@@ -162,17 +163,19 @@ export async function runSteps(
       }, step.clickText)
       if (!marked) return { kind: "step-target-not-found", index, step }
       await page.locator("[data-vc-step-target]").first().click({ timeout: 5000 })
-      await page.evaluate(
-        (_: string) => {
-          for (const e of Array.from(document.querySelectorAll("[data-vc-step-target]"))) {
-            e.removeAttribute("data-vc-step-target")
-          }
-          return true
-        },
-        "",
-      )
+      await page.evaluate((_: string) => {
+        for (const e of Array.from(document.querySelectorAll("[data-vc-step-target]"))) {
+          e.removeAttribute("data-vc-step-target")
+        }
+        return true
+      }, "")
     } catch (e) {
-      return { kind: "step-failed", index, step, detail: e instanceof Error ? e.message : String(e) }
+      return {
+        kind: "step-failed",
+        index,
+        step,
+        detail: e instanceof Error ? e.message : String(e),
+      }
     }
   }
   if (steps.length > 0) await page.waitForTimeout(settleMs)

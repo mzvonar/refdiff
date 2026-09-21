@@ -51,15 +51,56 @@ const LATIN_EXT =
   "U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF"
 
 export const FONT_FILES: readonly FontFile[] = [
-  { file: "ibm-plex-sans-latin.woff2", family: "IBM Plex Sans", weight: "100 700", unicodeRange: LATIN, display: "swap" },
-  { file: "ibm-plex-sans-latin-ext.woff2", family: "IBM Plex Sans", weight: "100 700", unicodeRange: LATIN_EXT, display: "swap" },
-  { file: "ibm-plex-mono-400-latin.woff2", family: "IBM Plex Mono", weight: "400", unicodeRange: LATIN, display: "swap" },
-  { file: "ibm-plex-mono-400-latin-ext.woff2", family: "IBM Plex Mono", weight: "400", unicodeRange: LATIN_EXT, display: "swap" },
-  { file: "ibm-plex-mono-500-latin.woff2", family: "IBM Plex Mono", weight: "500", unicodeRange: LATIN, display: "swap" },
-  { file: "ibm-plex-mono-500-latin-ext.woff2", family: "IBM Plex Mono", weight: "500", unicodeRange: LATIN_EXT, display: "swap" },
+  {
+    file: "ibm-plex-sans-latin.woff2",
+    family: "IBM Plex Sans",
+    weight: "100 700",
+    unicodeRange: LATIN,
+    display: "swap",
+  },
+  {
+    file: "ibm-plex-sans-latin-ext.woff2",
+    family: "IBM Plex Sans",
+    weight: "100 700",
+    unicodeRange: LATIN_EXT,
+    display: "swap",
+  },
+  {
+    file: "ibm-plex-mono-400-latin.woff2",
+    family: "IBM Plex Mono",
+    weight: "400",
+    unicodeRange: LATIN,
+    display: "swap",
+  },
+  {
+    file: "ibm-plex-mono-400-latin-ext.woff2",
+    family: "IBM Plex Mono",
+    weight: "400",
+    unicodeRange: LATIN_EXT,
+    display: "swap",
+  },
+  {
+    file: "ibm-plex-mono-500-latin.woff2",
+    family: "IBM Plex Mono",
+    weight: "500",
+    unicodeRange: LATIN,
+    display: "swap",
+  },
+  {
+    file: "ibm-plex-mono-500-latin-ext.woff2",
+    family: "IBM Plex Mono",
+    weight: "500",
+    unicodeRange: LATIN_EXT,
+    display: "swap",
+  },
   // `block`, like Google's own rule: an icon ligature drawn in the fallback
   // face is its NAME in letters ("light_mode"), worse than a short blank.
-  { file: "material-symbols-outlined.woff2", family: "Material Symbols Outlined", weight: "300 600", display: "block" },
+  {
+    file: "material-symbols-outlined.woff2",
+    family: "Material Symbols Outlined",
+    weight: "300 600",
+    display: "block",
+  },
 ]
 
 /**
@@ -69,7 +110,9 @@ export const FONT_FILES: readonly FontFile[] = [
  * kept rendering the OLD subset on a phone that had the page open the day
  * before (2026-08-29 — "the settings icon is text"). A new list is a new URL.
  */
-export const FONTS_VERSION = fnv1a(ICON_NAMES.join(",") + "|" + FONT_FILES.map((f) => f.file).join(","))
+export const FONTS_VERSION = fnv1a(
+  ICON_NAMES.join(",") + "|" + FONT_FILES.map((f) => f.file).join(","),
+)
 export const FONTS_ROUTE = `fonts/${FONTS_VERSION}/`
 
 function fnv1a(s: string): string {

@@ -36,7 +36,8 @@ export interface HiddenMovement {
   message: string
 }
 
-const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined)
+const num = (v: unknown): number | undefined =>
+  typeof v === "number" && Number.isFinite(v) ? v : undefined
 
 /**
  * The largest single-axis geometric delta a finding describes, or undefined when
@@ -44,7 +45,9 @@ const num = (v: unknown): number | undefined => (typeof v === "number" && Number
  * reader thinks in "it moved 77px to the right", and hypot would under-report a
  * pure-x shift against a threshold chosen in px.
  */
-export function movementPx(f: Pick<SuppressedFinding, "type" | "expected" | "actual">): number | undefined {
+export function movementPx(
+  f: Pick<SuppressedFinding, "type" | "expected" | "actual">,
+): number | undefined {
   if (!GEOMETRIC.has(f.type)) return undefined
   const e = f.expected ?? {}
   const a = f.actual ?? {}

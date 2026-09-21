@@ -22,8 +22,8 @@ import type { DiffMask } from "./cluster.js"
 import pixelmatch from "pixelmatch"
 import sharp, { type Sharp } from "sharp"
 
-import { clusterMask, type Cluster } from "./cluster.js"
 import { clampBox, padBox, toDesignNative, toImplNative } from "../geometry.js"
+import { clusterMask, type Cluster } from "./cluster.js"
 
 /**
  * Largest first, then top-to-bottom, then left-to-right.

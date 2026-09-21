@@ -7,33 +7,33 @@
  * design DPR.
  */
 
-import type { Alignment, Bleed, Box } from "./types.js";
+import type { Alignment, Bleed, Box } from "./types.js"
 
 /** No margin captured around the element — the shape every pre-bleed capture has. */
-export const NO_BLEED: Bleed = { top: 0, right: 0, bottom: 0, left: 0 };
+export const NO_BLEED: Bleed = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export const scaleBox = (box: Box, s: number): Box => ({
   x: box.x * s,
   y: box.y * s,
   w: box.w * s,
   h: box.h * s,
-});
+})
 
 export const padBox = (box: Box, p: number): Box => ({
   x: box.x - p,
   y: box.y - p,
   w: box.w + 2 * p,
   h: box.h + 2 * p,
-});
+})
 
 /** Integer-clamps a box into [0, width) × [0, height); null when nothing remains. */
 export function clampBox(box: Box, width: number, height: number): Box | null {
-  const x = Math.max(0, Math.floor(box.x));
-  const y = Math.max(0, Math.floor(box.y));
-  const w = Math.min(Math.ceil(box.x + box.w), width) - x;
-  const h = Math.min(Math.ceil(box.y + box.h), height) - y;
-  if (x >= width || y >= height || w < 1 || h < 1) return null;
-  return { x, y, w, h };
+  const x = Math.max(0, Math.floor(box.x))
+  const y = Math.max(0, Math.floor(box.y))
+  const w = Math.min(Math.ceil(box.x + box.w), width) - x
+  const h = Math.min(Math.ceil(box.y + box.h), height) - y
+  if (x >= width || y >= height || w < 1 || h < 1) return null
+  return { x, y, w, h }
 }
 
 /**
@@ -51,29 +51,29 @@ export function toDesignNative(
   dpr: number,
   bleed: Bleed = NO_BLEED,
 ): Box {
-  const sx = alignment.scale;
-  const sy = alignment.scaleY ?? alignment.scale;
+  const sx = alignment.scale
+  const sy = alignment.scaleY ?? alignment.scale
   return {
-    x: (((box.x - alignment.offsetX) / sx) + bleed.left) * dpr,
-    y: (((box.y - alignment.offsetY) / sy) + bleed.top) * dpr,
+    x: ((box.x - alignment.offsetX) / sx + bleed.left) * dpr,
+    y: ((box.y - alignment.offsetY) / sy + bleed.top) * dpr,
     w: (box.w / sx) * dpr,
     h: (box.h / sy) * dpr,
-  };
+  }
 }
 
 /** Impl CSS px box → native pixels of the impl PNG (world px ARE impl CSS px). */
 export const toImplNative = (box: Box, dpr: number, bleed: Bleed = NO_BLEED): Box =>
-  scaleBox({ x: box.x + bleed.left, y: box.y + bleed.top, w: box.w, h: box.h }, dpr);
+  scaleBox({ x: box.x + bleed.left, y: box.y + bleed.top, w: box.w, h: box.h }, dpr)
 
 /** The PNG's own CSS size: the element, plus whatever margin was captured around it. */
 export const bleedOutset = (size: { width: number; height: number }, bleed: Bleed = NO_BLEED) => ({
   width: size.width + bleed.left + bleed.right,
   height: size.height + bleed.top + bleed.bottom,
-});
+})
 
 /** True when nothing was captured beyond the element — the fast path, and the default. */
 export const isNoBleed = (b: Bleed | undefined): boolean =>
-  b === undefined || (b.top === 0 && b.right === 0 && b.bottom === 0 && b.left === 0);
+  b === undefined || (b.top === 0 && b.right === 0 && b.bottom === 0 && b.left === 0)
 
 /**
  * The screenshot clip for `box` grown by `requested` px, and the margin that
@@ -105,16 +105,16 @@ export function bleedClip(
   requested: number,
   page: { width: number; height: number },
 ): { clip: Box; bleed: Bleed } {
-  if (!(requested > 0)) return { clip: box, bleed: NO_BLEED };
-  const room = (available: number) => Math.max(0, Math.floor(Math.min(requested, available)));
+  if (!(requested > 0)) return { clip: box, bleed: NO_BLEED }
+  const room = (available: number) => Math.max(0, Math.floor(Math.min(requested, available)))
   const bleed: Bleed = {
     left: room(box.x),
     top: room(box.y),
     right: room(page.width - (box.x + box.w)),
     bottom: room(page.height - (box.y + box.h)),
-  };
-  const x = Math.floor(box.x - bleed.left);
-  const y = Math.floor(box.y - bleed.top);
+  }
+  const x = Math.floor(box.x - bleed.left)
+  const y = Math.floor(box.y - bleed.top)
   return {
     clip: {
       x,
@@ -123,5 +123,5 @@ export function bleedClip(
       h: Math.ceil(box.y + box.h + bleed.bottom) - y,
     },
     bleed,
-  };
+  }
 }

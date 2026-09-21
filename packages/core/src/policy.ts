@@ -145,10 +145,16 @@ export function suppressionFor(
       // "and its geometry is uninteresting".
       if (p.types !== undefined && !p.types.includes(f.type)) continue
       if (texts.some((t) => p.re.test(t))) {
-        const scope = [p.role === undefined ? "" : `@${p.role}`, p.types === undefined ? "" : `:${p.types.join("/")}`]
+        const scope = [
+          p.role === undefined ? "" : `@${p.role}`,
+          p.types === undefined ? "" : `:${p.types.join("/")}`,
+        ]
           .filter((x) => x !== "")
           .join(" ")
-        return { reason: "text-pattern", rule: scope === "" ? p.re.source : `${p.re.source} ${scope}` }
+        return {
+          reason: "text-pattern",
+          rule: scope === "" ? p.re.source : `${p.re.source} ${scope}`,
+        }
       }
     }
   }
@@ -319,12 +325,17 @@ function contentsOfContainers(
  * artboard a `contentsOf` rule excuses. A container that names TYPES excuses only those types, so
  * the app's own marks over the same region stay compared.
  */
-function insideRule(f: Finding, containers: readonly Container[]): { reason: SuppressionReason; rule: string } | undefined {
+function insideRule(
+  f: Finding,
+  containers: readonly Container[],
+): { reason: SuppressionReason; rule: string } | undefined {
   if (f.text !== undefined) return undefined
   const boxes = [f.designBox, f.implBox].filter((b): b is Box => b !== undefined)
   if (boxes.length === 0) return undefined
   const c = containers.find(
-    (c) => (c.types === undefined || c.types.includes(f.type)) && boxes.every((b) => within(c.region, b)),
+    (c) =>
+      (c.types === undefined || c.types.includes(f.type)) &&
+      boxes.every((b) => within(c.region, b)),
   )
   return c ? { reason: c.reason, rule: c.rule } : undefined
 }

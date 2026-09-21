@@ -28,10 +28,7 @@
  * beside the data, never guessed silently.
  */
 
-import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
-import { dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
-
+import type { Annotation, AnnotationSet, Shape } from "../packages/annotator/dist/annotations.js"
 import type {
   Alignment,
   Box,
@@ -42,8 +39,12 @@ import type {
   Severity,
   SuppressedFinding,
 } from "../packages/core/dist/index.js"
+
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
 import { identityKey } from "../packages/core/dist/package/delta.js"
-import type { Annotation, AnnotationSet, Shape } from "../packages/annotator/dist/annotations.js"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, "demo-root")
@@ -60,8 +61,28 @@ const HOUR = 60 * MIN
 const DAY = 24 * HOUR
 
 /** A finding the comp shows at ONE width only (its `vps`), keyed like the opened pair's. */
-function vpFinding(id: string, mark: number, type: Finding["type"], severity: Severity, message: string, b: Box, expected: Record<string, string | number>, actual: Record<string, string | number>): Finding {
-  const f: Finding = { id, type, severity, mark, designBox: b, implBox: b, expected, actual, message, role: "box" }
+function vpFinding(
+  id: string,
+  mark: number,
+  type: Finding["type"],
+  severity: Severity,
+  message: string,
+  b: Box,
+  expected: Record<string, string | number>,
+  actual: Record<string, string | number>,
+): Finding {
+  const f: Finding = {
+    id,
+    type,
+    severity,
+    mark,
+    designBox: b,
+    implBox: b,
+    expected,
+    actual,
+    message,
+    role: "box",
+  }
   return { ...f, key: identityKey(f) }
 }
 
@@ -111,33 +132,278 @@ interface DemoItem {
    * as absent at that width, plus the one it adds. The dir is a sibling of the
    * opened pair's (`<entry>-<viewport>`, as core names them).
    */
-  vp?: { id: string; width: number; height: number; run: number; omit: readonly string[]; extra: readonly Finding[] }
+  vp?: {
+    id: string
+    width: number
+    height: number
+    run: number
+    omit: readonly string[]
+    extra: readonly Finding[]
+  }
 }
 
 /** The comp's `VPS`: Desktop 1440×900, Tablet 768×1024 (stale, run 45), Mobile 390×844. */
-export const OPENED_BREAKPOINT = { entry: OPENED_PAIR, viewport: "desktop", width: 1440, height: 900 }
+export const OPENED_BREAKPOINT = {
+  entry: OPENED_PAIR,
+  viewport: "desktop",
+  width: 1440,
+  height: 900,
+}
 
 /** `ITEMS` from `RefDiff Library.dc.html`, verbatim, in the comp's order. */
 export const ITEMS: readonly DemoItem[] = [
-  { slug: OPENED_PAIR, name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 3, major: 5, minor: 4, comments: 4, confidence: 0.42, add: 3, res: 1, ago: 12 * MIN },
+  {
+    slug: OPENED_PAIR,
+    name: "Onboarding — Document step",
+    route: "/onboarding/document",
+    src: "figma",
+    state: "analyzed",
+    critical: 3,
+    major: 5,
+    minor: 4,
+    comments: 4,
+    confidence: 0.42,
+    add: 3,
+    res: 1,
+    ago: 12 * MIN,
+  },
   // The opened pair's other two widths — the comp's viewport menu lists Desktop 12, Tablet 12,
   // Mobile 10 findings: tablet drops o2 and adds v2, mobile drops g2 / f5 / o2 and adds v1.
   // Tablet is the STALE one: run 45 against the others' 47 ("Impl capture from run 45 — outdated").
-  { slug: OPENED_PAIR + "-tablet", name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 3, major: 5, minor: 4, comments: 0, confidence: 0.42, add: 1, res: 0, ago: 2 * DAY,
-    vp: { id: "tablet", width: 768, height: 1024, run: 45, omit: ["o2"], extra: [vpFinding("v2", 17, "size", "major", "Card grid collapses to one column", { x: 36, y: 204, w: 608, h: 140 }, { "grid-template-columns": "2 columns" }, { "grid-template-columns": "1 column" })] } },
-  { slug: OPENED_PAIR + "-mobile", name: "Onboarding — Document step", route: "/onboarding/document", src: "figma", state: "analyzed", critical: 4, major: 4, minor: 2, comments: 0, confidence: 0.42, add: 1, res: 0, ago: 12 * MIN,
-    vp: { id: "mobile", width: 390, height: 844, run: 47, omit: ["g2", "f5", "o2"], extra: [vpFinding("v1", 16, "size", "critical", "Continue button clipped at 390px", { x: 36, y: 586, w: 280, h: 48 }, { width: "100%" }, { width: "280px" })] } },
-  { slug: "onboarding-selfie-step", name: "Onboarding — Selfie step", route: "/onboarding/selfie", src: "figma", state: "analyzed", critical: 1, major: 3, minor: 0, comments: 1, confidence: 0.91, add: 1, res: 4, ago: 25 * MIN },
-  { slug: "onboarding-review-step", name: "Onboarding — Review step", route: "/onboarding/review", src: "dc-html", state: "processing", critical: 0, major: 0, minor: 0, comments: 2, confidence: 0.88, add: 0, res: 0, ago: 30 * MIN },
-  { slug: "button", name: "Button", route: "ds/Button", src: "dc-html", state: "analyzed", critical: 1, major: 0, minor: 1, comments: 0, confidence: 0.96, add: 1, res: 2, ago: 40 * MIN },
-  { slug: "selection-card", name: "Selection card", route: "ds/SelectionCard", src: "figma", state: "analyzed", critical: 0, major: 2, minor: 0, comments: 1, confidence: 0.61, add: 2, res: 0, ago: 40 * MIN },
-  { slug: "stepper", name: "Stepper", route: "ds/Stepper", src: "figma", state: "clean", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.94, add: 0, res: 3, ago: 40 * MIN },
-  { slug: "login", name: "Login", route: "/auth/login", src: "dc-html", state: "clean", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.97, add: 0, res: 2, ago: 1 * HOUR },
-  { slug: "verification-dashboard", name: "Verification dashboard", route: "/dashboard", src: "dc-html", state: "analyzed", critical: 0, major: 4, minor: 3, comments: 5, confidence: 0.55, add: 5, res: 1, ago: 2 * HOUR },
-  { slug: "result-detail", name: "Result detail", route: "/results/:id", src: "figma", state: "analyzed", critical: 3, major: 1, minor: 2, comments: 0, confidence: 0.83, add: 2, res: 6, ago: 2 * HOUR + 5 * MIN },
-  { slug: "confirm-modal", name: "Confirm modal", route: "ds/ConfirmModal", src: "dc-html", state: "queued", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0.9, add: 0, res: 0, ago: 3 * HOUR },
-  { slug: "onboarding-liveness-step", name: "Onboarding — Liveness step", route: "/onboarding/liveness", src: "figma", state: "analyzed", critical: 0, major: 0, minor: 0, comments: 0, confidence: 0, add: 0, res: 0, broken: true, ago: 5 * HOUR },
-  { slug: "error-empty-states", name: "Error & empty states", route: "/onboarding/errors", src: "figma", state: "analyzed", critical: 0, major: 1, minor: 4, comments: 1, confidence: 0.68, add: 1, res: 1, ago: 24 * HOUR },
+  {
+    slug: OPENED_PAIR + "-tablet",
+    name: "Onboarding — Document step",
+    route: "/onboarding/document",
+    src: "figma",
+    state: "analyzed",
+    critical: 3,
+    major: 5,
+    minor: 4,
+    comments: 0,
+    confidence: 0.42,
+    add: 1,
+    res: 0,
+    ago: 2 * DAY,
+    vp: {
+      id: "tablet",
+      width: 768,
+      height: 1024,
+      run: 45,
+      omit: ["o2"],
+      extra: [
+        vpFinding(
+          "v2",
+          17,
+          "size",
+          "major",
+          "Card grid collapses to one column",
+          { x: 36, y: 204, w: 608, h: 140 },
+          { "grid-template-columns": "2 columns" },
+          { "grid-template-columns": "1 column" },
+        ),
+      ],
+    },
+  },
+  {
+    slug: OPENED_PAIR + "-mobile",
+    name: "Onboarding — Document step",
+    route: "/onboarding/document",
+    src: "figma",
+    state: "analyzed",
+    critical: 4,
+    major: 4,
+    minor: 2,
+    comments: 0,
+    confidence: 0.42,
+    add: 1,
+    res: 0,
+    ago: 12 * MIN,
+    vp: {
+      id: "mobile",
+      width: 390,
+      height: 844,
+      run: 47,
+      omit: ["g2", "f5", "o2"],
+      extra: [
+        vpFinding(
+          "v1",
+          16,
+          "size",
+          "critical",
+          "Continue button clipped at 390px",
+          { x: 36, y: 586, w: 280, h: 48 },
+          { width: "100%" },
+          { width: "280px" },
+        ),
+      ],
+    },
+  },
+  {
+    slug: "onboarding-selfie-step",
+    name: "Onboarding — Selfie step",
+    route: "/onboarding/selfie",
+    src: "figma",
+    state: "analyzed",
+    critical: 1,
+    major: 3,
+    minor: 0,
+    comments: 1,
+    confidence: 0.91,
+    add: 1,
+    res: 4,
+    ago: 25 * MIN,
+  },
+  {
+    slug: "onboarding-review-step",
+    name: "Onboarding — Review step",
+    route: "/onboarding/review",
+    src: "dc-html",
+    state: "processing",
+    critical: 0,
+    major: 0,
+    minor: 0,
+    comments: 2,
+    confidence: 0.88,
+    add: 0,
+    res: 0,
+    ago: 30 * MIN,
+  },
+  {
+    slug: "button",
+    name: "Button",
+    route: "ds/Button",
+    src: "dc-html",
+    state: "analyzed",
+    critical: 1,
+    major: 0,
+    minor: 1,
+    comments: 0,
+    confidence: 0.96,
+    add: 1,
+    res: 2,
+    ago: 40 * MIN,
+  },
+  {
+    slug: "selection-card",
+    name: "Selection card",
+    route: "ds/SelectionCard",
+    src: "figma",
+    state: "analyzed",
+    critical: 0,
+    major: 2,
+    minor: 0,
+    comments: 1,
+    confidence: 0.61,
+    add: 2,
+    res: 0,
+    ago: 40 * MIN,
+  },
+  {
+    slug: "stepper",
+    name: "Stepper",
+    route: "ds/Stepper",
+    src: "figma",
+    state: "clean",
+    critical: 0,
+    major: 0,
+    minor: 0,
+    comments: 0,
+    confidence: 0.94,
+    add: 0,
+    res: 3,
+    ago: 40 * MIN,
+  },
+  {
+    slug: "login",
+    name: "Login",
+    route: "/auth/login",
+    src: "dc-html",
+    state: "clean",
+    critical: 0,
+    major: 0,
+    minor: 0,
+    comments: 0,
+    confidence: 0.97,
+    add: 0,
+    res: 2,
+    ago: 1 * HOUR,
+  },
+  {
+    slug: "verification-dashboard",
+    name: "Verification dashboard",
+    route: "/dashboard",
+    src: "dc-html",
+    state: "analyzed",
+    critical: 0,
+    major: 4,
+    minor: 3,
+    comments: 5,
+    confidence: 0.55,
+    add: 5,
+    res: 1,
+    ago: 2 * HOUR,
+  },
+  {
+    slug: "result-detail",
+    name: "Result detail",
+    route: "/results/:id",
+    src: "figma",
+    state: "analyzed",
+    critical: 3,
+    major: 1,
+    minor: 2,
+    comments: 0,
+    confidence: 0.83,
+    add: 2,
+    res: 6,
+    ago: 2 * HOUR + 5 * MIN,
+  },
+  {
+    slug: "confirm-modal",
+    name: "Confirm modal",
+    route: "ds/ConfirmModal",
+    src: "dc-html",
+    state: "queued",
+    critical: 0,
+    major: 0,
+    minor: 0,
+    comments: 0,
+    confidence: 0.9,
+    add: 0,
+    res: 0,
+    ago: 3 * HOUR,
+  },
+  {
+    slug: "onboarding-liveness-step",
+    name: "Onboarding — Liveness step",
+    route: "/onboarding/liveness",
+    src: "figma",
+    state: "analyzed",
+    critical: 0,
+    major: 0,
+    minor: 0,
+    comments: 0,
+    confidence: 0,
+    add: 0,
+    res: 0,
+    broken: true,
+    ago: 5 * HOUR,
+  },
+  {
+    slug: "error-empty-states",
+    name: "Error & empty states",
+    route: "/onboarding/errors",
+    src: "figma",
+    state: "analyzed",
+    critical: 0,
+    major: 1,
+    minor: 4,
+    comments: 1,
+    confidence: 0.68,
+    add: 1,
+    res: 1,
+    ago: 24 * HOUR,
+  },
 ]
 
 /* ------------------------------------------------------------ builders -- */
@@ -190,7 +456,18 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
     actual: Record<string, string | number>,
     extra: Partial<Finding> = {},
   ): Finding => {
-    const f: Finding = { id, type, severity, mark, designBox: b, implBox: b, expected, actual, message, ...extra }
+    const f: Finding = {
+      id,
+      type,
+      severity,
+      mark,
+      designBox: b,
+      implBox: b,
+      expected,
+      actual,
+      message,
+      ...extra,
+    }
     // The run-stable identity `packageForModel` stamps on a real run — without it the rail's
     // triage row can only say "no stable key" (phase 4).
     return { ...f, key: identityKey(f) }
@@ -218,50 +495,188 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
   ): Finding => {
     const base: Finding =
       side === "design"
-        ? { id, type: "missing-element", severity, mark, message, designBox: b, expected: { element: "present" }, actual: { element: "missing" }, ...extra }
-        : { id, type: "extra-element", severity, mark, message, implBox: b, expected: { element: "—" }, actual: { element: "present" }, ...extra }
+        ? {
+            id,
+            type: "missing-element",
+            severity,
+            mark,
+            message,
+            designBox: b,
+            expected: { element: "present" },
+            actual: { element: "missing" },
+            ...extra,
+          }
+        : {
+            id,
+            type: "extra-element",
+            severity,
+            mark,
+            message,
+            implBox: b,
+            expected: { element: "—" },
+            actual: { element: "present" },
+            ...extra,
+          }
     return { ...base, key: identityKey(base) }
   }
 
   const findings: Finding[] = [
-    f("f1", 1, "color", "critical", "Primary button color mismatch", box(36, 586, 280, 48), { backgroundColor: "#4F46E5" }, { backgroundColor: "#6366F1" }, { role: "box", text: "Continue" }),
-    f("f2", 2, "spacing", "critical", "Dropzone inner padding reduced", box(36, 368, 608, 190), { padding: "32px" }, { padding: "20px" }, { role: "box" }),
-    f("f3", 3, "typography", "major", "Heading font-size drift", box(36, 130, 430, 40), { fontSize: 28 }, { fontSize: 24 }, { role: "text", text: "Upload your ID document" }),
-    f("f4", 4, "border-radius", "major", "Card corner radius mismatch", box(36, 204, 608, 140), { borderRadius: 12 }, { borderRadius: 6 }, { role: "box" }),
-    f("f5", 5, "spacing", "minor", "Step indicator gap tighter", box(36, 84, 430, 26), { gap: 24, axis: "x" }, { gap: 16, axis: "x" }, { role: "box" }),
-    f("f6", 6, "color", "minor", "Footer text color drift", box(36, 664, 608, 24), { color: "#6B7280" }, { color: "#9CA3AF" }, { role: "text" }),
-    f("g1", 7, "color", "major", "Label color drift", box(56, 214, 120, 16), { color: "#6B7280" }, { color: "#94A3B8" }, {
-      role: "text",
-      instances: 14,
-      members: grid(14, (i) => box(56 + (i % 3) * 196, 214 + Math.floor(i / 3) * 36, 120, 16)),
-    }),
-    f("g2", 8, "position", "minor", "Row baseline shifted 23px", box(36, 380, 608, 22), { x: 36, y: 380 }, { x: 36, y: 403 }, {
-      role: "box",
-      instances: 5,
-      members: grid(5, (i) => box(36, 414 + i * 34, 608, 22)),
-    }),
+    f(
+      "f1",
+      1,
+      "color",
+      "critical",
+      "Primary button color mismatch",
+      box(36, 586, 280, 48),
+      { backgroundColor: "#4F46E5" },
+      { backgroundColor: "#6366F1" },
+      { role: "box", text: "Continue" },
+    ),
+    f(
+      "f2",
+      2,
+      "spacing",
+      "critical",
+      "Dropzone inner padding reduced",
+      box(36, 368, 608, 190),
+      { padding: "32px" },
+      { padding: "20px" },
+      { role: "box" },
+    ),
+    f(
+      "f3",
+      3,
+      "typography",
+      "major",
+      "Heading font-size drift",
+      box(36, 130, 430, 40),
+      { fontSize: 28 },
+      { fontSize: 24 },
+      { role: "text", text: "Upload your ID document" },
+    ),
+    f(
+      "f4",
+      4,
+      "border-radius",
+      "major",
+      "Card corner radius mismatch",
+      box(36, 204, 608, 140),
+      { borderRadius: 12 },
+      { borderRadius: 6 },
+      { role: "box" },
+    ),
+    f(
+      "f5",
+      5,
+      "spacing",
+      "minor",
+      "Step indicator gap tighter",
+      box(36, 84, 430, 26),
+      { gap: 24, axis: "x" },
+      { gap: 16, axis: "x" },
+      { role: "box" },
+    ),
+    f(
+      "f6",
+      6,
+      "color",
+      "minor",
+      "Footer text color drift",
+      box(36, 664, 608, 24),
+      { color: "#6B7280" },
+      { color: "#9CA3AF" },
+      { role: "text" },
+    ),
+    f(
+      "g1",
+      7,
+      "color",
+      "major",
+      "Label color drift",
+      box(56, 214, 120, 16),
+      { color: "#6B7280" },
+      { color: "#94A3B8" },
+      {
+        role: "text",
+        instances: 14,
+        members: grid(14, (i) => box(56 + (i % 3) * 196, 214 + Math.floor(i / 3) * 36, 120, 16)),
+      },
+    ),
+    f(
+      "g2",
+      8,
+      "position",
+      "minor",
+      "Row baseline shifted 23px",
+      box(36, 380, 608, 22),
+      { x: 36, y: 380 },
+      { x: 36, y: 403 },
+      {
+        role: "box",
+        instances: 5,
+        members: grid(5, (i) => box(36, 414 + i * 34, 608, 22)),
+      },
+    ),
     // Rows 12–15, the comp's one-sided findings (ids o1..o4, which is what
     // `data-vc-step` renders so a step can select one). Boxes, severities and
     // titles are the comp's own: high/medium/low map to critical/major/minor as
     // everywhere else here.
-    one("o1", 12, "design", "critical", "Retake photo button missing", box(332, 586, 200, 48), { role: "box" }),
-    one("o2", 13, "design", "major", "Field hint tooltip missing", box(476, 136, 26, 26), { role: "icon" }),
-    one("o3", 14, "impl", "major", "Debug ribbon not in design", box(540, 16, 104, 30), { role: "box" }),
-    one("o4", 15, "impl", "minor", "Extra divider above footer", box(36, 648, 608, 3), { role: "box" }),
+    one("o1", 12, "design", "critical", "Retake photo button missing", box(332, 586, 200, 48), {
+      role: "box",
+    }),
+    one("o2", 13, "design", "major", "Field hint tooltip missing", box(476, 136, 26, 26), {
+      role: "icon",
+    }),
+    one("o3", 14, "impl", "major", "Debug ribbon not in design", box(540, 16, 104, 30), {
+      role: "box",
+    }),
+    one("o4", 15, "impl", "minor", "Extra divider above footer", box(36, 648, 608, 3), {
+      role: "box",
+    }),
   ]
   const suppressed: SuppressedFinding[] = [
     {
-      ...f("s1", 9, "size", "minor", "Text renders 0.4px wider", box(36, 130, 430, 40), { w: 430, h: 40 }, { w: 430.4, h: 40 }, { role: "text" }),
+      ...f(
+        "s1",
+        9,
+        "size",
+        "minor",
+        "Text renders 0.4px wider",
+        box(36, 130, 430, 40),
+        { w: 430, h: 40 },
+        { w: 430.4, h: 40 },
+        { role: "text" },
+      ),
       suppressedBy: "accepted",
       rule: "size w/h ±0.5px on text — font smoothing widens glyphs, not a layout change",
     },
     {
-      ...f("s2", 10, "size", "minor", "Content 15px narrower", box(0, 0, 680, 740), { w: 680, h: 740 }, { w: 665, h: 740 }, { role: "box" }),
+      ...f(
+        "s2",
+        10,
+        "size",
+        "minor",
+        "Content 15px narrower",
+        box(0, 0, 680, 740),
+        { w: 680, h: 740 },
+        { w: 665, h: 740 },
+        { role: "box" },
+      ),
       suppressedBy: "accepted",
       rule: "size w 680→665 on the page box — the scrollbar gutter, present in the browser and absent in the comp",
     },
     {
-      ...f("s3", 11, "text-content", "major", "Placeholder copy differs", box(56, 470, 300, 22), { text: "Front side of ID" }, { text: "Front of document" }, { role: "text", text: "Front side of ID" }),
+      ...f(
+        "s3",
+        11,
+        "text-content",
+        "major",
+        "Placeholder copy differs",
+        box(56, 470, 300, 22),
+        { text: "Front side of ID" },
+        { text: "Front of document" },
+        { role: "text", text: "Front side of ID" },
+      ),
       suppressedBy: "text-pattern",
       rule: "^Front (side of ID|of document)$",
     },
@@ -274,7 +689,11 @@ export function openedFindings(): { findings: Finding[]; suppressed: SuppressedF
  * ever read (`/api/pairs` → the Library card), so they are typed but say so.
  */
 function genericFindings(item: DemoItem): Finding[] {
-  const kinds: Record<Severity, Finding["type"]> = { critical: "missing-element", major: "color", minor: "spacing" }
+  const kinds: Record<Severity, Finding["type"]> = {
+    critical: "missing-element",
+    major: "color",
+    minor: "spacing",
+  }
   const out: Finding[] = []
   const push = (severity: Severity, n: number) => {
     for (let i = 0; i < n; i++) {
@@ -298,7 +717,9 @@ function genericFindings(item: DemoItem): Finding[] {
 export function reportFor(item: DemoItem): ComparisonReport {
   const opened = item.slug === OPENED_PAIR || item.vp !== undefined
   const base = opened ? openedFindings() : { findings: genericFindings(item), suppressed: [] }
-  const findings = item.vp ? base.findings.filter((f) => !item.vp!.omit.includes(f.id)).concat(item.vp.extra) : base.findings
+  const findings = item.vp
+    ? base.findings.filter((f) => !item.vp!.omit.includes(f.id)).concat(item.vp.extra)
+    : base.findings
   const suppressed = base.suppressed
   const createdAt = iso(item.ago ?? 0)
   const failing = findings.some((f) => f.severity === "critical" || f.severity === "major")
@@ -328,16 +749,36 @@ export function reportFor(item: DemoItem): ComparisonReport {
     // viewport menu reads to list them, exactly as core writes it for a manifest
     // entry with `viewports`.
     ...(item.slug === OPENED_PAIR ? { breakpoint: OPENED_BREAKPOINT } : {}),
-    ...(item.vp ? { breakpoint: { entry: OPENED_PAIR, viewport: item.vp.id, width: item.vp.width, height: item.vp.height } } : {}),
+    ...(item.vp
+      ? {
+          breakpoint: {
+            entry: OPENED_PAIR,
+            viewport: item.vp.id,
+            width: item.vp.width,
+            height: item.vp.height,
+          },
+        }
+      : {}),
     createdAt,
     run: runNo,
     design: {
       source: item.src,
-      ref: item.src === "figma" ? `figma://veriflow/${item.slug}` : `${item.slug}.dc.html#${item.name}`,
+      ref:
+        item.src === "figma"
+          ? `figma://veriflow/${item.slug}`
+          : `${item.slug}.dc.html#${item.name}`,
       width: ARTBOARD.width,
       height: ARTBOARD.height,
       dpr: 2,
-      ...(opened ? { scope: { mode: "screen-label" as const, selector: '[data-screen-label="Design ref"]', fluid: true } } : {}),
+      ...(opened
+        ? {
+            scope: {
+              mode: "screen-label" as const,
+              selector: '[data-screen-label="Design ref"]',
+              fluid: true,
+            },
+          }
+        : {}),
     },
     impl: {
       source: item.route.startsWith("ds/") ? "storybook" : "live-url",
@@ -353,8 +794,20 @@ export function reportFor(item: DemoItem): ComparisonReport {
       ? {
           textPatterns: ["^Front (side of ID|of document)$"],
           accepted: [
-            { type: "size", role: "text", expected: { w: 430, h: 40 }, actual: { w: 430.4, h: 40 }, reason: "font smoothing widens glyphs, not a layout change" },
-            { type: "size", role: "box", expected: { w: 680, h: 740 }, actual: { w: 665, h: 740 }, reason: "the scrollbar gutter, present in the browser and absent in the comp" },
+            {
+              type: "size",
+              role: "text",
+              expected: { w: 430, h: 40 },
+              actual: { w: 430.4, h: 40 },
+              reason: "font smoothing widens glyphs, not a layout change",
+            },
+            {
+              type: "size",
+              role: "box",
+              expected: { w: 680, h: 740 },
+              actual: { w: 665, h: 740 },
+              reason: "the scrollbar gutter, present in the browser and absent in the comp",
+            },
           ],
         }
       : {},
@@ -411,20 +864,54 @@ export function annotationsFor(
       version: 1,
       pair: item.name,
       annotations: [
-        note("c1", rect(36, 14, 150, 36), "Logo should use the darker navy from the brand kit", "implemented", 50, "Fetched brand token — logo color maps to #1E2A5A. Queued for the next impl build."),
-        note("c2", rect(36, 204, 608, 140), "Check spacing between document cards at tablet width", "open", 30),
-        note("c3", rect(36, 586, 280, 48), "Continue button should be full width on mobile", "done", 90, "Confirmed — impl build 342 makes the button fluid below 480px."),
+        note(
+          "c1",
+          rect(36, 14, 150, 36),
+          "Logo should use the darker navy from the brand kit",
+          "implemented",
+          50,
+          "Fetched brand token — logo color maps to #1E2A5A. Queued for the next impl build.",
+        ),
+        note(
+          "c2",
+          rect(36, 204, 608, 140),
+          "Check spacing between document cards at tablet width",
+          "open",
+          30,
+        ),
+        note(
+          "c3",
+          rect(36, 586, 280, 48),
+          "Continue button should be full width on mobile",
+          "done",
+          90,
+          "Confirmed — impl build 342 makes the button fluid below 480px.",
+        ),
         // Comment 4 is anchored on the DESIGN side and is a POINT (0×0) — the
         // comment half of the ghost language: selecting it while the impl pane is
         // on screen has nothing to show without a ghost.
-        note("c4", { kind: "point", x: 618, y: 618 }, "Is the corner check icon final art?", "open", 15, undefined, "design"),
+        note(
+          "c4",
+          { kind: "point", x: 618, y: 618 },
+          "Is the corner check icon final art?",
+          "open",
+          15,
+          undefined,
+          "design",
+        ),
       ],
     }
   return {
     version: 1,
     pair: item.name,
     annotations: Array.from({ length: item.comments }, (_, i) =>
-      note(`c${i + 1}`, { kind: "point", x: 60, y: 60 + i * 40 }, `Demo fixture — comment ${i + 1} on ${item.name}`, "open", 20 + i * 10),
+      note(
+        `c${i + 1}`,
+        { kind: "point", x: 60, y: 60 + i * 40 },
+        `Demo fixture — comment ${i + 1} on ${item.name}`,
+        "open",
+        20 + i * 10,
+      ),
     ),
   }
 }
@@ -471,11 +958,19 @@ async function captureOpened(dir: string): Promise<void> {
       if (core.isErr(result)) throw new Error(`capture ${s.side}: ${JSON.stringify(result.error)}`)
       const c = result.value
       if (c.width !== ARTBOARD.width || c.height !== ARTBOARD.height)
-        throw new Error(`capture ${s.side}: expected ${ARTBOARD.width}×${ARTBOARD.height}, got ${c.width}×${c.height} (fluid detection did not fire?)`)
+        throw new Error(
+          `capture ${s.side}: expected ${ARTBOARD.width}×${ARTBOARD.height}, got ${c.width}×${c.height} (fluid detection did not fire?)`,
+        )
       captured[s.side] = c.elements
-      console.log(`captured ${s.png}: ${c.width}×${c.height} @${c.dpr}x, ${c.elements.length} elements`)
+      console.log(
+        `captured ${s.png}: ${c.width}×${c.height} @${c.dpr}x, ${c.elements.length} elements`,
+      )
     }
-    const elements: ElementsFile = { alignment: alignment(0.42), design: captured.design!, impl: captured.impl! }
+    const elements: ElementsFile = {
+      alignment: alignment(0.42),
+      design: captured.design!,
+      impl: captured.impl!,
+    }
     await writeFile(join(dir, "elements.json"), JSON.stringify(elements, null, 2))
   } finally {
     await browser.close()
@@ -530,9 +1025,18 @@ const SET_SKIP: Record<string, string> = {
 
 /** The comp's ABSENT — in the axes, declared by neither side. */
 const SET_ABSENT = new Set([
-  "Tertiary/sm/Default", "Tertiary/sm/Hover", "Tertiary/sm/Active", "Tertiary/sm/Focus", "Tertiary/sm/Disabled",
-  "Danger/sm/Default", "Danger/sm/Hover", "Danger/sm/Active", "Danger/sm/Focus", "Danger/sm/Disabled",
-  "Tertiary/lg/Disabled", "Danger/lg/Active",
+  "Tertiary/sm/Default",
+  "Tertiary/sm/Hover",
+  "Tertiary/sm/Active",
+  "Tertiary/sm/Focus",
+  "Tertiary/sm/Disabled",
+  "Danger/sm/Default",
+  "Danger/sm/Hover",
+  "Danger/sm/Active",
+  "Danger/sm/Focus",
+  "Danger/sm/Disabled",
+  "Tertiary/lg/Disabled",
+  "Danger/lg/Active",
 ])
 
 /**
@@ -579,20 +1083,51 @@ const SET_CAUSES: {
   actual: Record<string, string>
   hits: (t: string, s: string, st: string) => boolean
 }[] = [
-  { id: "typo", severity: "major", type: "typography", message: "Label typeface differs",
-    expected: { fontFamily: "Oswald", fontWeight: "500" }, actual: { fontFamily: "Montserrat", fontWeight: "700" },
-    hits: (t, s) => !(t === "Secondary" && s === "md") },
-  { id: "colour", severity: "critical", type: "color", message: "Primary fill off-token",
-    expected: { backgroundColor: "#4F46E5" }, actual: { backgroundColor: "#6366F1" },
-    hits: (t) => t === "Primary" },
-  { id: "size", severity: "major", type: "size", message: "sm height inflated",
-    expected: { h: "28" }, actual: { h: "32" }, hits: (_t, s) => s === "sm" },
-  { id: "spacing", severity: "minor", type: "spacing", message: "md padding tighter",
-    expected: { padding: "0 16px" }, actual: { padding: "0 12px" },
-    hits: (t, s, st) => s === "md" && (st === "Hover" || st === "Active") && t !== "Secondary" },
-  { id: "missing", severity: "critical", type: "missing-element", message: "Focus ring missing",
-    expected: { element: "present" }, actual: { element: "missing" },
-    hits: (_t, _s, st) => st === "Focus" },
+  {
+    id: "typo",
+    severity: "major",
+    type: "typography",
+    message: "Label typeface differs",
+    expected: { fontFamily: "Oswald", fontWeight: "500" },
+    actual: { fontFamily: "Montserrat", fontWeight: "700" },
+    hits: (t, s) => !(t === "Secondary" && s === "md"),
+  },
+  {
+    id: "colour",
+    severity: "critical",
+    type: "color",
+    message: "Primary fill off-token",
+    expected: { backgroundColor: "#4F46E5" },
+    actual: { backgroundColor: "#6366F1" },
+    hits: (t) => t === "Primary",
+  },
+  {
+    id: "size",
+    severity: "major",
+    type: "size",
+    message: "sm height inflated",
+    expected: { h: "28" },
+    actual: { h: "32" },
+    hits: (_t, s) => s === "sm",
+  },
+  {
+    id: "spacing",
+    severity: "minor",
+    type: "spacing",
+    message: "md padding tighter",
+    expected: { padding: "0 16px" },
+    actual: { padding: "0 12px" },
+    hits: (t, s, st) => s === "md" && (st === "Hover" || st === "Active") && t !== "Secondary",
+  },
+  {
+    id: "missing",
+    severity: "critical",
+    type: "missing-element",
+    message: "Focus ring missing",
+    expected: { element: "present" },
+    actual: { element: "missing" },
+    hits: (_t, _s, st) => st === "Focus",
+  },
 ]
 
 /** The comp's ONEOFF: one cell each, so the sheet is not uniform. */
@@ -622,7 +1157,12 @@ export interface SetCell {
 /** core's slugify, reproduced: a fixture whose dirs differ from a real run's is a lie. */
 const setSlug = (props: Record<string, string>): string =>
   Object.entries(props)
-    .map(([k, v]) => `${k}-${v}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""))
+    .map(([k, v]) =>
+      `${k}-${v}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    )
     .join("_")
 
 /**
@@ -702,7 +1242,13 @@ export function setReportFor(cell: SetCell): ComparisonReport {
   const findings: Finding[] = []
   const carried = SET_CAUSES.filter((c) => cell.causes.includes(c.id))
   const all = [
-    ...carried.map((c) => ({ severity: c.severity, type: c.type, message: c.message, expected: c.expected, actual: c.actual })),
+    ...carried.map((c) => ({
+      severity: c.severity,
+      type: c.type,
+      message: c.message,
+      expected: c.expected,
+      actual: c.actual,
+    })),
     ...(cell.oneoff ? [{ ...cell.oneoff, expected: {}, actual: {} }] : []),
   ]
   const rank: Record<Severity, number> = { critical: 0, major: 1, minor: 2 }
@@ -779,7 +1325,13 @@ async function main(): Promise<void> {
     // Start clean so a renamed item cannot leave a stale run dir behind — but keep the
     // captured PNGs and element tree: they only change with --capture.
     await mkdir(dir, { recursive: true })
-    for (const stale of ["findings.json", "annotations.json", "annotations.md", "triage.json", "focus.json"])
+    for (const stale of [
+      "findings.json",
+      "annotations.json",
+      "annotations.md",
+      "triage.json",
+      "focus.json",
+    ])
       await rm(join(dir, stale), { force: true })
     const report = reportFor(item)
     const json = JSON.stringify(report, null, 2)
@@ -794,7 +1346,11 @@ async function main(): Promise<void> {
     // every width, and a dir without PNGs would open as a broken pair.
     if (item.vp) {
       for (const f of ["design.png", "impl.png", "elements.json"]) {
-        try { await copyFile(join(ROOT, OPENED_PAIR, f), join(dir, f)) } catch { /* not captured yet */ }
+        try {
+          await copyFile(join(ROOT, OPENED_PAIR, f), join(dir, f))
+        } catch {
+          /* not captured yet */
+        }
       }
     }
     const elements = item.slug === OPENED_PAIR ? await readElements(dir) : undefined
@@ -804,7 +1360,8 @@ async function main(): Promise<void> {
       return anchorFor(shape, elements.impl)
     }
     const notes = annotationsFor(item, snap)
-    if (notes.annotations.length) await writeFile(join(dir, "annotations.json"), JSON.stringify(notes, null, 2))
+    if (notes.annotations.length)
+      await writeFile(join(dir, "annotations.json"), JSON.stringify(notes, null, 2))
     console.log(
       `${item.slug}: ${report.findings.length} findings (${item.critical}/${item.major}/${item.minor}), ${report.suppressed.length} suppressed, confidence ${item.confidence}, ${notes.annotations.length} comments${elements ? ", anchored to elements.json" : ""}`,
     )
@@ -817,7 +1374,13 @@ async function main(): Promise<void> {
     if (cell.kind !== "measured") continue
     const dir = join(ROOT, `${SET_ENTRY}--${cell.slug}`)
     await mkdir(dir, { recursive: true })
-    for (const stale of ["findings.json", "annotations.json", "annotations.md", "triage.json", "focus.json"])
+    for (const stale of [
+      "findings.json",
+      "annotations.json",
+      "annotations.md",
+      "triage.json",
+      "focus.json",
+    ])
       await rm(join(dir, stale), { force: true })
     await writeFile(join(dir, "findings.json"), JSON.stringify(setReportFor(cell), null, 2))
   }
@@ -839,7 +1402,8 @@ async function main(): Promise<void> {
     `${SET_ENTRY}.set.json`,
     ...cells.filter((c) => c.kind === "measured").map((c) => `${SET_ENTRY}--${c.slug}`),
   ])
-  for (const name of await readdir(ROOT)) if (!known.has(name)) console.warn(`WARNING: ${name} is not a demo item — delete it by hand`)
+  for (const name of await readdir(ROOT))
+    if (!known.has(name)) console.warn(`WARNING: ${name} is not a demo item — delete it by hand`)
 }
 
 const annotator = await import("../packages/annotator/dist/annotations.js")

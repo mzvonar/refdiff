@@ -28,12 +28,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http"
 
-import {
-  serveDir,
-  type Alignment,
-  type ComparisonReport,
-  type ElementNode,
-} from "@refdiff/core"
+import { serveDir, type Alignment, type ComparisonReport, type ElementNode } from "@refdiff/core"
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import { networkInterfaces } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
@@ -52,18 +47,13 @@ import {
   type AnnotationSet,
 } from "./annotations.js"
 import { renderAppShell } from "./app-shell.js"
-import { readOnlyRefusal } from "./read-only.js"
-import { discoverRunDirs, isRunDir, runsForRequest, type RunDir } from "./run-dirs.js"
-import { type BrokenPair, type PairSummary } from "./index-view.js"
+import { emptyFocus, focusDigest, parseFocusSet, type FocusSet } from "./focus.js"
 import { fontFile } from "./fonts.js"
+import { type BrokenPair, type PairSummary } from "./index-view.js"
+import { readOnlyRefusal } from "./read-only.js"
 import { renderReport } from "./render.js"
 import { parseReport, type ReportParse } from "./report-file.js"
-import {
-  emptyFocus,
-  focusDigest,
-  parseFocusSet,
-  type FocusSet,
-} from "./focus.js"
+import { discoverRunDirs, isRunDir, runsForRequest, type RunDir } from "./run-dirs.js"
 import {
   emptyTriage,
   parseTriageSet,
@@ -333,7 +323,6 @@ interface AppApiOptions {
   /** `--read-only`: refuse every write; the served root is under measurement or committed. */
   readOnly?: boolean
 }
-
 
 /**
  * The app's server half. Everything is read from disk per request — both the
@@ -816,7 +805,8 @@ async function main(): Promise<void> {
     `serving ${target} — ${found.length} pair${found.length === 1 ? "" : "s"}, loaded at request time`,
   )
   console.log(`  ${server.origin}/`)
-  if (values["read-only"]) console.log("  read-only: every PUT under /api/ is refused (405); nothing is written")
+  if (values["read-only"])
+    console.log("  read-only: every PUT under /api/ is refused (405); nothing is written")
   if (host === "0.0.0.0")
     for (const ip of lanAddresses()) console.log(`  http://${ip}:${actualPort}/`)
   console.log("Ctrl-C to stop")
@@ -864,7 +854,13 @@ function shellSources(sources: EmbeddedSources) {
 }
 
 interface RenderRunOptions {
-  values: { out?: string; digest?: boolean; serve?: boolean; "mark-implemented"?: string; reply?: string }
+  values: {
+    out?: string
+    digest?: boolean
+    serve?: boolean
+    "mark-implemented"?: string
+    reply?: string
+  }
   viewMathSource: string
   annotationsSource: string
   triageSource: string
@@ -923,7 +919,9 @@ async function renderRun(
         return next
       }),
     }
-    console.log(`marked ${n} annotation${n === 1 ? "" : "s"} implemented${reply !== undefined ? " with a reply" : ""}`)
+    console.log(
+      `marked ${n} annotation${n === 1 ? "" : "s"} implemented${reply !== undefined ? " with a reply" : ""}`,
+    )
   }
   const changed = set !== stored
   if (changed) await writeAtomic(join(runDir, ANNOTATIONS_FILE), JSON.stringify(set, null, 2))

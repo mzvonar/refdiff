@@ -11,16 +11,16 @@
 
 export interface ScopeCandidate {
   /** Index among the frame's element children (selector is built from it). */
-  index: number;
-  w: number;
-  h: number;
+  index: number
+  w: number
+  h: number
 }
 
 /**
  * Slack (CSS px) the canvas is opened wider than the pair viewport so a FIXED-size
  * frame never reflows against the window edge.
  */
-export const CANVAS_SLACK = 120;
+export const CANVAS_SLACK = 120
 
 /**
  * Does the frame take its width from the viewport (a fluid, full-bleed comp —
@@ -34,16 +34,12 @@ export const CANVAS_SLACK = 120;
  * reaches the canvas edge (±`tolerance`) is fluid; the caller then resizes the
  * viewport to the pair's exact size so both sides render at the same width.
  */
-export function isFluidFrame(
-  frameWidth: number,
-  canvasWidth: number,
-  tolerance = 2,
-): boolean {
-  return frameWidth >= canvasWidth - tolerance;
+export function isFluidFrame(frameWidth: number, canvasWidth: number, tolerance = 2): boolean {
+  return frameWidth >= canvasWidth - tolerance
 }
 
 /** Minimum area (CSS px²) for a child to count as a UI candidate at all. */
-export const MIN_SCOPE_AREA = 96 * 96;
+export const MIN_SCOPE_AREA = 96 * 96
 
 /**
  * Pick the largest candidate by area; ties resolve to the earlier child.
@@ -53,11 +49,11 @@ export const MIN_SCOPE_AREA = 96 * 96;
 export function pickLargestChild(
   candidates: readonly ScopeCandidate[],
 ): ScopeCandidate | undefined {
-  let best: ScopeCandidate | undefined;
+  let best: ScopeCandidate | undefined
   for (const c of candidates) {
-    const area = c.w * c.h;
-    if (area < MIN_SCOPE_AREA) continue;
-    if (!best || area > best.w * best.h) best = c;
+    const area = c.w * c.h
+    if (area < MIN_SCOPE_AREA) continue
+    if (!best || area > best.w * best.h) best = c
   }
-  return best;
+  return best
 }

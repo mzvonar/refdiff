@@ -1,7 +1,6 @@
 import { mkdtemp, mkdir, readdir, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-
 import { describe, expect, it } from "vitest"
 
 import {
@@ -36,14 +35,18 @@ describe("the cache key", () => {
   // and one set can ask for both (a Focus column paints outside its box while
   // Default does not). Sharing a key would serve the wrong picture.
   it("changes with absoluteBounds and with scale", () => {
-    expect(imageCachePath(ROOT, { ...KEY, absoluteBounds: false })).not.toBe(imageCachePath(ROOT, KEY))
+    expect(imageCachePath(ROOT, { ...KEY, absoluteBounds: false })).not.toBe(
+      imageCachePath(ROOT, KEY),
+    )
     expect(imageCachePath(ROOT, { ...KEY, scale: 3 })).not.toBe(imageCachePath(ROOT, KEY))
   })
 
   it("separates files, nodes and the variables map", () => {
     expect(imageCachePath(ROOT, { ...KEY, fileKey: "OTHER" })).not.toBe(imageCachePath(ROOT, KEY))
     expect(imageCachePath(ROOT, { ...KEY, nodeId: "1:1" })).not.toBe(imageCachePath(ROOT, KEY))
-    expect(variablesCachePath(ROOT, "FILE", "111")).not.toBe(variablesCachePath(ROOT, "FILE", "222"))
+    expect(variablesCachePath(ROOT, "FILE", "111")).not.toBe(
+      variablesCachePath(ROOT, "FILE", "222"),
+    )
   })
 })
 
@@ -110,7 +113,16 @@ describe("on disk", () => {
     for (const v of ["111", "222", "333"]) {
       await writeCache(imageCachePath(root, { ...KEY, version: v }), Buffer.from(v))
     }
-    await writeCache(imageCachePath(root, { fileKey: "OTHER", version: "999", nodeId: "1:1", scale: 2, absoluteBounds: true }), Buffer.from("other"))
+    await writeCache(
+      imageCachePath(root, {
+        fileKey: "OTHER",
+        version: "999",
+        nodeId: "1:1",
+        scale: 2,
+        absoluteBounds: true,
+      }),
+      Buffer.from("other"),
+    )
     const removed = await pruneOtherVersions(root, "FILE", "222")
     expect(removed).toBe(2)
     expect(await readdir(join(root, "FILE"))).toEqual(["222"])

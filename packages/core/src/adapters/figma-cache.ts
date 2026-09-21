@@ -116,7 +116,11 @@ export async function writeCache(path: string, bytes: Buffer | string): Promise<
  * Nothing under this root should ever be servable for a version the file has
  * moved past. Returns how many were removed, so a caller can say so.
  */
-export async function pruneOtherVersions(root: string, fileKey: string, keep: string): Promise<number> {
+export async function pruneOtherVersions(
+  root: string,
+  fileKey: string,
+  keep: string,
+): Promise<number> {
   const dir = join(root, safeSegment(fileKey))
   const keepSeg = safeSegment(keep)
   let removed = 0

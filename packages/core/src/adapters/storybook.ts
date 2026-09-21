@@ -13,11 +13,13 @@
  */
 
 import type { Capture, CaptureError, StorybookSource } from "../pipeline.js"
+import type { Bleed } from "../types.js"
 import type { Browser } from "playwright"
 
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
+import { isNoBleed, NO_BLEED } from "../geometry.js"
 import { err, ok, type Result } from "../result.js"
 import {
   captureUntilStable,
@@ -28,10 +30,8 @@ import {
   shootElement,
   waitForFonts,
 } from "./browser.js"
-import { isNoBleed, NO_BLEED } from "../geometry.js"
-import type { Bleed } from "../types.js"
-import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
+import { describeStep, runSteps } from "./steps.js"
 
 const MOUNT_TIMEOUT_MS = 40_000
 const DPR = 2

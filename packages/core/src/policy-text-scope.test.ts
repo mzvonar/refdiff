@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest"
-
 import type { Finding } from "./types.js"
+
+import { describe, expect, it } from "vitest"
 
 import { applyPolicy } from "./policy.js"
 
@@ -18,17 +18,23 @@ const f = (over: Partial<Finding>): Finding =>
 
 describe("role-scoped textPatterns", () => {
   it("a bare string still matches any role (unchanged behaviour)", () => {
-    const r = applyPolicy([f({ text: "Review", role: "text" }), f({ text: "Review", role: "box" })], {
-      textPatterns: ["^Review$"],
-    })
+    const r = applyPolicy(
+      [f({ text: "Review", role: "text" }), f({ text: "Review", role: "box" })],
+      {
+        textPatterns: ["^Review$"],
+      },
+    )
     expect(r.kept).toHaveLength(0)
     expect(r.suppressed).toHaveLength(2)
   })
 
   it("an object entry only excuses its own role", () => {
-    const r = applyPolicy([f({ text: "Review", role: "box" }), f({ text: "Review", role: "text" })], {
-      textPatterns: [{ pattern: "^Review$", role: "box" }],
-    })
+    const r = applyPolicy(
+      [f({ text: "Review", role: "box" }), f({ text: "Review", role: "text" })],
+      {
+        textPatterns: [{ pattern: "^Review$", role: "box" }],
+      },
+    )
     expect(r.kept.map((k) => k.role)).toEqual(["text"])
     expect(r.suppressed.map((s) => s.role)).toEqual(["box"])
   })
@@ -47,7 +53,10 @@ describe("role-scoped textPatterns", () => {
     // took 3 position + 1 spacing finding about a real control with it.
     const policy = {
       textPatterns: [
-        { pattern: "^Review$", types: ["missing-element", "extra-element", "text-content"] as const },
+        {
+          pattern: "^Review$",
+          types: ["missing-element", "extra-element", "text-content"] as const,
+        },
       ],
     }
     const r = applyPolicy(

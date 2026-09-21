@@ -230,9 +230,12 @@ describe("applyPolicy", () => {
       role: "text",
       text: sentence,
       designBox: { x: 593, y: 281, w: 258, h: 13 },
-      message: 'design "Choose a document type and upload a clea…" (258×13) has no counterpart in the implementation',
+      message:
+        'design "Choose a document type and upload a clea…" (258×13) has no counterpart in the implementation',
     })
-    const { kept, suppressed } = applyPolicy([f], { textPatterns: [`^${sentence.replace(".", "\\.")}$`] })
+    const { kept, suppressed } = applyPolicy([f], {
+      textPatterns: [`^${sentence.replace(".", "\\.")}$`],
+    })
     expect(kept).toHaveLength(0)
     expect(suppressed).toHaveLength(1)
     expect(suppressed[0]!.suppressedBy).toBe("text-pattern")
@@ -347,15 +350,24 @@ describe("accepted deviations", () => {
       values: Pick<Finding, "expected" | "actual"> = {},
       message = id,
     ): Finding => ({ id, mark: 0, type, severity: "major", role, message, ...boxes, ...values })
-    const tile = textless("tile", "extra-element", "image", { implBox: { x: 17, y: 160, w: 274.5, h: 131 } })
+    const tile = textless("tile", "extra-element", "image", {
+      implBox: { x: 17, y: 160, w: 274.5, h: 131 },
+    })
     const bar = (id: string, y: number, h: number): Finding =>
       textless(id, "missing-element", "box", { designBox: { x: 82.91, y, w: 142.69, h } })
     const numeral: Finding = {
-      ...textless("numeral", "missing-element", "text", { designBox: { x: 100, y: 200, w: 8, h: 12 } }),
+      ...textless("numeral", "missing-element", "text", {
+        designBox: { x: 100, y: 200, w: 8, h: 12 },
+      }),
       text: "1",
     }
     const outside = bar("outside", 400, 12)
-    const d6 = { type: "extra-element" as const, role: "image", contents: true as const, reason: "D6: the thumbnail is the run's own impl.png" }
+    const d6 = {
+      type: "extra-element" as const,
+      role: "image",
+      contents: true as const,
+      reason: "D6: the thumbnail is the run's own impl.png",
+    }
 
     it("suppresses the textless findings inside the accepted element, visibly, as '<reason> (inside)'", () => {
       const { kept, suppressed } = applyPolicy(
@@ -382,14 +394,41 @@ describe("accepted deviations", () => {
     it("uses both boxes of a PAIRED accepted finding as the region and needs every box of a candidate inside it", () => {
       // The mobile Library: the plate is matched to the tile — a size finding
       // on the pair, its bars inside the impl box but not the design box.
-      const pair: Boxes = { designBox: { x: 32, y: 287, w: 34, h: 26 }, implBox: { x: 27, y: 273, w: 44, h: 56 } }
-      const plate = textless("plate", "size", "box", pair, { expected: { w: 34, h: 26 }, actual: { w: 44, h: 56 } })
-      const topBar = textless("topBar", "missing-element", "box", { designBox: { x: 32, y: 279, w: 23.8, h: 5 } })
-      const shifted = textless("shifted", "position", "box", pair, { expected: { x: 32, y: 287 }, actual: { x: 27, y: 273 } })
-      const straddling = textless("taller", "position", "box", { ...pair, implBox: { x: 27, y: 273, w: 44, h: 80 } })
-      const rule = { type: "size" as const, role: "box", expected: { w: 34, h: 26 }, actual: { w: 44, h: 56 }, contents: true as const, reason: "D6 mobile" }
-      const { kept, suppressed } = applyPolicy([plate, topBar, shifted, straddling], { accepted: [rule] })
-      expect(suppressed.map((s) => s.rule)).toEqual(["D6 mobile", "D6 mobile (inside)", "D6 mobile (inside)"])
+      const pair: Boxes = {
+        designBox: { x: 32, y: 287, w: 34, h: 26 },
+        implBox: { x: 27, y: 273, w: 44, h: 56 },
+      }
+      const plate = textless("plate", "size", "box", pair, {
+        expected: { w: 34, h: 26 },
+        actual: { w: 44, h: 56 },
+      })
+      const topBar = textless("topBar", "missing-element", "box", {
+        designBox: { x: 32, y: 279, w: 23.8, h: 5 },
+      })
+      const shifted = textless("shifted", "position", "box", pair, {
+        expected: { x: 32, y: 287 },
+        actual: { x: 27, y: 273 },
+      })
+      const straddling = textless("taller", "position", "box", {
+        ...pair,
+        implBox: { x: 27, y: 273, w: 44, h: 80 },
+      })
+      const rule = {
+        type: "size" as const,
+        role: "box",
+        expected: { w: 34, h: 26 },
+        actual: { w: 44, h: 56 },
+        contents: true as const,
+        reason: "D6 mobile",
+      }
+      const { kept, suppressed } = applyPolicy([plate, topBar, shifted, straddling], {
+        accepted: [rule],
+      })
+      expect(suppressed.map((s) => s.rule)).toEqual([
+        "D6 mobile",
+        "D6 mobile (inside)",
+        "D6 mobile (inside)",
+      ])
       expect(kept.map((f) => f.message)).toEqual(["taller"])
     })
   })
@@ -430,7 +469,11 @@ describe("accepted deviations", () => {
     const outside = find("outside", "missing-element", "surface", { x: 1052, y: 176, w: 85, h: 23 })
 
     it("excuses the named types inside the element, and NEVER text — the comp draws its badges there", () => {
-      const { kept, suppressed } = applyPolicy([card, numeral, badge, mark, outside], { contentsOf: [rule] }, { implElements: [artboard], frame })
+      const { kept, suppressed } = applyPolicy(
+        [card, numeral, badge, mark, outside],
+        { contentsOf: [rule] },
+        { implElements: [artboard], frame },
+      )
       expect(suppressed.map((s) => [s.message, s.rule, s.suppressedBy])).toEqual([
         ["card", `${rule.reason} (contents of image)`, "contents"],
       ])
@@ -442,11 +485,19 @@ describe("accepted deviations", () => {
     })
 
     it("fires with NO finding about the container at all — the case `accepted[].contents` cannot reach", () => {
-      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [artboard], frame }).suppressed).toHaveLength(1)
+      expect(
+        applyPolicy([card], { contentsOf: [rule] }, { implElements: [artboard], frame }).suppressed,
+      ).toHaveLength(1)
       // With the element absent from the capture it excuses nothing, so a rule naming a role the
       // page stopped drawing lapses by itself; a hidden element (0×0) is not a container either.
       expect(applyPolicy([card], { contentsOf: [rule] }, { frame }).kept).toHaveLength(1)
-      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [el("h", "image", { x: 69, y: 208, w: 0, h: 0 })], frame }).kept).toHaveLength(1)
+      expect(
+        applyPolicy(
+          [card],
+          { contentsOf: [rule] },
+          { implElements: [el("h", "image", { x: 69, y: 208, w: 0, h: 0 })], frame },
+        ).kept,
+      ).toHaveLength(1)
     })
 
     it("SKIPS a container the frame does not contain — a panned, zoomed canvas contains everything", () => {
@@ -454,15 +505,32 @@ describe("accepted deviations", () => {
       // (−338, −440) in 1360×820. Such a box "contains" the comp's rail too, and the first cut
       // excused rail rows and a REGRESSION tag through it.
       const panned = el("img-1", "image", { x: -338, y: -440, w: 995, h: 1083 })
-      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned], frame }).kept).toHaveLength(1)
+      expect(
+        applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned], frame }).kept,
+      ).toHaveLength(1)
       // No frame given → no guard, and the rule still works for a caller that has no frame.
-      expect(applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned] }).suppressed).toHaveLength(1)
+      expect(
+        applyPolicy([card], { contentsOf: [rule] }, { implElements: [panned] }).suppressed,
+      ).toHaveLength(1)
     })
 
     it("needs EVERY box inside, and matches the role exactly", () => {
-      const straddling: Finding = { ...card, id: "straddle", message: "straddle", implBox: { x: 1052, y: 176, w: 85, h: 23 } }
-      expect(applyPolicy([straddling], { contentsOf: [rule] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
-      expect(applyPolicy([card], { contentsOf: [{ ...rule, role: "icon" }] }, { implElements: [artboard], frame }).kept).toHaveLength(1)
+      const straddling: Finding = {
+        ...card,
+        id: "straddle",
+        message: "straddle",
+        implBox: { x: 1052, y: 176, w: 85, h: 23 },
+      }
+      expect(
+        applyPolicy([straddling], { contentsOf: [rule] }, { implElements: [artboard], frame }).kept,
+      ).toHaveLength(1)
+      expect(
+        applyPolicy(
+          [card],
+          { contentsOf: [{ ...rule, role: "icon" }] },
+          { implElements: [artboard], frame },
+        ).kept,
+      ).toHaveLength(1)
     })
   })
 
@@ -531,10 +599,20 @@ describe("accepted deviations", () => {
 
     it("first rule wins, so the more specific region goes first; a boxless finding is never explained", () => {
       const wide = { ...rule, region: { x: 0, y: 0, w: 4000, h: 4000 }, cause: "the whole page" }
-      expect(explainFindings([inRail], { explain: [rule, wide] })[0]!.explained?.cause).toBe(rule.cause)
-      expect(explainFindings([inRail], { explain: [wide, rule] })[0]!.explained?.cause).toBe("the whole page")
+      expect(explainFindings([inRail], { explain: [rule, wide] })[0]!.explained?.cause).toBe(
+        rule.cause,
+      )
+      expect(explainFindings([inRail], { explain: [wide, rule] })[0]!.explained?.cause).toBe(
+        "the whole page",
+      )
       // The alignment note and the frame remainder are about the PAIR, not a place in it.
-      const boxless: Finding = { id: "a", mark: 0, type: "position", severity: "major", message: "boxless" }
+      const boxless: Finding = {
+        id: "a",
+        mark: 0,
+        type: "position",
+        severity: "major",
+        message: "boxless",
+      }
       expect(explainFindings([boxless], { explain: [wide] })[0]!.explained).toBeUndefined()
     })
   })

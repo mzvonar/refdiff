@@ -26,23 +26,28 @@
  * reports stay the truth, this says which cells were ever supposed to exist.
  */
 
-import type { GalleryConfig, SkipKind, VariantAxes, VariantExpansion } from "../adapters/figma-variants.js";
+import type {
+  GalleryConfig,
+  SkipKind,
+  VariantAxes,
+  VariantExpansion,
+} from "../adapters/figma-variants.js"
 
-import { parseVariantName } from "../adapters/figma-variants.js";
+import { parseVariantName } from "../adapters/figma-variants.js"
 
 export interface SetIndexPair {
   /** "state-default_iconplacement-none_variant-default". */
-  slug: string;
+  slug: string
   /** The run dir under the out root — `<entryId>--<slug>`, which IS the pair's identity. */
-  dir: string;
-  props: Record<string, string>;
+  dir: string
+  props: Record<string, string>
 }
 
 export interface SetIndexSkipped {
-  nodeId: string;
+  nodeId: string
   /** The variant's Figma name ("State=Default, iconPlacement=none, variant=default"). */
-  name: string;
-  reason: string;
+  name: string
+  reason: string
   /**
    * WHY, as a value rather than as prose — `filtered` (the manifest narrowed
    * the set with `only` / `omit`) or `unmapped` (the story has no cell for it).
@@ -54,27 +59,27 @@ export interface SetIndexSkipped {
    * falls back to the `only:` / `omit:` prefix on `reason` — see the annotator's
    * `skipKind`. Not optional in what core WRITES from here on.
    */
-  kind?: SkipKind;
+  kind?: SkipKind
   /**
    * Parsed back out of `name`. New here, and not cosmetic: a reason string
    * alone cannot place a cell in a grid, so without this a skipped cell can
    * be listed but never DRAWN in its own column and row.
    */
-  props: Record<string, string>;
+  props: Record<string, string>
 }
 
 export interface SetIndex {
   /** The manifest entry's id — the first half of every one of its pair ids. */
-  entryId: string;
-  title?: string;
+  entryId: string
+  title?: string
   /** The SET's node in findings.json's own `design.ref` shape (`fileKey#nodeId@version`). */
-  designRef: string;
+  designRef: string
   /**
    * The designer's name for the set (`*Button/Fill`). Beyond the shape the
    * plan specified: `entryId` is ours and `designRef` is opaque, so without
    * it nothing in the artifact says what a reader would recognise in Figma.
    */
-  setName: string;
+  setName: string
   /**
    * When the EXPANSION was observed — not when any pair was compared. Also
    * beyond the specified shape, and it is the one field that lets a reader
@@ -83,8 +88,8 @@ export interface SetIndex {
    * carry their own `createdAt`, and a set index older than the cells it
    * indexes is the mixed-vintage failure this workstream keeps meeting.
    */
-  createdAt: string;
-  axes: VariantAxes;
+  createdAt: string
+  axes: VariantAxes
   /**
    * The manifest entry's `gallery` declaration, VERBATIM — which property is
    * columns, which is rows, pinned option order, human labels.
@@ -99,22 +104,22 @@ export interface SetIndex {
    * has no Figma node, so it can only check the SHAPE. The consumer holding
    * the axes resolves the names and owns what a miss means.
    */
-  gallery?: GalleryConfig;
+  gallery?: GalleryConfig
   /** The cells that became pairs, in the set's own child order. */
-  pairs: SetIndexPair[];
+  pairs: SetIndexPair[]
   /** The cells that did not, each with why. Never empty for a reason. */
-  skipped: SetIndexSkipped[];
+  skipped: SetIndexSkipped[]
 }
 
 export interface SetIndexInput {
-  entryId: string;
-  title?: string;
-  designRef: string;
-  axes: VariantAxes;
-  gallery?: GalleryConfig;
-  expansion: VariantExpansion;
+  entryId: string
+  title?: string
+  designRef: string
+  axes: VariantAxes
+  gallery?: GalleryConfig
+  expansion: VariantExpansion
   /** Injectable clock, so the shaping stays pure and the tests stay fixed. */
-  now?: string;
+  now?: string
 }
 
 /**
@@ -125,7 +130,7 @@ export interface SetIndexInput {
  * only in a log.
  */
 export function buildSetIndex(input: SetIndexInput): SetIndex {
-  const { entryId, designRef, axes, expansion } = input;
+  const { entryId, designRef, axes, expansion } = input
   return {
     entryId,
     ...(input.title !== undefined ? { title: input.title } : {}),
@@ -146,8 +151,8 @@ export function buildSetIndex(input: SetIndexInput): SetIndex {
       kind: s.kind,
       props: parseVariantName(s.name),
     })),
-  };
+  }
 }
 
 /** `<entryId>.set.json` — a FILE at the root, never a directory. */
-export const setIndexFileName = (entryId: string): string => `${entryId}.set.json`;
+export const setIndexFileName = (entryId: string): string => `${entryId}.set.json`

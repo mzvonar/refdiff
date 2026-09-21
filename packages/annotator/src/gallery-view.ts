@@ -112,9 +112,7 @@ export interface GPinned {
   option: string
 }
 
-export type GResolveResult =
-  | { ok: true; value: GResolved }
-  | { ok: false; error: string }
+export type GResolveResult = { ok: true; value: GResolved } | { ok: false; error: string }
 
 /**
  * WHAT AN UNRESOLVABLE NAME MEANS — chunk 3's decision, and the reasoning that
@@ -228,9 +226,7 @@ export function resolveGallery(axes: GAxes, gallery?: GConfig): GResolveResult {
 
   for (const property of Object.keys(gallery?.labels ?? {})) {
     if (!known(property)) {
-      warnings.push(
-        `gallery.labels names "${property}", which this set does not define — ignored`,
-      )
+      warnings.push(`gallery.labels names "${property}", which this set does not define — ignored`)
     }
   }
   for (const property of Object.keys(gallery?.order ?? {})) {
@@ -315,9 +311,7 @@ export function pruneToOccupied(set: GSetIndex, resolved: GResolved): GResolved 
     columns.labels.push(resolved.columns.labels[i] ?? o)
   })
 
-  const rowTuples = resolved.rowTuples.filter(
-    (t) => usedRows.has(t.join("\u0000")),
-  )
+  const rowTuples = resolved.rowTuples.filter((t) => usedRows.has(t.join("\u0000")))
   // An axis whose options no longer appear in any kept row is dropped entirely,
   // so its label stops taking gutter width for a value nothing carries.
   const rows = resolved.rows
@@ -462,7 +456,10 @@ export interface GPairSummary {
  * are not part of the cell's place in this grid.
  */
 const propsKey = (props: Record<string, string>, order: readonly string[]): string =>
-  [...order].sort().map((p) => `${p}=${props[p] ?? ""}`).join("/")
+  [...order]
+    .sort()
+    .map((p) => `${p}=${props[p] ?? ""}`)
+    .join("/")
 
 /**
  * Place every declared cell of the set on the resolved grid.
@@ -543,7 +540,9 @@ export function galleryCells(
  * were never behind.
  */
 export function markStale(cells: GCell[]): GCell[] {
-  const runs = cells.flatMap((c) => (c.kind === "measured" && c.summary?.run ? [c.summary.run] : []))
+  const runs = cells.flatMap((c) =>
+    c.kind === "measured" && c.summary?.run ? [c.summary.run] : [],
+  )
   if (runs.length === 0) return cells
   const newest = Math.max(...runs)
   for (const c of cells) {
@@ -622,7 +621,10 @@ export function cellSeverity(cell: GCell): "critical" | "major" | "minor" | null
  */
 export const FRAME_COVERAGE = 0.9
 
-export function isFrameLevel(box: { w: number; h: number }, cell: { w: number; h: number }): boolean {
+export function isFrameLevel(
+  box: { w: number; h: number },
+  cell: { w: number; h: number },
+): boolean {
   if (cell.w <= 0 || cell.h <= 0) return false
   return (box.w * box.h) / (cell.w * cell.h) >= FRAME_COVERAGE
 }
@@ -654,7 +656,11 @@ export function sheetSummary(c: GCensus, span: { min: number; max: number } | nu
   const parts = [`${c.measured} measured`]
   if (c.unmapped) parts.push(`${c.unmapped} missing in impl`)
   if (c.pending) parts.push(`${c.pending} not measured`)
-  const runs = !span ? "" : span.min === span.max ? ` · run ${span.max}` : ` · runs ${span.min}→${span.max}`
+  const runs = !span
+    ? ""
+    : span.min === span.max
+      ? ` · run ${span.max}`
+      : ` · runs ${span.min}→${span.max}`
   // Out of scope and undeclared are FACTS ABOUT THE SET, in the tail, because
   // neither is a cell on this sheet any more. Kept because "24 cells" over a
   // 60-variant set is only honest if the other 36 are accounted for somewhere.
@@ -706,7 +712,10 @@ export const CELL_NOTE: Record<GCellKind, string> = {
  * no tile, no border and no note; the grid slot is simply empty. That is the
  * whole of "use only what is in figma" on this surface.
  */
-export function cellTile(cell: GCell, rect: { x: number; y: number; w: number; h: number }): string {
+export function cellTile(
+  cell: GCell,
+  rect: { x: number; y: number; w: number; h: number },
+): string {
   if (cell.kind === "absent" || cell.kind === "filtered") return ""
   const sev = cellSeverity(cell)
   const cls = ["gcell", `k-${cell.kind}`, sev ? `sev-${sev}` : "", cell.stale ? "stale" : ""]
@@ -803,11 +812,7 @@ export function galleryError(entryId: string, error: string): string {
 /** The declaration's non-fatal complaints, kept on the page rather than a log. */
 export function warningList(warnings: readonly string[]): string {
   if (warnings.length === 0) return ""
-  return (
-    '<ul class="gwarn">' +
-    warnings.map((w) => `<li>${gEscape(w)}</li>`).join("") +
-    "</ul>"
-  )
+  return '<ul class="gwarn">' + warnings.map((w) => `<li>${gEscape(w)}</li>`).join("") + "</ul>"
 }
 
 /* ------------------------------------------------- causes across cells --- */
@@ -871,9 +876,10 @@ const propOf = (a: unknown, b: unknown): string => {
  * Text is deliberately NOT in the key: the same cause lands on many cells with
  * a different element text in each, which is exactly what makes it recurring.
  */
-export function causeGroups(
-  findings: readonly (GProjectedFinding | undefined)[],
-): { recurring: GCause[]; oneOffs: GCause[] } {
+export function causeGroups(findings: readonly (GProjectedFinding | undefined)[]): {
+  recurring: GCause[]
+  oneOffs: GCause[]
+} {
   const by = new Map<string, GCause>()
   for (const f of findings) {
     if (!f || !f.cell) continue

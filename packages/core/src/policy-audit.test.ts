@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest"
-
 import type { SuppressedFinding } from "./types.js"
+
+import { describe, expect, it } from "vitest"
 
 import { hiddenMovement, movementPx } from "./policy-audit.js"
 
@@ -22,13 +22,19 @@ describe("movementPx", () => {
     // hypot would read the same number here but under-report a mixed shift
     // against a threshold a person chose in px.
     expect(movementPx(f({ expected: { x: 26, y: 82 }, actual: { x: 110, y: 82 } }))).toBe(84)
-    expect(movementPx(f({ type: "size", expected: { w: 84, h: 14 }, actual: { w: 161, h: 14 } }))).toBe(77)
+    expect(
+      movementPx(f({ type: "size", expected: { w: 84, h: 14 }, actual: { w: 161, h: 14 } })),
+    ).toBe(77)
     expect(movementPx(f({ type: "spacing", expected: { gap: 24 }, actual: { gap: 8 } }))).toBe(16)
   })
 
   it("ignores non-geometric types and unpaired values", () => {
-    expect(movementPx(f({ type: "color", expected: { color: "a" }, actual: { color: "b" } }))).toBeUndefined()
-    expect(movementPx(f({ type: "text-content", expected: { text: "a" }, actual: { text: "b" } }))).toBeUndefined()
+    expect(
+      movementPx(f({ type: "color", expected: { color: "a" }, actual: { color: "b" } })),
+    ).toBeUndefined()
+    expect(
+      movementPx(f({ type: "text-content", expected: { text: "a" }, actual: { text: "b" } })),
+    ).toBeUndefined()
     // A finding with no numbers on one side describes nothing measurable.
     expect(movementPx(f({ expected: { x: 1 }, actual: {} }))).toBeUndefined()
   })
@@ -51,7 +57,13 @@ describe("hiddenMovement", () => {
     // value changes — a person already read the number. Reporting it as hidden
     // would train the reader to ignore this list.
     const out = hiddenMovement([
-      f({ id: "acc", suppressedBy: "accepted", rule: "reviewed", expected: { x: 0 }, actual: { x: 300 } }),
+      f({
+        id: "acc",
+        suppressedBy: "accepted",
+        rule: "reviewed",
+        expected: { x: 0 },
+        actual: { x: 300 },
+      }),
     ])
     expect(out).toEqual([])
   })

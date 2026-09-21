@@ -38,7 +38,11 @@ export function salvage(text: string): { pair?: string; createdAt?: string; impl
   const pair = str(text.match(/"pair"\s*:\s*"((?:[^"\\]|\\.)*)"/))
   const createdAt = str(text.match(/"createdAt"\s*:\s*"((?:[^"\\]|\\.)*)"/))
   const implRef = str(text.match(/"impl"\s*:\s*\{[^}]*?"ref"\s*:\s*"((?:[^"\\]|\\.)*)"/))
-  return { ...(pair ? { pair } : {}), ...(createdAt ? { createdAt } : {}), ...(implRef ? { implRef } : {}) }
+  return {
+    ...(pair ? { pair } : {}),
+    ...(createdAt ? { createdAt } : {}),
+    ...(implRef ? { implRef } : {}),
+  }
 }
 
 /** What a report must carry before the annotator can draw it. */
@@ -72,6 +76,10 @@ export function parseReport(text: string): ReportParse {
   const raw = r as unknown as Partial<ComparisonReport>
   return {
     ok: true,
-    value: { ...raw, suppressed: raw.suppressed ?? [], policy: raw.policy ?? {} } as ComparisonReport,
+    value: {
+      ...raw,
+      suppressed: raw.suppressed ?? [],
+      policy: raw.policy ?? {},
+    } as ComparisonReport,
   }
 }

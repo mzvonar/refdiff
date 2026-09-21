@@ -197,11 +197,16 @@ describe("alignmentNote — a non-identity fit on a same-size page is a finding"
 
   it("is silent when the fit is the identity (within rounding)", () => {
     expect(alignmentNote(identity, true)).toBeUndefined()
-    expect(alignmentNote({ ...identity, scale: 1.0003, offsetX: 0.4, offsetY: -0.2 }, true)).toBeUndefined()
+    expect(
+      alignmentNote({ ...identity, scale: 1.0003, offsetX: 0.4, offsetY: -0.2 }, true),
+    ).toBeUndefined()
   })
 
   it("names the transform the fit absorbed (phase 5: the comps' content-box chrome, scale 1.00175 offset (−0.54, −1.98))", () => {
-    const note = alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, true)
+    const note = alignmentNote(
+      { ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 },
+      true,
+    )
     expect(note).toMatchObject({
       type: "alignment",
       severity: "minor",
@@ -214,13 +219,18 @@ describe("alignmentNote — a non-identity fit on a same-size page is a finding"
   })
 
   it("reports an anisotropic fit per axis (the mobile pair's scaleY 1.00067, offsetY −0.52)", () => {
-    const note = alignmentNote({ ...identity, scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 }, true)
+    const note = alignmentNote(
+      { ...identity, scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 },
+      true,
+    )
     expect(note?.actual).toEqual({ scale: 1, scaleY: 1.00067, offsetX: 0, offsetY: -0.52 })
     expect(note?.message).toContain("scale 1.00000 × 1.00067 (x × y)")
   })
 
   it("stays silent for a design frame of another size — that is layout, not scale", () => {
-    expect(alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, false)).toBeUndefined()
+    expect(
+      alignmentNote({ ...identity, scale: 1.00175, offsetX: -0.54, offsetY: -1.98 }, false),
+    ).toBeUndefined()
   })
 })
 
@@ -240,11 +250,17 @@ describe("rootSizeNote", () => {
   })
 
   it("stays silent once the box matches, with a sub-tolerance width difference left", () => {
-    expect(rootSizeNote({ width: 69, height: 24 }, { width: 67, height: 24 }, "element-pair")).toBeUndefined()
+    expect(
+      rootSizeNote({ width: 69, height: 24 }, { width: 67, height: 24 }, "element-pair"),
+    ).toBeUndefined()
   })
 
   it("goes major past three times the tolerance", () => {
-    const note = rootSizeNote({ width: 100, height: 40 }, { width: 100, height: 60 }, "element-pair")
+    const note = rootSizeNote(
+      { width: 100, height: 40 },
+      { width: 100, height: 60 },
+      "element-pair",
+    )
     expect(note?.severity).toBe("major")
   })
 
@@ -253,7 +269,9 @@ describe("rootSizeNote", () => {
   // already describes it, and a size finding there would fire on every such pair forever.
   it("stays silent on a pair that is not one element against one element", () => {
     for (const basis of ["anchors", "offset", "none", undefined] as const) {
-      expect(rootSizeNote({ width: 1440, height: 900 }, { width: 1280, height: 800 }, basis)).toBeUndefined()
+      expect(
+        rootSizeNote({ width: 1440, height: 900 }, { width: 1280, height: 800 }, basis),
+      ).toBeUndefined()
     }
   })
 })

@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { describeStep, readStep, readSteps, runSteps, stepsOnOneSide, type StepPage } from "./steps.js"
+import {
+  describeStep,
+  readStep,
+  readSteps,
+  runSteps,
+  stepsOnOneSide,
+  type StepPage,
+} from "./steps.js"
 
 describe("readStep", () => {
   it("reads the four shapes", () => {
@@ -44,9 +51,17 @@ const page = (counts: Record<string, number>): StepPage & { clicks: string[] } =
     clicks,
     locator: (sel: string) => ({
       count: async () => counts[sel] ?? 0,
-      first: () => ({ click: async () => { clicks.push(sel) } }),
+      first: () => ({
+        click: async () => {
+          clicks.push(sel)
+        },
+      }),
     }),
-    keyboard: { press: async (k: string) => { clicks.push("key:" + k) } },
+    keyboard: {
+      press: async (k: string) => {
+        clicks.push("key:" + k)
+      },
+    },
     waitForTimeout: async () => {},
     evaluate: (async () => true) as StepPage["evaluate"],
   }
@@ -55,7 +70,9 @@ const page = (counts: Record<string, number>): StepPage & { clicks: string[] } =
 describe("runSteps", () => {
   it("runs them in order", async () => {
     const p = page({ "#a": 1, "#b": 1 })
-    expect(await runSteps(p, [{ click: "#a" }, { press: "Escape" }, { click: "#b" }])).toBeUndefined()
+    expect(
+      await runSteps(p, [{ click: "#a" }, { press: "Escape" }, { click: "#b" }]),
+    ).toBeUndefined()
     expect(p.clicks).toEqual(["#a", "key:Escape", "#b"])
   })
 
@@ -73,7 +90,11 @@ describe("runSteps", () => {
     const p = page({ "#a": 1 })
     p.locator = (sel: string) => ({
       count: async () => 1,
-      first: () => ({ click: async () => { throw new Error("intercepted by overlay") } }),
+      first: () => ({
+        click: async () => {
+          throw new Error("intercepted by overlay")
+        },
+      }),
     })
     const err = await runSteps(p, [{ click: "#a" }])
     expect(err).toMatchObject({ kind: "step-failed", index: 0, detail: "intercepted by overlay" })

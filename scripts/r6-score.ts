@@ -318,7 +318,9 @@ const main = (): void => {
   }
   say()
   const defined = scored.filter((s) => s.nearGlobal !== undefined).length
-  say(`Defined on **${defined} of ${scored.length}** scorable candidates, against ${scored.filter((s) => s.evidence >= 1).length} for the container reading.`)
+  say(
+    `Defined on **${defined} of ${scored.length}** scorable candidates, against ${scored.filter((s) => s.evidence >= 1).length} for the container reading.`,
+  )
   say()
 
   say(`## Every scorable WRONG pairing, with what the rule would say about it`)

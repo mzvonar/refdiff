@@ -611,11 +611,7 @@ const main = (): void => {
       const allGating = [...r.gatingIds]
       if (allGating.some((id) => !gatedIds.has(id))) continue // a gating finding the flag cannot reach
       if (r.gated.filter((f) => r.gatingIds.has(f.id)).every((f) => f.wasUnverified)) today += 1
-      if (
-        r.gated
-          .filter((f) => r.gatingIds.has(f.id))
-          .every((f) => localVerdict(f, r.global, c))
-      )
+      if (r.gated.filter((f) => r.gatingIds.has(f.id)).every((f) => localVerdict(f, r.global, c)))
         after += 1
     }
     return { today, after }
@@ -681,7 +677,9 @@ const main = (): void => {
     `\`tx-picker-owner-desktop\`'s busiest container holds **20 text-proven pairings** — correspondence PROVEN, not assumed — and scores 0.45, while its quiet sibling holds 8 and scores 1.00. That suggests a local agreement score reads REFLOW rather than correspondence. Scored across the corpus the suggestion does NOT hold as a monotone pattern, and what is left is worse for the proposal: the score neither rises nor falls with evidence, and its median sits BELOW the floor in three of four buckets.`,
   )
   say()
-  say(`| text pairs in the container | containers | median agreement (global) | median agreement (refit) |`)
+  say(
+    `| text pairs in the container | containers | median agreement (global) | median agreement (refit) |`,
+  )
   say(`| --- | ---: | ---: | ---: |`)
   const buckets: { label: string; lo: number; hi: number }[] = [
     { label: "3–5", lo: 3, hi: 5 },

@@ -11,11 +11,13 @@
  */
 
 import type { Capture, CaptureError, LiveAuth, LiveUrlSource } from "../pipeline.js"
+import type { Bleed } from "../types.js"
 import type { Browser, BrowserContext } from "playwright"
 
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 
+import { isNoBleed, NO_BLEED } from "../geometry.js"
 import { err, ok, type Result } from "../result.js"
 import {
   captureUntilStable,
@@ -25,10 +27,8 @@ import {
   shootElement,
   waitForFonts,
 } from "./browser.js"
-import { isNoBleed, NO_BLEED } from "../geometry.js"
-import type { Bleed } from "../types.js"
-import { describeStep, runSteps } from "./steps.js"
 import { extractElementTree } from "./extract.js"
+import { describeStep, runSteps } from "./steps.js"
 
 const DPR = 2
 const NAV_TIMEOUT_MS = 30_000

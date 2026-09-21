@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest"
-
 import type { ComparisonReport } from "../types.js"
+
+import { describe, expect, it } from "vitest"
 
 import { diffReports } from "./delta.js"
 

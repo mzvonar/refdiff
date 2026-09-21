@@ -124,7 +124,12 @@ export function handlePoints(
   region: FocusRect,
   offset = 0,
 ): { handle: FocusHandle; x: number; y: number }[] {
-  const [l, t, r, b] = [region.x - offset, region.y - offset, region.x + region.w + offset, region.y + region.h + offset]
+  const [l, t, r, b] = [
+    region.x - offset,
+    region.y - offset,
+    region.x + region.w + offset,
+    region.y + region.h + offset,
+  ]
   return [
     { handle: "nw", x: l, y: t },
     { handle: "ne", x: r, y: t },

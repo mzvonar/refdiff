@@ -40,7 +40,8 @@ const trimNumber = (n: number): string => String(Math.round(n * 100) / 100)
 
 export function formatValue(key: string, value: string | number | undefined): string {
   if (value === undefined) return "—"
-  if (typeof value === "number") return PX_KEYS.has(key) ? trimNumber(value) + "px" : trimNumber(value)
+  if (typeof value === "number")
+    return PX_KEYS.has(key) ? trimNumber(value) + "px" : trimNumber(value)
   return value
 }
 
@@ -65,7 +66,10 @@ export function propRows(
 ): PropRow[] {
   if (type === "position") {
     const out: PropRow[] = []
-    for (const [axis, name] of [["x", "translateX"], ["y", "translateY"]] as const) {
+    for (const [axis, name] of [
+      ["x", "translateX"],
+      ["y", "translateY"],
+    ] as const) {
       const e = expected?.[axis]
       const a = actual?.[axis]
       if (typeof e !== "number" || typeof a !== "number" || e === a) continue
@@ -118,7 +122,9 @@ export const READ_ONLY_STATUS =
 export function railStatusLine(errors: readonly string[], storage: string): string {
   const parts = [...errors]
   if (parts.length === 0 && storage !== "api")
-    parts.push("not served — notes stay in this browser; serve the run dir (--serve) to persist them to annotations.json")
+    parts.push(
+      "not served — notes stay in this browser; serve the run dir (--serve) to persist them to annotations.json",
+    )
   return parts.join(" · ")
 }
 
@@ -133,7 +139,10 @@ export function saveErrorText(readOnly: boolean, endpoint: string, message: stri
  * `instances` on a refdiff finding is the total number of members, primary
  * included — so a ×14 aggregate contributes 14, not 15.
  */
-export function instanceChipLabel(allInstances: boolean, listed: readonly { instances?: number }[]): string {
+export function instanceChipLabel(
+  allInstances: boolean,
+  listed: readonly { instances?: number }[],
+): string {
   if (!allInstances) return "Primary only · " + listed.length
   const total = listed.reduce((n, f) => n + Math.max(1, f.instances ?? 1), 0)
   return "All instances · " + total
@@ -172,7 +181,12 @@ export function parseDeltaDismissal(raw: unknown): DeltaDismissal | null {
   const r = raw as Record<string, unknown>
   if (r.version !== 1 || typeof r.run !== "string") return null
   if (!Array.isArray(r.regKeys) || r.regKeys.some((k) => typeof k !== "string")) return null
-  return { version: 1, run: r.run, regKeys: r.regKeys as string[], at: typeof r.at === "string" ? r.at : "" }
+  return {
+    version: 1,
+    run: r.run,
+    regKeys: r.regKeys as string[],
+    at: typeof r.at === "string" ? r.at : "",
+  }
 }
 
 /**

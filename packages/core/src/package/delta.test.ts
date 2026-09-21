@@ -235,13 +235,17 @@ describe("resolved ledger", () => {
   // key's count goes 1 → 2, the spare is `introduced`, and by key alone it
   // matched a ledger entry from two iterations back — REGRESSION cried wolf.
   const propLine = (id: string, y: number): Finding => {
-    const { expected: _e, actual: _a, ...f } = finding(id, {
+    const {
+      expected: _e,
+      actual: _a,
+      ...f
+    } = finding(id, {
       type: "missing-element",
       role: "text",
       text: "#6B7280",
       designBox: { x: 40, y, w: 50, h: 14 },
       implBox: { x: 40, y, w: 50, h: 14 },
-      message: "missing \"#6B7280\"",
+      message: 'missing "#6B7280"',
     })
     return f
   }
@@ -335,7 +339,9 @@ describe("a pixel-region is identified by its KIND, not by its measured ratio", 
   })
 
   it("still reports a region that changed KIND, or moved out of tolerance", () => {
-    const kind = diffReports(report([region("f1", 0.159)]), { findings: [region("f1", 0.159, "added")] })
+    const kind = diffReports(report([region("f1", 0.159)]), {
+      findings: [region("f1", 0.159, "added")],
+    })
     expect(kind.introduced).toEqual(["f1"])
     expect(kind.resolved).toEqual(["f1"])
     const moved = region("f1", 0.159)
@@ -351,7 +357,12 @@ describe("a regression that is really a RE-PAIRING says so", () => {
   // paired with. Five findings about "6" resolved, one `missing-element text:6`
   // came back, and the run cried REGRESSION at a re-pairing.
   const prop = (id: string, type: Finding["type"]): Finding =>
-    finding(id, { type, text: "6", designBox: { x: 1058, y: 787, w: 7, h: 14 }, implBox: { x: 1080, y: 813, w: 49, h: 14 } })
+    finding(id, {
+      type,
+      text: "6",
+      designBox: { x: 1058, y: 787, w: 7, h: 14 },
+      implBox: { x: 1080, y: 813, w: 49, h: 14 },
+    })
   // A missing-element has no implBox at all: exactOptionalPropertyTypes means
   // absent, not `undefined`.
   const gone: Finding = {
@@ -371,7 +382,7 @@ describe("a regression that is really a RE-PAIRING says so", () => {
         key: "missing-element||text:6",
         text: "6",
         box: { x: 1058, y: 787, w: 7, h: 14 },
-        message: "design \"6\" has no counterpart",
+        message: 'design "6" has no counterpart',
         resolvedAt: "2026-09-01T00:00:00.000Z",
       },
     ],
@@ -381,7 +392,12 @@ describe("a regression that is really a RE-PAIRING says so", () => {
     const d = diffReports(prev, { findings: [gone] }, {}, ledger)
     expect(d.regressions).toEqual(["f17"])
     expect(d.repaired).toEqual([
-      { id: "f17", text: "6", resolved: ["f9", "f10", "f11"], types: ["position", "color", "typography"] },
+      {
+        id: "f17",
+        text: "6",
+        resolved: ["f9", "f10", "f11"],
+        types: ["position", "color", "typography"],
+      },
     ])
   })
 
@@ -389,7 +405,12 @@ describe("a regression that is really a RE-PAIRING says so", () => {
     // Nothing about "6" resolved in this delta, so there is no re-pairing to
     // report — and the regression is exactly as loud as before.
     const other = report([finding("f9", { type: "position", text: "elsewhere" })])
-    const d = diffReports(other, { findings: [gone, finding("f9", { type: "position", text: "elsewhere" })] }, {}, ledger)
+    const d = diffReports(
+      other,
+      { findings: [gone, finding("f9", { type: "position", text: "elsewhere" })] },
+      {},
+      ledger,
+    )
     expect(d.regressions).toEqual(["f17"])
     expect(d.repaired).toBeUndefined()
   })

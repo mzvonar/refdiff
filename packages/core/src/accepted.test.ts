@@ -69,7 +69,13 @@ describe("acceptedFromFinding", () => {
 
   it("refuses the identity note — its numbers move and the fix is the size difference it names", () => {
     const r = acceptedFromFinding(
-      finding({ type: "alignment", role: undefined, text: undefined, expected: { scale: 1 }, actual: { scale: 1.002 } }),
+      finding({
+        type: "alignment",
+        role: undefined,
+        text: undefined,
+        expected: { scale: 1 },
+        actual: { scale: 1.002 },
+      }),
       "intended",
       NOW,
     )
@@ -157,8 +163,15 @@ describe("the decisions file", () => {
     const file = upsertAccepted(emptyAcceptedFile(), "p", widened).file
     const parsed = parseAcceptedFile(JSON.parse(JSON.stringify(file)))
     expect(parsed.ok && acceptedFor(parsed.value, "p")[0]?.contents).toBe(true)
-    const again = upsertAccepted(file, "p", decide(finding(), "ours, restated", "2026-09-01T00:00:00.000Z"))
-    expect(acceptedFor(again.file, "p")[0]).toMatchObject({ reason: "ours, restated", contents: true })
+    const again = upsertAccepted(
+      file,
+      "p",
+      decide(finding(), "ours, restated", "2026-09-01T00:00:00.000Z"),
+    )
+    expect(acceptedFor(again.file, "p")[0]).toMatchObject({
+      reason: "ours, restated",
+      contents: true,
+    })
   })
 
   it("removes by the key that recorded it", () => {

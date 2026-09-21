@@ -39,10 +39,10 @@ import type {
   TextPattern,
 } from "./types.js"
 
-import { err, ok, type Result } from "./result.js"
 import { readGround, type Ground } from "./adapters/ground.js"
 import { readSteps } from "./adapters/steps.js"
 import { mergePolicies } from "./policy.js"
+import { err, ok, type Result } from "./result.js"
 
 /**
  * A figma design may carry `variants`: the node is a COMPONENT_SET and the
@@ -238,13 +238,17 @@ export function readViewports(v: unknown): Result<ViewportEntry[] | undefined, s
   const seen = new Set<string>()
   for (const [i, raw] of v.entries()) {
     if (!isRecord(raw)) return err(`viewports[${i}] must be an object { id, width, height }`)
-    const unknown = Object.keys(raw).filter((k) => !(VIEWPORT_KEYS as readonly string[]).includes(k))
+    const unknown = Object.keys(raw).filter(
+      (k) => !(VIEWPORT_KEYS as readonly string[]).includes(k),
+    )
     if (unknown.length > 0) {
       return err(`viewports[${i}]: unknown key ${unknown.join(", ")} (${VIEWPORT_KEYS.join(", ")})`)
     }
     const id = raw["id"]
     if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) || id.includes("--")) {
-      return err(`viewports[${i}]: id must be a short name like "desktop" or "mobile" (letters, digits, . _ -; never --)`)
+      return err(
+        `viewports[${i}]: id must be a short name like "desktop" or "mobile" (letters, digits, . _ -; never --)`,
+      )
     }
     if (seen.has(id)) return err(`viewports[${i}]: "${id}" is declared twice`)
     seen.add(id)
@@ -281,7 +285,10 @@ export const pairMatches = (pair: PairSpec, entryId: string): boolean =>
   pair.id === entryId || (pair.breakpoint !== undefined && pair.breakpoint.entry === entryId)
 
 /** The pairs `--pair` names, in manifest order; every pair when nothing is named. */
-export function selectPairs(pairs: readonly PairSpec[], only: readonly string[] | undefined): PairSpec[] {
+export function selectPairs(
+  pairs: readonly PairSpec[],
+  only: readonly string[] | undefined,
+): PairSpec[] {
   if (only === undefined) return [...pairs]
   return pairs.filter((p) => only.some((sel) => pairMatches(p, sel)))
 }
@@ -294,7 +301,9 @@ function readPolicy(v: unknown): IgnorePolicy | undefined {
     out.textPatterns = v["textPatterns"].flatMap((t: unknown): TextPattern[] => {
       if (typeof t === "string") return [t]
       if (isRecord(t) && typeof t["pattern"] === "string") {
-        const types = Array.isArray(t["types"]) ? (t["types"].map(String) as FindingType[]) : undefined
+        const types = Array.isArray(t["types"])
+          ? (t["types"].map(String) as FindingType[])
+          : undefined
         return [
           {
             pattern: t["pattern"],
@@ -465,7 +474,8 @@ export function readVariants(v: unknown): Result<VariantConfig | undefined, stri
  * `"/A"`, `"A/"`) or a node with no name at all (`""`, `"   "`).
  */
 export function readSectionPath(v: unknown): Result<string, string> {
-  if (typeof v !== "string") return err(`section must be a string path like "Core components/Buttons"`)
+  if (typeof v !== "string")
+    return err(`section must be a string path like "Core components/Buttons"`)
   const segments = v.split("/").map((seg) => seg.trim())
   if (segments.some((seg) => seg === "")) {
     return err(
@@ -503,7 +513,8 @@ export function readSections(v: unknown): Result<SectionMeta[], string> {
     const source = typeof raw === "string" ? { path: raw } : raw
     if (!isRecord(source)) return err(`sections[${i}] must be a path string or { path, label? }`)
     const unknown = Object.keys(source).filter((k) => k !== "path" && k !== "label")
-    if (unknown.length > 0) return err(`sections[${i}]: unknown key ${unknown.join(", ")} (path, label)`)
+    if (unknown.length > 0)
+      return err(`sections[${i}]: unknown key ${unknown.join(", ")} (path, label)`)
     const path = readSectionPath(source["path"])
     if (!path.ok) return err(`sections[${i}]: ${path.error}`)
     if (source["label"] !== undefined && typeof source["label"] !== "string") {
@@ -563,7 +574,11 @@ export function readGallery(v: unknown): Result<GalleryConfig | undefined, strin
   if (v["order"] !== undefined) {
     if (!isRecord(v["order"])) return err("gallery.order must be { property: [options] }")
     for (const [prop, options] of Object.entries(v["order"])) {
-      if (!Array.isArray(options) || options.length === 0 || options.some((o) => typeof o !== "string")) {
+      if (
+        !Array.isArray(options) ||
+        options.length === 0 ||
+        options.some((o) => typeof o !== "string")
+      ) {
         return err(`gallery.order.${prop} must be a non-empty array of option names`)
       }
       const dupe = options.find((o, i) => options.indexOf(o) !== i)
@@ -578,7 +593,9 @@ export function readGallery(v: unknown): Result<GalleryConfig | undefined, strin
     out.labels = v["labels"] as Record<string, Record<string, string>>
   }
   if (Object.keys(out).length === 0) {
-    return err(`gallery declares nothing — give it one of ${GALLERY_KEYS.join(", ")}, or drop the block`)
+    return err(
+      `gallery declares nothing — give it one of ${GALLERY_KEYS.join(", ")}, or drop the block`,
+    )
   }
   return ok(out)
 }
@@ -679,7 +696,8 @@ export function parseManifest(
     }
     const id = entry["id"]
     const disabled = readDisabled(entry["disabled"])
-    if (!disabled.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${disabled.error}` })
+    if (!disabled.ok)
+      return err({ kind: "invalid-entry", index, detail: `${id}: ${disabled.error}` })
     if (disabled.value !== undefined) {
       skipped.push({ id, reason: `disabled — ${disabled.value}` })
       continue
@@ -696,7 +714,8 @@ export function parseManifest(
       continue
     }
     const viewports = readViewports(entry["viewports"])
-    if (!viewports.ok) return err({ kind: "invalid-entry", index, detail: `${id}: ${viewports.error}` })
+    if (!viewports.ok)
+      return err({ kind: "invalid-entry", index, detail: `${id}: ${viewports.error}` })
     if (viewports.value !== undefined && app["viewport"] !== undefined) {
       return err({
         kind: "invalid-entry",
@@ -808,7 +827,10 @@ export function parseManifest(
       // only ever be a mistake — a `gallery` moved to the wrong entry, or one left
       // behind when `variants` was removed. Refused here, where the message can
       // name the entry, rather than ignored into an artifact nobody reads.
-      if (gallery.value !== undefined && !(d.value.kind === "figma" && d.value.variants !== undefined)) {
+      if (
+        gallery.value !== undefined &&
+        !(d.value.kind === "figma" && d.value.variants !== undefined)
+      ) {
         return err({
           kind: "invalid-entry",
           index,
