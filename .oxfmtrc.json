@@ -1,0 +1,15 @@
+{
+  "semi": false,
+  "singleQuote": false,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "sortImports": {
+    "groups": [
+      "type",
+      ["builtin", "external"],
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"]
+    ]
+  }
+}
