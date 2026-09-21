@@ -136,7 +136,13 @@ async function collectBranches(
   try {
     const raw = await page.evaluate(
       async ({ src, sel }: { src: string; sel: string }) => {
-        const text = await (await fetch(src)).text()
+        // `page.evaluate` carries no timeout of its own, and the `catch` around this call
+        // catches a REJECTION, not a hang — so a stalled read from the local static server
+        // blocked the whole run indefinitely with no error and no output. The abort rejects
+        // into that existing catch, which degrades branch coverage to "not reported", already
+        // its documented best-effort contract.
+        const response = await fetch(src, { signal: AbortSignal.timeout(3000) })
+        const text = await response.text()
         const open = /<x-dc(?:\s[^>]*)?>/.exec(text)
         const close = text.lastIndexOf("</x-dc>")
         if (!open || close === -1 || close < open.index) return null

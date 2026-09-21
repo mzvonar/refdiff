@@ -83,7 +83,14 @@ import { applyPolicy, explainFindings, mergePolicies, runWidePolicy } from "./po
 import { err, ok, type Result } from "./result.js"
 import { aggregate } from "./structural/aggregate.js"
 import { alignmentNote, alignStructural, rootSizeNote } from "./structural/align.js"
-import { colorDelta, finalize, runTypedChecks, type RawFinding } from "./structural/checks.js"
+import {
+  colorDelta,
+  DEFAULT_MIN_ALIGNMENT_CONFIDENCE,
+  finalize,
+  isUnverified,
+  runTypedChecks,
+  type RawFinding,
+} from "./structural/checks.js"
 import { runContainerChecks } from "./structural/containers.js"
 import { matchElements, matchingStats } from "./structural/match.js"
 
@@ -665,7 +672,6 @@ async function runPair(
       frame: { x: 0, y: 0, w: aligned.impl.width, h: aligned.impl.height },
     },
     match.matches,
-    colorDelta,
   )
   if (container.pairs > 0 || container.findings.length > 0) {
     console.log(
@@ -720,10 +726,24 @@ async function runPair(
 
   // The impl elements come along because a `contentsOf` rule's container is an ELEMENT, not a
   // finding: it must fire whether or not that element is itself reported.
+  // Container findings go through the SAME confidence gate as leaf value findings. They were
+  // spliced in raw, so `isUnverified` never saw them: on a 0.00-confidence pair a leaf `border`
+  // finding was flagged `unverified` and the identical container `border` finding beside it was
+  // not — contradicting the channel's own docblock ("no better than the matcher's pairs") and
+  // the reasoning that had just put `affordance` into VALUE_FINDING_TYPES.
+  //
+  // `via: "geometry"`: a container pair is formed from the matched-leaf set beneath it, so it
+  // inherits the weakest provenance of the pairs that built it, never the "text" exemption.
+  const containerFindings = container.findings.map((f) =>
+    isUnverified(f.type, "geometry", confidence, DEFAULT_MIN_ALIGNMENT_CONFIDENCE)
+      ? { ...f, unverified: true as const, unverifiedReason: "low-alignment-confidence" as const }
+      : f,
+  )
+
   const { kept, suppressed } = applyPolicy(
     finalize([
       ...structural,
-      ...container.findings,
+      ...containerFindings,
       ...pixel,
       ...(identity ? [identity] : []),
       ...(rootSize ? [rootSize] : []),

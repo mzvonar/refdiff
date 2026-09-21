@@ -25,6 +25,8 @@
 import type { ElementMatch } from "../pipeline.js"
 import type { Box, ElementNode, Finding } from "../types.js"
 
+import { colorDelta } from "./checks.js"
+
 type RawFinding = Omit<Finding, "id" | "mark">
 
 type Side = "top" | "right" | "bottom" | "left"
@@ -80,16 +82,23 @@ const area = (b: Box): number => Math.max(0, b.w) * Math.max(0, b.h)
  * The matched leaves a container holds, as the indices of those matches — the
  * same index on both sides, which is what makes the two keys comparable.
  */
-const leafKey = (
+const heldLeaves = (
   container: ElementNode,
   matches: readonly ElementMatch[],
   side: "design" | "impl",
-): string => {
+): number[] => {
   const held: number[] = []
   for (const [i, m] of matches.entries()) {
     if (holds(container.box, m[side].box)) held.push(i)
   }
-  return held.join(",")
+  return held
+}
+
+/** Members of a comma-joined index key, counted without materialising the split. */
+const countMembers = (key: string): number => {
+  let n = 1
+  for (const ch of key) if (ch === ",") n++
+  return n
 }
 
 export interface ContainerPair {
@@ -123,8 +132,12 @@ export function pairContainers(
     const byKey = new Map<string, ElementNode | null>()
     for (const c of containers) {
       if (frameArea > 0 && area(c.box) / frameArea > o.maxFrameShare) continue
-      const key = leafKey(c, matches, side)
-      if (key === "" || key.split(",").length < o.minLeaves) continue
+      // The count comes from the array, not from re-splitting the string that was just built
+      // from it — `key.split(",")` allocated an array of up to one-per-match strings twice per
+      // container purely to recover a number the loop above already had.
+      const held = heldLeaves(c, matches, side)
+      if (held.length < o.minLeaves) continue
+      const key = held.join(",")
       // null marks an AMBIGUOUS key — seen twice, so it identifies nothing.
       byKey.set(key, byKey.has(key) ? null : c)
     }
@@ -137,7 +150,10 @@ export function pairContainers(
   for (const [key, d] of designByKey) {
     const i = implByKey.get(key)
     if (d === null || i === null || i === undefined) continue
-    pairs.push({ design: d, impl: i, leaves: key.split(",").length })
+    // `key` is a comma-joined index list, so its member count is its separator count plus one —
+    // no array needed. (Once per surviving PAIR this is negligible either way; it is spelled
+    // this way so the two places that need the count do not disagree about how to get it.)
+    pairs.push({ design: d, impl: i, leaves: countMembers(key) })
   }
   return pairs
 }
@@ -152,15 +168,16 @@ const label = (pair: ContainerPair): string =>
   `container at (${Math.round(pair.design.box.x)}, ${Math.round(pair.design.box.y)}) ${Math.round(pair.design.box.w)}×${Math.round(pair.design.box.h)} (${pair.leaves} matched leaves)`
 
 /**
- * Findings for one paired container. `colorDelta` is injected so this module
- * carries no colour maths of its own and cannot drift from the structural
- * channel's thresholds.
+ * Findings for one paired container.
+ *
+ * `colorDelta` is IMPORTED from the structural channel rather than injected, which is how every
+ * sibling module here reaches its collaborator (align → text, pixel/checks → classify, cluster).
+ * The anti-drift goal the injection was for — one colour implementation, one set of thresholds —
+ * is satisfied identically by the import, and `checks.ts → containers.ts` is a same-directory
+ * edge with no cycle. Injecting it instead forced `colorDelta` from private to exported and put
+ * a fourth positional argument on the public entry point for nothing.
  */
-function findingsForPair(
-  pair: ContainerPair,
-  colorDelta: (a: string, b: string) => number | undefined,
-  o: Required<ContainerCheckOptions>,
-): RawFinding[] {
+function findingsForPair(pair: ContainerPair, o: Required<ContainerCheckOptions>): RawFinding[] {
   const out: RawFinding[] = []
   const boxes = { designBox: pair.design.box, implBox: pair.impl.box, role: "container" }
   const name = label(pair)
@@ -204,10 +221,36 @@ function findingsForPair(
     })
   }
 
-  // Background.
-  const dbg = pair.design.style?.backgroundColor
-  const ibg = pair.impl.style?.backgroundColor
-  if (dbg !== undefined && ibg !== undefined) {
+  // Background — a PRESENCE FLIP first, then the colour comparison.
+  //
+  // The two need separating for the same reason the border check separates them, and ΔE is
+  // specifically the wrong instrument for the flip: an absent background flattens to white, and
+  // "panel #FFFDF9 versus nothing" is then a ΔE of well under the minor floor. So the version
+  // that only compared colours reported nothing for a dropped panel — one of the three cases
+  // architecture.md advertises this channel for.
+  //
+  // Reading an absent value as "paints none" is safe here, and only here, because
+  // `runContainerChecks` returns early when a side has no container LIST: inside a formed pair
+  // `undefined` means the wrapper paints no background, never that we could not tell.
+  const TRANSPARENT = "rgba(0, 0, 0, 0)"
+  const dbgRaw = pair.design.style?.backgroundColor
+  const ibgRaw = pair.impl.style?.backgroundColor
+  const bgPresenceFlip = (dbgRaw === undefined) !== (ibgRaw === undefined)
+  const dbg = dbgRaw ?? TRANSPARENT
+  const ibg = ibgRaw ?? TRANSPARENT
+  if (bgPresenceFlip) {
+    out.push({
+      type: "color",
+      severity: "major",
+      ...boxes,
+      expected: { backgroundColor: dbg },
+      actual: { backgroundColor: ibg },
+      message:
+        ibgRaw === undefined
+          ? `${name} has no background, design paints ${dbg}`
+          : `${name} paints a background (${ibg}) the design does not have`,
+    })
+  } else if (dbgRaw !== undefined && ibgRaw !== undefined) {
     const de = colorDelta(dbg, ibg)
     if (de !== undefined && de >= o.colorDeltaEMinor) {
       out.push({
@@ -253,7 +296,6 @@ export function runContainerChecks(
   design: { containers?: readonly ElementNode[]; frame: Box },
   impl: { containers?: readonly ElementNode[]; frame: Box },
   matches: readonly ElementMatch[],
-  colorDelta: (a: string, b: string) => number | undefined,
   options: ContainerCheckOptions = {},
 ): { findings: RawFinding[]; pairs: number } {
   if (design.containers === undefined || impl.containers === undefined) {
@@ -267,7 +309,7 @@ export function runContainerChecks(
     o,
   )
   return {
-    findings: pairs.flatMap((p) => findingsForPair(p, colorDelta, o)),
+    findings: pairs.flatMap((p) => findingsForPair(p, o)),
     pairs: pairs.length,
   }
 }

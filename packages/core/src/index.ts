@@ -202,6 +202,25 @@ export {
   type RawFinding,
 } from "./structural/checks.js"
 export { aggregate, type AggregateOptions } from "./structural/aggregate.js"
+// The container channel. This barrel's own header promises that "every stage is independently
+// importable", and the three channels added in 1.5.0 were reachable from nowhere but the CLI.
+export {
+  pairContainers,
+  runContainerChecks,
+  type ContainerCheckOptions,
+  type ContainerPair,
+} from "./structural/containers.js"
+export {
+  describeRun,
+  repeatedRuns,
+  type RepeatedRun,
+  type RepetitionOptions,
+} from "./pixel/repetition.js"
+export {
+  branchCoverage,
+  describeBranchCoverage,
+  type BranchCoverage,
+} from "./adapters/dc-branches.js"
 
 export {
   bleedClip,

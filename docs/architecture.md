@@ -197,7 +197,24 @@ than `isSurface`'s — `paintsDecoration` reads the top border only, so a wrappe
 whose whole paint is a bottom border is not a surface and was never extracted
 at all. The list is kept SEPARATE from `elements` deliberately: widening that
 one would move the matcher, the pixel channel, the remainder and every count in
-every report, for a channel that needs none of them.
+every report, for a channel that needs none of them. Separate means separate
+IDENTIFIERS too — containers number themselves (`c:<tag>-<n>`, their own
+counter). They shared the element counter at first, which shifted every
+element id after the first container, and those ids reach `elements.json` and
+the annotator's `elementId` resolution: exactly the re-baseline the parallel
+list exists to avoid, reintroduced by one `seq++`.
+
+Admission carries NO "does it paint anything" gate, and that is deliberate.
+The channel's headline case is an ABSENCE — the comp draws a separator on
+every row and the implementation draws none — and there the implementation's
+wrapper is an undecorated `<div>`. Gated on paint it never entered the list,
+nothing paired with the design key, and the run was silent; the one corpus
+pair that appeared to validate the channel fired only because that row
+happened to carry a `border-radius`, which the missing separator rode in on.
+An unpainted wrapper costs one map entry and gives the presence-flip checks
+the empty `style` they need in order to see an absence at all, while
+`pairContainers` still bounds what is COMPARED (≥2 matched leaves, ≤70% of the
+frame, unique key).
 
 ### Comp branch coverage (capture metadata, not a finding)
 

@@ -104,8 +104,15 @@ function longestRun(
 ): RepeatedRun | null {
   const main = (b: Box): number => (axis === "vertical" ? b.y : b.x)
   let best: Box[] = []
+  // The search is a triple nest (~L³/6). The two `break`s below are pure pruning — they cut
+  // branches that provably cannot beat the best run found so far, so the result is identical
+  // and the common case (a long run found early) collapses. `sorted` is ordered along the main
+  // axis, which is what makes the bounds sound: from `start` at most `length - start` members
+  // remain, and from `(start, second)` at most `length - second + 1`.
   for (let start = 0; start + o.minCount <= sorted.length; start++) {
+    if (sorted.length - start <= best.length) break
     for (let second = start + 1; second < sorted.length; second++) {
+      if (sorted.length - second + 1 <= best.length) break
       const pitch = main(sorted[second]!) - main(sorted[start]!)
       if (pitch <= 0) continue
       const run: Box[] = [sorted[start]!, sorted[second]!]
@@ -154,22 +161,45 @@ export function repeatedRuns(
   // Size buckets: the first unclaimed box seeds a bucket and every later box
   // within tolerance of IT joins, so tolerance cannot chain a gradient of sizes
   // into one bucket the way pairwise comparison would.
+  // A box that has already been INSIDE a bucket never seeds another one. `claimed` is written
+  // only from a run that was actually returned, so a bucket that produced nothing left all its
+  // members unclaimed and every one of them re-seeded an identical bucket — redoing the O(N)
+  // filter, both lane builds and every longestRun, B times over. And "produced nothing" is the
+  // DESIGNED outcome for the densest inputs: a tight column of same-size residues pays the full
+  // cube and is then rejected by the minPitchRatio gate. Same buckets, same runs, ×B less work.
+  const bucketed = new Set<Box>()
+
   for (const seed of boxes) {
-    if (claimed.has(seed)) continue
+    if (claimed.has(seed) || bucketed.has(seed)) continue
     const bucket = boxes.filter((b) => !claimed.has(b) && sameSize(seed, b, o.sizeTolerance))
+    for (const b of bucket) bucketed.add(b)
     if (bucket.length < o.minCount) continue
     for (const axis of ["vertical", "horizontal"] as const) {
       const cross = (b: Box): number => (axis === "vertical" ? b.x : b.y)
       const main = (b: Box): number => (axis === "vertical" ? b.y : b.x)
+      // Re-filtered per axis: the vertical pass claims its members, and without this the
+      // horizontal pass rebuilt its lanes from the SAME boxes and emitted a second run over
+      // them — a 3×3 grid reported three vertical runs and three horizontal ones covering the
+      // identical nine regions.
+      const available = bucket.filter((b) => !claimed.has(b))
+      if (available.length < o.minCount) continue
       // Aligned on the cross axis — a column of separators shares x; a row of
       // chips shares y. Without this, boxes scattered over the frame that merely
       // happen to be the same size read as a run.
+      //
+      // `laneKeys` mirrors the Map's keys so the nearest-lane search scans an array in place.
+      // The spread it replaces allocated a fresh array of every key PER BOX, per axis.
       const lanes = new Map<number, Box[]>()
-      for (const b of bucket) {
-        const key = [...lanes.keys()].find((k) => Math.abs(k - cross(b)) <= o.crossTolerance)
-        const lane = key === undefined ? [] : lanes.get(key)!
-        lane.push(b)
-        lanes.set(key ?? cross(b), lane)
+      const laneKeys: number[] = []
+      for (const b of available) {
+        const c = cross(b)
+        const key = laneKeys.find((k) => Math.abs(k - c) <= o.crossTolerance)
+        if (key === undefined) {
+          lanes.set(c, [b])
+          laneKeys.push(c)
+        } else {
+          lanes.get(key)!.push(b)
+        }
       }
       for (const lane of lanes.values()) {
         if (lane.length < o.minCount) continue

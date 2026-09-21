@@ -3,7 +3,6 @@ import type { Box, ElementNode } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { colorDelta } from "./checks.js"
 import { pairContainers, runContainerChecks } from "./containers.js"
 
 const FRAME: Box = { x: 0, y: 0, w: 390, h: 900 }
@@ -36,7 +35,7 @@ const railMatches = (): ElementMatch[] => [
   match(leaf("t2", 70, 310), leaf("t2", 70, 310)),
 ]
 
-describe(pairContainers, () => {
+describe("pairContainers — identification by matched-leaf set", () => {
   it("pairs two containers holding the same matched leaves", () => {
     const matches = railMatches()
     const d = container("d-row1", { x: 20, y: 205, w: 350, h: 80 })
@@ -118,7 +117,7 @@ describe(pairContainers, () => {
   })
 })
 
-describe(runContainerChecks, () => {
+describe("runContainerChecks — what a paired wrapper reports", () => {
   const railBox = { x: 20, y: 205, w: 350, h: 60 }
 
   it("reports the witness: the comp's row separator that the impl does not draw", () => {
@@ -136,7 +135,6 @@ describe(runContainerChecks, () => {
       },
       { containers: [container("i-row", railBox, {})], frame: FRAME },
       railMatches(),
-      colorDelta,
     )
 
     expect(pairs).toBe(1)
@@ -168,7 +166,6 @@ describe(runContainerChecks, () => {
         frame: FRAME,
       },
       railMatches(),
-      colorDelta,
     )
 
     expect(findings.map((f) => f.message)).toEqual([
@@ -192,7 +189,6 @@ describe(runContainerChecks, () => {
         frame: FRAME,
       },
       railMatches(),
-      colorDelta,
     )
 
     expect(findings.map((f) => f.type).sort()).toEqual(["border-radius", "color"])
@@ -207,7 +203,6 @@ describe(runContainerChecks, () => {
       { containers: [container("d", railBox, style)], frame: FRAME },
       { containers: [container("i", railBox, style)], frame: FRAME },
       railMatches(),
-      colorDelta,
     )
 
     expect(pairs).toBe(1)
@@ -220,8 +215,59 @@ describe(runContainerChecks, () => {
         { frame: FRAME },
         { containers: [container("i", railBox, {})], frame: FRAME },
         railMatches(),
-        colorDelta,
       ),
     ).toEqual({ findings: [], pairs: 0 })
+  })
+
+  /**
+   * A PRESENCE FLIP on the background — the comp paints a panel, the implementation paints
+   * none. The border check handled this case explicitly from the start; the background check
+   * required both sides to be defined, so the whole class was silent. "A panel background" is
+   * one of the three things architecture.md advertises this channel for.
+   *
+   * The distinction that makes the fix safe is the one the module already relies on:
+   * `runContainerChecks` returns early when a side has no container LIST, so inside a formed
+   * pair an absent `backgroundColor` means "paints none", never "cannot tell".
+   */
+  it("reports a background the design paints and the implementation drops", () => {
+    const { findings, pairs } = runContainerChecks(
+      {
+        containers: [container("d", railBox, { backgroundColor: "rgb(255, 253, 249)" })],
+        frame: FRAME,
+      },
+      { containers: [container("i", railBox, {})], frame: FRAME },
+      railMatches(),
+    )
+
+    expect(pairs).toBe(1)
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.type).toBe("color")
+    expect(findings[0]?.actual).toMatchObject({ backgroundColor: "rgba(0, 0, 0, 0)" })
+  })
+
+  it("reports a background the implementation paints and the design does not", () => {
+    const { findings } = runContainerChecks(
+      { containers: [container("d", railBox, {})], frame: FRAME },
+      {
+        containers: [container("i", railBox, { backgroundColor: "rgb(220, 200, 180)" })],
+        frame: FRAME,
+      },
+      railMatches(),
+    )
+
+    expect(findings.map((f) => f.type)).toStrictEqual(["color"])
+  })
+
+  // The other half, so the flip above cannot be satisfied by an implementation that simply
+  // reports every undefined background: two wrappers that both paint nothing agree.
+  it("stays quiet when NEITHER side paints a background", () => {
+    const { findings, pairs } = runContainerChecks(
+      { containers: [container("d", railBox, {})], frame: FRAME },
+      { containers: [container("i", railBox, {})], frame: FRAME },
+      railMatches(),
+    )
+
+    expect(pairs).toBe(1)
+    expect(findings).toEqual([])
   })
 })

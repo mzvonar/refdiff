@@ -101,8 +101,10 @@ console prints it after each line (`[geometry γ98.7]`) and sums it up
 | absent | the finding rests on no pair (`missing-element`, `extra-element`, `alignment`) | — |
 
 **`unverified: true` means: do not read this finding's VALUES as drift.** It is
-set on `color` / `typography` / `border` / `border-radius` / `size` findings
-whose pair was formed by geometry alone while `alignment.confidence` is below
+set on `color` / `typography` / `border` / `border-radius` / `size` /
+`affordance` findings (and on the CONTAINER-role `border` / `color` /
+`border-radius` ones, which inherit the provenance of the leaves that formed
+their pair) whose pair was formed by geometry alone while `alignment.confidence` is below
 0.5 — i.e. a colour delta between two elements that may well not be the same
 element. They are flagged, never suppressed: a deleted finding cannot be told
 from "no difference here". `position` and `spacing` are deliberately NOT
@@ -176,7 +178,7 @@ the median list is 2 rows.
 |---|---|---|
 | **data** | `missing-element` / `extra-element` on value-like text (names, amounts, dates, IDs, a row the comp's fixture has and yours lacks); a `text-content` finding where BOTH sides are value-like (`412,00 €` vs `84,20 €`) — these are reported by default, not pre-suppressed | make the fixture / seed render the comp's data; then declare the recurring shapes once as `ignore.dataSlots: { patterns: [...] }` so later runs stay quiet without going blind to copy |
 | **copy drift** | `text-content` where the non-value part of the string changed (`Blok · 12. 7. 2026` → `Doklad · 12. 7. 2026`, `Potvrdiť →` → `Návrh`), a label renamed, a number dropped from a label | fix the code or the comp — this is the class `dataSlots: true` used to hide, so read every `text-content` finding before declaring any of them data |
-| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image), `alignment` (the fit is not the identity on a same-size page — a chrome size / box model difference, §1a) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members; fix `alignment` before anything positional |
+| **drift** | `color` (with ΔE2000), `typography` (family / size / weight / line-height), `size`, `position` (a shift; ×N with the same delta = one layout cause), `spacing` (sibling gap), `border`, `border-radius`, a `missing-element` that is a real UI element (icon, badge, button, label), `pixel-region` with `changeKind` `shape` / `added` / `removed` / `stroke` / `color` (wrong icon glyph, missing illustration, recolored image), `alignment` (the fit is not the identity on a same-size page — a chrome size / box model difference, §1a), `affordance` (the design draws it as clickable and the implementation's counterpart is not a control) | fix the code: token, class, layout; prefer the root cause of an aggregate over its members; fix `alignment` before anything positional. **`affordance` is the exception to "fix the token"** — the fix is to make the thing a CONTROL (a real `<button>`/`<a>`, or a name on the one that owns it), never to add `cursor:pointer`. **A `role: "container"` finding is on a WRAPPER, not a leaf**: the same `border` / `color` / `border-radius` types arrive from the container channel naming a row wrapper or a card, and the fix belongs on that wrapper's own rule (the row separator, the panel background) rather than on anything inside it |
 | **intended deviation** | the value is right for the product and the comp is the outlier (`SKILL.md` rule 4), or a documented decision (reordering, a11y, i18n) | record it: `refdiff accept <run-dir> --manifest <file> --finding <id> --reason "<evidence>"` (§3a) — or write `accepted: [{ type, expected, actual, reason }]` into the pair's `ignore` by hand. The reason must say why and cite the measurement; for `pixel-region` narrow with `changeKind`, never accept "any pixel difference". Textless boxes INSIDE an accepted element (a placeholder's bars) are the same decision: add `contents: true` to that rule by hand, never a `regions` entry — and when the container is an ELEMENT that exists whether or not it is reported (the run's own screenshot against a comp that draws live DOM), `contentsOf` is the rule that fires every time instead of when the container happens to go unpaired |
 | **environment** | `pixel-region` at `severity: minor` with no box ("alignment confidence < 0.5") or with `changeKind: noise`, `still-loading`, fonts not loaded (every `typography` finding says the same fallback family), a viewport that clips | fix the capture (fonts in Storybook preview, `--viewport`, `--wait-for`, seeds), not the code |
 | **known cause, not the implementation's** | many findings in one region or of one shape, all traceable to one thing you have already diagnosed and cannot fix from here — a comp whose demo rows are in another order, two canvases at different zoom, a numbering that starts from different sources | declare it once as `explain: [{ types, region|within, cause, reason }]`: the findings stay reported and keep their severity, they are grouped under the cause, and they stop failing the verdict. Scope `types` to what the cause can PHYSICALLY produce — that is what keeps a real defect in the same region visible |
@@ -209,8 +211,10 @@ Highlight / Dim / Strobe, `[` `]` to step the highlighted boxes, and the
 topbar's Wipe / Onion / Blink / Diff overlays of the design on the impl
 pane). Those views are built from the SAME reported findings you are reading
 — every listed finding's box, plus `Finding.regions` — the connected
-components inside a `pixel-region`'s box, largest first. When a note points
-at "the magenta box", `regions` is where it points.
+components inside a `pixel-region`'s box, largest first (on the FRAME
+remainder, when a repeated run is found, `regions` is that run instead, in
+axis order — see §Pixels). When a note points at "the magenta box",
+`regions` is where it points.
 
 ### 3a. Record the decisions — never edit the comp to agree
 
@@ -508,6 +512,21 @@ items is now a typed finding — read it there:
   and ONLY the reported diffs, so no mask file means no unexplained pixel
   evidence. Runs only when alignment confidence ≥ 0.5 — a boxless minor note
   says it was skipped.
+
+  **The frame remainder ranks by RHYTHM before area.** When the leftover
+  clusters contain an evenly-spaced run of same-size regions — a row separator
+  the implementation never draws, a list rule, a repeated chip — the finding
+  reports that run instead of the largest blob: `regions` becomes the run's
+  members in axis order, and `actual` carries `repeatedRuns` (how many distinct
+  runs were found), `repeatedCount`, `repeatedSize`, `repeatedPitch` and
+  `repeatedAxis`. The message reads „5 regions of 351×1 repeating every 87.2px
+  vertically, from (20, 214)", with „(and N further run(s))" appended when
+  there is more than one. Read it as ONE CAUSE, not N defects: five identical
+  hairlines at a constant pitch are one missing rule on one row component, and
+  the fix is one edit. Two gates keep it honest — a run needs at least
+  `minCount` members, and its pitch must exceed the member's own extent, so a
+  glyph sequence or dither texture is not mistaken for a layout rhythm. With no
+  run found the ordering is the ordinary largest-first.
 - **Alignment** → `alignment` in the report (`scale`, `offsetX/Y`,
   `confidence`, plus `confidenceX` / `confidenceY`). Read it FIRST, before any
   finding — see §1a. Confidence 0.00 means too little unique shared text:

@@ -1908,6 +1908,23 @@ them. A parallel `Capture.containers` list cost four extra plumbing sites
 (extract, pipeline, normalize, align) and kept the blast radius at "new
 findings only": the difference between a measurable change and a re-baseline.
 
+**Correction (review, 2026-09-21): as first written that claim was false, by
+one line.** The parallel list does keep containers out of `elements` — but the
+emitter numbered them from the SAME `seq` counter the elements use, so every
+element id downstream of the first painting container shifted on every
+capture. Those ids reach `elements.json` and the annotator, which resolves a
+saved note by `elementId` before falling back to text/nearest. Measured on
+`messages-owner-desktop`: `design n=65 maxseq=64 missing=0` before the feature,
+`maxseq=87 missing=23` after. Nothing was actually damaged (all three saved
+notes are text-anchored and post-date the change), and the fix is a second
+counter.
+
+The lesson survives and gains a second half: **a parallel list is only
+parallel if its IDENTIFIERS are parallel too.** Shared mutable numbering is a
+coupling that keeping the data structures apart does not undo — and it is
+invisible in review, because the diff shows one `seq++` that looks like all
+the others.
+
 Candidate home: `architecture.md` beside the channel list, as the rule for
 adding the next one.
 

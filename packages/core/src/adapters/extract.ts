@@ -159,6 +159,10 @@ export async function extractElementTree(
 
       const out: Array<Record<string, unknown>> = []
       let seq = 0
+      // The container list numbers itself. `seq` identifies ELEMENTS, and those ids are written
+      // to `elements.json` and resolved by the annotator; letting containers consume from it
+      // shifted every element id downstream of the first painting container on every capture.
+      let cseq = 0
 
       // The glyph-ink box of an element's own text nodes: a block-level cell
       // and a shrink-wrapped span rendering the same string must measure the
@@ -317,11 +321,18 @@ export async function extractElementTree(
        * computed style. So the comp's own statement "this is clickable" IS the
        * cursor, and reading it needs no knowledge of the runtime.
        *
-       * Read from the element's own computed style, not an ancestor's: `cursor`
-       * inherits, so walking up would call every glyph inside a button clickable
-       * — which is true of the button and says nothing about the glyph. (The
-       * INTERACTIVE half walks up precisely because reachability does not inherit
-       * in the other direction.)
+       * `pointer` is read from `getComputedStyle`, and `cursor` is an INHERITED
+       * property — so this is not, and cannot be, "the element's own declaration".
+       * Every leaf inside a `cursor:pointer` row reports `pointer: true`, whether
+       * or not anything was declared on it. The comment here used to claim the
+       * opposite and describe that as a safeguard; it never was one.
+       *
+       * That is survivable only because `pointer` alone decides nothing: a finding
+       * needs `pointer && !interactive`, and `interactive` walks up to the nearest
+       * real control. The inherited `pointer` on a glyph inside a <button> is
+       * paired with `interactive: true` from that same button and produces nothing.
+       * What `pointer` is actually load-bearing for is the design side, where the
+       * comp declares `cursor:pointer` on the thing it considers clickable.
        */
       const affordanceOf = (el: Element, cs: CSSStyleDeclaration) => {
         const control = controlFor(el)
@@ -622,6 +633,13 @@ export async function extractElementTree(
         cs: CSSStyleDeclaration
         opacity: number
       }[] = []
+      /** Container-channel candidates, deferred for the same reason as `surfaceCandidates`. */
+      const containerCandidates: {
+        el: Element
+        tag: string
+        box: { x: number; y: number; w: number; h: number }
+        style: Record<string, unknown>
+      }[] = []
 
       const walk = (
         el: Element,
@@ -713,29 +731,43 @@ export async function extractElementTree(
             : undefined
           const radius = radiusPx(cs.borderTopLeftRadius, rect)
           const shadow = shadowOf(cs)
-          const paints =
-            bg !== undefined ||
-            Object.keys(sides).length > 0 ||
-            (radius !== undefined && radius > 0) ||
-            shadow !== undefined
-          if (paints) {
-            const style: Record<string, unknown> = {}
-            if (bg !== undefined) style["backgroundColor"] = bg
-            if (Object.keys(sides).length > 0) style["borderSides"] = sides
-            if (radius !== undefined && radius > 0) style["borderRadius"] = radius
-            if (shadow !== undefined) style["boxShadow"] = shadow
-            containers.push({
-              id: `c:${tag}-${seq++}`,
-              box: {
-                x: round(rect.x - rootRect.x),
-                y: round(rect.y - rootRect.y),
-                w: round(rect.width),
-                h: round(rect.height),
-              },
-              role: "container",
-              style,
-            })
-          }
+          // NO `paints` gate. It used to be one, and it made the channel blind to the single
+          // case it exists for: "the comp draws a separator on every rail row and the impl draws
+          // none". In that scenario the impl's wrapper is an undecorated <div> — transparent
+          // background, every border `none`, radius 0, no shadow — so it never entered this list,
+          // `pairContainers` found no counterpart for the design key, and the run was SILENT.
+          //
+          // The one production run that appeared to validate the channel
+          // (`messages-owner-desktop`) only fired because that particular impl row happened to
+          // carry `border-radius: 16.8px`; the missing separator rode in on the radius. Strip the
+          // radius and the identical defect reports nothing.
+          //
+          // Emitting unpainted containers costs a map entry each: `pairContainers` still bounds
+          // what is COMPARED (≥2 matched leaves, ≤70% of the frame, unique key), and `style` is
+          // simply `{}` for a wrapper that paints nothing — which is exactly the value the
+          // presence-flip checks need in order to see an absence at all.
+          const style: Record<string, unknown> = {}
+          if (bg !== undefined) style["backgroundColor"] = bg
+          if (Object.keys(sides).length > 0) style["borderSides"] = sides
+          if (radius !== undefined && radius > 0) style["borderRadius"] = radius
+          if (shadow !== undefined) style["boxShadow"] = shadow
+          // DEFERRED, exactly like `surfaceCandidates` below and for the same reason: whether a
+          // descendant leaf has already taken this wrapper's paint (`decorationSource` hoisting)
+          // is only known once its subtree has been walked. Pushing straight into `containers`
+          // compared the same border twice — once on the leaf that inherited it and once on the
+          // container — and the container channel has no "never duplicates a structural finding"
+          // rule of its own to catch it.
+          containerCandidates.push({
+            el,
+            tag,
+            box: {
+              x: round(rect.x - rootRect.x),
+              y: round(rect.y - rootRect.y),
+              w: round(rect.width),
+              h: round(rect.height),
+            },
+            style,
+          })
         }
 
         if (!isRoot && !zeroSize && !subVisible && (elementChildren.length === 0 || ownText))
@@ -753,6 +785,15 @@ export async function extractElementTree(
       for (const c of surfaceCandidates) {
         if (claimed.has(c.el)) continue
         emit(c.el, c.rect, c.cs, "", c.opacity, true)
+      }
+      for (const c of containerCandidates) {
+        if (claimed.has(c.el)) continue
+        containers.push({
+          id: `c:${c.tag}-${cseq++}`,
+          box: c.box,
+          role: "container",
+          style: c.style,
+        })
       }
       // The line-height probe leaves the DOM as it found it: the screenshot is
       // taken after extraction on some paths, and a stray node in the capture

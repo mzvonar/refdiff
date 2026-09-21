@@ -9,7 +9,7 @@ const cluster = (x: number, y: number, w: number, h: number): Cluster => ({
   pixels: Math.max(1, Math.round(w * h)),
 })
 
-describe(repeatedRuns, () => {
+describe("repeatedRuns — evenly-spaced runs of same-size regions", () => {
   it("finds the witness: five identical hairlines at a constant vertical pitch", () => {
     // `messages-owner-mobile`'s missing phone-rail separator, as the remainder
     // saw it: five ~350×1 strips, one per row, 87px apart — and one large blob

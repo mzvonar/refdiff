@@ -368,7 +368,7 @@ const lpad = (s: string, n: number): string => (s.length >= n ? s : " ".repeat(n
  * reader scanning for "did this pair stop pairing things" should not have to
  * hunt for them. Short labels, because the table is read as a matrix.
  */
-const TYPE_COLUMNS: readonly (readonly [FindingType, string])[] = [
+export const TYPE_COLUMNS: readonly (readonly [FindingType, string])[] = [
   ["missing-element", "miss"],
   ["extra-element", "extra"],
   ["text-content", "text"],
@@ -381,6 +381,11 @@ const TYPE_COLUMNS: readonly (readonly [FindingType, string])[] = [
   ["border-radius", "rad"],
   ["pixel-region", "pixel"],
   ["alignment", "align"],
+  // The release's flagship channel was the one the set table could not name: `r.types` counted
+  // affordance findings while this list did not, so a pair whose ONLY drift was a dead button
+  // rendered as a row of zeros with a non-zero `all`, and the TOTAL row under-summed. Nothing
+  // went red, because the table is Partial<Record<…>>-driven and filtered to present types.
+  ["affordance", "afford"],
 ]
 
 /** Pure: the rows of a markdown table, column-padded from its own cells. */

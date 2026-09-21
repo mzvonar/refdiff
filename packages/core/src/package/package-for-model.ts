@@ -148,9 +148,27 @@ export async function packageForModel(
   }
 
   // Both element trees — the model compares data first, pixels second.
+  //
+  // The CONTAINER lists ride along. They are the container channel's entire input, and without
+  // them a pair that reported nothing left no trace of WHY: no ledger entry (there is no finding
+  // to resolve) and no row here. Diagnosing the channel's `paints` blind spot was possible only
+  // because the one affected pair happened to carry a RESOLVED finding, whose ledger entry kept
+  // the expected/actual — a silent pair offers nothing to read at all. Omitted entirely for a
+  // Figma capture, which has no DOM and therefore no containers, so an absent key keeps meaning
+  // "this side cannot answer" rather than "it answered nothing".
   await writeFile(
     join(outDir, "elements.json"),
-    JSON.stringify({ alignment, design: design.elements, impl: impl.elements }, null, 2),
+    JSON.stringify(
+      {
+        alignment,
+        design: design.elements,
+        impl: impl.elements,
+        ...(design.containers ? { designContainers: design.containers } : {}),
+        ...(impl.containers ? { implContainers: impl.containers } : {}),
+      },
+      null,
+      2,
+    ),
   )
 
   // Stamp the run-stable identity onto every finding (see Finding.key): ids and marks are

@@ -1,8 +1,15 @@
 import type { ComparisonReport, Finding, MatchingStats } from "../types.js"
+import type { FindingType } from "../types.js"
 
 import { describe, expect, it } from "vitest"
 
-import { formatAlignment, renderSummary, setGroupKey, summarizeReports } from "./summary.js"
+import {
+  formatAlignment,
+  renderSummary,
+  setGroupKey,
+  summarizeReports,
+  TYPE_COLUMNS,
+} from "./summary.js"
 
 const finding = (id: string, partial: Partial<Finding> = {}): Finding => ({
   id,
@@ -318,7 +325,58 @@ describe("the align column — the transform beside the confidence", () => {
     expect(text).toContain("| align")
     // The size column sits between the pair and the verdict: one screen at three widths is three rows.
     expect(s.runs[0]?.size).toEqual({ width: 792, height: 50 })
-    expect(text).toMatch(/\| a\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1\.002 \/ −0\.5,−2\.0 \| -\s+\|/)
-    expect(text).toMatch(/\| b\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1×1\.001 \/ 0,−0\.5\s+\| -\s+\|/)
+    expect(text).toMatch(
+      /\| a\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1\.002 \/ −0\.5,−2\.0 \| -\s+\|/,
+    )
+    expect(text).toMatch(
+      /\| b\s+\| 792×50\s+\| PASS\s+\|.*\| 0\.90 \| 1×1\.001 \/ 0,−0\.5\s+\| -\s+\|/,
+    )
+  })
+})
+
+/**
+ * The set table must be able to name every finding type that exists.
+ *
+ * `affordance` shipped without a column: the per-pair matrix silently dropped it while `r.types`
+ * counted it, so a pair whose only drift was a dead button read as a row of zeros with a
+ * non-zero `all`, and the TOTAL row under-summed. Nothing went red — the table is
+ * `Partial<Record<…>>`-driven and filters to present types, so a missing column is invisible.
+ *
+ * ALL_FINDING_TYPES is the compile-time half: `satisfies` rejects a value that is not a
+ * FindingType, and `MissingFindingType` resolves to a non-`never` union the moment a new type is
+ * added without being listed here, which fails the build on `_noMissingFindingType`.
+ */
+const ALL_FINDING_TYPES = [
+  "missing-element",
+  "extra-element",
+  "position",
+  "size",
+  "color",
+  "typography",
+  "border-radius",
+  "border",
+  "spacing",
+  "text-content",
+  "pixel-region",
+  "alignment",
+  "affordance",
+] as const satisfies readonly FindingType[]
+
+type MissingFindingType = Exclude<FindingType, (typeof ALL_FINDING_TYPES)[number]>
+const _noMissingFindingType: MissingFindingType extends never ? true : never = true
+void _noMissingFindingType
+
+describe("TYPE_COLUMNS", () => {
+  it("gives every FindingType a column", () => {
+    const covered = new Set(TYPE_COLUMNS.map(([type]) => type))
+
+    expect([...ALL_FINDING_TYPES].filter((type) => !covered.has(type))).toStrictEqual([])
+    expect(TYPE_COLUMNS).toHaveLength(ALL_FINDING_TYPES.length)
+  })
+
+  it("gives every column a distinct short label", () => {
+    const labels = TYPE_COLUMNS.map(([, label]) => label)
+
+    expect(new Set(labels).size).toBe(labels.length)
   })
 })

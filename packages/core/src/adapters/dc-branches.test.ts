@@ -10,7 +10,10 @@ const branch = (name: string, index: number, descendants: number[]): BranchRecor
   descendants,
 })
 
-describe(branchCoverage, () => {
+// A string title, like every other describe in this repo: the ~60 existing blocks pass one, and
+// most carry context a bare symbol name cannot. The four blocks added in 1.5.0 were the only
+// function-reference form in the tree.
+describe("branchCoverage — which conditional arms the comp actually drew", () => {
   it("reproduces the witness: two of five row renderers never true", () => {
     // messages.dc.html frame 2e — `sel` opens t1, whose rows are day / req / msg.
     const branches = [

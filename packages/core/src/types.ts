@@ -316,8 +316,12 @@ export interface Finding {
   members?: FindingMember[]
   /**
    * `pixel-region` only: where inside `implBox` the pixels actually differ —
-   * the diff's connected components in impl CSS px, largest first. `implBox`
-   * is their union, which on a sparse element (a glyph, a dashed rule) is
+   * the diff's connected components in impl CSS px, largest first, EXCEPT on
+   * the FRAME REMAINDER when a repeated run is found: there `regions` carries
+   * the run's members in axis order, and the largest blob is deliberately not
+   * among them (`repeatedRuns` — a rhythm of identical small regions is the
+   * cause, and ranking by area buries it under one big unrelated blob).
+   * `implBox` is their union, which on a sparse element (a glyph, a dashed rule) is
    * mostly empty space; a viewer that highlights, dims or steps through
    * differences wants these, not the union, and vector boxes stay crisp at
    * any zoom where a raster mask does not. Deliberately NOT part of
