@@ -98,6 +98,80 @@ rule). Declare the widths ONCE on the entry, in place of `app.viewport`:
   the same at every width and the pairs differ only on the impl side. A fluid
   comp is captured AT the pair viewport (`setup.md`, the full-bleed trap).
 
+## A state the comp does not boot into — `props` and `steps`
+
+A `.dc.html` is a live component, not a picture. Several of its frames differ
+only by STATE — which row is selected, which menu is open — and a capture takes
+whatever state the canvas boots into. A branch needing a different state is not
+merely unmeasured, it is **invisible while the pair reports green**: no frame
+ever draws it, so the implementation of it was verified by eye or not at all.
+
+The tell is in every design capture's own output. `capturing design:` prints a
+branch census, and anything listed there is a branch this capture never rendered:
+
+```
+21 conditional branches, 12 never true in this captured state:
+  adNewOpen, hdrNotifOpenA, r.isSys, r.showWaiting, r.showResolved, …
+```
+
+Read that line when a pair looks clean but you know a state exists. Measured
+2026-09-22: `r.showWaiting` sitting in it meant a whole card — a status chip and
+its one action — had no measurement of any kind on any pair.
+
+Two ways in. **Prefer `props`**; reach for `steps` when the comp declares none.
+
+| | `design.props` | `steps` |
+| --- | --- | --- |
+| what it is | prop overrides via the dc-runtime's own `__dcSetProps` | clicks/keys through the comp's affordances |
+| needs from the comp | it must DECLARE the prop | nothing |
+| order-dependent | no — a declarative assignment | yes, a list |
+| sides | design only | `design.steps` and `app.steps`, separately |
+
+```js
+// Declarative: the comp declares selAd, the pair sets it.
+design: { file: "messages.dc.html", frame: "1c", props: { selAd: "t1" } },
+
+// Interactive: no prop exists, so drive the comp's own row.
+design: { file: "messages.dc.html", frame: "1c", steps: [{ clickText: "Slovnaft, a.s." }] },
+```
+
+Steps are `{ click: <css> }`, `{ clickText: <starts-with> }`, `{ press: <key> }`
+and `{ wait: <ms> }`. Prefer `click` against a hook the designer can add;
+`clickText` is the escape hatch for a comp whose rows are bare divs. Props run
+BEFORE steps — props are initial state, steps are interactions on top of it.
+
+**A state is a state, so steps belong on BOTH sides** — driving the comp into a
+selected state while the app sits in its default one produces a confident report
+about nothing. One-sided steps warn (`stepsOnOneSide`). Props are the exception
+and do not warn: they are design-side only, and the app commonly reaches the
+same state another way — a route, a query param — which is a legitimate pair
+rather than an oversight.
+
+**Both hard-stop, for the same reason.** A missing click target or an undeclared
+prop fails the capture instead of photographing the default state, because a
+pair measuring a different state than it claims is worse than no pair. The prop
+check is exact: the runtime exposes the comp's own declaration as `propsMeta`,
+so an override is validated against it rather than by diffing the render — a
+rendered diff cannot tell "this prop does nothing" from "this prop was already
+at that value", and the first of those is the bug.
+
+```
+"kind": "props-failed",
+"detail": "selAdd — the comp declares: selOd, selOm, selAd, selAm, openOm, openAm.
+           An override for a prop the comp does not declare is silently inert …"
+```
+
+`props-unsupported` instead means the canvas's `support.js` predates
+`__dcSetProps` — re-vendor the runtime alongside the comp.
+
+**Asking a designer for props is a real option**, not a last resort. When a
+state is worth measuring and the comp cannot be clicked into it reliably, the
+comp declaring one (`<script data-dc-script data-props='{"selAd":{"default":1}}'>`)
+is a smaller change than it sounds, and it removes the pair's coupling to
+whatever happens to be clickable. State the OUTCOME you need and let them pick
+the mechanism — and say explicitly that clicking must still work in their
+interactive preview, because the obvious implementation freezes it.
+
 ## Configuring a pair — the `ignore` block
 
 Every pair in a manifest may carry an `ignore` block. It is the durable place

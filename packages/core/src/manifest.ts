@@ -39,6 +39,7 @@ import type {
   TextPattern,
 } from "./types.js"
 
+import { readProps } from "./adapters/dc-props.js"
 import { readGround, type Ground } from "./adapters/ground.js"
 import { readSteps } from "./adapters/steps.js"
 import { mergePolicies } from "./policy.js"
@@ -626,11 +627,13 @@ function readDesign(
     return err('design needs { file, frame } or { kind: "figma", fileKey, nodeId }')
   }
   const dSteps = readSteps(design["steps"])
+  const dProps = readProps(design["props"])
   return ok({
     kind: "dc-html",
     file: design["file"],
     frame: design["frame"],
     ...(dSteps.steps.length > 0 ? { steps: dSteps.steps } : {}),
+    ...(dProps ? { props: dProps } : {}),
     ...(scope !== undefined ? { scope } : {}),
     ...(viewport ? { viewport } : {}),
   })

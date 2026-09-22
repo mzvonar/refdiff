@@ -25,6 +25,16 @@ export interface DcHtmlSource {
    * default state instead would go green while measuring the wrong state.
    */
   steps?: CaptureStep[]
+  /**
+   * Prop overrides applied through the dc-runtime's own `__dcSetProps`, before
+   * any steps run: the declarative way into a state the comp does not boot
+   * into, for a comp that declares props to receive it.
+   *
+   * A prop the comp does not DECLARE is a typed error rather than a no-op — the
+   * override is accepted, changes nothing, and leaves the frame shooting its
+   * default state under a pair claiming otherwise. See `adapters/dc-props`.
+   */
+  props?: Record<string, unknown>
   kind: "dc-html"
   /** Directory containing the comp; served over http (the dc-runtime's
    *  fetch of React from unpkg breaks under file://). */
@@ -294,6 +304,14 @@ export type CaptureError =
    * class as `blank-render` and `figma-low-quality`.
    */
   | { kind: "step-failed"; ref: string; frame: string; step: string; index: number; detail: string }
+  /**
+   * A `design.props` override could not take effect, so the requested STATE was
+   * never reached — the runtime predates `__dcSetProps`, or the comp does not
+   * declare a prop that was set. Same hard stop as `step-failed`, and for a
+   * sharper reason: an undeclared prop is ACCEPTED by the runtime and does
+   * nothing, so without this the frame shoots its default state silently.
+   */
+  | { kind: "props-failed"; ref: string; frame: string; detail: string }
   // Figma
   /** No token, or the API rejected it (401/403). */
   | { kind: "figma-auth"; ref: string; detail: string }

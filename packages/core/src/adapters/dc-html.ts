@@ -30,6 +30,7 @@ import {
   waitForFonts,
 } from "./browser.js"
 import { branchCoverage, type BranchCoverage } from "./dc-branches.js"
+import { checkProps, describePropsError } from "./dc-props.js"
 import { extractElementTree } from "./extract.js"
 import { CANVAS_SLACK, isFluidFrame, pickLargestChild, type ScopeCandidate } from "./scope.js"
 import { describeStep, runSteps } from "./steps.js"
@@ -199,6 +200,8 @@ export function frameSelectors(frame: string): [string, string] {
 }
 
 const HYDRATION_TIMEOUT_MS = 8_000
+/** One frame's grace after a prop-driven re-render, so boxes are settled when read. */
+const PROPS_SETTLE_MS = 150
 const DPR = 2
 
 export interface DcHtmlCaptureOptions {
@@ -322,6 +325,48 @@ export async function captureDcHtml(
     }
 
     await page.addStyleTag({ content: FREEZE_CSS })
+
+    // Prop overrides, BEFORE the steps: props are the comp's initial state and
+    // steps are interactions on top of it, so a pair that sets both means "open
+    // this thread, then click that row" rather than the reverse. Verified
+    // against the comp's OWN declaration (`propsMeta`) rather than by diffing
+    // the render — a rendered diff cannot tell "the prop does nothing" from
+    // "the prop was already at this value", and the first of those is the bug.
+    if (source.props) {
+      const probe = await page.evaluate(() => {
+        const w = window as unknown as {
+          __dcSetProps?: (name: string, overrides: Record<string, unknown>) => void
+          __dcRootName?: () => string
+          __dcRegistry?: Record<string, { propsMeta?: Record<string, unknown> }>
+        }
+        if (typeof w.__dcSetProps !== "function" || typeof w.__dcRootName !== "function") {
+          return { supported: false, declared: [] }
+        }
+        return {
+          supported: true,
+          declared: Object.keys(w.__dcRegistry?.[w.__dcRootName()]?.propsMeta ?? {}),
+        }
+      })
+      const problem = checkProps(source.props, probe)
+      if (problem) {
+        return err({
+          kind: "props-failed",
+          ref: identity,
+          frame: source.frame,
+          detail: describePropsError(problem),
+        })
+      }
+      await page.evaluate((overrides) => {
+        const w = window as unknown as {
+          __dcSetProps: (name: string, o: Record<string, unknown>) => void
+          __dcRootName: () => string
+        }
+        w.__dcSetProps(w.__dcRootName(), overrides)
+      }, source.props)
+      // The registry bump re-renders synchronously, but the frame's own layout
+      // settles a frame later; the capture reads boxes, so let it land.
+      await page.waitForTimeout(PROPS_SETTLE_MS)
+    }
 
     // Interaction steps: a Claude Design comp is a LIVE page, and part of the
     // design only exists after a click (the ghost language for one-sided
