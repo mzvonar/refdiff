@@ -611,6 +611,12 @@ function readDesign(
     if (typeof design["fileKey"] !== "string" || typeof design["nodeId"] !== "string") {
       return err('figma design needs { kind: "figma", fileKey, nodeId }')
     }
+    // Refused rather than ignored: `props` drives a dc-runtime, which a Figma
+    // node does not have. Silently dropping it would leave the author believing
+    // a state was selected while the export shows the node as drawn.
+    if (design["props"] !== undefined) {
+      return err("design.props is a .dc.html feature — a figma design cannot take prop overrides")
+    }
     const variants = readVariants(design["variants"])
     if (!variants.ok) return err(variants.error)
     return ok({
@@ -628,12 +634,13 @@ function readDesign(
   }
   const dSteps = readSteps(design["steps"])
   const dProps = readProps(design["props"])
+  if (!dProps.ok) return err(dProps.error)
   return ok({
     kind: "dc-html",
     file: design["file"],
     frame: design["frame"],
     ...(dSteps.steps.length > 0 ? { steps: dSteps.steps } : {}),
-    ...(dProps ? { props: dProps } : {}),
+    ...(dProps.value ? { props: dProps.value } : {}),
     ...(scope !== undefined ? { scope } : {}),
     ...(viewport ? { viewport } : {}),
   })
@@ -641,6 +648,15 @@ function readDesign(
 
 function readImpl(app: unknown, viewport: Viewport | undefined): Result<ImplSpec, string> {
   if (!isRecord(app) || typeof app["source"] !== "string") return err("app needs { source }")
+  // `props` is design-side only — it drives a dc-runtime, which neither a story
+  // nor a live page has. An author who copies the syntax across from `design`
+  // would otherwise get silence, and a capture in the state they thought they
+  // had left behind. The impl side reaches a state by route, or by `steps`.
+  if (app["props"] !== undefined) {
+    return err(
+      "app.props is not a thing — props are design-side; drive the impl with steps or a route",
+    )
+  }
   if (app["source"] === "storybook") {
     if (typeof app["storyId"] !== "string") return err("storybook app needs storyId")
     const aSteps = readSteps(app["steps"])

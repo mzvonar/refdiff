@@ -736,3 +736,79 @@ describe("selectPairs — what --pair names", () => {
     ])
   })
 })
+
+/**
+ * The WIRING, not the validator — `dc-props.test.ts` owns `readProps` itself.
+ *
+ * This block exists because the join is what a rename breaks silently: read
+ * `design["prop"]`, or drop the conditional spread, and every props-bearing pair
+ * captures its DEFAULT state with the whole suite green.
+ */
+describe("parseManifest — design.props", () => {
+  const withDesign = (design: Record<string, unknown>) => ({
+    id: "p",
+    title: "P",
+    design,
+    app: { source: "storybook", storyId: "s" },
+  })
+
+  it("carries a prop bag through to the dc-html spec", () => {
+    const parsed = parseManifest([
+      withDesign({ file: "m.dc.html", frame: "1c", props: { selAd: "t1", openAm: true } }),
+    ])
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.pairs[0]?.design).toEqual({
+      kind: "dc-html",
+      file: "m.dc.html",
+      frame: "1c",
+      props: { selAd: "t1", openAm: true },
+    })
+  })
+
+  it("omits the key entirely when the pair sets no props", () => {
+    const parsed = parseManifest([withDesign({ file: "m.dc.html", frame: "1c" })])
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.pairs[0]?.design).not.toHaveProperty("props")
+  })
+
+  // The manifest door, hard-stopped like the runtime one. `props: [...]` is the
+  // mistake to expect: the neighbouring `steps` IS an array.
+  it("FAILS the manifest on a malformed props block rather than dropping it", () => {
+    const parsed = parseManifest([
+      withDesign({ file: "m.dc.html", frame: "1c", props: [{ selAd: "t1" }] }),
+    ])
+    expect(parsed.ok).toBe(false)
+    expect(parsed.ok === false && parsed.error.detail).toContain("design.props must be an object")
+  })
+
+  it("FAILS the manifest on an empty props block", () => {
+    const parsed = parseManifest([withDesign({ file: "m.dc.html", frame: "1c", props: {} })])
+    expect(parsed.ok).toBe(false)
+  })
+
+  // Props drive a dc-runtime. A figma node has none, and neither does a story or
+  // a live page — so both refuse rather than silently ignoring, which would
+  // leave the author believing a state was selected.
+  it("refuses props on a figma design", () => {
+    const parsed = parseManifest([
+      withDesign({ kind: "figma", fileKey: "f", nodeId: "1:2", props: { selAd: 1 } }),
+    ])
+    expect(parsed.ok).toBe(false)
+    expect(parsed.ok === false && parsed.error.detail).toContain("figma")
+  })
+
+  it("refuses props on the app side", () => {
+    const parsed = parseManifest([
+      {
+        id: "p",
+        title: "P",
+        design: { file: "m.dc.html", frame: "1c" },
+        app: { source: "storybook", storyId: "s", props: { selAd: 1 } },
+      },
+    ])
+    expect(parsed.ok).toBe(false)
+    expect(parsed.ok === false && parsed.error.detail).toContain("design-side")
+  })
+})

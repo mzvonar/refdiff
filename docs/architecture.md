@@ -1457,6 +1457,29 @@ fall through to the area rule, as do unlabelled artboards.
   canvas with an unpainted click catcher while the menu is open, both because the comp does and
   because the extractor pairs them (see the bindings' traps). Measured to convergence: the two
   open-menu pairs went 44 → 14 and 46 → 6 unexplained, and both toolbar pairs PASS.
+- **A state the comp does not boot into — `design.props`, built 2026-09-22.** A
+  `.dc.html` is a live component, and a capture took whatever state the canvas
+  booted into, so a frame differing only by state was unmeasurable and not
+  visibly so — the pair reports green while the branch is never drawn. Measured
+  on a consuming repo: both frames of a comp booted on a row with no request, so
+  the branch drawing a whole card rendered in no capture and had shipped checked
+  by eye; the census said "12 never true in this captured state" and nothing
+  read it. `design: { props: { … } }` now applies overrides through the
+  runtime's own `window.__dcSetProps(rootName, …)` — after the fluid re-`load()`
+  and the freeze, BEFORE any `steps` (props are initial state; steps act on it).
+  Validation is set membership against the comp's own `propsMeta`, not a
+  rendered diff: a diff cannot separate "the prop did nothing" from "the prop
+  was already at that value", and the first is the bug. Three typed outcomes,
+  all one `props-failed` CaptureError — undeclared prop; a runtime predating
+  `__dcSetProps`; an unreadable registry entry, which is the `<dc-import>`
+  wrapper case, where the root declares nothing and the real comp is a separate
+  entry (props reach only the ROOT). A malformed `props` FAILS the manifest
+  rather than dropping, per `readSections`' reasoning: a dropped block leaves
+  the capture in the exact default state the feature exists to avoid. What it
+  deliberately does NOT prove is that the value means anything, or that the
+  mounted component consumes the override; the branch census is the post-hoc
+  signal for both. The sibling `steps` (2026-09-02) was implemented but
+  undocumented until this change — both are now in `configuring.md`.
 - **One screen at several widths — `viewports`, built 2026-09-17.** A manifest
   entry declares `viewports: [{ id, width, height, ignore?, disabled? }]` in
   place of `app.viewport` and `parseManifest` expands it into one `PairSpec`

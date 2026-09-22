@@ -593,6 +593,11 @@ items is now a typed finding — read it there:
   produces no finding and a PASS reads exactly like a FAIL. A property of the
   comp alone (no pairing, nothing to be wrong about), so it is capture
   metadata, not a finding. Read it when a variant looks suspiciously clean.
+  **It has a remedy, not only a diagnosis:** a branch listed here can be driven
+  into view with `design.props` (a declared prop) or `steps` (the comp's own
+  affordances) — `configuring.md` §"A state the comp does not boot into". That
+  census is also the read-your-writes for both: if the state you asked for did
+  not draw, its branch is still listed as never true.
   Anchor: `messages.dc.html` has five row renderers and its `sel` state opens
   only t1 and t2; t3 and t4 are the only threads carrying `doc` or `sys` rows,
   so no captured frame drew either, on either side. Two of five row types were

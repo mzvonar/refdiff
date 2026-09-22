@@ -110,13 +110,14 @@ The tell is in every design capture's own output. `capturing design:` prints a
 branch census, and anything listed there is a branch this capture never rendered:
 
 ```
-21 conditional branches, 12 never true in this captured state:
-  adNewOpen, hdrNotifOpenA, r.isSys, r.showWaiting, r.showResolved, …
+21 conditional branches, 8 never true in this captured state: menuOpen,
+  notifOpen, r.isSys, r.showWaiting, r.showResolved, r.isDoc, pkOpen, r.detOpen (+4 more)
 ```
 
 Read that line when a pair looks clean but you know a state exists. Measured
-2026-09-22: `r.showWaiting` sitting in it meant a whole card — a status chip and
-its one action — had no measurement of any kind on any pair.
+2026-09-22 on a consuming repo: one branch sitting in that list meant a whole
+card — a status chip and its one action — had no measurement of any kind on any
+pair, and had shipped checked by eye.
 
 Two ways in. **Prefer `props`**; reach for `steps` when the comp declares none.
 
@@ -128,11 +129,11 @@ Two ways in. **Prefer `props`**; reach for `steps` when the comp declares none.
 | sides | design only | `design.steps` and `app.steps`, separately |
 
 ```js
-// Declarative: the comp declares selAd, the pair sets it.
-design: { file: "messages.dc.html", frame: "1c", props: { selAd: "t1" } },
+// Declarative: the comp declares `selected`, the pair sets it.
+design: { file: "Dashboard.dc.html", frame: "2b", props: { selected: "row-3" } },
 
 // Interactive: no prop exists, so drive the comp's own row.
-design: { file: "messages.dc.html", frame: "1c", steps: [{ clickText: "Slovnaft, a.s." }] },
+design: { file: "Dashboard.dc.html", frame: "2b", steps: [{ clickText: "Overdue" }] },
 ```
 
 Steps are `{ click: <css> }`, `{ clickText: <starts-with> }`, `{ press: <key> }`
@@ -155,18 +156,36 @@ so an override is validated against it rather than by diffing the render — a
 rendered diff cannot tell "this prop does nothing" from "this prop was already
 at that value", and the first of those is the bug.
 
+There is ONE error kind — `props-failed` — and the `detail` says which of three
+things went wrong:
+
 ```
 "kind": "props-failed",
-"detail": "selAdd — the comp declares: selOd, selOm, selAd, selAm, openOm, openAm.
+"detail": "selectd — the root \"dashboard\" declares: selected, expanded.
            An override for a prop the comp does not declare is silently inert …"
 ```
 
-`props-unsupported` instead means the canvas's `support.js` predates
-`__dcSetProps` — re-vendor the runtime alongside the comp.
+- **a typo or an undeclared prop** — as above: it names what you set and what
+  the root declares, so you can fix it without opening the comp;
+- **"exposes no `__dcSetProps`"** — the canvas's `support.js` predates prop
+  overrides; re-vendor the runtime alongside the comp;
+- **"exposes no registry entry for the page root"** — a harness/runtime
+  mismatch, NOT a missing declaration. The common cause is a WRAPPER root:
+  `setup.md`'s `<dc-import>` recipe mounts a wrapper that declares nothing and
+  pulls the real comp in as a separate entry, and props reach only the component
+  mounted as the ROOT. Use `steps` there, or point the pair at the comp directly.
+
+**What the check does NOT prove**, because a half-closed door is worse than an
+open one. It proves the prop NAME is declared. It does not prove the VALUE means
+anything (`selected: "row-99"` for a row that does not exist is accepted and
+renders the default), nor that the mounted component consumes the override. For
+both, the post-hoc signal is the same branch census: if the state you asked for
+did not draw, its branch is still listed as never true. Check it after adding a
+props pair — that is the read-your-writes for this feature.
 
 **Asking a designer for props is a real option**, not a last resort. When a
 state is worth measuring and the comp cannot be clicked into it reliably, the
-comp declaring one (`<script data-dc-script data-props='{"selAd":{"default":1}}'>`)
+comp declaring one (`<script data-dc-script data-props='{"selected":{"default":0}}'>`)
 is a smaller change than it sounds, and it removes the pair's coupling to
 whatever happens to be clickable. State the OUTCOME you need and let them pick
 the mechanism — and say explicitly that clicking must still work in their

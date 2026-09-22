@@ -159,12 +159,20 @@ failure shapes that recur everywhere and impersonate product bugs.
   clips. Ask the designer to label the comp's root, then delete the wrapper and repoint the
   manifest. Note the wrapper in the repo's bindings — it is a file the design project does not
   have.
-- **A comp's prop DEFAULTS decide what gets captured.** A `.dc.html` comp is
-  captured in its default state; a designed state behind a non-default prop
-  (`showDeltaStrip: false`, an `errorState` selector) ships UNMEASURED and any
-  impl that draws it pays a layout shift against the capture. Read the
-  `data-props` block first; ask the designer to flip a default that should
-  be the demo state, and list the rest as unmeasured by decision.
+- **A comp's prop DEFAULTS decide what a capture shows — unless the pair says
+  otherwise.** A `.dc.html` comp boots into its default state, so a designed
+  state behind a non-default prop (`showDeltaStrip: false`, an `errorState`
+  selector) is not in the picture unless you ask for it. Read the `data-props`
+  block first, then set what you need on the pair: `design.props` drives a
+  declared prop, `steps` drives the comp's own affordances. Both are in
+  `configuring.md` §"A state the comp does not boot into", with the hard-stop
+  each gives you when it cannot deliver the state.
+  Flipping a DEFAULT is still the answer for one case only — when the
+  non-default state is the one every pair of that comp should see — because a
+  default belongs to the comp and changes it for every frame at once. "Unmeasured
+  by decision" is no longer the fallback it was: a state behind a declared prop
+  is one manifest line away, and a state behind no prop is a declaration to ask
+  the designer for.
 - **CSS variables set on a decorator wrapper do not reach portalled content.**
   Dialogs and sheets portal to `<body>`; if the font/theme variables live on a
   Storybook decorator `<div>`, overlay stories render in the browser default and

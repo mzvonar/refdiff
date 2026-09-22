@@ -366,7 +366,12 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   apart from `.ghost`.
 
 - **A LIVE comp has states that only exist after an interaction — `steps` is how they
-  become measurable, and the pair that uses them is `…-toolbar-ghost`.** The ghost language
+  become measurable, and the pair that uses them is `…-toolbar-ghost`.** (Since 2026-09-22
+  there is a second way in: `design.props`, for a state behind a prop the comp DECLARES.
+  Prefer it — it is declarative and does not couple the pair to what happens to be
+  clickable. These pairs stay on `steps` because their states are genuinely behind clicks,
+  and their triggers carry stable hooks. See `configuring.md` §"A state the comp does not
+  boot into".) The ghost language
   for one-sided findings (a hatched dashed footprint on the pane that lacks the element, a
   hollow number chip with "Missing here — exists in design" / "Only in impl — nothing here in
   design", and on the phone a `swap_horiz` View design/impl switch inside the pill) exists in
