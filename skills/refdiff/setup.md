@@ -71,6 +71,29 @@ tool you are measuring WITH. Run that one first — it is scripted and it halts.
 The repo's `refdiff.bindings.md` holds the specifics; these are the
 failure shapes that recur everywhere and impersonate product bugs.
 
+- **A capture that FAILED leaves the previous run's artifacts in place, and
+  `findings.json` carries no sign of it.** The run exits 2 and prints the typed
+  error — but the file is untouched, so the annotator goes on serving numbers
+  measured against whatever the comp and the build were last time. Measured
+  instance: a cold route blew the 30 s navigation budget, and a finding two days
+  old was read as evidence about a comp edited that morning. The tell is not in
+  the artifact; it is that the run's summary lines never printed. A failed run
+  now writes **`capture-error.json`** beside the stale report, naming the side,
+  the error and the stale report's own `createdAt` — check for it before quoting
+  any number. It is written only when a previous report exists, because an empty
+  run dir can mislead nobody. General shape: **exit code and artifact are two
+  different channels, and only one of them is where you read the result.**
+
+- **A harness that authenticates by POSTing a session can EDIT the fixture it is
+  measuring.** `--auth-post` sends a display name (`refdiff {role}` by default);
+  an endpoint that upserts onto a SEEDED user applies it, renaming them. The
+  next capture of the other role then shows the harness's name where the fixture
+  says the person's, and it surfaces as text-content findings indistinguishable
+  from drift. Pass `--auth-name ""` to omit the field whenever the fixture
+  already names its users. Before that flag existed the only workaround was
+  re-seeding between role batches — a fine way to remember the problem and a
+  poor way to avoid it.
+
 - **A green pair proves the STATE matches the comp; it says nothing about
   whether a user can REACH that state.** Every pair pins the URL, viewport and
   steps that put the app into the state it measures — that is what makes it

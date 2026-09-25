@@ -362,23 +362,33 @@ export async function extractElementTree(
        * PARTIALLY covered element (a row half under a sticky header) still counts
        * as visible: occluded means every sampled point belongs to something else.
        *
-       * Two deliberate fail-OPEN cases, both returning `false`:
+       * Returns UNDEFINED where the hit test cannot speak, which is a different
+       * claim from `false` and is kept distinct for the same reason `affordance`
+       * is omitted rather than defaulted — only an explicit `true` is ever acted
+       * on, so "cannot tell" must not arrive as "not occluded":
        *
        * - `pointer-events: none`. Hit-testing then reports whatever is BEHIND the
        *   element, so a decorative overlay would look occluded when it is the
-       *   thing doing the occluding. The hit test cannot speak about these, and a
-       *   wrong `true` silently deletes a real finding.
-       * - Nothing sampleable. Points outside the viewport return null, so an
-       *   element scrolled below the fold has no answer — "not visible on screen
-       *   right now" is not "painted over", and only the latter is noise.
+       *   thing doing the occluding. A wrong `true` silently deletes a real
+       *   finding.
+       * - Nothing sampleable. Every sample point outside the viewport means no
+       *   answer at all — "scrolled out of view" is not "painted over". This is
+       *   the case to keep in mind on a FULL-PAGE capture, where the viewport is
+       *   a window onto a much taller page and most elements fall outside it: the
+       *   detection is largely inert there, and silently so. Measured on one
+       *   viewport-sized phone pair: 13 visible, 12 occluded, 28 unsampleable.
        *
        * An ancestor or descendant coming back is NOT occlusion: the point is
        * inside this element's own subtree, which is what being on top looks like
        * for a text leaf inside its own wrapper.
        */
-      const isOccluded = (el: Element, cs: CSSStyleDeclaration, r: DOMRect): boolean => {
-        if (cs.pointerEvents === "none") return false
-        if (r.width < 1 || r.height < 1) return false
+      const isOccluded = (
+        el: Element,
+        cs: CSSStyleDeclaration,
+        r: DOMRect,
+      ): boolean | undefined => {
+        if (cs.pointerEvents === "none") return undefined
+        if (r.width < 1 || r.height < 1) return undefined
         const points: [number, number][] = [
           [0.5, 0.5],
           [0.15, 0.15],
@@ -398,7 +408,7 @@ export async function extractElementTree(
           if (top === el || el.contains(top) || top.contains(el)) continue
           covered++
         }
-        return tested > 0 && covered === tested
+        return tested === 0 ? undefined : covered === tested
       }
 
       const emit = (
@@ -506,7 +516,8 @@ export async function extractElementTree(
           if (ownText) shapeNode["text"] = ownText
           if (Object.keys(style).length > 0) shapeNode["style"] = style
           shapeNode["affordance"] = affordanceOf(el, cs)
-          shapeNode["occluded"] = isOccluded(el, cs, rect)
+          const shapeOccluded = isOccluded(el, cs, rect)
+          if (shapeOccluded !== undefined) shapeNode["occluded"] = shapeOccluded
           out.push(shapeNode)
           return
         }
@@ -571,10 +582,13 @@ export async function extractElementTree(
         // to tell "not clickable" from "this adapter does not know", and an
         // omitted key is how the Figma side says the latter.
         node["affordance"] = affordanceOf(el, cs)
-        // Same contract, same reason: absent means "this adapter cannot tell"
-        // (the Figma side has no hit test), which is NOT the same claim as
-        // `false`. The pipeline only ever drops an explicit `true`.
-        node["occluded"] = isOccluded(el, cs, rect)
+        // Same contract, same reason: absent means "this adapter cannot tell",
+        // which is NOT the same claim as `false`. Two sources of absence — the
+        // Figma side has no hit test at all, and a DOM element can be
+        // unsampleable (outside the viewport, or pointer-events:none). The
+        // pipeline only ever drops an explicit `true`.
+        const occluded = isOccluded(el, cs, rect)
+        if (occluded !== undefined) node["occluded"] = occluded
         out.push(node)
       }
 

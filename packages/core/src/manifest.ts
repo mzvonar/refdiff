@@ -285,6 +285,69 @@ export function readViewports(v: unknown): Result<ViewportEntry[] | undefined, s
 export const pairMatches = (pair: PairSpec, entryId: string): boolean =>
   pair.id === entryId || (pair.breakpoint !== undefined && pair.breakpoint.entry === entryId)
 
+/** The entry a variant-cell selector belongs to — everything before the first `--`. */
+export const entryOf = (id: string): string => id.split("--")[0] ?? id
+
+/** How a run's `--pair` selectors resolve against the manifest, before expansion. */
+export interface SelectorPlan {
+  /** Manifest entries to run. */
+  specs: PairSpec[]
+  /** Cell-level selectors, kept for the post-expansion filter. */
+  cellSelectors: string[]
+  /** Entry ids named WHOLE, so every cell of them runs. */
+  wholeEntries: Set<string>
+  /** Selectors that EXACTLY name a manifest pair id — including ids containing `--`. */
+  directIds: Set<string>
+}
+
+/**
+ * Resolve `--pair` selectors against the manifest.
+ *
+ * A selector names an ENTRY (`button-ghost`), ONE EXPANDED CELL
+ * (`button-ghost--state-hover_size-sm`), or — and this is the case that bit —
+ * a manifest pair whose OWN id contains `--`.
+ *
+ * `--` is set syntax only BY CONVENTION. A hand-written manifest may spell an id
+ * with one, and the annotator's library actively rewards it: it groups by the
+ * text before the first `--`, so `messages-owner--mobile` alongside
+ * `messages-accountant--mobile` is the only way to get two groups out of a flat
+ * list of pairs. Before this resolved the raw selector first, `entryOf` reduced
+ * such an id to a set entry that does not exist and the run died with "no
+ * runnable pairs selected" while the id sat in the manifest, plainly visible.
+ *
+ * Those selectors are tracked in `directIds` rather than left to ride along
+ * inside `cellSelectors`. They used to survive the post-expansion filter only
+ * because `wanted.has(p.id)` happened to match them — true today, and silently
+ * false the moment that filter is rewritten in terms of set membership.
+ *
+ * Set selectors are unaffected: an entry id contains no `--`, so its raw and
+ * stripped forms are the same string.
+ */
+export function planSelection(
+  all: readonly PairSpec[],
+  only: readonly string[] | undefined,
+): SelectorPlan {
+  if (only === undefined) {
+    return { specs: [...all], cellSelectors: [], wholeEntries: new Set(), directIds: new Set() }
+  }
+  const ids = new Set(all.map((p) => p.id))
+  // ONLY the ambiguous shape is redirected. A selector with no `--` is already
+  // unambiguous — it is an entry name — and must stay in `wholeEntries`, because
+  // that is what the post-expansion filter matches a SET's cells against
+  // (`wholeEntries.has(entryOf(p.id))`). Routing those through `directIds`
+  // instead made `--pair ds-button` select the entry and then match none of the
+  // `ds-button--…` cells it expanded into, i.e. run nothing at all.
+  const directIds = new Set(only.filter((sel) => sel.includes("--") && ids.has(sel)))
+  return {
+    specs: all.filter((p) =>
+      only.some((sel) => pairMatches(p, sel) || pairMatches(p, entryOf(sel))),
+    ),
+    cellSelectors: only.filter((sel) => sel.includes("--") && !directIds.has(sel)),
+    wholeEntries: new Set(only.filter((sel) => !sel.includes("--"))),
+    directIds,
+  }
+}
+
 /** The pairs `--pair` names, in manifest order; every pair when nothing is named. */
 export function selectPairs(
   pairs: readonly PairSpec[],

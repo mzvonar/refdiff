@@ -61,21 +61,42 @@ describe("extractElementTree — occlusion", () => {
     expect(byText(els, "Takeover body").occluded).toBe(false)
   })
 
-  it("leaves an ordinary page untouched — nothing is occluded", async () => {
+  it("leaves an ordinary page untouched — measured, and not occluded", async () => {
     const els = await capture(
       `<p style="margin:0;font-size:14px">Alpha</p><p style="margin:0;font-size:14px">Beta</p>`,
     )
+    // Explicit `false`, not absent: these WERE hit-tested and are on screen.
     expect(byText(els, "Alpha").occluded).toBe(false)
     expect(byText(els, "Beta").occluded).toBe(false)
   })
 
   /**
+   * The blind spot, pinned so it cannot be mistaken for a measurement. Sample
+   * points outside the viewport have no answer, so an element below the fold is
+   * `undefined` rather than `false` — "scrolled out of view" is not "painted
+   * over". On a FULL-PAGE capture that is most of the page, and the detection is
+   * largely inert there.
+   */
+  it("says nothing about an element outside the viewport", async () => {
+    const els = await capture(
+      `<p style="margin:0;font-size:14px">Visible</p>
+       <p style="position:absolute;top:2000px;margin:0;font-size:14px">Far below</p>`,
+    )
+    expect(byText(els, "Visible").occluded).toBe(false)
+    expect("occluded" in byText(els, "Far below")).toBe(false)
+  })
+
+  /**
    * Fail-open guard. A `pointer-events:none` element is skipped by hit-testing,
    * which would report whatever is BEHIND it — so the scrim doing the covering
-   * would itself look covered. Wrong here costs a deleted finding, so the answer
-   * is `false` ("cannot tell"), never `true`.
+   * would itself look covered. Wrong here costs a deleted finding.
+   *
+   * The answer is ABSENT rather than `false`, which is a different claim and is
+   * kept distinct deliberately: `false` asserts "measured, and on screen", while
+   * a missing key says "this adapter cannot tell" — the same contract
+   * `affordance` uses, and what lets `dropOccluded` act on `true` alone.
    */
-  it("never calls a pointer-events:none element occluded", async () => {
+  it("never calls a pointer-events:none element occluded, and does not claim it is visible", async () => {
     const els = await capture(`
       <div style="position:absolute;inset:0;background:#fff">
         <span style="font-size:14px">Under</span>
@@ -84,7 +105,7 @@ describe("extractElementTree — occlusion", () => {
         <span style="font-size:14px;pointer-events:none">Scrim label</span>
       </div>
     `)
-    expect(byText(els, "Scrim label").occluded).toBe(false)
+    expect("occluded" in byText(els, "Scrim label")).toBe(false)
   })
 
   /**

@@ -58,8 +58,10 @@ import { stepHint, stepsOnOneSide } from "./adapters/steps.js"
 import { ensureStorybook } from "./adapters/storybook-server.js"
 import { captureStorybook } from "./adapters/storybook.js"
 import {
+  entryOf,
   pairMatches,
   parseManifest,
+  planSelection,
   readAccepted,
   type LiveSpec,
   type PairSpec,
@@ -215,6 +217,11 @@ Live app (both modes):
                           (body { role, email: "__test__<role>@example.com",
                           name }; relative to --app-url)
   --auth-header <k: v>    header for --auth-post (repeatable)
+  --auth-name <template>  display name sent in the --auth-post body; "{role}" is
+                          substituted (default "refdiff {role}"). Pass an EMPTY
+                          string to omit the field — required when the endpoint
+                          upserts onto a SEEDED fixture user, or every capture
+                          renames them and the next one measures your harness
 
 Ignore policy (both modes):
   --scope <selector>      design node to compare instead of the artboard frame
@@ -316,11 +323,17 @@ function parseViewport(raw: string | undefined): { width: number; height: number
   return { width: Number(m[1]), height: Number(m[2]) }
 }
 
-interface LiveOptions {
+export interface LiveOptions {
   appUrl?: string
   authState?: string
   authPost?: string
   authHeaders: Record<string, string>
+  /**
+   * Display name template for the `--auth-post` body; `{role}` is substituted.
+   * Default `refdiff {role}`. An EMPTY string omits the field entirely, which is
+   * what a fixture-seeded user needs — see `liveAuth`.
+   */
+  authName?: string
 }
 
 interface RunOptions {
@@ -384,6 +397,10 @@ async function readPreviousReport(outDir: string): Promise<ComparisonReport | un
 }
 
 const LEDGER_FILE = "resolved-ledger.json"
+/** Written into a run dir whose capture failed while older artifacts remain. */
+const CAPTURE_ERROR_FILE = "capture-error.json"
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v)
 
 /** The pair's ledger of findings earlier runs resolved (fresh when absent/foreign). */
 async function readLedger(outDir: string, pair: string): Promise<ResolvedLedger> {
@@ -403,16 +420,24 @@ function resolveLiveUrl(route: string, appUrl: string | undefined): Result<strin
 }
 
 /** The auth hook for a live spec, from the CLI's auth flags. */
-function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undefined {
+export function liveAuth(spec: LiveSpec, o: LiveOptions, url: string): LiveAuth | undefined {
   if (o.authState) return { kind: "storage-state", path: o.authState }
   if (o.authPost) {
     const role = spec.role ?? "user"
     const postUrl = /^https?:\/\//i.test(o.authPost) ? o.authPost : new URL(o.authPost, url).href
+    // The `name` is for an endpoint that CREATES the session user. When the
+    // endpoint upserts onto a SEEDED fixture user instead, sending one renames
+    // them — so the harness edits the data it is measuring, and the counterpart
+    // side of the next capture shows „refdiff accountant" where the fixture says
+    // „Martin Hruška". That surfaces as text-content findings which look exactly
+    // like drift, and the only workaround is re-seeding between role batches.
+    // `--auth-name ""` omits the field; any other value is a template.
+    const name = (o.authName ?? "refdiff {role}").replaceAll("{role}", role)
     return {
       kind: "post",
       url: postUrl,
       headers: o.authHeaders,
-      body: { role, email: `__test__${role}@example.com`, name: `refdiff ${role}` },
+      body: { role, email: `__test__${role}@example.com`, ...(name === "" ? {} : { name }) },
     }
   }
   return undefined
@@ -1405,6 +1430,7 @@ async function compare(argv: string[]): Promise<void> {
       "auth-state": { type: "string" },
       "auth-post": { type: "string" },
       "auth-header": { type: "string", multiple: true },
+      "auth-name": { type: "string" },
       "storybook-url": { type: "string" },
       "storybook-dir": { type: "string" },
       "storybook-open": { type: "boolean" },
@@ -1458,6 +1484,7 @@ async function compare(argv: string[]): Promise<void> {
     ...(appUrl !== undefined ? { appUrl } : {}),
     ...(values["auth-state"] !== undefined ? { authState: resolve(values["auth-state"]) } : {}),
     ...(values["auth-post"] !== undefined ? { authPost: values["auth-post"] } : {}),
+    ...(values["auth-name"] !== undefined ? { authName: values["auth-name"] } : {}),
   }
   const storybookUrl =
     values["storybook-url"] ?? process.env["VC_STORYBOOK_URL"] ?? "http://localhost:6006"
@@ -1543,7 +1570,7 @@ async function compare(argv: string[]): Promise<void> {
   // mode, which is what keeps the post-expansion filter a no-op for them.
   let cellSelectors: string[] = []
   let wholeEntries = new Set<string>()
-  const entryOf = (id: string): string => id.split("--")[0] ?? id
+  let directIds = new Set<string>()
   if (values.manifest !== undefined) {
     // These describe ONE pair's capture; in manifest mode each pair carries its own
     // in the entry, so the flag has nowhere to apply. Accepting and ignoring them
@@ -1578,29 +1605,16 @@ async function compare(argv: string[]): Promise<void> {
       ?.flatMap((v) => v.split(","))
       .map((s) => s.trim())
       .filter(Boolean)
-    // A selector names an ENTRY (`button-ghost`) or ONE EXPANDED CELL
-    // (`button-ghost--state-hover_variant-primary_size-sm`). Only entries exist at this
-    // point — variants expand further down — so an entry is selected here and the
-    // cell-level selectors are kept for the post-expansion filter. Without it the only
-    // way to re-measure one cell of a 34-cell set was to re-run all 34, Figma calls
-    // included, which is the cost the fix loop pays most often.
-    // An entry with `viewports` is several pairs already (`<id>-<viewport id>`), and
-    // its id names them all: `pairMatches` reads the pair's `breakpoint.entry`.
-    //
-    // The RAW selector is tried before `entryOf` strips it, because `--` is only set
-    // syntax by convention: a hand-written manifest may spell a pair id with one, and
-    // the annotator's library actively encourages it (it groups by the text before the
-    // first `--`, so `messages-owner--mobile` and `messages-accountant--mobile` are the
-    // only way to get two groups out of a flat list of pairs). Without this, such an id
-    // is UNADDRESSABLE: `entryOf` reduced it to a set entry that does not exist, and the
-    // run died with "no runnable pairs selected" while the id was sitting in the
-    // manifest. Set selectors are unaffected — an entry id contains no `--`, so the raw
-    // and stripped forms are the same string for them.
-    specs = only
-      ? all.filter((p) => only.some((sel) => pairMatches(p, sel) || pairMatches(p, entryOf(sel))))
-      : all
-    cellSelectors = only?.filter((sel) => sel.includes("--")) ?? []
-    wholeEntries = new Set(only?.filter((sel) => !sel.includes("--")) ?? [])
+    // Only entries exist at this point — variants expand further down — so an entry is
+    // selected here and the cell-level selectors are kept for the post-expansion filter.
+    // Without that the only way to re-measure one cell of a 34-cell set was to re-run all
+    // 34, Figma calls included, which is the cost the fix loop pays most often.
+    // `planSelection` carries the whole rule, including the `--`-in-a-pair-id case.
+    const plan = planSelection(all, only)
+    specs = plan.specs
+    cellSelectors = plan.cellSelectors
+    wholeEntries = plan.wholeEntries
+    directIds = plan.directIds
     if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`)
   } else {
     const viewport = parseViewport(values.viewport)
@@ -1706,6 +1720,7 @@ async function compare(argv: string[]): Promise<void> {
       specs = expanded.filter(
         (p) =>
           wanted.has(p.id) ||
+          directIds.has(p.id) ||
           wholeEntries.has(entryOf(p.id)) ||
           (p.breakpoint !== undefined && wholeEntries.has(p.breakpoint.entry)),
       )
@@ -1778,8 +1793,17 @@ async function compare(argv: string[]): Promise<void> {
         anyError = true
         console.error(`\n${spec.id}: ${result.error.side} capture failed (typed error):`)
         console.error(JSON.stringify(result.error.error, null, 2))
+        // A failed capture leaves the PREVIOUS run's artifacts untouched, and a
+        // findings.json from days ago is indistinguishable from one written a
+        // moment ago unless somebody reads its `createdAt`. That is how a finding
+        // measured against an OLD comp gets quoted as evidence about a new one —
+        // the run exits 2 and says so, but the artifact says nothing, and the
+        // annotator goes on serving it. So the run dir is marked, in the dir
+        // itself, next to the thing that lies.
+        await markCaptureFailed(outDir, spec.id, result.error)
         continue
       }
+      await clearCaptureFailed(outDir)
       printReport(result.value)
       console.log(`report: ${join(outDir, "findings.json")}`)
       if (!result.value.verdict.pass) anyFail = true
@@ -1792,15 +1816,66 @@ async function compare(argv: string[]): Promise<void> {
   // A set run ends with the one page the loop actually reads: the console
   // shows the pairs just run; summary.md/json cover EVERY run dir under the
   // root (several sets share one root), exactly what `summary <root>` writes.
-  if (specs.length > 1 && done.length > 0) {
+  // The ARTIFACT is rewritten whenever anything ran; only the console table is
+  // held back to one-pair runs. It used to share the `> 1` guard, which left the
+  // SINGLE-pair fix loop — the one `cellSelectors` exists to make cheap, and the
+  // one a reader iterates in — permanently staling summary.md/json against the
+  // run dirs beside them. Measured: a root whose newest pair was a day fresher
+  // than its own summary. Rebuilding reads the run dirs and costs nothing near a
+  // capture.
+  if (done.length > 0) {
     const root = resolve(outRoot ?? "out")
-    console.log(
-      `\n${renderSummary(summarizeReports(done), { title: `refdiff summary — this run` })}`,
-    )
+    if (specs.length > 1) {
+      console.log(
+        `\n${renderSummary(summarizeReports(done), { title: `refdiff summary — this run` })}`,
+      )
+    }
     await writeSummary(root, await readRunDirs(root))
-    console.log(`summary (all run dirs under the root): ${join(root, "summary.md")}`)
+    if (specs.length > 1) {
+      console.log(`summary (all run dirs under the root): ${join(root, "summary.md")}`)
+    }
   }
   process.exit(anyError ? 2 : anyFail ? 1 : 0)
+}
+
+/**
+ * Effect: mark a run dir whose capture just failed, so the artifacts left in it
+ * cannot be read as this run's.
+ *
+ * Only written when a findings.json is actually there — a pair that has never
+ * captured has nothing to mislead anybody with, and an empty dir marked "stale"
+ * is its own confusion. The stale report's own `createdAt` goes into the marker
+ * so a reader sees the age without opening the file it describes.
+ */
+async function markCaptureFailed(outDir: string, pairId: string, err: PairError): Promise<void> {
+  let staleFrom: string | undefined
+  try {
+    const prev: unknown = JSON.parse(await readFile(join(outDir, "findings.json"), "utf8"))
+    if (isRecord(prev) && typeof prev["createdAt"] === "string") staleFrom = prev["createdAt"]
+  } catch {
+    return // nothing previous to be mistaken for this run
+  }
+  const marker = {
+    pair: pairId,
+    side: err.side,
+    error: err.error,
+    failedAt: new Date().toISOString(),
+    staleReportFrom: staleFrom,
+  }
+  try {
+    await writeFile(join(outDir, CAPTURE_ERROR_FILE), JSON.stringify(marker, null, 2))
+    console.error(
+      `  ⚠ ${join(outDir, "findings.json")} is from ${staleFrom ?? "an earlier run"} and was NOT replaced — see ${CAPTURE_ERROR_FILE}`,
+    )
+  } catch {
+    // Marking is best-effort: a run dir we cannot write to is not a reason to
+    // fail a run that already failed.
+  }
+}
+
+/** Effect: clear any stale-capture marker after a capture that DID produce a report. */
+async function clearCaptureFailed(outDir: string): Promise<void> {
+  await rm(join(outDir, CAPTURE_ERROR_FILE), { force: true }).catch(() => {})
 }
 
 /** Effect: summary.md + summary.json into `root`; returns the rendered text. */

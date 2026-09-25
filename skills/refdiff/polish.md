@@ -14,6 +14,32 @@ ban does not reach it.)
 If the run expanded a set, read `sets.md` first: iterations count per SET, and the set summary
 is what you read instead of forty `findings.json`.
 
+### 1a-o. What was EXCLUDED as painted over (one line, read it once)
+
+A run that filtered anything prints, before the alignment:
+
+```text
+  excluded 46 design + 23 impl element(s) painted over at capture time
+```
+
+Those elements were in the page and not on the screen — under a takeover, a
+modal, a drawer. The extractor hit-tests every element and tags `occluded`; the
+pipeline drops the `true` ones from BOTH sides before aligning and matching, so
+they can neither produce findings nor move the matched ratio. Nothing to act on
+when the number looks right for the state you captured.
+
+**When to be suspicious of it:** a large count on a pair with NO overlay means
+something is covering the page that should not be — a dialog that failed to
+close, a scrim left mounted. `--include-occluded` compares them anyway, which is
+how you find out what they are.
+
+**Its blind spot, which the line cannot show you:** an element whose sample
+points fall outside the viewport gets no answer and is KEPT — `occluded` absent,
+never `false`, because absent means "could not tell" (the same contract
+`affordance` uses, and what lets the filter act on `true` alone). On a
+**full-page** capture that is most of the page, so the filter is largely inert
+there and silently so.
+
 ### 1a. Read the ALIGNMENT before you read a single finding
 
 `alignment.confidence` decides whether any of the findings mean anything.
