@@ -57,6 +57,20 @@ string occurring exactly once on each side that matches after normalisation, and
   score outright: 3 anchors can never exceed 0.375 however well they fit. The
   fix is to make the fixture render the comp's data — this is usually the single
   biggest lever on a page pair, worth more than any number of policy tweaks.
+- **When you cannot raise the score, stop asking ABSOLUTE questions and ask a
+  WITHIN-SIDE one.** An artboard narrower or wider than the captured viewport
+  cannot be fitted away: the transform absorbs the difference as `scale`, and
+  after that an absolute `x` cannot tell an inset from a scale. The measurement
+  that survives is a RELATIONSHIP measured on each side separately and then
+  compared — element A's edge minus element B's edge, design vs impl. Measured
+  2026-09-25 on a pair reading `conf 0.55` with `x` scaled 3.6–5.9%: "is the
+  anchor card flush with the message rows" was unanswerable in absolute terms and
+  trivial as a relationship — comp 446.0 vs 448.1 = 2.1 px, impl 440.0 vs 442.0 =
+  2.0 px, so the implementation was already right to a tenth of a pixel. The same
+  pair had just been "improved" in the other direction by a change that moved the
+  absolute numbers closer and the relationship further away; the finding COUNT
+  went down and the layout got worse. Read `elements.json` for both boxes and
+  subtract — neither side's transform is involved.
 - **A low score names its own cause.** The run line prints `x <n> / y <n>`
   whenever one axis fits much better than the pair, because `confidence` counts
   an anchor only when BOTH axes land it. Read that split:
@@ -188,6 +202,29 @@ paired with a thread badge 415 px left and 636 px down, `via: "text"`,
 `γ 1062.6`, six confident findings. Every number that gives it away was already
 on those findings; nothing pointed at them, so this list does.
 
+**The third shape: the pair is the right ELEMENT at the wrong DOM DEPTH — and
+then the geometry comparison is void while every number looks reasonable.** A
+template runtime that wraps each interpolation in a span (the Claude Design
+`.dc.html` runtime does) leaves the comp's padded box as a CONTAINER and its text
+as a child; an implementation that puts the padding and background on the text
+node itself offers one box where the comp offers two. The matcher then pairs your
+BORDER box against their CONTENT box, which differ by exactly the padding — so a
+`size` finding is understated by 2 × padding, and a `border-radius` or `color`
+finding reports the comp as having none at all.
+
+**The tell is free and worth making a habit: compare the two elements' STYLE
+fields, not just their boxes.** When one side reports `backgroundColor` /
+`borderRadius` and the other reports none for the same visual object, you are
+looking at parent-vs-child and the geometry is not comparable. Measured
+2026-09-25: a system-message pill read `impl 256.0 wide radius 14 bg rgb(244,
+237, 226)` against `design 256.5 wide radius none bg none`, which was reported as
+agreement to within 0.5 px — and the designer, looking at the picture, said the
+implementation still had too much padding. It did: the comp's pill was 282.5 wide
+(256.5 + 13 px each side) and the two had never been measured against each other.
+The comp's own radius finding from the same mismatch is a legitimate `accept`
+(the implementation IS right); the width one is not, and only reading the style
+fields tells them apart.
+
 **It is a list to CHECK, not a list of defects, and the difference is
 measured:** of the 79 such pairings across the 52-pair corpus, **74 were
 CORRECT** — an element the implementation relocated, a label the comp
@@ -227,6 +264,19 @@ instructions from the reviewer anchored to an element (world coordinates +
 the element's text/role/box, marker numbers on `annotations-design.png` /
 `annotations-impl.png`). Act on them before the findings they overlap; when
 a note contradicts a finding, the note wins — and you say so in the report.
+
+**A note is an INSTANCE, never the scope — the findings list is still the job.**
+A reviewer marks the one place they happened to look; the cause almost always has
+siblings, and two questions come before the fix: "what else shares this cause"
+(`refdiff summary`'s `pairs = k/N`) and "does the comp fork this element across
+frames" (`SKILL.md` rule 4). Answer them and one fix closes the note plus
+everything like it; skip them and the reviewer writes up the next instance
+tomorrow. Measured 2026-09-25 on one surface: ten notes over two rounds, EIGHT of
+them the same cross-frame fork on six different elements, and several already
+reported verbatim in a `findings.json` nobody had opened — the loop had been run
+as "filter this pair's findings to the annotated element, fix, verify", twice.
+Working the notes instead of the findings is how a systematic gap survives, and
+it quietly converts the reviewer into your triage step.
 `stale` notes lost their element: read them, do not guess. A `↳ reply:` line
 under a note is what the model answered last time; a note that is `open`
 again UNDER a reply carries a follow-up instruction appended to its text
@@ -395,6 +445,18 @@ designer approved. When a rule in the comp's source visibly does not apply in
 `elements.json` (a `max-width` the layout never hits, a style behind a
 non-default prop), match the render and write the discrepancy down for the
 designer — do not code the source and eat the finding.
+
+**A tolerance decides whether to CHASE a residual, never whether to IMPLEMENT the
+comp's value.** The two are easy to conflate and the failure is silent: a
+difference under the reporting threshold produces no finding, so "no finding"
+reads as "no difference" — when what it means is "not worth pursuing AS A NUMBER".
+Second-order effects do not respect the threshold. Measured 2026-09-25: a comp
+forked one label's font 10.5 px / 11 px between its phone and desktop frames, and
+0.5 px sits inside the 0.6 px `fontSize` tolerance, so the fork was deliberately
+not implemented. At 11 px the two-line pill broke one word earlier than the comp's
+— a visibly shorter second line, which the designer reported as the element being
+over-padded, and which no finding ever named. **Implement the value the comp
+authors; let the tolerance stop you re-measuring the remainder.**
 
 The old checklist sampled pixels and computed styles by hand. Each of its
 items is now a typed finding — read it there:

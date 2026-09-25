@@ -225,6 +225,28 @@ per-repo environment traps that make a capture fail in ways that read as product
    correct-LOOKING patch at a tenth of the right scope, and the pair goes green
    on it. Scope is `polish.md` §4's other half: which axis the two frames differ
    on, and what a shared-chrome fix reaches that this pair cannot measure.
+   **And the OTHER outcome of that same check, which is the expensive one to
+   miss: the siblings may legitimately DISAGREE.** Then neither is an outlier,
+   there is no single value to implement, and the comp is telling you the element
+   FORKS. A design set usually forks on two axes at once (role × breakpoint =
+   four frames), so what you extract is a table, not a value:
+
+   | element | owner-desktop | owner-mobile | acct-desktop | acct-mobile |
+   | --- | --- | --- | --- | --- |
+   | message list padding | `6px 2px 16px` | `4px 16px 16px` | `6px 18px 16px` | `4px 16px 16px` |
+   | bubble max-width | 66% | 76% | 66% | 76% |
+
+   Ship one frame's value everywhere and you are right in that cell and wrong in
+   the other three — while the pair for that cell goes GREEN, which is why this
+   survives review and reaches the designer instead. Measured 2026-09-25: eight
+   of ten annotations on one surface were this defect across six elements, and
+   the half-written fork was visible in the code as `"mt-3 md:mx-0"` — a
+   responsive RESET with no base value to reset, i.e. someone knew the axis
+   existed and implemented one end of it. **Before implementing any element a
+   multi-frame comp draws more than once, extract its authored value from EVERY
+   frame that draws it and diff them.** The values are `grep`-able out of the
+   comp's own markup, and a comp that names its per-frame state with a prefix
+   (`xeT.` / `xfT.` / `adT.`) hands you the element identity for free.
 5. **Suppression is visible or it does not happen.** Every intended
    deviation goes into the pair's `ignore` block (`textPatterns`, `roles`,
    `regions`, `accepted: [{ type, expected?, actual?, reason }]`,
@@ -259,7 +281,19 @@ while iteration < 5:
   mark acted-on notes implemented
   diminishing returns?               → stop (report)
   iteration += 1
+  fixed a SHARED component?          → re-run every pair that renders it,
+                                       then `refdiff summary` and read the causes (§1b)
 ```
+
+**That last line is not optional bookkeeping — it is the only way a whole CLASS of
+defect is visible.** A component rendered by N pairs is an N-pair change even when
+you ran one pair, and a per-pair delta cannot see a gap that moved N pairs by the
+same amount: each one reports a small local difference and none of them says "this
+is one cause, N times". `refdiff summary` says exactly that, in a column
+(`pairs = k/N`). Measured 2026-09-25: a corpus of 1726 findings over 29 run dirs
+was 690 distinct causes, of which the ~105 appearing on five or more pairs covered
+40% of every finding — and nobody had read them, because the loop above had been
+run per pair, per annotation, for two rounds.
 
 ### 0. A surface that does not exist yet
 
@@ -305,7 +339,11 @@ build".
 ```bash
 refdiff compare --manifest $MANIFEST --design-dir $DESIGN_DIR --pair <id> --storybook-dir $REPO --out $OUT_ROOT
 # or the explicit one-pair form (--design-file/--design-frame/--story, --figma …, --url …)
-refdiff summary $OUT_ROOT      # sets / many pairs: one table + causes across pairs (sets.md)
+refdiff summary $OUT_ROOT      # ANY run of 2+ pairs: one row per CAUSE with k/N (sets.md §1b)
+                               # — not a sets-only tool; read it after every shared-component fix.
+                               # Its k/N counts EVERY run dir under the root whatever its age, so
+                               # `ls -l --time-style=+%m-%d $OUT_ROOT/*/findings.json` first: a
+                               # week-old capture still votes in the denominator.
 refdiff drift $RUN_DIR         # a scale/scaleY in the fit: which element is it about? (polish.md §1a)
 ```
 

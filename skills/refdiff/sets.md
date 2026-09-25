@@ -5,6 +5,16 @@ manifest. It sits between `SKILL.md` §1 (how to run) and the phase file (`polis
 `reconcile.md`): the phase is still read per PAIR, but the loop, the iteration bound and the
 thing you read instead of forty `findings.json` are all per SET.
 
+> **You are in this file's case more often than the word "set" suggests.** The cause table below is
+> written by ANY run of two or more pairs — a hand-picked `--pair a,b,c` included — and the trigger
+> that matters most is not a variant grid at all: **a fix to a SHARED component is a multi-pair event
+> even when you ran one pair.** Measured 2026-09-25: two rounds of work on one surface, run a pair at
+> a time because that is where the reviewer's notes were, while `summary.md` sat in the out root with
+> 690 causes ranked by `k/N` and its top rows reading 26/29, 25/29, 24/29. It was never opened, and a
+> local reimplementation of it was written and deleted the same day. If you are about to build
+> cross-pair triage, you have already missed this file — `grep -rn "across pairs"` over the skill
+> finds it in one command.
+
 ### 1b. Sets — a component set or a whole manifest is ONE loop
 
 A manifest entry with `design.variants` expands into one pair per variant
