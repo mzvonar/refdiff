@@ -42,6 +42,7 @@ pairRefs         : (Capture, Capture)      -> Pair
 normalize        : Pair                    -> NormalizedPair          (scale/DPR from metadata)
 align            : NormalizedPair          -> AlignedPair             (NCC translation + confidence)
 extractElements  : Capture                 -> ElementNode[]           (per side)
+dropOccluded     : (ElementNode[], ElementNode[]) -> OcclusionFilter   (painted-over elements leave BOTH sides, before align)
 matchElements    : (ElementNode[], ElementNode[]) -> ElementMatch[]
 runTypedChecks   : ElementMatch[]          -> Finding[]               (structural channel)
 runContainerChecks : (containers×2, ElementMatch[]) -> Finding[]      (container channel)

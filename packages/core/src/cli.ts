@@ -93,6 +93,7 @@ import {
 } from "./structural/checks.js"
 import { runContainerChecks } from "./structural/containers.js"
 import { matchElements, matchingStats } from "./structural/match.js"
+import { describeOcclusion, dropOccluded } from "./structural/occlusion.js"
 
 const USAGE = `Usage: refdiff compare [options]
        refdiff summary <out-root> [--json]
@@ -238,6 +239,11 @@ Ignore policy (both modes):
   --no-accepted           ignore the decisions file for this run: every accepted
                           deviation is reported again, which is how you re-review
                           what past runs decided
+  --include-occluded      compare elements that were PAINTED OVER at capture time
+                          (under a takeover, modal or drawer) instead of dropping
+                          them. They are real DOM and occasionally the thing you
+                          want to see — an overlay that should not be open, a
+                          pane that failed to close
   --data-slots            treat EVERY matched pair with differing text as demo
                           data and drop its text-content finding. Blind: it
                           cannot tell an amount from a button label, so it hides
@@ -331,6 +337,13 @@ interface RunOptions {
   ground?: Ground
   /** Disable the version-keyed Figma cache for this run. */
   noFigmaCache?: boolean
+  /**
+   * Compare elements that were painted over at capture time instead of dropping
+   * them. A debugging escape hatch: the ghosts under an overlay are real DOM and
+   * occasionally the thing you want to look at (an overlay that should not be
+   * there at all, a pane that failed to close).
+   */
+  includeOccluded?: boolean
   outDir: string
   failThreshold: Severity
   maxGamma?: number
@@ -582,8 +595,23 @@ async function runPair(
   const i = impl.value
   console.log(`  ${i.width}x${i.height} css px, ${i.elements.length} leaf elements`)
 
-  const scalePolicy = o.designScale ?? defaultDesignScale(d)
-  const normalized = normalize(pairRefs(spec.id, d, i), { designScale: scalePolicy })
+  // Before ANYTHING structural: an element painted over at capture time is not
+  // on the screen, and the two sides cover different things, so its ghosts pair
+  // with nothing and land as missing/extra. Dropped here rather than suppressed
+  // later because a suppressed finding still counts as a leaf — it would move
+  // the matched ratio and therefore the phase, leaving a quieter report that
+  // still refuses to read itself. Alignment sees the filtered lists too: a
+  // ghost is exactly the kind of false anchor that drags a fit sideways.
+  const occlusion = o.includeOccluded ? null : dropOccluded(d.elements, i.elements)
+  if (occlusion !== null) {
+    const line = describeOcclusion(occlusion)
+    if (line !== null) console.log(`  ${line}`)
+  }
+  const dVisible = occlusion === null ? d : { ...d, elements: occlusion.design }
+  const iVisible = occlusion === null ? i : { ...i, elements: occlusion.impl }
+
+  const scalePolicy = o.designScale ?? defaultDesignScale(dVisible)
+  const normalized = normalize(pairRefs(spec.id, dVisible, iVisible), { designScale: scalePolicy })
   if (normalized.designScale !== 1) {
     console.log(
       `normalized design side by ×${normalized.designScale.toFixed(4)} (--design-scale ${scalePolicy})`,
@@ -1386,6 +1414,7 @@ async function compare(argv: string[]): Promise<void> {
       bleed: { type: "string" },
       ground: { type: "string" },
       "no-figma-cache": { type: "boolean" },
+      "include-occluded": { type: "boolean" },
       overlay: { type: "boolean" },
       scope: { type: "string" },
       "ignore-text": { type: "string", multiple: true },
@@ -1446,6 +1475,7 @@ async function compare(argv: string[]): Promise<void> {
   }
 
   const noFigmaCache = values["no-figma-cache"] === true
+  const includeOccluded = values["include-occluded"] === true
   const ground = readGround(values.ground)
   if (values.ground !== undefined && ground === undefined)
     fail('--ground must be "transparent" (default) or "keep"')
@@ -1556,7 +1586,19 @@ async function compare(argv: string[]): Promise<void> {
     // included, which is the cost the fix loop pays most often.
     // An entry with `viewports` is several pairs already (`<id>-<viewport id>`), and
     // its id names them all: `pairMatches` reads the pair's `breakpoint.entry`.
-    specs = only ? all.filter((p) => only.some((sel) => pairMatches(p, entryOf(sel)))) : all
+    //
+    // The RAW selector is tried before `entryOf` strips it, because `--` is only set
+    // syntax by convention: a hand-written manifest may spell a pair id with one, and
+    // the annotator's library actively encourages it (it groups by the text before the
+    // first `--`, so `messages-owner--mobile` and `messages-accountant--mobile` are the
+    // only way to get two groups out of a flat list of pairs). Without this, such an id
+    // is UNADDRESSABLE: `entryOf` reduced it to a set entry that does not exist, and the
+    // run died with "no runnable pairs selected" while the id was sitting in the
+    // manifest. Set selectors are unaffected — an entry id contains no `--`, so the raw
+    // and stripped forms are the same string for them.
+    specs = only
+      ? all.filter((p) => only.some((sel) => pairMatches(p, sel) || pairMatches(p, entryOf(sel))))
+      : all
     cellSelectors = only?.filter((sel) => sel.includes("--")) ?? []
     wholeEntries = new Set(only?.filter((sel) => !sel.includes("--")) ?? [])
     if (specs.length === 0) fail(`no runnable pairs selected from ${values.manifest}`)
@@ -1722,6 +1764,7 @@ async function compare(argv: string[]): Promise<void> {
         ...(bleed !== undefined ? { bleed } : {}),
         ...(ground !== undefined ? { ground } : {}),
         ...(noFigmaCache ? { noFigmaCache } : {}),
+        ...(includeOccluded ? { includeOccluded } : {}),
         outDir,
         failThreshold,
         ...(maxGamma !== undefined ? { maxGamma } : {}),

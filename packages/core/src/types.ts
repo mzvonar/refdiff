@@ -121,6 +121,22 @@ export interface ElementNode {
     /** Inside an `aria-hidden` subtree, or `inert` — present to the eye, absent to everything else. */
     hidden: boolean
   }
+  /**
+   * Painted over by something else at capture time — in the page, not on the
+   * screen. Set by DOM-backed adapters only (hit-testing is the sole way to ask
+   * "what is on top here"); a Figma-sourced node leaves it undefined, which is
+   * the adapter saying it cannot tell rather than saying `false`.
+   *
+   * It exists because the self-visibility filter cannot see this case: an
+   * element under a full-screen overlay keeps `display:block`,
+   * `visibility:visible` and `opacity:1`. Comparing those elements produces
+   * findings about pixels nobody can see, and — worse — the two sides of a pair
+   * cover different things, so the ghosts never pair with each other and the
+   * unmatched ratio collapses into the reconcile phase.
+   *
+   * Only an explicit `true` is acted on. See `dropOccluded`.
+   */
+  occluded?: boolean
 }
 
 export type FindingType =

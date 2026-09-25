@@ -5,6 +5,49 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+## 2026-09-25 — "visible" had two meanings and the extractor only implemented one
+
+The DOM extractor's visibility gate was `display:none || visibility:hidden || opacity:0` — an
+element hiding ITSELF. Nothing asked whether something was painted ON TOP of it, and no CSS
+property answers that; `elementFromPoint` is the only thing in the platform that does.
+
+Every overlay pattern therefore leaked its whole page into the comparison. A consumer's phone
+thread takeover (`position:fixed; inset:0`) covers the app chrome, and the comp it is measured
+against covers its own rail — different furniture on each side, so the ghosts never pair with each
+other and each lands as missing-element or extra-element. One real pair: **117 findings, 31 of 51
+leaves matched, phase `reconcile`, confidence 0.15** — while the two screenshots agreed on
+everything a human could see. 57 of the 58 unmatched elements were invisible chrome; exactly one
+was a real difference. After filtering: **45 findings, 16 of 22 matched, phase `polish`**. A pair
+with no overlay excluded 1 element and was otherwise unmoved, and `--include-occluded` reproduced
+the old numbers finding-for-finding — which is what proves the filter is the only change.
+
+Three things worth keeping:
+
+- **Drop, don't suppress.** A suppressed finding still counts as a leaf, so it still moves
+  `designLeaves`/`implLeaves`, the matched ratio and therefore the PHASE. Suppression would have
+  produced a quieter report that still refused to read itself.
+- **Fail open, twice.** `pointer-events:none` makes hit-testing report what is BEHIND the element,
+  so the scrim doing the covering looks covered — return `false` there. Points outside the viewport
+  have no answer at all, and "scrolled out of view" is not "painted over". A wrong `true` silently
+  deletes a real finding, the one failure nothing downstream can catch.
+- **Absent ≠ false.** `occluded` is undefined on Figma nodes, which have no hit test. Only an
+  explicit `true` is dropped — the same contract `affordance` already used, for the same reason.
+
+The guard is a real-browser test, for the reason `dc-props.browser.test.ts` already states: the
+function lives inside the `page.evaluate` closure, and a canned `Page` tests the caller instead.
+Its first draft asserted "partly covered ⇒ not occluded" using a single-line `<span>` inside a tall
+`<div>` — but hit-testing runs on the TEXT's own ink box, not the wrapper's, and a one-line box
+under an overlay is fully covered. The test was wrong and the code was right; the fixture now wraps
+to several lines.
+
+**Found on the way, same root:** `--pair` ran every selector through `entryOf`, which strips
+everything after the first `--` because that is set-expansion syntax. A hand-written manifest may
+legally spell an id with `--`, and the annotator's library actively rewards it (it groups by the
+text before the first `--`, so that is the only way to get groups out of a flat pair list). Such an
+id was UNADDRESSABLE: the run died with "no runnable pairs selected" while the id sat in the
+manifest. The raw selector is now tried before the stripped one; set selectors are unaffected,
+since an entry id contains no `--` and both forms are then the same string.
+
 ## 2026-09-16 — an EXTERNAL plugin has two manifests in two repos, and the stale one is silent
 
 refdiff ships as a Claude Code plugin whose source is its own repo, so its version lives in

@@ -343,6 +343,64 @@ export async function extractElementTree(
         }
       }
 
+      /**
+       * Is this element PAINTED OVER by something else?
+       *
+       * The visibility filter in `walk` asks only whether an element hid ITSELF
+       * (`display:none`, `visibility:hidden`, `opacity:0`). A full-screen overlay
+       * — a phone thread takeover, a modal, a drawer — hides nothing: everything
+       * underneath keeps `display:block; visibility:visible; opacity:1` and is
+       * merely covered. Those elements are extracted, matched and reported, and
+       * because the two sides of a pair cover DIFFERENT things (a comp's thread
+       * arm covers its own rail; an implementation's takeover covers the app
+       * chrome) the ghosts never pair with each other. The result is a pile of
+       * missing/extra findings about pixels no one can see, which also drags the
+       * matched ratio down far enough to force the reconcile phase.
+       *
+       * Hit-testing is the only thing in the platform that answers "what is on
+       * top here" — no CSS property does. Five points rather than one, so a
+       * PARTIALLY covered element (a row half under a sticky header) still counts
+       * as visible: occluded means every sampled point belongs to something else.
+       *
+       * Two deliberate fail-OPEN cases, both returning `false`:
+       *
+       * - `pointer-events: none`. Hit-testing then reports whatever is BEHIND the
+       *   element, so a decorative overlay would look occluded when it is the
+       *   thing doing the occluding. The hit test cannot speak about these, and a
+       *   wrong `true` silently deletes a real finding.
+       * - Nothing sampleable. Points outside the viewport return null, so an
+       *   element scrolled below the fold has no answer — "not visible on screen
+       *   right now" is not "painted over", and only the latter is noise.
+       *
+       * An ancestor or descendant coming back is NOT occlusion: the point is
+       * inside this element's own subtree, which is what being on top looks like
+       * for a text leaf inside its own wrapper.
+       */
+      const isOccluded = (el: Element, cs: CSSStyleDeclaration, r: DOMRect): boolean => {
+        if (cs.pointerEvents === "none") return false
+        if (r.width < 1 || r.height < 1) return false
+        const points: [number, number][] = [
+          [0.5, 0.5],
+          [0.15, 0.15],
+          [0.85, 0.15],
+          [0.15, 0.85],
+          [0.85, 0.85],
+        ]
+        let tested = 0
+        let covered = 0
+        for (const [fx, fy] of points) {
+          const x = r.x + r.width * fx
+          const y = r.y + r.height * fy
+          if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue
+          const top = document.elementFromPoint(x, y)
+          if (top === null) continue
+          tested++
+          if (top === el || el.contains(top) || top.contains(el)) continue
+          covered++
+        }
+        return tested > 0 && covered === tested
+      }
+
       const emit = (
         el: Element,
         elRect: DOMRect,
@@ -448,6 +506,7 @@ export async function extractElementTree(
           if (ownText) shapeNode["text"] = ownText
           if (Object.keys(style).length > 0) shapeNode["style"] = style
           shapeNode["affordance"] = affordanceOf(el, cs)
+          shapeNode["occluded"] = isOccluded(el, cs, rect)
           out.push(shapeNode)
           return
         }
@@ -512,6 +571,10 @@ export async function extractElementTree(
         // to tell "not clickable" from "this adapter does not know", and an
         // omitted key is how the Figma side says the latter.
         node["affordance"] = affordanceOf(el, cs)
+        // Same contract, same reason: absent means "this adapter cannot tell"
+        // (the Figma side has no hit test), which is NOT the same claim as
+        // `false`. The pipeline only ever drops an explicit `true`.
+        node["occluded"] = isOccluded(el, cs, rect)
         out.push(node)
       }
 
