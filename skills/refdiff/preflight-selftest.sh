@@ -272,6 +272,51 @@ A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
 case "$S:$A:$EXIT" in "stale-install 1.6.0 < 1.6.2:ask:3") ok "plugin: install behind the catalog → ask, reported as stale-INSTALL" ;;
   *) bad "plugin stale-install" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
 
+# 18-20. UNKNOWN IS NOT CURRENT. Every one of these printed `current (serving 1.4.0)` before
+#     2026-09-26 — an affirmative claim about a record it had failed to read. A deep review found
+#     it; these rows are why it cannot come back. The three inputs are distinct on purpose: absent,
+#     malformed, and present-but-silent-about-this-plugin all reach the same `|| true`.
+D=$(mkplugin "$TMP/plug-norec" "1.4.0")
+CFG18="$TMP/cfg18"; mkrecord "$CFG18" "1.6.2" "1.6.2"; rm -f "$CFG18/plugins/installed_plugins.json"
+OUT=$(CLAUDE_CONFIG_DIR="$CFG18" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in unknown:proceed:0) ok "plugin: install record ABSENT → unknown, never 'current' (proceed, exit 0)" ;;
+  *) bad "plugin unknown/absent" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+CFG19="$TMP/cfg19"; mkrecord "$CFG19" "1.6.2" "1.6.2"; printf '{oops' > "$CFG19/plugins/installed_plugins.json"
+OUT=$(CLAUDE_CONFIG_DIR="$CFG19" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in unknown:proceed:0) ok "plugin: install record MALFORMED → unknown, never 'current'" ;;
+  *) bad "plugin unknown/malformed" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+CFG20="$TMP/cfg20"; mkrecord "$CFG20" "1.6.2" "1.6.2"
+printf '{"plugins":{"somethingelse@claude-skills-public":[{"scope":"local","version":"9.9.9"}]}}\n' \
+  > "$CFG20/plugins/installed_plugins.json"
+OUT=$(CLAUDE_CONFIG_DIR="$CFG20" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in unknown:proceed:0) ok "plugin: record names no version for THIS plugin → unknown, never 'current'" ;;
+  *) bad "plugin unknown/other-plugin" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 21. AHEAD IS NOT DRIFT, and it must not be reported backwards. A session serving a version
+#     NEWER than the record (a downgrade, or the highest record sitting at another scope) used to
+#     satisfy the old `loaded != installed` test and print `stale-session 1.7.0 < 1.6.2` — the
+#     versions the wrong way round, with "reload" attached to a problem reloading cannot fix.
+CFG21="$TMP/cfg21"; mkrecord "$CFG21" "1.6.2" "1.6.2"
+D=$(mkplugin "$TMP/plug-ahead" "1.7.0")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG21" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in "current (serving 1.7.0):proceed:0") ok "plugin: session AHEAD of the record → current, not a backwards stale-session" ;;
+  *) bad "plugin ahead" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 22. The two asks carry DIFFERENT remedies, and that difference is the reason there are two of
+#     them. Rows 15/17 assert the fact label; nothing asserted the prose the user actually reads.
+OUT=$(CLAUDE_CONFIG_DIR="$CFG" REFDIFF_DIR="$TMP/co15" bash "$(mkplugin "$TMP/plug-ask1" "1.4.0")/preflight.sh" 2>&1)
+R1=$(printf '%s\n' "$OUT" | grep -c -- "/reload-plugins")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG2" REFDIFF_DIR="$TMP/co15" bash "$(mkplugin "$TMP/plug-ask2" "1.6.0")/preflight.sh" 2>&1)
+R2=$(printf '%s\n' "$OUT" | grep -c -- "claude plugin update")
+case "$R1:$R2" in 1:1) ok "plugin: stale-session says RELOAD, stale-install says UPDATE" ;;
+  *) bad "plugin ask remedies" "reload-lines=$R1 update-lines=$R2" ;; esac
+
 echo ""
 echo "  ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" = 0 ] || exit 1

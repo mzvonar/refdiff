@@ -34,7 +34,9 @@
 # Env:
 #   REFDIFF_DIR             checkout to check (else: resolved from this skill's own
 #                           location in dev mode, else from the `refdiff` wrapper on PATH)
-#   REFDIFF_SKIP_FRESHNESS=1  skip every network fetch (upstream checks report skipped-opt-out)
+#   REFDIFF_SKIP_FRESHNESS=1  silence every freshness check that can ASK — the two upstream ones
+#                             (which fetch) and the plugin session-version one (which does not).
+#                             The build and server checks always run.
 set -uo pipefail
 
 PORT=""; QUIET=0
@@ -89,7 +91,10 @@ say "[ refdiff pre-flight ]"
 # PLUGIN: the skill dir is inside a Claude Code plugin cache (installed from the
 #      claude-skills-public marketplace). The cache is a clone of this repo, but it is
 #      NOT the engine — it is never built — so the checkout is resolved like vendored mode.
-#      The skill text cannot drift by copy; it moves with `claude plugin update`.
+#      The skill text cannot drift by COPY; it moves with `claude plugin update`. It can still be
+#      stale to the SESSION, which pins a version at its first call and never re-resolves — §2
+#      measures that. (This sentence used to stop at "it moves with `claude plugin update`", which
+#      is the exact reasoning §2 exists to refute, left standing 100 lines above it.)
 if [ -f "$SKILL_DIR/.skill-version" ]; then
   MODE="vendored"
 elif case "$SKILL_DIR" in */.claude/plugins/*) true ;; *) false ;; esac; then
@@ -212,12 +217,22 @@ if [ "$MODE" = "plugin" ]; then
     PF_INST=$(printf '%s'   "$PF_OUT" | sed -n 's/.*"installed":"\([^"]*\)".*/\1/p')
     PF_CAT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"catalog":"\([^"]*\)".*/\1/p')
     PF_ACT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"action":"\([^"]*\)".*/\1/p')
-    if [ -z "$PF_ACT" ]; then
+    # `unknown` before `current`, and BOTH empty-PF_ACT and action=unknown land there. The earlier
+    # shape tested only for an empty PF_ACT and sent everything else that was not an ask to
+    # `current (serving X)` — so a corrupt install record produced an affirmative claim this
+    # script had not measured. An unverifiable answer is not a pass.
+    if [ -z "$PF_ACT" ] || [ "$PF_ACT" = "unknown" ]; then
       fact skill_freshness "unknown"
-      warn "could not read the plugin install record — skill text freshness unverified"
+      warn "could not read the plugin install record — skill text freshness UNVERIFIED (this is not a pass: the session may be serving stale text)"
     elif [ "$PF_ACT" != "ask" ]; then
       fact skill_freshness "current (serving ${PF_LOADED})"
-    elif [ -n "$PF_LOADED" ] && [ -n "$PF_INST" ] && [ "$PF_LOADED" != "$PF_INST" ]; then
+    # Which ask it is comes from the VERSIONS, and `loaded < installed` is the session case. The
+    # earlier test was `PF_LOADED != PF_INST`, which also caught loaded being AHEAD of the record
+    # (a downgrade, or the highest record sitting at another scope) and then printed the versions
+    # backwards — `stale-session 1.7.0 < 1.6.2` — with the wrong remedy attached.
+    elif [ -n "$PF_LOADED" ] && [ -n "$PF_INST" ] && \
+         [ "$PF_LOADED" != "$PF_INST" ] && \
+         [ "$(printf '%s\n%s\n' "$PF_LOADED" "$PF_INST" | sort -V | head -1)" = "$PF_LOADED" ]; then
       fact skill_freshness "stale-session ${PF_LOADED} < ${PF_INST}"
       ask "This session is SERVING refdiff ${PF_LOADED} while ${PF_INST} is installed — the version a session resolves is pinned at its first call to the skill and never moves, so an update made mid-session does not reach it. PUT IT TO THE USER: reload (/reload-plugins, or restart) and re-run so the newer text is the one being followed -- or carry on with ${PF_LOADED}, which still measures correctly and may simply not know a newer rule."
     else

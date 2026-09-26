@@ -107,6 +107,7 @@ without it. **Read the `action` field — it is the one thing to branch on:**
 | `skill_freshness` (vendored) | `stale-<N>` / `differs` | **ask.** *Sync* → `sync-skill.sh`, then restart against the updated copy. *Carry on* → this copy still measures correctly, it may simply not know a newer rule. `stale-<N>` is a real commit count (local objects present); `differs` means only `ls-remote` could answer — say **differs**, never "behind", because without the objects the direction is unknowable. |
 | `skill_freshness` (plugin) | `stale-session <a> < <b>` | **ask.** The version a session resolves is pinned at its FIRST call to the skill and never moves, while the cache keeps every version side by side — so an update made mid-session writes a directory this session will never read, and nothing else reports it (the update prints success, `check-drift.sh` prints "current"). *Reload* → `/reload-plugins`, or restart, then re-run. *Carry on* → the older text still measures correctly. Measured 2026-09-25: a session served 1.4.0 start to finish against an installed 1.6.x, missing two rules it needed, while this row read `skipped-plugin-mode`. |
 | `skill_freshness` (plugin) | `stale-install <a> < <b>` | **ask.** The INSTALL is behind the catalog — a different remedy from the row above, which is why it is worded differently: `claude plugin update`, then reload. Reloading alone changes nothing here. |
+| `skill_freshness` (plugin) | `unknown` | **proceed, with a warning — and it is NOT a pass.** The install record was absent, unreadable, malformed, or named no version for this plugin, so this run could not tell whether the session is stale. Reported rather than rounded to `current`: until 2026-09-26 every one of those inputs printed `current (serving <x>)`, an affirmative claim the check had not measured. Same failure this row exists to catch. |
 | `checkout_freshness` | `behind-<N>` / `diverged-…` | **ask.** *Pull + rebuild* → `git pull --ff-only && pnpm build`. *Carry on* → the engine, and in dev mode SKILL.md itself, stay at this version. `diverged` is a merge/rebase decision, not a pull. |
 | `ahead-<N>` · `current` · `skipped-*` | | Continue silently — being ahead is not drift. |
 
@@ -141,8 +142,11 @@ quote those instead. (Anchor: a small button 8px too tall on ten of ten cells, r
 nothing for four days, then fixed with a delta of exactly `+0/−0` — the proof was
 `impl.height` moving 32 → 24 and the icon's `y` moving 8 → 4 to meet the design's.)
 
-`REFDIFF_SKIP_FRESHNESS=1` skips every network fetch (the two upstream checks report
-`skipped-opt-out`, so nothing asks; the build and server checks are local and still run). `REFDIFF_DIR` names the
+`REFDIFF_SKIP_FRESHNESS=1` silences every freshness check that can ASK — the two upstream ones,
+which fetch, and the plugin session-version one, which is entirely local; all three report
+`skipped-opt-out`. The build and server checks are local and always run. (It was documented as
+"skips every network fetch" while also gating a check that makes no network call — the flag's
+scope changed and the sentence describing the old scope did not.) `REFDIFF_DIR` names the
 checkout explicitly. `bash preflight-selftest.sh` falsifies every row against synthetic offender
 trees — run it after touching either script.
 
