@@ -41,11 +41,18 @@ not on PATH, run the bundled script — it is idempotent and touches no
 consuming repo:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT:-$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/../..}/skills/refdiff/setup-dev.sh" --watch
+# plugin install — the path is substituted into this text before you read it:
+bash "${CLAUDE_PLUGIN_ROOT}/skills/refdiff/setup-dev.sh" --watch
+# dev symlink or vendored copy — nothing is substituted, so resolve from the skill file:
+bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/setup-dev.sh" --watch
 # options: --checkout <dir> (default $REFDIFF_DIR, else ~/.local/share/refdiff; cloned from
 #          github.com/mzvonar/refdiff if missing)  --no-browser  (skip Playwright Chromium)
 #          --no-links  (skip the dev-mode skill symlinks; automatic under a plugin install)
 ```
+
+Two lines, not one `${CLAUDE_PLUGIN_ROOT:-<fallback>}`: only the exact token
+`${CLAUDE_PLUGIN_ROOT}` is substituted, so the `:-` form reaches bash verbatim and always takes the
+fallback — SKILL.md §"Tool pre-flight" records the measurement.
 
 It makes these true, then verifies (`refdiff --help`, test count):
 the checkout exists; deps + Playwright Chromium installed; both packages

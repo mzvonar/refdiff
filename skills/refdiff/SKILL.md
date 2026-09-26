@@ -86,9 +86,26 @@ executable the moment `dist` is rebuilt from clean.
 things it checks make the numbers lie rather than merely being old, and both have cost real
 sessions real time.
 
+In a **plugin** install (the normal case) the path below is already the real one — Claude Code
+substitutes it into this text before you read it:
+
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT:-$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/../..}/skills/refdiff/preflight.sh" --port <annotator port>
+bash "${CLAUDE_PLUGIN_ROOT}/skills/refdiff/preflight.sh" --port <annotator port>
 ```
+
+In **dev** or **vendored** mode nothing is substituted, so resolve from the skill file instead:
+
+```bash
+bash "$(dirname "$(readlink -f ~/.claude/skills/refdiff/SKILL.md)")/preflight.sh" --port <annotator port>
+```
+
+Two lines rather than one `${CLAUDE_PLUGIN_ROOT:-<fallback>}`, because that form does not do what it
+looks like: the substitution replaces the exact token `${CLAUDE_PLUGIN_ROOT}` and nothing else, so
+`${CLAUDE_PLUGIN_ROOT:-…}` reaches bash verbatim, expands an environment variable that is NOT
+exported to tool calls, and takes the fallback branch — in a plugin install, where the fallback's
+`~/.claude/skills/refdiff` symlink does not exist. Measured in one session: two lines apart in this
+file, `${CLAUDE_PLUGIN_ROOT}` came through as the cache path and `${CLAUDE_PLUGIN_ROOT:-…}` came
+through unchanged.
 
 `--port` (or `--app-url`) is optional and adds the served-instance check; everything else runs
 without it. **Read the `action` field — it is the one thing to branch on:**

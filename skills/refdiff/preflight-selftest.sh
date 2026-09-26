@@ -11,12 +11,15 @@
 # that halts on everything.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# plugin-freshness.sh asks ONCE per session per plugin per version, keyed on
-# CLAUDE_CODE_SESSION_ID — which makes it STATEFUL, and a stateful dependency inherited from the
-# ambient environment is not a test fixture. Left alone, this file inherited the real session's id,
-# so rows sharing a loaded version collided with each other AND the suite gave a different answer
-# on its second run. Empty disables the ack; the ack itself is covered in claude-skills-public's
-# scripts/tests/plugin-freshness.test.sh, which controls the id explicitly.
+# plugin-freshness.sh is stateless, and this line keeps it that way from here: pinning the session
+# id to empty means no ambient value from the invoking shell can reach a fixture.
+#
+# It briefly was NOT stateless — a once-per-session ack keyed on CLAUDE_CODE_SESSION_ID — and this
+# export was added to make the suite repeatable under it. That was the wrong repair: disabling the
+# feature for every row meant no row could reach its new `asked-already` action, which is exactly
+# how a review later found that action being reported by preflight as `current (serving <stale>)`.
+# The suite was 32/32 green on a tree with that bug in it. The ack has since been removed; the
+# export stays because pinning ambient state is right regardless of what the script does with it.
 export CLAUDE_CODE_SESSION_ID=""
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  ok   %s\n' "$1"; }
@@ -41,6 +44,23 @@ factof() { printf '%s\n' "$1" | sed -n "s/^  *$2 *= *//p" | head -1; }
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 echo "[ preflight self-test ]"
+
+# --- 0. PRECONDITION: the files under test must sit BESIDE this script.
+# Every fixture is built by copying them out of $HERE, so this suite measures the copy it ships
+# with — the vendored one when run from a vendored skill dir, the checkout's when run from the
+# checkout. That is the behaviour we want, and it makes the location a precondition rather than a
+# detail: a failing `cp` is not fatal under `set -uo pipefail`, so a run from the wrong directory
+# produced twenty-odd row failures that all read as script bugs. Say it once, and stop.
+MISSING=""
+for need in preflight.sh sync-skill.sh setup-dev.sh SKILL.md; do
+  [ -f "$HERE/$need" ] || MISSING="$MISSING $need"
+done
+if [ -n "$MISSING" ]; then
+  printf '  FAIL precondition\n     not beside this script:%s\n' "$MISSING" >&2
+  printf "     run it from a refdiff skill dir (the checkout's skills/refdiff, or a vendored copy)\n" >&2
+  exit 2
+fi
+ok "precondition: the four files under test sit beside this script"
 
 # --- 1. PRISTINE CONTROL. Without this row every row below passes on a script that halts
 #        on everything, and on a clobbered fixture.
@@ -80,7 +100,29 @@ case "$M" in dev\ *) ok "mode: no stamp → dev" ;; *) bad "mode dev" "skill_mod
 printf 'sha=deadbeef\nref=main\norigin=https://example.invalid/x.git\n' > "$TMP/mode/skills/refdiff/.skill-version"
 OUT=$(run "$TMP/mode"); M=$(factof "$OUT" skill_mode); S=$(factof "$OUT" skill_freshness)
 case "$M" in vendored\ *) ok "mode: stamp → vendored" ;; *) bad "mode vendored" "skill_mode='$M'" ;; esac
-case "$S" in skipped-opt-out) ok "REFDIFF_SKIP_FRESHNESS=1 skips the network" ;; *) bad "opt-out" "skill_freshness='$S'" ;; esac
+# This row's label used to read "REFDIFF_SKIP_FRESHNESS=1 skips the network", which it could not
+# show: `run()` sets that variable for EVERY row, so the row observed the harness-wide setting and
+# would have read the same on a script that ignored the flag entirely and merely had no reachable
+# remote (the stamp's origin is `example.invalid`). It says what it measures now — that a VENDORED
+# copy reports the opt-out value rather than a made-up one — and the contrast that actually pins
+# the flag follows it.
+case "$S" in skipped-opt-out) ok "mode: a vendored copy under the opt-out reports skipped-opt-out" ;; *) bad "opt-out" "skill_freshness='$S'" ;; esac
+
+# --- 5b. The opt-out, by CONTRAST. Same fixture, flag absent: the value must CHANGE, or nothing
+#         here has shown the flag does anything. The origin is a local path that does not exist, so
+#         git fails immediately and no DNS or network is touched either way — the point is the
+#         difference between the two runs, not which non-opt-out value appears.
+printf 'sha=deadbeef\nref=main\norigin=file:///nonexistent-refdiff-origin.git\n' \
+  > "$TMP/mode/skills/refdiff/.skill-version"
+#         (no `--quiet` — that flag prints the `action` line ALONE, so a fact assertion under it
+#         reads an empty string and fails for the wrong reason.)
+OUT=$(REFDIFF_DIR="$TMP/mode" bash "$TMP/mode/skills/refdiff/preflight.sh" 2>&1)
+S2=$(factof "$OUT" skill_freshness)
+case "$S2" in
+  skipped-opt-out) bad "opt-out contrast" "without the flag skill_freshness is STILL '$S2' — the flag is not what produces it" ;;
+  "") bad "opt-out contrast" "no skill_freshness fact at all" ;;
+  *) ok "opt-out contrast: without the flag the same fixture reports '$S2', not skipped-opt-out" ;;
+esac
 
 # --- 6. An UNREADABLE stamp is `unknown`, never silently `current`. A stamp missing its sha
 #        must not be mistaken for a copy that is up to date.
@@ -323,6 +365,36 @@ OUT=$(CLAUDE_CONFIG_DIR="$CFG2" REFDIFF_DIR="$TMP/co15" bash "$(mkplugin "$TMP/p
 R2=$(printf '%s\n' "$OUT" | grep -c -- "claude plugin update")
 case "$R1:$R2" in 1:1) ok "plugin: stale-session says RELOAD, stale-install says UPDATE" ;;
   *) bad "plugin ask remedies" "reload-lines=$R1 update-lines=$R2" ;; esac
+
+# 23. THE ARM-SELECTION GUARD, reached for the first time. Row 21 looks like it tests this and does
+#     not: plugin-freshness's own directional `behind()` already answers `proceed` for an ahead
+#     session, so preflight's guard is never entered and reverting it to the old `!=` test SURVIVES
+#     row 21. The case that actually reaches it is an ASK from the CATALOG arm while loaded is
+#     AHEAD of installed — then `loaded != installed` is true and the old code printed
+#     `stale-session 1.7.0 < 1.6.0`: versions backwards, "reload" attached to a problem only an
+#     update fixes.
+CFG23="$TMP/cfg23"; mkrecord "$CFG23" "1.6.0" "1.6.2"
+D=$(mkplugin "$TMP/plug-arm" "1.7.0")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG23" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+U=$(printf '%s\n' "$OUT" | grep -c -- "claude plugin update")
+case "$S:$A:$EXIT:$U" in "stale-install 1.6.0 < 1.6.2:ask:3:1") ok "plugin: ahead-of-record + install behind catalog → stale-INSTALL with the update remedy" ;;
+  *) bad "plugin arm selection" "skill_freshness='$S' action='$A' exit=$EXIT update-lines=$U" ;; esac
+
+# 24. AN UNRECOGNISED ACTION IS NOT A PASS. preflight allow-lists `proceed`; everything it does not
+#     know becomes `unknown` + a warning. This branch has been wrong twice, both times because it
+#     asked what the action was NOT — most recently when a third action was added on the other side
+#     of the JSON boundary and landed in `current (serving <stale>)`. A stub script standing in for
+#     a future plugin-freshness that grows a value this preflight has never heard of.
+STUB="$TMP/plug-stub/.claude/plugins/cache/claude-skills-public/refdiff/1.4.0/skills/refdiff"
+mkdir -p "$STUB"; cp "$HERE/preflight.sh" "$STUB/"
+printf '#!/usr/bin/env bash\necho %s\nexit 0\n' \
+  '{\"plugin\":\"refdiff\",\"marketplace\":\"claude-skills-public\",\"loaded\":\"1.4.0\",\"installed\":\"1.7.2\",\"catalog\":\"1.7.2\",\"action\":\"some-future-action\"}' \
+  > "$STUB/plugin-freshness.sh"
+OUT=$(CLAUDE_CONFIG_DIR="$CFG" REFDIFF_DIR="$TMP/co15" bash "$STUB/preflight.sh" 2>&1); EXIT=$?
+S=$(factof "$OUT" skill_freshness)
+case "$S:$EXIT" in unknown:0) ok "plugin: an action preflight does not recognise → unknown, never 'current'" ;;
+  *) bad "plugin unknown action" "skill_freshness='$S' exit=$EXIT" ;; esac
 
 echo ""
 echo "  ${PASS} passed, ${FAIL} failed"

@@ -217,15 +217,21 @@ if [ "$MODE" = "plugin" ]; then
     PF_INST=$(printf '%s'   "$PF_OUT" | sed -n 's/.*"installed":"\([^"]*\)".*/\1/p')
     PF_CAT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"catalog":"\([^"]*\)".*/\1/p')
     PF_ACT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"action":"\([^"]*\)".*/\1/p')
-    # `unknown` before `current`, and BOTH empty-PF_ACT and action=unknown land there. The earlier
-    # shape tested only for an empty PF_ACT and sent everything else that was not an ask to
-    # `current (serving X)` — so a corrupt install record produced an affirmative claim this
-    # script had not measured. An unverifiable answer is not a pass.
-    if [ -z "$PF_ACT" ] || [ "$PF_ACT" = "unknown" ]; then
-      fact skill_freshness "unknown"
-      warn "could not read the plugin install record — skill text freshness UNVERIFIED (this is not a pass: the session may be serving stale text)"
-    elif [ "$PF_ACT" != "ask" ]; then
+    # ALLOW-LIST `proceed`; everything unrecognised is `unknown`. This branch has now been wrong
+    # twice in the same way, and both times because it asked what the action was NOT:
+    #   - it first tested only for an empty PF_ACT, so a corrupt install record reported
+    #     `current (serving X)` — an affirmative claim it had not measured;
+    #   - it was then fixed to also catch `unknown`, and a later commit added a THIRD action
+    #     (`asked-already`, since removed) which was neither empty, nor `unknown`, nor `ask`, so
+    #     it landed in `current` and every repeat run in a session asserted currency for a session
+    #     measured as stale.
+    # A deny-list has to be updated whenever the other side grows a value; an allow-list fails
+    # closed instead, which is the direction this check exists to fail in.
+    if [ "$PF_ACT" = "proceed" ]; then
       fact skill_freshness "current (serving ${PF_LOADED})"
+    elif [ "$PF_ACT" != "ask" ]; then
+      fact skill_freshness "unknown"
+      warn "plugin-freshness returned '${PF_ACT:-<nothing>}' — skill text freshness UNVERIFIED (this is not a pass: the session may be serving stale text)"
     # Which ask it is comes from the VERSIONS, and `loaded < installed` is the session case. The
     # earlier test was `PF_LOADED != PF_INST`, which also caught loaded being AHEAD of the record
     # (a downgrade, or the highest record sitting at another scope) and then printed the versions
