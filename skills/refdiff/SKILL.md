@@ -158,6 +158,14 @@ per-repo environment traps that make a capture fail in ways that read as product
    `crops.impl`, native resolution) only when the values do not explain the
    finding — `missing-element`, `extra-element`, `pixel-region`. Never open
    `design.png` and `impl.png` side by side to "compare".
+   **Measuring the WRONG QUANTITY is the failure this rule does not prevent, and
+   it wears the rule's own costume:** two numbers, agreeing, about the wrong
+   boxes. An element the design aligns to an edge is compared by its margin to
+   the PARENT on that edge — not by its centre, and not by the text box that is
+   all `elements.json` holds for a padded control. And margin equality BETWEEN
+   elements outranks an absolute position match, with one guard for the case
+   that rule cannot see. Both are in `polish.md` under **Layout**; read them
+   before the first `position` finding, not after a human points at the screen.
    **The one carve-out: an element NEITHER channel can pair has no finding to
    read, and one crop is then its whole evidence.** The extractor reads DOM, so
    anything you add as SVG, canvas or a pseudo-element is invisible to the

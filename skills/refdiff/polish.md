@@ -484,6 +484,61 @@ items is now a typed finding — read it there:
   shift), `size` (box w×h; text measured by glyph-ink box), `spacing`
   (nearest-sibling gap below / right, adjacent on BOTH sides). `elements.json`
   holds both trees in world space if you need a box the findings do not show.
+
+  **An element the design ALIGNS to one edge is compared by its margin to the
+  PARENT on that edge — never by its centre, and never by the text box inside
+  it.** Establish which edge the design aligns it to first (that is structure, so
+  reading the comp for it is legitimate), then measure the same gap on both
+  sides. Both wrong ways are things the numbers actively invite:
+  - *The text box.* `elements.json` holds LEAVES, so a padded control's entry is
+    its text, and two text boxes can agree to half a pixel while the controls
+    they sit in do not. Reconstruct the visual box by adding the padding back
+    (the comp's from its own declaration, the implementation's from its class).
+    Measured 2026-09-25: a pane-header badge's text right edge read 1048.6
+    against 1048.0 — "aligned" — while the badge's margin to the pane's right
+    edge was 0.5 px in the comp and **19.0 px** in the implementation, which is
+    a horizontal padding applied to both sides where the comp's header has none.
+    The designer saw it at a glance; the text boxes said it was fine.
+  - *The centre.* A right-aligned element's centre moves with its own width, so
+    a longer label shifts the centre while the alignment is untouched. Compare
+    centres only for something the design actually centres.
+
+  **The parent is usually not IN the element model, and you derive it.**
+  Containers are not leaves, so they are never matched and never diffed — the
+  `pixel-region` message says so itself. Take the parent's edge as the extent of
+  the region's own elements (`max(x + w)` for a right edge, `min(x)` for a left)
+  on EACH side separately, or read the container's box out of the comp's source.
+  A rule you cannot execute is not a rule, and this is the step that makes the
+  one above executable.
+
+  **Equal margins BETWEEN elements outrank an absolute px position match.**
+  Matching gaps is what the eye reads; an absolute coordinate is the accumulated
+  consequence of everything above and left of the element, so one upstream box
+  moves fifty of them. refdiff already weights it that way and the tolerances say
+  so out loud — `spacingTolerance` is **2 px** against `positionTolerance`'s
+  **5 px**, so the relative measure is held to the stricter standard. Work the
+  `spacing` findings first and read a surviving `position` finding as
+  DOWNSTREAM of a spacing or parent-edge cause rather than as its own defect.
+  Note which direction that cuts: two elements 4 px off the same way both pass
+  `position` and their gap is right, but two off 4 px in OPPOSITE directions also
+  both pass while the gap between them is 8 px wrong — on that shape the rule is
+  stricter than the tolerance table, not looser.
+
+  **The guard, because relative measurement has one blind spot: a whole block
+  offset produces `position` findings and NO `spacing` findings at all**, since
+  every gap inside the block is correct. So a cluster of position findings with
+  no spacing findings anywhere near them is not noise to deprioritise — it is
+  the signature of the block itself sitting in the wrong place, and it is the one
+  case the relative rule cannot see. Check it ONCE per surface, against the
+  parent's own gutters: the leftmost and rightmost element extents on each side,
+  compared as margins to the frame. Measured 2026-09-25: a page sat on gutters of
+  24/24 px where its comp drew 35/43, against frames of the same width (1100 vs
+  1102) with no design-scale normalisation applied — and NO finding said so. It
+  surfaced instead as a page-wide `scale` of 1.065 in the alignment fit, the same
+  shape as the `scaleY` the leading note above describes, which reads as "the
+  layouts disagree horizontally" and names no element. `refdiff drift --axis x`
+  is what resolves it: a FLAT residual is one offset, a STEPPING one is a width
+  distributed differently, and that distinction is the whole diagnosis.
 - **Presence** → `missing-element` / `extra-element` with the element's text
   or role and size. Icons and glyph swaps (Upload vs ChevronsUpDown) land
   here or in `pixel-region`. Elements pair by content before geometry: a
