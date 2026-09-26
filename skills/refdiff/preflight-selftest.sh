@@ -11,6 +11,13 @@
 # that halts on everything.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# plugin-freshness.sh asks ONCE per session per plugin per version, keyed on
+# CLAUDE_CODE_SESSION_ID — which makes it STATEFUL, and a stateful dependency inherited from the
+# ambient environment is not a test fixture. Left alone, this file inherited the real session's id,
+# so rows sharing a loaded version collided with each other AND the suite gave a different answer
+# on its second run. Empty disables the ack; the ack itself is covered in claude-skills-public's
+# scripts/tests/plugin-freshness.test.sh, which controls the id explicitly.
+export CLAUDE_CODE_SESSION_ID=""
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  ok   %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  FAIL %s\n     %s\n' "$1" "$2"; }

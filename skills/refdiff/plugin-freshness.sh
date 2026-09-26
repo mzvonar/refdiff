@@ -6,11 +6,10 @@
 # Defaults to $CLAUDE_PLUGIN_ROOT, which Claude Code sets to the plugin root of the skill
 # being run — so a skill calls it with no arguments.
 #
-# A COPY. The canonical file is claude-skills-public `scripts/plugin-freshness.sh`, which the
-# plugins in that repo reach through the marketplace clone. refdiff is its own repo and is also
-# installed dev and vendored, where no marketplace clone exists — so it carries its own, and
-# `preflight.sh` calls THIS one. Change the canonical first, then copy it across; the two are
-# byte-identical apart from this paragraph.
+# A COPY. The canonical file is claude-skills-public `scripts/plugin-freshness.sh`, which that
+# repo also copies into each plugin that ships it. refdiff is its own repo and is also installed
+# dev and vendored, so it carries its own and `preflight.sh` calls THIS one. Change the canonical
+# first, then copy it across; the two are byte-identical apart from this paragraph.
 #
 # WHY THIS EXISTS, and why check-drift.sh does not cover it.
 #
@@ -35,7 +34,13 @@
 # handoff. The tell was one line nobody looks at: the "Base directory for this skill" the Skill
 # tool prints on invocation.
 #
-# Exit: 0 = current · 3 = ask the user (a version is behind) · 2 = could not determine.
+# Exit: 0 = current (and SILENT — nothing to say) · 3 = ask the user (a version is behind) ·
+#       2 = could not determine · 4 = the CALLER is wired wrong (see below).
+#
+# 4 is separate from 2 on purpose. "I could not read the record" and "you called me wrong" both
+# mean no answer, but only one of them is the caller's bug — and folding them together is exactly
+# how the first rollout of this check did nothing for thirteen skills while every one of them
+# documented the result as "undetermined, carry on". A wiring bug must be loud.
 # 3 rather than 1 on purpose: the skill still MEASURES correctly, it may simply not know a
 # newer rule, so "carry on" stays a legitimate answer and the only thing ruled out is settling
 # it silently. That is the same contract refdiff's preflight uses for `action = ask`.
@@ -47,28 +52,54 @@
 # was written to catch, inside the script itself. Both are now distinguishable, both are tested.
 set -uo pipefail
 
-DIR="" ; QUIET=0 ; JSON=0
+DIR="" ; QUIET=0 ; JSON=0 ; VERBOSE=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --quiet) QUIET=1; shift ;;
-    --json)  JSON=1; shift ;;
+    --quiet)   QUIET=1; shift ;;
+    --json)    JSON=1; shift ;;
+    --verbose) VERBOSE=1; shift ;;
     -h|--help) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "unknown option $1" >&2; exit 2 ;;
     *) DIR="$1"; shift ;;
   esac
 done
-DIR="${DIR:-${CLAUDE_PLUGIN_ROOT:-}}"
-[ -n "$DIR" ] || { echo "plugin-freshness: no dir and no CLAUDE_PLUGIN_ROOT" >&2; exit 2; }
-DIR="$(cd "$DIR" 2>/dev/null && pwd)" || { echo "plugin-freshness: no such dir" >&2; exit 2; }
 
+# BROKEN WIRING IS NOT "COULD NOT DETERMINE", and collapsing the two is how the first version of
+# this check managed to do nothing at all for thirteen skills. `${CLAUDE_PLUGIN_ROOT}` is a token
+# Claude Code substitutes into SKILL.md TEXT when a skill loads; it is NOT an exported environment
+# variable (measured: 15 CLAUDE_* vars reach a Bash call and that is not one of them). So a caller
+# that passes no argument, or that passes the placeholder unexpanded, has a wiring bug — and must
+# hear about it, because the alternative is a gate that silently never fires.
+case "${DIR:-}" in
+  *'${CLAUDE_PLUGIN_ROOT}'*|*'$CLAUDE_PLUGIN_ROOT'*)
+    echo "plugin-freshness: WIRING BUG — the caller passed the literal placeholder '$DIR'." >&2
+    echo "  \${CLAUDE_PLUGIN_ROOT} is substituted into SKILL.md text when a skill loads." >&2
+    echo "  If you see it unexpanded, pass the skill's own base directory instead." >&2
+    exit 4 ;;
+esac
+DIR="${DIR:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "$DIR" ]; then
+  echo "plugin-freshness: WIRING BUG — no directory argument, and CLAUDE_PLUGIN_ROOT is not set" >&2
+  echo "  in this process (it is a SKILL.md text substitution, not an exported variable)." >&2
+  echo "  Call it as: bash …/scripts/plugin-freshness.sh \"\${CLAUDE_PLUGIN_ROOT}\"" >&2
+  exit 4
+fi
+DIR="$(cd "$DIR" 2>/dev/null && pwd)" || { echo "plugin-freshness: no such dir: $DIR" >&2; exit 4; }
+
+# Facts print when there is something to say, or on --verbose. A clean run is SILENT: the old
+# shape printed five fact lines on every success while thirteen skills documented it as "silent
+# when current", which is a claim the code contradicted on every single invocation.
+FACTS=""
+fact() { FACTS="${FACTS}$1"$'\n'; }
 say() { [ "$QUIET" = 1 ] || printf '%s\n' "$*"; }
+flush_facts() { [ "$QUIET" = 1 ] || printf '%s' "$FACTS"; }
 
 # ---- parse …/plugins/cache/<marketplace>/<plugin>/<version>/… ---------------
 # Anything not under a plugin cache is a dev symlink or a vendored copy; those have their own
 # freshness story (the owning skill's preflight) and are not this script's business.
 case "$DIR" in
   */plugins/cache/*) ;;
-  *) say "plugin_freshness   = skipped-not-a-plugin-install ($DIR)"; exit 0 ;;
+  *) [ "$VERBOSE" = 1 ] && say "  skipped: not a plugin install ($DIR)"; exit 0 ;;
 esac
 # `##`, not `#`: a path containing `/plugins/cache/` twice belongs to the INNERMOST one.
 REST="${DIR##*/plugins/cache/}"
@@ -126,10 +157,10 @@ behind() { # behind A B  → true when A < B
     [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]
 }
 
-say "  plugin             = $PLUGIN@$MP"
-say "  loaded             = $LOADED"
-say "  installed          = ${INSTALLED:-unknown}"
-say "  catalog            = ${CATALOG:-unknown}"
+fact "  plugin             = $PLUGIN@$MP"
+fact "  loaded             = $LOADED"
+fact "  installed          = ${INSTALLED:-unknown}"
+fact "  catalog            = ${CATALOG:-unknown}"
 
 # UNKNOWN IS NOT CURRENT, and conflating them is the whole bug class this script exists for.
 # Both readers end in `|| true`, so a missing config dir, a corrupt record, a renamed marketplace
@@ -153,7 +184,27 @@ elif [ -n "${CATALOG:-}" ] && behind "$INSTALLED" "$CATALOG"; then
   ACTION="ask"
   MSG="$PLUGIN $INSTALLED is installed while the catalog publishes $CATALOG. PUT IT TO THE USER: update (claude plugin update $PLUGIN@$MP, or scripts/check-drift.sh --update) then reload -- or carry on."
 fi
-say "  action             = $ACTION"
+
+# ASK ONCE PER SESSION, PER PLUGIN, PER LOADED VERSION. The check is otherwise stateless, so the
+# same question returns on every skill invocation for the rest of the session — measured: a 9.7-day
+# session with six stale plugins owning thirteen step-0 skills would have raised the identical
+# interrupt ~20 times for one decision the user already made. Worse, it is self-triggering:
+# /dev-tools:update-skill ENDS by running `claude plugin update`, which is precisely what makes
+# loaded < installed true, so its own flagship workflow would poison every later skill.
+#
+# The stamp is keyed on the session id, so it cannot leak into the next session; on the plugin, so
+# answering for one says nothing about another; and on the loaded version, so a reload re-arms it.
+# A repeat still reports the skew on --verbose — it is downgraded, not hidden.
+STAMP=""
+if [ "$ACTION" = "ask" ] && [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
+  STAMP="${TMPDIR:-/tmp}/claude-plugin-freshness.${CLAUDE_CODE_SESSION_ID}.${MP}.${PLUGIN}.${LOADED}"
+  if [ -e "$STAMP" ]; then
+    ACTION="asked-already"
+  else
+    : > "$STAMP" 2>/dev/null || true
+  fi
+fi
+fact "  action             = $ACTION"
 
 if [ "$JSON" = 1 ]; then
   printf '{"plugin":"%s","marketplace":"%s","loaded":"%s","installed":"%s","catalog":"%s","action":"%s"}\n' \
@@ -162,15 +213,23 @@ fi
 
 case "$ACTION" in
   ask)
+    flush_facts
     say ""
     say "ASK: $MSG"
     exit 3 ;;
   unknown)
+    flush_facts
     say ""
     say "UNKNOWN: $MSG"
     exit 2 ;;
+  asked-already)
+    # Exit 0 so the skill proceeds, but say it out loud rather than pretending the skew is gone.
+    say "  note: $PLUGIN is still serving $LOADED against $INSTALLED — already raised this session."
+    exit 0 ;;
 esac
-[ -n "${CATALOG:-}" ] || say "  note: catalog version unknown — only the session-vs-installed check ran"
-say ""
-say "CURRENT"
+if [ "$VERBOSE" = 1 ]; then
+  flush_facts
+  [ -n "${CATALOG:-}" ] || say "  note: catalog version unknown — only the session-vs-installed check ran"
+  say "CURRENT"
+fi
 exit 0
