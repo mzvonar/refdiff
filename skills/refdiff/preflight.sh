@@ -186,7 +186,46 @@ fi
 # ---- 2. VENDORED skill copy vs upstream ------------------------------------
 # Dev mode is a symlink into the checkout, so there is no copy that can drift and
 # nothing to sync; 1b already covers it. This check exists only for a vendored copy.
-if [ "$MODE" != "vendored" ]; then
+#
+# PLUGIN mode used to report `skipped-plugin-mode` on the reasoning that the text "moves with
+# `claude plugin update`" and therefore cannot drift. That is true of the INSTALL and false of
+# the SESSION, which is the difference this row now measures. Three versions are in play —
+# what the catalog publishes, what the record says is installed, and what THIS session resolved
+# when it first loaded the skill — and only the third decides which text is being followed. It
+# is pinned at session start and never moves, while the cache keeps every version side by side
+# (nine directories for this plugin, measured), so an update during a session writes a new
+# directory the session will never read.
+#
+# Measured 2026-09-25: a session served 1.4.0 from first call to last while the install records
+# read 1.6.0 and 1.6.1. The two rules that session most needed — a comp's frames FORK, and
+# re-run every pair after a shared-component fix — shipped in 1.6.1 and are absent from 1.4.0's
+# SKILL.md (grepped: 0 vs 1 for each; 424 lines vs 470). It followed them only because a human
+# had restated them in a handoff. This row was printing `skipped-plugin-mode` throughout.
+if [ "$MODE" = "plugin" ]; then
+  if [ "${REFDIFF_SKIP_FRESHNESS:-0}" = "1" ]; then
+    fact skill_freshness "skipped-opt-out"
+  else
+    # Entirely local: the install record and the marketplace catalog are both on disk, so this
+    # costs no network and is never the reason a pre-flight is slow.
+    PF_OUT="$(bash "$SKILL_DIR/plugin-freshness.sh" "$SKILL_DIR" --quiet --json 2>/dev/null || true)"
+    PF_LOADED=$(printf '%s' "$PF_OUT" | sed -n 's/.*"loaded":"\([^"]*\)".*/\1/p')
+    PF_INST=$(printf '%s'   "$PF_OUT" | sed -n 's/.*"installed":"\([^"]*\)".*/\1/p')
+    PF_CAT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"catalog":"\([^"]*\)".*/\1/p')
+    PF_ACT=$(printf '%s'    "$PF_OUT" | sed -n 's/.*"action":"\([^"]*\)".*/\1/p')
+    if [ -z "$PF_ACT" ]; then
+      fact skill_freshness "unknown"
+      warn "could not read the plugin install record — skill text freshness unverified"
+    elif [ "$PF_ACT" != "ask" ]; then
+      fact skill_freshness "current (serving ${PF_LOADED})"
+    elif [ -n "$PF_LOADED" ] && [ -n "$PF_INST" ] && [ "$PF_LOADED" != "$PF_INST" ]; then
+      fact skill_freshness "stale-session ${PF_LOADED} < ${PF_INST}"
+      ask "This session is SERVING refdiff ${PF_LOADED} while ${PF_INST} is installed — the version a session resolves is pinned at its first call to the skill and never moves, so an update made mid-session does not reach it. PUT IT TO THE USER: reload (/reload-plugins, or restart) and re-run so the newer text is the one being followed -- or carry on with ${PF_LOADED}, which still measures correctly and may simply not know a newer rule."
+    else
+      fact skill_freshness "stale-install ${PF_INST} < ${PF_CAT}"
+      ask "refdiff ${PF_INST} is installed while the catalog publishes ${PF_CAT}. PUT IT TO THE USER: update (claude plugin update refdiff@claude-skills-public) and reload -- or carry on with ${PF_INST}."
+    fi
+  fi
+elif [ "$MODE" != "vendored" ]; then
   fact skill_freshness "skipped-${MODE}-mode"
 elif [ "${REFDIFF_SKIP_FRESHNESS:-0}" = "1" ]; then
   fact skill_freshness "skipped-opt-out"

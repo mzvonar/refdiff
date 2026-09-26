@@ -225,6 +225,53 @@ HAS_ASK=$(printf '%s\n' "$OUT" | grep -c "^ASK: ")
 case "$A:$EXIT:$HAS_ASK" in halt:1:1) ok "halt outranks ask (exit 1) and the ask is still printed" ;;
   *) bad "halt vs ask" "action='$A' exit=$EXIT ask-lines=$HAS_ASK" ;; esac
 
+# 15-17. PLUGIN mode: the version THIS SESSION resolved vs the one installed. These rows are the
+#     reason the check exists — a session pins its version at its first call to the skill and
+#     never moves, so `skipped-plugin-mode` was printing while a session served 1.4.0 against an
+#     installed 1.6.x for its entire length. Hermetic: CLAUDE_CONFIG_DIR points at a synthetic
+#     install record, so nothing here depends on what is installed on this machine.
+mkplugin() { # mkplugin <root> <loaded-version>  → echoes the fake skill dir
+  local root="$1" v="$2"
+  local d="$root/.claude/plugins/cache/claude-skills-public/refdiff/$v/skills/refdiff"
+  mkdir -p "$d"; cp "$HERE/preflight.sh" "$HERE/plugin-freshness.sh" "$d/"
+  echo "$d"
+}
+mkrecord() { # mkrecord <config-dir> <installed-version> <catalog-version>
+  mkdir -p "$1/plugins/marketplaces/claude-skills-public/.claude-plugin"
+  printf '{"plugins":{"refdiff@claude-skills-public":[{"scope":"local","version":"%s"}]}}\n' "$2" \
+    > "$1/plugins/installed_plugins.json"
+  printf '{"claude-skills-public":{"installLocation":"%s/plugins/marketplaces/claude-skills-public"}}\n' "$1" \
+    > "$1/plugins/known_marketplaces.json"
+  printf '{"plugins":[{"name":"refdiff","version":"%s"}]}\n' "$3" \
+    > "$1/plugins/marketplaces/claude-skills-public/.claude-plugin/marketplace.json"
+}
+mkfake "$TMP/co15"; touch "$TMP/co15/packages/core/dist/index.js"
+CFG="$TMP/cfg15"; mkrecord "$CFG" "1.6.2" "1.6.2"
+
+# 15. The session is behind the install record → ask, and the fact NAMES both versions.
+D=$(mkplugin "$TMP/plug-stale" "1.4.0")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in "stale-session 1.4.0 < 1.6.2:ask:3") ok "plugin: session serving an older version than the record → ask (exit 3)" ;;
+  *) bad "plugin stale-session" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 16. CONTROL for 15 — same machinery, matching versions, no ask. Without it row 15 passes on a
+#     check that fires unconditionally.
+D=$(mkplugin "$TMP/plug-ok" "1.6.2")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in "current (serving 1.6.2):proceed:0") ok "control: plugin at the installed version → proceed (exit 0)" ;;
+  *) bad "plugin current" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
+# 17. The OTHER direction: the install itself is behind the catalog. Same ask, different remedy
+#     (update, not reload), so it must not be reported as a stale SESSION.
+CFG2="$TMP/cfg17"; mkrecord "$CFG2" "1.6.0" "1.6.2"
+D=$(mkplugin "$TMP/plug-old-install" "1.6.0")
+OUT=$(CLAUDE_CONFIG_DIR="$CFG2" REFDIFF_DIR="$TMP/co15" bash "$D/preflight.sh" 2>&1); EXIT=$?
+A=$(factof "$OUT" action); S=$(factof "$OUT" skill_freshness)
+case "$S:$A:$EXIT" in "stale-install 1.6.0 < 1.6.2:ask:3") ok "plugin: install behind the catalog → ask, reported as stale-INSTALL" ;;
+  *) bad "plugin stale-install" "skill_freshness='$S' action='$A' exit=$EXIT" ;; esac
+
 echo ""
 echo "  ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" = 0 ] || exit 1
