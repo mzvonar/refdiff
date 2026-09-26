@@ -10,7 +10,7 @@ step` pair opened with the comps' findings and comments). Plan and numbers:
 | what | where |
 | --- | --- |
 | manifest | `design/refdiff.manifest.mjs` |
-| design dir | `design/refdiff/` — Claude Design project `5a1a95c3-beee-457a-815b-ef6f6bf3e06a` ("Visual comparison tool UI design", type `PROJECT_TYPE_PROJECT`, `canEdit: true`), files fetched with DesignSync `get_file`. **The set was CONSOLIDATED on 2026-09-04 — see the trap below.** On disk now: `RefDiff Library.dc.html`, `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html` (the renamed toolbar comp), `RefDiff Gallery.dc.html` + `… Mobile` (no pair yet — waived in `pair-coverage.test.ts`), `parts/*`, `support.js`; `ios-frame.jsx` is an unused starter, and `screenshots/*.jpg` are the designer's own references, never fetched. NOT on disk: `RefDiff Library Groups.dc.html` + `… Mobile` (deliberate, see the trap). Re-fetch to refresh; never edit a comp to make a finding go away. After a refetch run `node packages/annotator/scripts/icon-subset.mjs` — a new icon in a comp renders as its NAME until the subset has it (2026-09-04: the Gallery comps added `grid_view`, `highlight`, `history`, `open_in_full`, taking it 97 → 101) |
+| design dir | `design/refdiff/` — Claude Design project `f407c522-e2e8-4b51-bbb3-13ad898d7f94` ("RefDiff project creation", type `PROJECT_TYPE_PROJECT`, `canEdit: true`), files fetched with DesignSync `get_file`. **Re-created 2026-09-26** by pushing this directory, after the original project `5a1a95c3-…` was lost with its account — so the project holds exactly the files on disk, at the SAME paths (`design/refdiff/<path>` here is `<path>` there; no slug mapping). **The set was CONSOLIDATED on 2026-09-04** (renames and deletions — see the AMENDED baseline entry below). On disk and in the project: `RefDiff Comparison Tool.dc.html`, `RefDiff Mobile.dc.html` (the renamed toolbar comp), `RefDiff Library Groups.dc.html` + `… Mobile`, `RefDiff Gallery.dc.html` + `… Mobile`, `RefDiff Library.dc.html` (kept, but both its pairs are `disabled` — it draws the card grid chunk 5 replaced; see `DISABLED_COMPS` in `pair-coverage.test.ts`), `parts/*`, `support.js`, and since 2026-09-26 `RefDiff Navigation.dc.html` — the item-navigation spec as prose with no frames, the one waived comp (its states are drawn in the four comps above). Every other comp is paired. The old project's `ios-frame.jsx` starter and `screenshots/*.jpg` designer references were never fetched, so the new project does not have them. Re-fetch to refresh; never edit a comp to make a finding go away. After a refetch run `node packages/annotator/scripts/icon-subset.mjs` — a new icon in a comp renders as its NAME until the subset has it (2026-09-04: the Gallery comps added `grid_view`, `highlight`, `history`, `open_in_full`, taking it 97 → 101) |
 | impl | the annotator app itself serving the demo root: `refdiff-annotator fixtures/demo-root --serve` (default port 7378; on the Linux devbox `svc up annotator` — `services.toml` — which hands out the next free port, 7379 while another worktree's annotator holds 7378) |
 | `--app-url` | `http://127.0.0.1:<port>` — whatever the server printed / `svc ports` shows |
 | viewing from a laptop / phone | `svc up annotator-tailnet` — the same read-only instance bound to the devbox's Tailscale IP only (`http://uctoinak-dev.tail31a8b9.ts.net:7390/`, `svc ports` for the port). Never `--host 0.0.0.0` here: the box has a public interface and no firewall. Tailscale Serve is NOT enabled on the tailnet (admin console), which is why a second instance rather than a proxy of 7379 |
@@ -39,10 +39,21 @@ node fixtures/make-demo-root.ts                           # the committed clock 
   viewport menu is `vpm-` because its first cut, named `vp-*`, inherited the panel's uppercase
   label and its `space-between` rows: 44 findings on the open-menu pair, 14 after the rename,
   none of them about the menu. Grep the CSS for a prefix before minting one.
-- **The mobile comp's header overflows itself by 6.6px** since the viewport button landed: 380px
-  of non-shrinking content in a 374px box, so its two right-hand icons sit past the padding and the
-  open menu (right-aligned to the button) with them. `TOOLBAR_HEADER_OVERFLOW` in the manifest
-  explains it on the two toolbar pairs; it is a design ask, not a layout to copy.
+- **The mobile comp's header overflows itself — by 6.6px since the viewport button landed, by 8px
+  since the item switcher's counter (2026-09-26)**: non-shrinking content wider than its padded box,
+  so its two right-hand icons sit past the padding and the open menu (right-aligned to the button)
+  with them. The comp's header carries a note claiming its tightened spacing fits ("≈375px of 390");
+  it does not, because its two `flex:1` spacers keep `min-width:4px`. `TOOLBAR_HEADER_OVERFLOW` in
+  the manifest explains it on the toolbar pairs; it is a design ask, not a layout to copy.
+- **Item navigation's states are drawn IN the existing comps (2026-09-26)**, reached by their
+  `data-vc-step` hooks: `nav-list` (desktop list), `nav-open` / `nav-sheet` (the phone's switcher bar
+  and sheet), `visit-cell` (the Library's just-visited trail). `RefDiff Navigation.dc.html` is the
+  written spec with no screens, waived in `pair-coverage.test.ts`. The comps' demo group is the demo
+  root's eleven items in no set, `Onboarding — Document step` fifth — a fixture change that alters
+  that set moves every navigation pair. The two `-visited` Library pairs run in `reconcile` phase:
+  the comp's Button group lists its visited cell 7th where the demo root lists it 17th, so centring
+  it lands the group row off-screen on one side only. Read the trail's own elements there (the
+  tags, `Reopen`), not the totals.
 - **The Fill button is a product decision the comps do not draw (2026-09-17).** Zoom pill and the
   phone tool row, key `f`: the page as wide as the canvas allows with the fit's padding, top-aligned,
   the wider side of a split setting the zoom (`fillView`). Its `extra-element` is accepted by text in

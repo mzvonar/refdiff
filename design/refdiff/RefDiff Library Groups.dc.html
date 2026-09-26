@@ -14,8 +14,8 @@
 html,body{margin:0;padding:0;background:#2a2b2e;min-height:100%}
 a{color:#5b8def;text-decoration:none}a:hover{color:#7da4f2}
 input{outline:none}
-.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def}
-.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--vis:rgba(91,141,239,0.14)}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--vis:rgba(47,111,237,0.12)}
 .msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
 </style>
 </helmet>
@@ -25,6 +25,7 @@ input{outline:none}
     <span style="font-size:13px;font-weight:700;letter-spacing:0.02em">RefDiff</span>
     <span style="font-size:12px;color:var(--txt2)">Design system · run 47</span>
     <div style="flex:1"></div>
+    <sc-if value="{{jumpShow}}" hint-placeholder-val="{{false}}"><a href="#" onClick="{{jumpTo}}" style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--acc);background:var(--vis);font-size:12px;font-weight:600;color:var(--acc);white-space:nowrap"><span class="msi" style="font-size:15px">my_location</span>Jump to just visited</a></sc-if>
     <div style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{toggleTheme}}" title="Toggle chrome theme"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
   </div>
   <div style="{{wrapStyle}}">
@@ -63,7 +64,7 @@ input{outline:none}
               <span class="msi" style="font-size:18px;color:var(--txt2);flex-shrink:0;transition:transform 0.15s">{{g.chev}}</span>
               <div style="{{g.thumbStyle}}"><sc-for list="{{g.thumbCells}}" as="t" hint-placeholder-count="6"><span style="{{t.style}}"></span></sc-for></div>
               <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-                <span style="font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.name}}</span>
+                <div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.name}}</span><sc-if value="{{g.visited}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px 2px 5px;border-radius:999px;background:var(--vis);color:var(--acc);white-space:nowrap;flex-shrink:0"><span class="msi" style="font-size:12px">my_location</span>Just visited</span></sc-if></div>
                 <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{g.path}}</span>
               </div>
             </div>
@@ -111,11 +112,12 @@ input{outline:none}
               </div>
             </sc-for>
             <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
-              <a href="./RefDiff Comparison Tool.dc.html" style="display:grid;grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;gap:12px;align-items:center;padding:0 14px;min-height:40px;border-bottom:1px solid var(--line);background:var(--bg0);color:var(--txt)" style-hover="background:var(--bg2)">
+              <a href="./RefDiff Comparison Tool.dc.html" data-vc-step="{{r.vcStep}}" ref="{{r.ref}}" onClick="{{r.onClick}}" style="{{r.rowStyle}}" style-hover="background:var(--bg2)">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-left:28px">
                   <span style="{{r.vStyle}}"></span>
                   <div style="{{r.thumbStyle}}"><span style="{{r.thumbInner}}"></span></div>
                   <span style="font-size:12px;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.name}}</span>
+                  <sc-if value="{{r.visited}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px 2px 5px;border-radius:999px;background:var(--acc);color:#fff;white-space:nowrap;flex-shrink:0"><span class="msi" style="font-size:12px">my_location</span>Just visited · just now</span></sc-if>
                 </div>
                 <div></div>
                 <div></div>
@@ -128,7 +130,7 @@ input{outline:none}
                   <span style="{{r.runStyle}}" title="{{r.runTip}}"><sc-if value="{{r.stale}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:12px">history</span></sc-if>{{r.runLabel}}</span>
                   <span style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:var(--txt2)">{{r.when}}</span>
                 </div>
-                <div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--txt2)">Compare<span class="msi" style="font-size:15px">chevron_right</span></div>
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--txt2)">{{r.cta}}<span class="msi" style="font-size:15px">chevron_right</span></div>
               </a>
             </sc-for>
             <sc-if value="{{g.hasMore}}" hint-placeholder-val="{{false}}">
@@ -141,8 +143,8 @@ input{outline:none}
     <sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
       <div style="display:flex;flex-direction:column;gap:8px">
         <sc-for list="{{groups}}" as="g" hint-placeholder-count="6">
-          <div style="background:var(--bg1);border:1px solid var(--line);border-radius:11px;overflow:hidden">
-            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 10px 10px 8px;min-height:44px;cursor:pointer" onClick="{{g.toggle}}">
+          <div style="{{g.cardStyle}}">
+            <div style="{{g.mobRowStyle}}" onClick="{{g.toggle}}">
               <span class="msi" style="font-size:18px;color:var(--txt2);flex-shrink:0;margin-top:1px">{{g.chev}}</span>
               <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
                 <div style="display:flex;align-items:center;gap:7px">
@@ -151,6 +153,7 @@ input{outline:none}
                   <span style="{{g.cellsStyle}}">{{g.cellsLabel}}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <sc-if value="{{g.visited}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px 2px 5px;border-radius:999px;background:var(--vis);color:var(--acc);white-space:nowrap;flex-shrink:0"><span class="msi" style="font-size:12px">my_location</span>Just visited</span></sc-if>
                   <span style="{{g.srcStyle}}"><span class="msi" style="font-size:12px">{{g.srcIcon}}</span>{{g.srcLabel}}</span>
                   <sc-if value="{{g.isNode}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)"><span class="msi" style="font-size:13px">account_tree</span>Hierarchy only — nothing measured</span></sc-if>
                   <sc-for list="{{g.badges}}" as="b" hint-placeholder-count="2"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
@@ -175,18 +178,19 @@ input{outline:none}
                 <div style="display:flex;align-items:center;gap:8px;padding:9px 12px 9px 35px;border-top:1px solid var(--line);background:var(--bg0);font-size:12px;color:var(--txt2)"><span class="msi" style="font-size:15px">folder</span><span style="flex:1">{{k.name}}</span><span style="font-size:11px">not measured</span></div>
               </sc-for>
               <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
-                <a href="./RefDiff Comparison Tool.dc.html" style="display:flex;align-items:center;gap:8px;padding:9px 12px 9px 35px;border-top:1px solid var(--line);background:var(--bg0);color:var(--txt);min-height:44px;box-sizing:border-box">
+                <a href="./RefDiff Comparison Tool.dc.html" data-vc-step="{{r.vcStep}}" ref="{{r.ref}}" onClick="{{r.onClick}}" style="{{r.mobRowStyle}}">
                   <span style="{{r.vStyle}}"></span>
                   <div style="{{r.thumbStyle}}"><span style="{{r.thumbInner}}"></span></div>
                   <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
                     <span style="font-size:11.5px;font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.name}}</span>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <sc-if value="{{r.visited}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 6px 1px 4px;border-radius:999px;background:var(--acc);color:#fff;white-space:nowrap;flex-shrink:0"><span class="msi" style="font-size:11px">my_location</span>Just visited · just now</span></sc-if>
                       <sc-for list="{{r.badges}}" as="b" hint-placeholder-count="1"><span style="{{b.style}}"><span style="{{b.dot}}"></span>{{b.label}}</span></sc-for>
                       <sc-if value="{{r.reg}}" hint-placeholder-val="{{false}}"><span style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:#e5484d;color:#fff"><span class="msi" style="font-size:11px">undo</span>Regression</span></sc-if>
                       <span style="{{r.runStyle}}"><sc-if value="{{r.stale}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:12px">history</span></sc-if>{{r.runLabel}}</span>
                     </div>
                   </div>
-                  <span class="msi" style="font-size:18px;color:var(--txt2)">chevron_right</span>
+                  <span class="msi" style="{{r.chevStyle}}">{{r.chev}}</span>
                 </a>
               </sc-for>
               <sc-if value="{{g.hasMore}}" hint-placeholder-val="{{false}}">
@@ -251,11 +255,21 @@ function thumbShape(g, c) {
     default: return { width: 20, height: 8, borderRadius: 2, background: c.name.startsWith('Danger') ? '#DC2626' : c.name.startsWith('Primary') ? fill : 'transparent', border: c.name.startsWith('Secondary') ? '1px solid ' + fill : 'none', boxSizing: 'border-box' };
   }
 }
+const VISIT_CELL = 'Primary \u00b7 md \u00b7 Hover';
 const CELLS = {}; GROUPS.forEach(g => { CELLS[g.id] = cellsFor(g); });
 const TOTAL = GROUPS.reduce((n, g) => n + (g.cells || 0), 0);
 class Component extends DCLogic {
-  state = { theme: null, query: '', filter: 'all', src: 'all', open: {}, more: {} };
+  state = { theme: null, query: '', filter: 'all', src: 'all', open: {}, more: {}, visited: null, jumpShow: false };
   theme() { return this.state.theme ?? this.props.theme ?? 'dark'; }
+  constructor(p) { super(p); this.refRow = React.createRef(); this.refFrame = React.createRef(); }
+  scroller() { return this.refFrame.current || null; }
+  componentDidMount() { this._onScroll = () => this.checkJump(); window.addEventListener('scroll', this._onScroll, true); }
+  componentWillUnmount() { window.removeEventListener('scroll', this._onScroll, true); }
+  componentDidUpdate() { if (this.state.visited && this.state.visited !== this._lastVisited) { this._lastVisited = this.state.visited; requestAnimationFrame(() => this.jumpTo()); } }
+  rowOffset() { const el = this.refRow.current; if (!el) return null; const sc = this.scroller(); const r = el.getBoundingClientRect(); if (sc) { const cr = sc.getBoundingClientRect(); return { top: r.top - cr.top, bottom: r.bottom - cr.top, h: cr.height, scroll: sc.scrollTop }; } return { top: r.top, bottom: r.bottom, h: window.innerHeight, scroll: window.scrollY }; }
+  checkJump() { const o = this.rowOffset(); const show = !!this.state.visited && (!o || o.bottom < 60 || o.top > o.h - 20); if (show !== this.state.jumpShow) this.setState({ jumpShow: show }); }
+  jumpTo() { const o = this.rowOffset(); if (!o) return; const target = o.scroll + o.top - o.h / 2 + 20; const sc = this.scroller(); if (sc) sc.scrollTo({ top: target, behavior: 'smooth' }); else window.scrollTo({ top: target, behavior: 'smooth' }); setTimeout(() => this.checkJump(), 450); }
+  visit(group, cell) { this.setState(s => ({ visited: { group, cell, at: Date.now() }, open: { ...s.open, [group]: true } })); }
   renderVals() {
     const S = this.state, light = this.theme() === 'light', isM = !!this.props.mobile;
     const q = S.query.trim().toLowerCase();
@@ -283,13 +297,18 @@ class Component extends DCLogic {
       if (g.node) { if (S.filter !== 'all' || !nameHit) continue; }
       else if (vis.length === 0) continue;
       shownGroups++; shownCells += vis.length;
-      const open = S.open[g.id] ?? (filterActive ? true : (g.id === 'button' || g.id === 'foundations'));
+      const open = (S.visited && S.visited.group === g.id) ? true : (S.open[g.id] ?? (filterActive ? true : (g.id === 'button' || g.id === 'foundations')));
       const cnt = { critical: 0, major: 0, minor: 0 }; let reg = 0, stale = 0, comments = 0, oldest = NEWEST;
       for (const c of all) { if (c.sev) cnt[c.sev]++; if (c.reg) reg++; if (c.run < NEWEST) { stale++; oldest = Math.min(oldest, c.run); } comments += c.comments; }
       const badges = ['critical', 'major', 'minor'].filter(s => cnt[s] > 0).map(s => badge(s, cnt[s]));
       if (!g.node && !badges.length) badges.push({ label: 'Clean', title: 'No findings', style: { fontSize: 11.5, fontWeight: 600, color: '#46a758' }, dot: { display: 'none' } });
       const limit = S.more[g.id] ? Infinity : 10;
-      const rows = vis.slice(0, limit).map(c => ({
+      const gVisited = !!S.visited && S.visited.group === g.id;
+      const rows = vis.slice(0, limit).map(c => { const isV = gVisited && c.name === S.visited.cell, isTarget = g.id === 'button' && c.name === VISIT_CELL; return {
+        visited: isV, vcStep: isTarget ? 'visit-cell' : undefined, ref: isV ? this.refRow : undefined, cta: isV ? 'Reopen' : 'Compare', chev: isV ? 'replay' : 'chevron_right', chevStyle: { fontSize: 18, color: isV ? 'var(--acc)' : 'var(--txt2)' },
+        onClick: isTarget ? (e => { e.preventDefault(); this.visit(g.id, c.name); }) : undefined,
+        rowStyle: { display: 'grid', gridTemplateColumns: 'minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px', gap: 12, alignItems: 'center', padding: '0 14px', minHeight: 40, borderBottom: '1px solid var(--line)', background: isV ? 'var(--vis)' : 'var(--bg0)', boxShadow: isV ? 'inset 3px 0 0 var(--acc)' : 'none', color: 'var(--txt)' },
+        mobRowStyle: { display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px 9px 35px', borderTop: '1px solid var(--line)', background: isV ? 'var(--vis)' : 'var(--bg0)', boxShadow: isV ? 'inset 3px 0 0 var(--acc)' : 'none', color: 'var(--txt)', minHeight: 44, boxSizing: 'border-box' },
         name: c.name, reg: c.reg, comments: c.comments, hasComments: c.comments > 0, stale: c.run < NEWEST,
         runLabel: 'r' + c.run, when: WHEN[c.run], runTip: c.run < NEWEST ? 'Measured in run ' + c.run + ' \u2014 ' + (NEWEST - c.run) + ' runs behind the newest' : 'Measured in the newest run',
         runStyle: c.run < NEWEST ? { display: 'flex', alignItems: 'center', gap: 3, padding: '1px 6px', borderRadius: 5, background: 'var(--bg3)', color: 'var(--txt2)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 } : { color: 'var(--txt)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 },
@@ -297,14 +316,16 @@ class Component extends DCLogic {
         thumbInner: thumbShape(g, c),
         vStyle: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: c.sev ? SEV[c.sev] : 'transparent', border: c.sev ? 'none' : '1.5px solid #46a758', boxSizing: 'border-box' },
         badges: c.sev ? [{ label: SEVL[c.sev], style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600, color: SEV[c.sev] }, dot: { display: 'none' } }] : [{ label: 'No findings', style: { fontSize: 11.5, color: 'var(--txt2)' }, dot: { display: 'none' } }]
-      }));
+      }; });
       const [sl, si] = SRC[g.src];
       groups.push({
-        id: g.id, name: g.name, path: g.path, open, isNode: !!g.node, hasGallery: !g.node, galleryHref: './RefDiff Gallery.dc.html', stop: e => e.stopPropagation(),
+        id: g.id, name: g.name, path: g.path, open, visited: gVisited, isNode: !!g.node,
+        cardStyle: { background: 'var(--bg1)', border: '1px solid ' + (gVisited ? 'var(--acc)' : 'var(--line)'), borderRadius: 11, overflow: 'hidden' },
+        mobRowStyle: { display: 'flex', alignItems: 'flex-start', gap: 9, padding: '10px 10px 10px 8px', minHeight: 44, cursor: 'pointer', background: gVisited ? 'var(--bg2)' : 'transparent', boxShadow: gVisited ? 'inset 3px 0 0 var(--acc)' : 'none' }, hasGallery: !g.node, galleryHref: './RefDiff Gallery.dc.html', stop: e => e.stopPropagation(),
         chev: open ? 'expand_more' : 'chevron_right',
         thumbStyle: { width: 44, height: 34, borderRadius: 5, background: g.node ? 'var(--bg2)' : '#f4f5f7', border: '1px solid var(--line)', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 3, padding: 4, boxSizing: 'border-box', opacity: g.node ? 0.7 : 1 },
         thumbCells: g.node ? [{ style: { gridColumn: 'span 3', borderRadius: 2, background: 'var(--bg3)' } }] : Array.from({ length: 6 }, (_, i) => ({ style: { borderRadius: 2, background: i % 3 === 0 ? '#4F46E5' : i % 3 === 1 ? 'rgba(79,70,229,0.35)' : '#d9dbe0' } })),
-        rowStyle: { display: 'grid', gridTemplateColumns: 'minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px', gap: 12, alignItems: 'center', padding: '8px 14px', minHeight: 54, borderBottom: '1px solid var(--line)', cursor: 'pointer', background: open ? 'var(--bg2)' : 'transparent', opacity: g.node ? 0.82 : 1 },
+        rowStyle: { display: 'grid', gridTemplateColumns: 'minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px', gap: 12, alignItems: 'center', padding: '8px 14px', minHeight: 54, borderBottom: '1px solid var(--line)', cursor: 'pointer', background: (open || gVisited) ? 'var(--bg2)' : 'transparent', boxShadow: gVisited ? 'inset 3px 0 0 var(--acc)' : 'none', opacity: g.node ? 0.82 : 1 },
         toggle: () => this.setState(s => ({ open: { ...s.open, [g.id]: !open } })),
         srcLabel: sl, srcIcon: si, srcStyle: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, padding: '2px 8px 2px 6px', borderRadius: 999, border: '1px solid var(--line)', color: 'var(--txt2)', whiteSpace: 'nowrap' },
         cellsLabel: g.node ? '0 cells' : (filterActive && vis.length < all.length ? vis.length + ' of ' + all.length : all.length + ' cells'),
@@ -325,6 +346,7 @@ class Component extends DCLogic {
       filterActive, filterMsg: 'Filters apply to cells. Groups with no matching cell are hidden; matching groups open to show only their matches.',
       clearFilters: () => this.setState({ query: '', filter: 'all', src: 'all', open: {} }),
       srcChips, filterChips, groups, isMobile: isM, isDesk: !isM, empty: groups.length === 0,
+      jumpShow: !!S.jumpShow && !!S.visited, jumpTo: e => { e.preventDefault(); this.jumpTo(); }, refFrame: this.refFrame, visitedLabel: S.visited ? 'Button / ' + S.visited.cell : '',
       mobListStyle: { display: 'flex', flexDirection: 'column', gap: 8 }
     };
   }

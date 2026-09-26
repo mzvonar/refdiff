@@ -442,7 +442,9 @@ describe("renderReport", () => {
     expect(rules).toContain(".tools { position:absolute; left:8px; bottom:56px;")
     expect(rules).toContain(".zoom-pill { left:12px; top:12px; bottom:auto; }")
     expect(rules).toContain(".layer-strip { display:flex; }")
-    expect(rules).toContain(".tb-left .brand-name, #seg-layout, #seg-layer { display:none; }")
+    expect(rules).toContain(
+      ".tb-left .brand-name, #seg-layout, #seg-layer, .nav-sw, .nav-scrim { display:none; }",
+    )
     // The rail is the comps' bottom sheet: 44px of handle over the canvas, 52% when open, the
     // tabs and lists hidden while it is down. The page itself never scrolls.
     // 44px is the comp's CONTENT height; its 1px top border makes the sheet 45 (phase 5: the sheet sat 1px low).
@@ -471,7 +473,7 @@ describe("renderReport", () => {
     // this and a 3px left edge the comp's finding rows never had (its comment rows do — .irow keeps it).
     expect(html).toContain(".tools { width:calc(44px + 1px);")
     expect(html).toContain(
-      ".topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px);",
+      ".topbar { position:relative; z-index:30; display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px);",
     )
     expect(html).toContain("min-height:calc(38px + 1px);")
     expect(html).toContain(
@@ -937,10 +939,16 @@ describe("renderReport", () => {
     expect(mobile).toContain(".topbar .theme-toggle { display:none; }")
     expect(mobile).toContain(".delta-strip .review + .dismiss { margin-left:auto; }")
     expect(mobile).toContain(".settings-wrap { display:block; }")
-    // The comp's header: equal flex shares on desktop (the groups centre on the SCREEN), hugging on the phone.
+    // The comp's header: equal flex shares on desktop (the groups centre on the SCREEN), hugging on
+    // the phone — and, since 2026-09-26, hugging WITH the item switcher (body.nav-on: the Comparison
+    // Tool comp's hdrLeftStyle went 0 0 auto), so the segments follow it. Scoped, not global: the
+    // Gallery comps draw the sheet in this header and still centre, and a global rule moved their
+    // segments 273px.
     expect(html).toContain(
       ".tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }",
     )
+    expect(html).toContain("body.nav-on .tb-left { flex:0 1 auto; }")
+    expect(html).toContain("body.layout-toolbar.nav-on .topbar { gap:4px; padding:0 6px; }")
     expect(mobile).toContain(".tb-left, .tb-right { flex:0 0 auto; }")
     expect(html).not.toContain("tb-spacer")
     // The theme persists; the PHONE LAYOUT DOES NOT (2026-09-03). There is one phone layout, so a

@@ -411,10 +411,14 @@ top-right, name + source chip, the mono route, severity dot-badges + comment
 count, and a footer of trend + `+N new / −M resolved` + relative "when". Under
 the 0.5 confidence gate the card carries a muted warning line — confidence is
 a WARNING STATE, never a number (gap 2: it says how well the two sides could
-be registered, not how similar they are). Order is newest first, ties in dir
+be registered, not how similar they are). Order was newest first, ties in dir
 order, unreadable times last — order before anything else, because refdiff
 matches card N to card N and a different order reads as a finding on every
-pill (phase 2: 208 → 101 findings from the sort alone). A run dir whose
+pill (phase 2: 208 → 101 findings from the sort alone). **Superseded:** the
+grouped table lists its groups alphabetically (2026-09-07) and, since
+2026-09-26, the cells inside a group alphabetically too, by the name the row
+shows (`groupEntries`) — newest-first read as "sorted by update date" and
+reshuffled a group whenever a few of its cells re-ran. A run dir whose
 `findings.json` cannot be read is `{ dir, broken: true, reason }` from
 `parseReport` (which also `salvage`s `pair`, `createdAt`, `impl.ref` from a
 file cut mid-write) and is drawn as the dashed degraded card with the real
@@ -433,15 +437,18 @@ with `make-demo-root.ts --now` before a measure.
 `view-math.ts`, `rail.ts`, `annotations.ts`, `triage.ts`, `focus.ts`):
 
 - **Topbar (46px):** `arrow_back` to the Library, brand square, "RefDiff", the
-  pair title; three segmented groups — **Split / Full** (`state.single`;
+  **item switcher** (below) — or, where there is nothing to switch between (an
+  emitted `report.html`, a variant sheet), the pair title; three segmented groups — **Split / Full** (`state.single`;
   Full is one side at a time over the same shared view, with a floating
   Design / Impl fab), **Off / Wipe / Onion / Blink / Diff** (the
   superimposition, below) and the layer group **Findings / Comments / All /
   Clean** (`state.layer`; Comments off hides comment shapes, never the focus
   region); the theme toggle — on the phone a **settings popover** instead
   (Layout Minimal / Default over Theme Dark / Light, the comp's 2026-08-29
-  header). Left and right are equal flex shares (the comp's `flex: 1 1 0`),
-  so the groups centre on the screen. The pair verdict, c/M/m counts and source lines
+  header). The left group HUGS its content and the theme group is the flexible
+  spacer (the comp's `0 0 auto` / `1 1 0` since 2026-09-26 — it was equal flex
+  shares, centring the groups on the screen, until the switcher arrived), so the
+  segments follow the switcher. The pair verdict, c/M/m counts and source lines
   are NOT here (gap 14) — they live on the Library card you came from; the
   refs and the fit's numbers live in the pane labels' and align pill's
   `title`s.
@@ -584,12 +591,50 @@ with `make-demo-root.ts --now` before a measure.
   hash of that list: the CLI serves the faces with `max-age=86400`, and a
   re-subsetted face under an unchanged URL kept rendering the old subset on
   a phone for a day (2026-08-29) — a new list is a new URL.
-- **Keyboard:** `j`/`k` next/previous finding, `[`/`]` step the highlighted
+- **Keyboard:** `←`/`→` previous/next ITEM (the switcher; not with a
+  modifier — alt+arrow is the browser's history), `j`/`k` next/previous
+  finding, `[`/`]` step the highlighted
   boxes, `a`/`A` cycle align, `l` lock, `d`/`g`/`s` Highlight / Dim / Strobe,
   `b`/`o`/`w`/`x` blink / onion / swipe / difference, `n` annotate, `/`
-  search, `+`/`-`/`0` zoom, `Esc` clear. Every tool's `title` carries its key;
+  search (the item list's field while that list is open), `+`/`-`/`0` zoom,
+  `Esc` clear (the item list first). Every tool's `title` carries its key;
   a drawn hint has no home in the comps yet (gap 18, deferred — a design
-  question, not code).
+  question, not code). The navigation spec asked for `J`/`K` on items too;
+  they stay on findings (repo owner, 2026-09-26), so nothing existing moved.
+- **Item navigation** (2026-09-26; the spec is `RefDiff Navigation.dc.html`,
+  prose only — every state is drawn in the four measured comps). The served
+  app hands the comparator `page.nav`: the items of the open item's Library
+  GROUP in the Library's order and filter as they stood when the comparator
+  opened (`navGroupOf`, pure, `index-view.ts`), kept while the reader switches
+  and dropped on the way back. A set steps through its own cells; the items
+  in no set are ONE group, `Library`, rather than a dead `1 / 1` each (repo
+  owner's call); an unreadable run is skipped. Desktop: a pill in the title's
+  place — `‹`, `<group> / <name>  n / total ⌄` opening a 340px list (search,
+  single-select severity chips, a set's rows sectioned by tone · size,
+  `↑ ↓ ⏎ Esc`, "n more below", a scrim), `›`, each arrow with a 150ms hover
+  preview (`vc-controls.hoverPreview: false` turns it off; no UI, by design).
+  Phone (toolbar layout only): the brand grows an `n/total` counter over a 2px
+  progress hairline, and tapping it turns the 44px header INTO the switcher
+  (`✕ ‹ name › list`, closes 4s after its last touch or on a canvas touch);
+  its list icon opens a 62% bottom sheet (handle up = full height, down or the
+  scrim = away); a two-finger horizontal swipe on the canvas peeks at 40px and
+  switches at 80px (`swipeOutcome`: a pinch that changes span is not a swipe;
+  a group end rubber-bands). A switch swaps only the artboards and findings:
+  the controls are persisted preferences, the zoom and pan ride `carriedView`
+  (a fitted view fits the next item), the width rides `?vp=`, and a 1.6s toast
+  names the item. `page.nav` carries its pure helpers as functions, so the
+  CLIENT never names an `index-view` export and an emitted report — which
+  embeds none and sets no `page.nav` — draws the plain title.
+- **The just-visited trail** (Library): every open, a switch included, writes
+  `refdiff-last-visited:<root>` (`{ groupId, itemId, at }`, localStorage — a
+  reading aid, not project state). Entering the Library opens that group over a
+  hand collapse, lifts the ten-row cap if the item sits past it, and centres
+  the row instantly; the group row gets a bar, `bg2` and a tinted tag, the item
+  row a bar, `--vis` and a filled `Just visited · <age>` tag with `Reopen`
+  (a lone row is its own item). `Jump to just visited` (desktop topbar) and the
+  phone's overlay banner show only while the row is out of view, and never for
+  an item that is gone. An untagged row keeps its old DOM exactly, so the
+  Library pairs measure nothing new until a trail exists.
 - **View controls persist** in `localStorage` under `vc-controls` (align,
   lock, layer, members, suppressed, single/side, move, triaged, rail, diff,
   dim, strobe, lab + amount, theme): a preference, not per-pair state, so it

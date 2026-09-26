@@ -627,8 +627,14 @@ function rollUp(cells: PairEntry[]): GroupRollup {
  * row that just finished is still findable by the `Measured` column, which is
  * what that column is for.
  *
- * `sortEntries` still decides the order of the CELLS inside a group, where
- * newest-first is right — those are runs of one thing, not things.
+ * **The CELLS inside a group are alphabetical too** (repo owner, 2026-09-26),
+ * by the name the row SHOWS — the variant props when the set index named them
+ * (`names`), the pair's name otherwise. They used to keep `sortEntries`'
+ * newest-run-first order on the reasoning that they are runs of one thing, and
+ * in use it read as a list sorted by update date: a group of eleven message
+ * states reshuffled every time a few re-ran, exactly what the groups stopped
+ * doing. Which cell ran last is still the Measured column's job. The item
+ * switcher steps in this order too — it reads the groups this returns.
  *
  * Comparison is `localeCompare` pinned to `en` with numeric collation, so
  * `ds-button-2` precedes `ds-button-10`, plus a codepoint tiebreak so two ids
@@ -640,6 +646,8 @@ function rollUp(cells: PairEntry[]): GroupRollup {
 export function groupEntries(
   entries: PairEntry[],
   f: LibraryFilter = DEFAULT_FILTER,
+  /** Run dir -> the variant props a set index gives it; what a cell row is called when present. */
+  names: ReadonlyMap<string, string> = new Map(),
 ): LibraryGroup[] {
   // Staleness is per GROUP, so it is resolved over the whole list before the
   // filter runs — a `Stale cells` filter that computed it over the survivors
@@ -669,7 +677,10 @@ export function groupEntries(
     out.push({
       id,
       set: g.set,
-      cells: g.cells,
+      cells: [...g.cells].sort(
+        (a, b) =>
+          byGroupName(cellLabel(a, names), cellLabel(b, names)) || byGroupName(a.dir, b.dir),
+      ),
       total: g.all.length,
       roll: rollUp(g.cells),
       span: groupRunSpan(g.all),
@@ -678,6 +689,10 @@ export function groupEntries(
   out.sort((a, b) => byGroupName(a.id, b.id))
   return out
 }
+
+/** What a cell row is called — its variant props, its pair's name, or (unreadable) its dir. */
+const cellLabel = (c: PairEntry, names: ReadonlyMap<string, string>): string =>
+  names.get(c.dir) ?? c.pair ?? c.dir
 
 /** Alphabetical, numeric-aware, and deterministic on a case-only difference. */
 const byGroupName = (a: string, b: string): number =>
@@ -1141,6 +1156,8 @@ export function cellRow(
   layout: LibraryLayout,
   now: number,
   names: ReadonlyMap<string, string> = new Map(),
+  /** The trail's age (`just now`) when this is the item the reader just came back from. */
+  visitedAge: string | null = null,
 ): string {
   if (isBroken(cell)) {
     const nm = escapeHtml(cell.pair ?? cell.dir)
@@ -1174,9 +1191,17 @@ export function cellRow(
       "</span></div><div></div></div>"
     )
   }
+  const visited = visitedAge !== null
   const open =
-    '<a class="lcell" data-pair="' + escapeHtml(cell.dir) + '" href="' + escapeHtml(href) + '">'
+    '<a class="lcell' +
+    (visited ? " visited" : "") +
+    '" data-pair="' +
+    escapeHtml(cell.dir) +
+    '" href="' +
+    escapeHtml(href) +
+    '">'
   const name = '<span class="lcn mono">' + escapeHtml(cellName(cell, names)) + "</span>"
+  const tag = visited ? visitedTag(visitedAge) : ""
   const marks =
     cellBadge(cell) +
     regressedPill(cell.delta && cell.delta.regressions > 0 ? 1 : 0, "Regression") +
@@ -1189,9 +1214,12 @@ export function cellRow(
       '<div class="lcbody">' +
       name +
       '<div class="lcmarks">' +
+      tag +
       marks +
       measuredCell(cell, span, now) +
-      '</div></div><span class="msi go" aria-hidden="true">chevron_right</span></a>'
+      '</div></div><span class="msi go" aria-hidden="true">' +
+      (visited ? "replay" : "chevron_right") +
+      "</span></a>"
     )
   return (
     open +
@@ -1199,13 +1227,32 @@ export function cellRow(
     verdictDot(cell) +
     cellThumb(cell) +
     name +
+    tag +
     '</div><div></div><div></div><div class="lroll">' +
     marks +
     '</div><div class="lmeas lmeas-cell">' +
     measuredCell(cell, span, now) +
-    '</div><div class="lgo">Compare<span class="msi" aria-hidden="true">chevron_right</span></div></a>'
+    '</div><div class="lgo">' +
+    (visited ? "Reopen" : "Compare") +
+    '<span class="msi" aria-hidden="true">chevron_right</span></div></a>'
   )
 }
+
+/**
+ * The item's trail tag, filled with the accent: `Just visited · 2 min ago`. The label is a bare
+ * text node after the icon, as the comp draws it (its text is static there, not interpolated).
+ */
+function visitedTag(age: string): string {
+  return (
+    '<span class="lvis-item"><span class="msi" aria-hidden="true">my_location</span>Just visited · ' +
+    escapeHtml(age) +
+    "</span>"
+  )
+}
+
+/** The group's trail tag: tinted, no age — it reads while scanning collapsed rows. */
+const VISITED_GROUP_TAG =
+  '<span class="lvis-group"><span class="msi" aria-hidden="true">my_location</span>Just visited</span>'
 
 /** The comp's `Show N more`, which lifts the ten-row cap for that group only. */
 export function moreRow(g: LibraryGroup, hidden: number): string {
@@ -1250,9 +1297,19 @@ export function groupRow(
    * carry their own links.
    */
   pairHref: string = "",
+  /**
+   * The just-visited trail on this row: `group` for a set whose cell the reader came back from
+   * (tinted tag, no age), `item` for a LONE item's row, which is the item itself (filled tag with
+   * its age, CTA `Reopen`).
+   */
+  visited: "" | "group" | "item" = "",
+  visitedAge: string = "",
 ): string {
   const id = escapeHtml(g.id)
   const name = escapeHtml(label)
+  const tag =
+    visited === "group" ? VISITED_GROUP_TAG : visited === "item" ? visitedTag(visitedAge) : ""
+  const visitedClass = visited === "group" ? " visited" : visited === "item" ? " visited-item" : ""
   const expandable = isFoldable(g)
   // "1 cells" read as a bug on every lone-item row of the demo root (ten of
   // them in run 2's extra-element list), and a lone item is the common case on
@@ -1289,8 +1346,11 @@ export function groupRow(
       : // NOT an anchor: the whole row already is one (see `head`), and an <a> inside an <a> is
         // invalid HTML that browsers silently un-nest. This is the same affordance a cell row
         // carries, rendered as the row's own trailing chevron.
-        '<span class="lsheet"><span class="lsheet-label">Compare</span>' +
-        '<span class="msi" aria-hidden="true">chevron_right</span></span>'
+        '<span class="lsheet"><span class="lsheet-label">' +
+        (visited === "item" ? "Reopen" : "Compare") +
+        '</span><span class="msi" aria-hidden="true">' +
+        (visited === "item" && layout === "mobile" ? "replay" : "chevron_right") +
+        "</span></span>"
   // The comp swaps GLYPHS; chunk 1 rotated ONE because `chevron_right` was not
   // in the icon subset. Re-running icon-subset.mjs for these comps put it there
   // (101 -> 112 glyphs), so the rotation goes. It was never only cosmetic: a
@@ -1307,7 +1367,9 @@ export function groupRow(
   // which a click handler on a div would give.
   const rowIsLink = !expandable && pairHref !== ""
   const head = rowIsLink
-    ? '<a class="lrow flat lrow-link" data-group="' +
+    ? '<a class="lrow flat lrow-link' +
+      visitedClass +
+      '" data-group="' +
       id +
       '" data-pair="' +
       id +
@@ -1319,6 +1381,7 @@ export function groupRow(
     : '<div class="lrow' +
       (open ? " open" : "") +
       (expandable ? "" : " flat") +
+      visitedClass +
       '" data-group="' +
       id +
       '"' +
@@ -1339,6 +1402,7 @@ export function groupRow(
       '</span><span class="lcount mono">' +
       cellsLabel +
       '</span></div><div class="lrline wrap">' +
+      tag +
       src +
       marks +
       '</div><div class="lrline meas">' +
@@ -1353,9 +1417,13 @@ export function groupRow(
     '<div class="lset">' +
     caret +
     groupThumb() +
-    '<div class="lnames"><span class="lname">' +
-    name +
-    '</span></div></div><div class="lsrc">' +
+    '<div class="lnames">' +
+    // The comp puts the tag BESIDE the name in one row, so the name gets that row only when there
+    // is a tag to share it with: an untagged row keeps its old DOM and its old measurement.
+    (tag
+      ? '<div class="lnline"><span class="lname">' + name + "</span>" + tag + "</div>"
+      : '<span class="lname">' + name + "</span>") +
+    '</div></div><div class="lsrc">' +
     src +
     '</div><div class="lcount mono">' +
     cellsLabel +
@@ -1396,6 +1464,8 @@ export function libraryTable(
    * that moved as the reader narrowed would rename the row under them.
    */
   prefix: string = "",
+  /** The just-visited trail, resolved by `visitedMark` against these groups; null draws none. */
+  visited: VisitedMark | null = null,
 ): string {
   let out = ""
   for (const g of groups) {
@@ -1404,6 +1474,9 @@ export function libraryTable(
     // the row itself has to carry the link or the pair is unreachable. A group with cells is left
     // alone — its cells carry their own.
     const lone = !g.set && g.cells.length === 1 ? g.cells[0] : undefined
+    const mine = visited !== null && visited.groupId === g.id
+    // A lone row IS its item, so it takes the item's treatment; a set's row takes the group's.
+    const rowMark = !mine ? "" : lone !== undefined ? (visited.itemId ? "item" : "") : "group"
     let body = groupRow(
       g,
       isOpen,
@@ -1411,17 +1484,36 @@ export function libraryTable(
       now,
       groupLabel(g.id, prefix),
       lone === undefined || isBroken(lone) ? "" : href(lone),
+      rowMark,
+      mine ? visited.age : "",
     )
     if (isOpen) {
       const cap = more.has(g.id) ? g.cells.length : ROW_CAP
       const shown = g.cells.slice(0, cap)
       body +=
         shown
-          .map((c) => cellRow(c, isBroken(c) ? "" : href(c), g.span, layout, now, names))
+          .map((c) =>
+            cellRow(
+              c,
+              isBroken(c) ? "" : href(c),
+              g.span,
+              layout,
+              now,
+              names,
+              mine && visited.itemId === c.dir ? visited.age : null,
+            ),
+          )
           .join("") +
         (g.cells.length > shown.length ? moreRow(g, g.cells.length - shown.length) : "")
     }
-    out += '<div class="lgcard" data-group="' + escapeHtml(g.id) + '">' + body + "</div>"
+    out +=
+      '<div class="lgcard' +
+      (rowMark === "group" ? " visited" : "") +
+      '" data-group="' +
+      escapeHtml(g.id) +
+      '">' +
+      body +
+      "</div>"
   }
   return layout === "mobile" ? out : TABLE_HEAD + '<div class="ltable">' + out + "</div>"
 }
@@ -1519,4 +1611,252 @@ export function errorBox(e: ListError): string {
 /** Which typed failure a thrown fetch error is: no response at all = the server is gone. */
 export function classifyListError(e: unknown): ListError["kind"] {
   return e instanceof TypeError ? "server" : "endpoint"
+}
+
+/* --------------------------------------------------------- navigation -- */
+
+/**
+ * The worst severity a run found, or `clean` — the ONE word the item switcher,
+ * its list and its hover preview show for an item.
+ */
+export type NavSeverity = "critical" | "major" | "minor" | "clean"
+
+export function navSeverity(p: PairSummary): NavSeverity {
+  return p.critical > 0 ? "critical" : p.major > 0 ? "major" : p.minor > 0 ? "minor" : "clean"
+}
+
+/** One item the comparator can switch to: a Library ITEM, which may open at several widths. */
+export interface NavItem {
+  /** The Library item's own run dir (for a screen measured at several widths, the widest). */
+  dir: string
+  /** Every run dir that opens as this item — its widths — so the open one is found at any width. */
+  dirs: string[]
+  href: string
+  /** What the Library calls it: the variant props for a set's cell, the pair's name otherwise. */
+  name: string
+  sev: NavSeverity
+  /** The run's own impl.png, for the hover preview and the list sheet's thumbnail. */
+  thumb?: string
+  /** Viewport ids it was measured at, so a switch can keep the width the reader is on. */
+  vps: string[]
+}
+
+/** The group the comparator steps through: its items in LIBRARY order, and where the open one sits. */
+export interface NavGroup {
+  /**
+   * The Library ROW the open item is drawn in — the set's entry id, or a lone item's own dir.
+   * This is what the just-visited trail marks, not the navigation group: every lone item is its
+   * own Library row, while the switcher steps through all of them as one.
+   */
+  rowId: string
+  /** The breadcrumb: the set's Library label, or `Library` for the items in no set. */
+  label: string
+  set: boolean
+  items: NavItem[]
+  index: number
+}
+
+/** The breadcrumb over the items that belong to no set. */
+export const LONE_NAV_LABEL = "Library"
+
+function navItemOf(c: PairSummary, names: ReadonlyMap<string, string>): NavItem {
+  const widths = c.widths ?? []
+  const item: NavItem = {
+    dir: c.dir,
+    dirs: [c.dir, ...widths.map((w) => w.dir).filter((d) => d !== c.dir)],
+    href: pairHref(c),
+    name: names.get(c.dir) ?? c.pair,
+    sev: navSeverity(c),
+    vps: widths.length
+      ? widths.map((w) => w.viewport)
+      : c.breakpoint
+        ? [c.breakpoint.viewport]
+        : [],
+  }
+  if (c.implPng) item.thumb = c.implPng
+  return item
+}
+
+/**
+ * The group the comparator steps through for the run dir it opened, taken from the Library's
+ * groups AS FILTERED — "next" is the next row the reader would have tapped.
+ *
+ * A set steps through its own cells and never past them. Items that belong to NO set are one
+ * group, `Library`, in the order the Library lists them: each is its own Library row, and a
+ * switcher that could only ever read `1 / 1` on them would be dead chrome on most of a root
+ * (repo owner's call, 2026-09-26). An unreadable run is skipped — it has no report to open.
+ *
+ * `null` when the groups do not hold the dir at all; the caller retries unfiltered, and failing
+ * that draws no switcher.
+ */
+export function navGroupOf(
+  groups: readonly LibraryGroup[],
+  dir: string,
+  prefix: string = "",
+  names: ReadonlyMap<string, string> = new Map(),
+): NavGroup | null {
+  const holds = (c: PairEntry): boolean =>
+    !isBroken(c) && (c.dir === dir || (c.widths ?? []).some((w) => w.dir === dir))
+  const home = groups.find((g) => g.cells.some(holds))
+  if (!home) return null
+  const cells = home.set ? home.cells : groups.filter((g) => !g.set).flatMap((g) => g.cells)
+  const items = cells.filter((c): c is PairSummary => !isBroken(c)).map((c) => navItemOf(c, names))
+  return {
+    rowId: home.id,
+    label: home.set ? groupLabel(home.id, prefix) : LONE_NAV_LABEL,
+    set: home.set,
+    items,
+    index: items.findIndex((it) => it.dirs.includes(dir)),
+  }
+}
+
+/**
+ * The same group, now open at `dir` — what a switch inside the comparator keeps (its order and
+ * filter are the ones captured when it opened). `null` when the group does not hold the dir.
+ *
+ * The Library ROW moves with the item for the items in no set: each is its own row, so the trail
+ * has to name the item switched TO. Keeping the group's first `rowId` marked the item the reader
+ * LEFT (found driving the app, 2026-09-26: document step -> review step recorded the document
+ * step's row). A set's cells all share the set's row.
+ */
+export function navRetarget(g: NavGroup, dir: string): NavGroup | null {
+  const index = g.items.findIndex((it) => it.dirs.includes(dir))
+  if (index < 0) return null
+  const item = g.items[index] as NavItem
+  return { ...g, index, rowId: g.set ? g.rowId : item.dir }
+}
+
+/**
+ * The list section a set's cell belongs to: its props less the last one (`Primary · md · Hover`
+ * sits under `Primary · md`) — the spec's "rows grouped by size". A name of fewer than three
+ * parts (every lone item's) has none.
+ */
+export function navSection(name: string): string {
+  const parts = name.split(" · ")
+  return parts.length >= 3 ? parts.slice(0, -1).join(" · ") : ""
+}
+
+export type NavChip = "all" | NavSeverity
+
+/** The list's filter: the typed query over the name, AND the one severity chip. */
+export function navFilter(
+  items: readonly NavItem[],
+  query: string,
+  chip: NavChip,
+): { item: NavItem; index: number }[] {
+  const q = query.trim().toLowerCase()
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(
+      ({ item }) =>
+        (chip === "all" || item.sev === chip) && (!q || item.name.toLowerCase().includes(q)),
+    )
+}
+
+/** The chips' counts, over the whole group — a chip's number does not move as the reader types. */
+export function navCounts(items: readonly NavItem[]): Record<NavSeverity, number> {
+  const n: Record<NavSeverity, number> = { critical: 0, major: 0, minor: 0, clean: 0 }
+  for (const it of items) n[it.sev]++
+  return n
+}
+
+/**
+ * The item the reader last opened. Written whenever the comparator OPENS an item — a switch
+ * inside it included — and only overwritten by another open, so it survives filters, reloads and
+ * the theme.
+ */
+export interface LastVisited {
+  /** The Library row the item sits in. */
+  groupId: string
+  /** The Library item's run dir. */
+  itemId: string
+  /** Epoch ms of the open, for the tag's relative age. */
+  at: number
+}
+
+/** Per served ROOT: two roots are two projects, and one's trail must not mark the other. */
+export const lastVisitedKey = (root: string): string => "refdiff-last-visited:" + root
+
+/** A stored record, or null for anything that is not one (a hand edit, an older shape, garbage). */
+export function parseLastVisited(raw: string | null): LastVisited | null {
+  if (!raw) return null
+  let v: unknown
+  try {
+    v = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof v !== "object" || v === null) return null
+  const r = v as Record<string, unknown>
+  const groupId = r["groupId"]
+  const itemId = r["itemId"]
+  const at = r["at"]
+  if (typeof groupId !== "string" || groupId === "") return null
+  if (typeof itemId !== "string" || itemId === "") return null
+  if (typeof at !== "number" || !Number.isFinite(at)) return null
+  return { groupId, itemId, at }
+}
+
+/** What the Library marks for a trail: the group row, and the item row while it is still listed. */
+export interface VisitedMark {
+  groupId: string
+  /** Null when the item is gone or filtered out: the group is marked alone and Jump hides. */
+  itemId: string | null
+  /** The item's position among the group's shown cells (-1 when absent), for the ten-row cap. */
+  position: number
+  /** `just now`, `2 min ago` — relativeWhen's words, as of the render. */
+  age: string
+}
+
+/**
+ * A trail resolved against the Library as drawn. `null` when its group is not on screen (filtered
+ * out, or gone), and then nothing is marked. An item opened at a narrower width still marks its
+ * Library item, which stands for all of its widths.
+ */
+export function visitedMark(
+  groups: readonly LibraryGroup[],
+  lv: LastVisited | null,
+  now: number,
+): VisitedMark | null {
+  if (!lv) return null
+  const g = groups.find((x) => x.id === lv.groupId)
+  if (!g) return null
+  const position = g.cells.findIndex(
+    (c) =>
+      c.dir === lv.itemId || (!isBroken(c) && (c.widths ?? []).some((w) => w.dir === lv.itemId)),
+  )
+  const hit = position >= 0 ? g.cells[position] : undefined
+  return {
+    groupId: g.id,
+    itemId: hit ? hit.dir : null,
+    position,
+    age: relativeWhen(new Date(lv.at).toISOString(), now),
+  }
+}
+
+/**
+ * The phone's two-finger swipe: a peek past 40px, a switch when released past 80px. It counts only
+ * while it is a SWIPE — the fingers kept their spread (a pinch that zooms is not one) and travelled
+ * mostly sideways. Fingers moving LEFT bring the NEXT item in, the way a page turns. At a group end
+ * there is no neighbour, so nothing peeks and nothing commits: rubber-band only.
+ */
+export const SWIPE_PEEK_PX = 40
+export const SWIPE_COMMIT_PX = 80
+
+export function swipeOutcome(
+  dx: number,
+  dy: number,
+  spanRatio: number,
+  hasPrev: boolean,
+  hasNext: boolean,
+): { swiping: boolean; step: -1 | 0 | 1; peek: boolean; commit: boolean } {
+  const swiping = spanRatio > 0.85 && spanRatio < 1.18 && Math.abs(dx) > 2 * Math.abs(dy)
+  const step: -1 | 0 | 1 = !swiping ? 0 : dx < 0 ? (hasNext ? 1 : 0) : hasPrev ? -1 : 0
+  return {
+    // A swipe with nowhere to go is still a swipe: it springs back instead of leaving the pan.
+    swiping,
+    step,
+    peek: step !== 0 && Math.abs(dx) > SWIPE_PEEK_PX,
+    commit: step !== 0 && Math.abs(dx) > SWIPE_COMMIT_PX,
+  }
 }

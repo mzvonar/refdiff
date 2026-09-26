@@ -179,7 +179,12 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
       </div>
     </div>
   </div>
+  <div class="nav-bar" id="nav-bar" hidden></div>
 </header>
+<div class="nav-progress" id="nav-progress" hidden><i id="nav-progress-fill"></i></div>
+<div class="nav-scrim" id="nav-scrim" hidden></div>
+<div class="nav-sheet-scrim" id="nav-sheet-scrim" hidden></div>
+<div class="nav-sheet" id="nav-sheet" hidden></div>
 <div id="delta-strip" class="delta-strip" hidden></div>
 <div class="layer-strip" id="layer-strip"><span class="layer-strip-label">Show</span>
   <div class="seg seg-sm" id="seg-layer-m" role="group" aria-label="canvas layer">
@@ -205,6 +210,8 @@ export const REPORT_BODY = `<header id="hdr" class="topbar">
       </div>
       <div class="panes" id="panes">
         <div class="vpm-scrim" id="vpm-scrim" hidden></div>
+        <div class="nav-toast" id="nav-toast" hidden></div>
+        <div class="nav-swipe" id="nav-swipe" hidden></div>
         <div class="view-panel" id="view-panel" hidden>
           <div class="vp-row"><span class="vp-label">Compare</span>
             <div class="seg seg-p" id="seg-variant-m" role="group" aria-label="comparison overlay">
@@ -306,6 +313,8 @@ export const CSS = `
    Dark is the default (the comps' cc-theme-dark), light is an override on
    <body> — a manual switch (#theme-toggle), never measured by refdiff. */
 :root { --bg0:#2a2b2e; --bg1:#333438; --bg2:#3c3d42; --bg3:#46474d; --line:#4c4d54; --txt:#e7e9ec; --txt2:#a6abb3; --acc:#5b8def; --canvas:#232427;
+  /* the accent as a tint (14% dark / 12% light): the navigation's current and just-visited rows */
+  --vis:rgba(91,141,239,.14);
   --critical:#e5484d; --major:#f5a623; --minor:#4c9aff; --ok:#46a758; --pending:#8f8f96;
   /* annotation statuses (the comps' comment statuses) and triage verdicts (gap 11) */
   --open:#8f7ee7; --implemented:#f5a623; --done:#46a758;
@@ -314,7 +323,7 @@ export const CSS = `
   --diff:#ff5cd0;
   --font-sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace; }
-body.cc-theme-light { --bg0:#dfe1e4; --bg1:#f2f3f5; --bg2:#ffffff; --bg3:#e3e5e9; --line:#cfd3d8; --txt:#22262b; --txt2:#697079; --acc:#2f6fed; --canvas:#c6c9ce; }
+body.cc-theme-light { --bg0:#dfe1e4; --bg1:#f2f3f5; --bg2:#ffffff; --bg3:#e3e5e9; --line:#cfd3d8; --txt:#22262b; --txt2:#697079; --acc:#2f6fed; --canvas:#c6c9ce; --vis:rgba(47,111,237,.12); }
 ${FONT_FACE_CSS}
 ${ICON_CSS}
 * { box-sizing:border-box; }
@@ -330,12 +339,16 @@ button, input, select, textarea { font:inherit; }
    under it (the panes keep touch-action:none for their own pan/pinch). */
 html { touch-action:manipulation; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
 body { display:flex; flex-direction:column; }
-/* ---- topbar: the comps' 46px bar — back arrow, brand, pair title; the three
-   segmented groups (layout / overlay / layer) centred; the theme toggle right.
-   Left and right are equal flex shares (the comp's hdrLeftStyle / hdrRightStyle,
-   flex 1 1 0), so the groups centre on the SCREEN, not in what the title leaves. */
-.topbar { display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px); flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
+/* ---- topbar: the comps' 46px bar — back arrow, brand, the item switcher (a pair title where
+   there is nothing to switch between); the three segmented groups; the theme toggle right.
+   Left and right are equal flex shares (the comp's hdrLeftStyle / hdrRightStyle, flex 1 1 0),
+   so the groups centre on the SCREEN — except WITH the switcher (body.nav-on), where the left
+   group hugs it and the right one is the spacer (the Comparison Tool comp, 2026-09-26), so the
+   segments follow the switcher. Scoped to the switcher because the Gallery comps, which draw
+   the sheet in this same header, were not redrawn: unscoped, their segments moved 273px. */
+.topbar { position:relative; z-index:30; display:flex; align-items:center; gap:8px; padding:0 10px; height:calc(46px + 1px); flex-shrink:0; border-bottom:1px solid var(--line); background:var(--bg1); }
 .tb-left { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:4px; }
+body.nav-on .tb-left { flex:0 1 auto; }
 .tb-right { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:1 1 0; min-width:4px; }
 .tb-left .back { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:var(--txt2); text-decoration:none; flex-shrink:0; }
 .tb-left .back:hover { background:var(--bg3); color:var(--txt); }
@@ -967,10 +980,133 @@ body:not(.single) .gpill .gsw { display:none; }
 /* The layer segment: Comments off hides the comment shapes and badges, never the focus region. */
 body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body.layer-no-anns .marks.anns rect.band { display:none; }
 /* Between the phone and the comps' 1120px "narrow" width the pair title goes; the layer labels shorten (JS). */
-@media (max-width: 1119px) { .tb-left .pair-title { display:none; } }
+/* ---- the item switcher (RefDiff Comparison Tool comp, nav-list; RefDiff Mobile comp, nav-open /
+   nav-sheet). Desktop: a pill in the title's place — prev, the name that opens the list, next.
+   The brand's phone button is display:contents here, so on desktop the mark is laid out exactly as
+   the bare span it replaces and the counter is not drawn. */
+.nav-open { display:contents; }
+.nav-open .nav-ctr { display:none; }
+.nav-sw { position:relative; display:flex; align-items:center; gap:2px; height:32px; padding:0 3px; border-radius:9px; border:1px solid var(--line);
+  background:var(--bg2); flex-shrink:0; line-height:normal; }
+.nav-aw { position:relative; display:flex; }
+.nav-arr { width:26px; height:26px; padding:0; border:0; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  background:transparent; color:var(--txt); cursor:pointer; }
+.nav-arr .msi { font-size:18px; }
+.nav-arr:disabled { color:var(--line); cursor:default; }
+.nav-name { display:flex; align-items:center; gap:7px; padding:0 8px; height:26px; border:0; border-radius:6px; cursor:pointer; min-width:250px;
+  background:transparent; color:var(--txt); }
+.nav-name:hover, .nav-name.on { background:var(--bg3); }
+.nav-grp { font-size:12px; color:var(--txt2); white-space:nowrap; }
+.nav-cur { font-size:12.5px; font-weight:600; font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nav-fill { flex:1; }
+.nav-pos { font-size:11px; font-family:var(--font-mono); color:var(--txt2); white-space:nowrap; }
+.nav-chev { font-size:16px; color:var(--txt2); }
+.nav-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.nav-dot.critical { background:var(--critical); } .nav-dot.major { background:var(--major); } .nav-dot.minor { background:var(--minor); }
+.nav-dot.clean { background:transparent; border:1.5px solid var(--ok); }
+.nav-sev { font-size:11px; font-weight:600; white-space:nowrap; }
+.nav-sev.critical { color:var(--critical); } .nav-sev.major { color:var(--major); } .nav-sev.minor { color:var(--minor); }
+.nav-sev.clean { color:var(--txt2); font-weight:400; }
+.nav-pthumb, .nav-rthumb, .nav-sthumb { display:flex; overflow:hidden; flex-shrink:0; background:#f4f5f7; }
+.nav-pthumb img, .nav-rthumb img, .nav-sthumb img { display:block; width:100%; height:100%; object-fit:cover; object-position:top; }
+/* the hover preview, 150ms on an arrow */
+.nav-peek { position:absolute; top:calc(100% + 10px); display:flex; align-items:center; gap:8px; padding:6px 10px 6px 8px; border-radius:8px;
+  background:var(--bg1); border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.35); white-space:nowrap; z-index:50; }
+.nav-peek.right { right:0; } .nav-peek.left { left:0; }
+.nav-pthumb { width:30px; height:22px; border-radius:4px; }
+.nav-ptext { display:flex; flex-direction:column; gap:1px; }
+.nav-pdir { font-size:10.5px; color:var(--txt2); }
+.nav-pkey { font-family:var(--font-mono); }
+.nav-pname { font-size:12px; font-family:var(--font-mono); }
+/* the list popover under the name — the Viewport menu's pattern */
+.nav-list { position:absolute; top:calc(100% + 6px); left:31px; width:340px; background:var(--bg1); border:1px solid var(--line); border-radius:11px;
+  padding:4px; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:40; }
+.nav-list[hidden] { display:none; }
+.nav-search { display:flex; align-items:center; gap:7px; margin:4px; padding:0 9px; height:calc(30px + 2px); border-radius:7px; background:var(--bg0); border:1px solid var(--line); }
+.nav-search .msi { font-size:16px; color:var(--txt2); }
+.nav-search input, .nav-ssearch input { flex:1; min-width:0; padding:0; background:transparent; border:0; outline:none; color:var(--txt); }
+.nav-search input { font-size:12px; }
+.nav-kbd { font-size:11px; font-family:var(--font-mono); color:var(--txt2); padding:0 5px; border:1px solid var(--line); border-radius:4px; line-height:16px; }
+.nav-n { font-size:10.5px; font-family:var(--font-mono); color:var(--txt2); }
+.nav-chips { display:flex; gap:4px; padding:2px 8px 6px; flex-wrap:wrap; }
+.nav-chip { padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  border:1px solid var(--line); color:var(--txt2); background:transparent; line-height:normal; }
+.nav-chip.on { border-color:var(--acc); color:var(--acc); }
+.nav-rows { display:flex; flex-direction:column; max-height:224px; overflow:auto; }
+.nav-row { display:flex; align-items:center; gap:9px; padding:0 10px; height:32px; border-radius:7px; cursor:pointer; flex-shrink:0; color:var(--txt);
+  width:100%; border:0; background:transparent; text-align:left; }
+.nav-row.cur { background:var(--vis); }
+.nav-row.hl, .nav-row:hover { background:var(--bg3); }
+.nav-rname { font-size:12px; font-family:var(--font-mono); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nav-check { font-size:16px; color:var(--acc); }
+.nav-sec { padding:6px 10px 3px; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--txt2); flex-shrink:0; }
+.nav-none { padding:10px; font-size:12px; color:var(--txt2); }
+.nav-foot { padding:7px 10px 8px; font-size:10.5px; color:var(--txt2); border-top:1px solid var(--line); margin-top:2px; display:flex; justify-content:space-between; }
+/* The comp's scrim: over everything under the header, and it is what a click outside the list lands on. */
+.nav-scrim { position:fixed; top:calc(46px + 1px); left:0; right:0; bottom:0; z-index:25; }
+.nav-scrim[hidden], .nav-progress[hidden], .nav-bar[hidden], .nav-sheet[hidden], .nav-sheet-scrim[hidden], .nav-toast[hidden], .nav-swipe[hidden] { display:none; }
+/* The switch's toast, 1.6s, centre-top of the canvas. */
+.nav-toast { position:absolute; left:50%; top:14px; transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:6px 12px 6px 10px;
+  border-radius:999px; background:var(--bg1); border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.35); font-size:12px; white-space:nowrap;
+  z-index:26; line-height:normal; pointer-events:none; }
+.nav-toast .msi { font-size:15px; color:var(--acc); }
+.nav-tname { font-family:var(--font-mono); }
+.nav-tpos { color:var(--txt2); }
+/* ---- the phone half (toolbar layout): the hairline, the header as the switcher, the sheet */
+.nav-progress { position:relative; height:2px; background:var(--bg3); flex-shrink:0; z-index:30; }
+.nav-progress i { position:absolute; left:0; top:0; bottom:0; background:var(--acc); transition:width .25s; }
+.nav-bar { position:absolute; left:0; right:0; top:0; height:45px; z-index:31; display:flex; align-items:center; gap:4px; padding:0 6px;
+  background:var(--bg1); border-bottom:1px solid var(--acc); line-height:normal; }
+.nav-close, .nav-lbtn { width:36px; height:36px; padding:0; border:0; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; background:transparent; color:var(--txt2); cursor:pointer; }
+.nav-close .msi, .nav-lbtn .msi { font-size:19px; }
+.nav-lbtn.on { color:var(--acc); background:var(--vis); }
+.nav-marr { width:44px; height:36px; padding:0; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  color:var(--txt); background:var(--bg2); border:1px solid var(--line); cursor:pointer; }
+.nav-marr:disabled { color:var(--line); background:transparent; border-color:transparent; cursor:default; }
+.nav-marr .msi { font-size:22px; }
+.nav-bmid { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:1px; }
+.nav-bgrp { font-size:10.5px; color:var(--txt2); white-space:nowrap; }
+.nav-bname { font-size:12.5px; font-weight:600; font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.nav-sheet-scrim { position:fixed; left:0; right:0; top:45px; bottom:0; background:rgba(0,0,0,.35); z-index:32; }
+.nav-sheet { position:fixed; left:0; right:0; bottom:0; height:62%; z-index:33; display:flex; flex-direction:column; background:var(--bg1);
+  border-top:1px solid var(--line); border-radius:16px 16px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.4); line-height:normal; transition:height .2s; }
+.nav-sheet.full { height:calc(100% - 45px); }
+.nav-handle { display:flex; justify-content:center; padding:8px 0 4px; touch-action:none; cursor:grab; }
+.nav-handle i { width:36px; height:4px; border-radius:2px; background:var(--bg3); }
+.nav-shead { display:flex; align-items:center; gap:8px; padding:2px 14px 8px; touch-action:none; }
+.nav-stitle { font-size:13.5px; font-weight:700; }
+.nav-ssub { font-size:11.5px; color:var(--txt2); }
+.nav-ssearch { margin:0 12px; display:flex; align-items:center; gap:7px; padding:0 10px; height:calc(36px + 2px); border-radius:9px; background:var(--bg0); border:1px solid var(--line); }
+.nav-ssearch .msi { font-size:17px; color:var(--txt2); }
+/* 16px, not the comp's 12.5: iOS Safari zooms the page into a focused field smaller than that. */
+.nav-ssearch input { font-size:16px; }
+.nav-schips { display:flex; gap:6px; padding:10px 12px 6px; overflow-x:auto; flex-shrink:0; }
+.nav-schips .nav-chip { padding:3px 10px; font-size:11px; }
+.nav-srows { flex:1; overflow:auto; padding:4px 8px 12px; display:flex; flex-direction:column; }
+.nav-srows .nav-row { gap:10px; padding:0 8px; height:44px; border-radius:9px; }
+.nav-srows .nav-row:hover { background:transparent; }
+.nav-srows .nav-row.cur { background:var(--vis); }
+.nav-srows .nav-rname { font-size:12.5px; }
+.nav-srows .nav-check { font-size:18px; }
+.nav-srows .nav-sec { padding:8px 6px 4px; }
+.nav-rthumb { width:34px; height:24px; border-radius:4px; }
+/* the two-finger swipe's peek, at the edge the next item comes in from */
+.nav-swipe { position:absolute; inset:0; pointer-events:none; z-index:18; }
+.nav-swipe .edge { position:absolute; top:0; bottom:0; width:46px; }
+.nav-swipe.next .edge { right:0; background:linear-gradient(90deg, transparent, rgba(91,141,239,.18)); }
+.nav-swipe.prev .edge { left:0; background:linear-gradient(270deg, transparent, rgba(91,141,239,.18)); }
+.nav-scard { position:absolute; top:50%; transform:translateY(-50%); width:112px; display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:12px 10px; border-radius:12px; background:var(--bg1); border:1px solid var(--acc); box-shadow:0 8px 24px rgba(0,0,0,.4); line-height:normal; }
+.nav-swipe.next .nav-scard { right:10px; } .nav-swipe.prev .nav-scard { left:10px; }
+.nav-sdir { font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--acc); }
+.nav-sthumb { width:56px; height:40px; border-radius:5px; }
+.nav-sname { font-size:11px; font-family:var(--font-mono); text-align:center; line-height:1.35; word-break:break-word; }
+.nav-shint { font-size:10px; color:var(--txt2); text-align:center; }
+@media (max-width: 1119px) { .tb-left .pair-title { display:none; } .nav-name { min-width:0; } .nav-sw { flex-shrink:1; min-width:0; } }
 /* phone (the comps' < 760px): the page scrolls, the viewer sticks, one side at a time, the tools float */
 @media (max-width: 759px) {
-  .tb-left .brand-name, #seg-layout, #seg-layer { display:none; }
+  .tb-left .brand-name, #seg-layout, #seg-layer, .nav-sw, .nav-scrim { display:none; }
   /* The comp's mobile header: left and right hug their content (flex 0 0 auto), the overlay
      segment centres in what is left (margin auto); the theme toggle gives way to the settings button. */
   .tb-left, .tb-right { flex:0 0 auto; }
@@ -1129,6 +1265,18 @@ body.layer-no-anns .marks.anns .ann, body.layer-no-anns .vmarks .vmark.ann, body
      sits at y=15 before and after -- the 5px comes off the container, which then centres in
      the 45px header at 8.5..35.5, the comp's own. */
   body.layout-toolbar #seg-variant button { padding:3px 9px; line-height:15px; }
+  /* THE SWITCHER'S PHONE HALF (RefDiff Mobile comp, 2026-09-26): the brand grows the n/total
+     counter and becomes the button that turns the header into the switcher. The comp's own fit
+     decision pays for the ~40px it adds while keeping Diff: header gap 7 -> 4, padding 8 -> 6,
+     and the header segment's buttons 9 -> 7px horizontal (the floating Show pill keeps its 9). */
+  body.layout-toolbar.nav-on .topbar { gap:4px; padding:0 6px; }
+  body.layout-toolbar.nav-on #seg-variant button { padding:3px 7px; }
+  body.layout-toolbar .nav-open { display:flex; align-items:center; gap:6px; height:32px; padding:0 5px 0 4px; border:0; border-radius:7px;
+    background:transparent; color:inherit; cursor:pointer; flex-shrink:0; }
+  body.layout-toolbar .nav-open:hover { background:var(--bg3); }
+  body.layout-toolbar .nav-open .nav-ctr { display:inline; font-size:11px; font-family:var(--font-mono); color:var(--txt2); }
+  /* the toast drops under the floating Show pill, as the focus chip does */
+  body.layout-toolbar .nav-toast { top:calc(8px + 29px + 8px); }
   /* This layout is the one where the Show control FLOATS over the canvas at (8, 8), 29px tall
      (3px padding + 1px border + a 21px button row) at z-index 25 — so the focus chip's phone
      default of top:12px put it UNDER the panel: invisible and untappable, Edit and Clear with it.
@@ -1306,7 +1454,7 @@ const vpDim = (v) => v.w + '\u00d7' + v.h;
 const currentDir = () => page.base.replace(/\/$/, '');
 function setVpOpen(open) {
   state.vpOpen = open;
-  if (open) { if (state.settingsOpen) setSettingsOpen(false); if (state.alignOpen) toggleAlignMenu(false); }
+  if (open) { if (state.settingsOpen) setSettingsOpen(false); if (state.alignOpen) toggleAlignMenu(false); if (navUi.list) navSetList(false); }
   $('vpm-toggle').classList.toggle('on', open);
   $('vpm-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
   const chev = $('vpm-chev'); if (chev) chev.textContent = open ? 'expand_less' : 'expand_more';
@@ -1693,6 +1841,9 @@ function applyLayout() {
   for (const b of document.querySelectorAll('#seg-layout [data-layout]')) b.classList.toggle('on', (b.dataset.layout === 'full') === state.single);
   // With one side and no overlay nothing is registered onto anything, so the align pill goes (the comp's alignShow).
   $('align-wrap').hidden = single() && !narrow.matches && state.lab === 'none';
+  // The switcher's phone half exists in the toolbar layout only; leaving it puts the bar away.
+  if (!toolbarOn()) { navUi.bar = false; navUi.sheet = false; }
+  renderNavChrome();
 }
 function setLayout(isSingle) {
   state.single = isSingle; applyLayout(); applySide(); saveControls();
@@ -1986,13 +2137,306 @@ function fill() { setView(fillView(worldBox(), paneSize(), minimalOn() ? 16 : 24
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
 // The comps' topbar carries the pair title only (gap 14): PASS/FAIL, the counts, the sources and
 // the run time live on the Library card you came from. The refs stay on the pane labels' titles.
+// With an item switcher (the served app, page.nav) the title's place goes to it, and on the phone
+// the brand becomes the button that opens the switcher bar, counting n/total beside the mark.
 function renderTopbar() {
+  const nav = navOn();
+  document.body.classList.toggle('nav-on', nav);
   $('hdr-left').innerHTML =
     (page.indexHref ? '<a class="back" href="' + esc(page.indexHref) + '" title="Library"><span class="msi" aria-hidden="true">arrow_back</span></a>' : '') +
-    '<span class="brand" aria-hidden="true"></span><span class="brand-name">RefDiff</span>' +
-    '<span class="pair-title" title="' + esc(report.pair) + '">' + esc(report.pair) + '</span>';
+    (nav
+      ? '<button type="button" class="nav-open" id="nav-open" title="Switch item"><span class="brand" aria-hidden="true"></span><span class="nav-ctr">' + navPos(true) + '</span></button>'
+      : '<span class="brand" aria-hidden="true"></span>') +
+    '<span class="brand-name">RefDiff</span>' +
+    (nav ? navSwitcherHtml() : '<span class="pair-title" title="' + esc(report.pair) + '">' + esc(report.pair) + '</span>');
   applyTheme(currentTheme());
   $('label-impl').title = 'Implementation · ' + report.impl.ref + ' · ' + report.impl.width + '×' + report.impl.height;
+  wireNavTopbar();
+  renderNavChrome();
+}
+
+// ---- item navigation (the served app only) -------------------------------------------------
+// page.nav comes from the app shell: { label, set, items, index, go, filter, counts, section,
+// swipe }, the items in the Library's order and filter as they were when the comparator opened.
+// An emitted report.html sets none; everything below starts from navOn(), so that file draws the
+// plain title and never reaches the helpers riding on page.nav.
+//
+// Switching swaps the artboards and findings only: the controls are persisted preferences and
+// survive openReport, the zoom and pan ride carriedView (as a width switch's do), the width rides
+// ?vp=. What navUi holds survives a switch too, so the phone's switcher bar stays up across one.
+const navUi = { list: false, bar: false, sheet: false, full: false, q: '', chip: 'all', hl: -1, peekT: null, barT: null, toastT: null };
+let navPending = 0;   // +1 / -1 while a switch is loading: the toast's arrow once it has opened
+const NAV_SEV_WORD = { critical: 'Critical', major: 'Major', minor: 'Minor', clean: 'Clean' };
+function navOn() { return !!(page.nav && page.nav.items && page.nav.index >= 0 && page.nav.index < page.nav.items.length); }
+function navPos(short) { return (page.nav.index + 1) + (short ? '/' : ' / ') + page.nav.items.length; }
+function navDotHtml(sev) { return '<i class="nav-dot ' + sev + '" aria-hidden="true"></i>'; }
+function navSevHtml(sev) { return '<span class="nav-sev ' + sev + '">' + NAV_SEV_WORD[sev] + '</span>'; }
+function navThumbHtml(it, cls) { return '<span class="' + cls + '">' + (it.thumb ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">' : '') + '</span>'; }
+function navHoverPreviewOn() { return readControls().hoverPreview !== false; }
+function navSwitcherHtml() {
+  const n = page.nav, cur = n.items[n.index], prev = n.items[n.index - 1], next = n.items[n.index + 1];
+  const arrow = (id, icon, it, tip) => '<button type="button" class="nav-arr" id="' + id + '"' + (it ? '' : ' disabled') + ' title="' + esc(tip) + '"><span class="msi" aria-hidden="true">' + icon + '</span></button>';
+  return '<div class="nav-sw" id="nav-sw">' +
+    '<div class="nav-aw" data-step="-1">' + arrow('nav-prev', 'chevron_left', prev, prev ? 'Previous: ' + prev.name + ' (←)' : 'First item in ' + n.label) + '</div>' +
+    '<button type="button" class="nav-name' + (navUi.list ? ' on' : '') + '" id="nav-name" aria-expanded="' + navUi.list + '" aria-controls="nav-list" title="Open item list">' +
+      '<span class="nav-grp">' + esc(n.label) + ' /</span><span class="nav-cur">' + esc(cur.name) + '</span><span class="nav-fill"></span>' +
+      '<span class="nav-pos">' + navPos(false) + '</span><span class="msi nav-chev" aria-hidden="true">' + (navUi.list ? 'expand_less' : 'expand_more') + '</span></button>' +
+    '<div class="nav-aw" data-step="1">' + arrow('nav-next', 'chevron_right', next, next ? 'Next: ' + next.name + ' (→)' : 'Last item in ' + n.label) + '</div>' +
+    '<div class="nav-list" id="nav-list" role="dialog" aria-label="Items in ' + esc(n.label) + '"' + (navUi.list ? '' : ' hidden') + '></div>' +
+  '</div>';
+}
+// The rows both lists draw — the desktop popover and the phone sheet — under the one filter.
+// A set's rows are grouped by their props less the last (tone · size); the Library group is flat.
+function navRowsHtml(sheetRows) {
+  const n = page.nav, shown = n.filter(n.items, navUi.q, navUi.chip);
+  let out = '', sec = null;
+  shown.forEach((r, k) => {
+    if (n.set) { const s = n.section(r.item.name); if (s && s !== sec) { out += '<div class="nav-sec">' + esc(s) + '</div>'; sec = s; } }
+    const cur = r.index === n.index;
+    // A row opens its item, so it is a real control — a button, reachable without a pointer.
+    out += '<button type="button" class="nav-row' + (cur ? ' cur' : '') + (k === navUi.hl ? ' hl' : '') + '" data-i="' + r.index + '" aria-current="' + (cur ? 'true' : 'false') + '">' +
+      navDotHtml(r.item.sev) + (sheetRows ? navThumbHtml(r.item, 'nav-rthumb') : '') +
+      '<span class="nav-rname">' + esc(r.item.name) + '</span>' + navSevHtml(r.item.sev) +
+      (cur ? '<span class="msi nav-check" aria-hidden="true">check</span>' : '') + '</button>';
+  });
+  return { html: out || '<div class="nav-none">No items match</div>', count: shown.length, shown: shown };
+}
+function navChipsHtml() {
+  const c = page.nav.counts(page.nav.items);
+  return [['all', 'All'], ['critical', 'Critical ' + c.critical], ['major', 'Major ' + c.major], ['minor', 'Minor ' + c.minor], ['clean', 'Clean ' + c.clean]]
+    .map(([id, label]) => '<button type="button" class="nav-chip' + (navUi.chip === id ? ' on' : '') + '" data-chip="' + id + '">' + label + '</button>').join('');
+}
+// "N more below": the rows under the scroll box's bottom edge, re-counted as it scrolls.
+// Measured against the scroll box's own rect: a row's offsetTop is from the POPOVER (the nearest
+// positioned ancestor), which counted the search field and the chips as rows' worth of scroll.
+function navMoreBelow(box, out) {
+  if (!box || !out) return;
+  const edge = box.getBoundingClientRect().bottom;
+  let n = 0;
+  for (const r of box.querySelectorAll('.nav-row')) { const b = r.getBoundingClientRect(); if (b.top + b.height / 2 > edge) n++; }
+  out.textContent = n ? n + ' more below' : '';
+}
+function renderNavList(focus) {
+  const el = $('nav-list');
+  $('nav-scrim').hidden = !(navOn() && navUi.list && !narrow.matches);
+  if (!el) return;
+  el.hidden = !navUi.list;
+  const name = $('nav-name');
+  if (name) {
+    name.classList.toggle('on', navUi.list);
+    name.setAttribute('aria-expanded', navUi.list ? 'true' : 'false');
+    name.querySelector('.nav-chev').textContent = navUi.list ? 'expand_less' : 'expand_more';
+  }
+  if (!navUi.list) return;
+  if (!el.firstChild) {
+    el.innerHTML =
+      '<label class="nav-search"><span class="msi" aria-hidden="true">search</span>' +
+      '<input id="nav-q" type="text" placeholder="Filter ' + esc(page.nav.label) + ' items…" autocomplete="off" aria-label="Filter items">' +
+      '<span class="nav-kbd">/</span><span class="nav-n" id="nav-n"></span></label>' +
+      '<div class="nav-chips" id="nav-chips"></div><div class="nav-rows" id="nav-rows"></div>' +
+      '<div class="nav-foot"><span>↑ ↓ move · ⏎ open</span><span id="nav-more"></span></div>';
+    $('nav-q').value = navUi.q;
+    $('nav-q').addEventListener('input', (e) => { navUi.q = e.target.value; navUi.hl = -1; renderNavRows(); });
+    $('nav-q').addEventListener('keydown', navListKey);
+    $('nav-rows').addEventListener('scroll', () => navMoreBelow($('nav-rows'), $('nav-more')));
+  }
+  $('nav-chips').innerHTML = navChipsHtml();
+  renderNavRows();
+  if (focus) $('nav-q').focus();
+}
+function renderNavRows() {
+  const box = $('nav-rows');
+  if (!box) return;
+  const r = navRowsHtml(false);
+  box.innerHTML = r.html;
+  $('nav-n').textContent = String(r.count);
+  const hl = box.querySelector('.nav-row.hl') || box.querySelector('.nav-row.cur');
+  if (hl) hl.scrollIntoView({ block: 'nearest' });
+  navMoreBelow(box, $('nav-more'));
+}
+function navSetList(open, focus) {
+  if (!navOn()) return;
+  navUi.list = open; navUi.hl = -1;
+  if (open) { navHidePeek(); if (state.vpOpen) setVpOpen(false); if (state.alignOpen) toggleAlignMenu(false); }
+  else { navUi.q = ''; navUi.chip = 'all'; const el = $('nav-list'); if (el) el.innerHTML = ''; }
+  renderNavList(focus);
+}
+// Up / down / enter / escape inside the list; the field keeps the focus, so typing still filters.
+function navListKey(e) {
+  const shown = page.nav.filter(page.nav.items, navUi.q, navUi.chip);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!shown.length) return;
+    const from = navUi.hl < 0 ? shown.findIndex((r) => r.index === page.nav.index) : navUi.hl;
+    navUi.hl = Math.max(0, Math.min(shown.length - 1, from + (e.key === 'ArrowDown' ? 1 : -1)));
+    renderNavRows();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const pick = shown[navUi.hl] || (shown.length === 1 ? shown[0] : null);
+    if (pick) { if (pick.index === page.nav.index) navSetList(false); else navGo(pick.index); }
+  } else if (e.key === 'Escape') {
+    e.preventDefault(); e.stopPropagation();
+    navSetList(false);
+  }
+}
+// The hover preview under an arrow, after 150ms: thumbnail, direction, name, severity.
+function navShowPeek(wrap) {
+  const step = Number(wrap.dataset.step), it = page.nav.items[page.nav.index + step];
+  if (!it || navUi.list || !navHoverPreviewOn()) return;
+  navHidePeek();
+  const card = document.createElement('div');
+  card.className = 'nav-peek ' + (step > 0 ? 'right' : 'left');
+  card.innerHTML = navThumbHtml(it, 'nav-pthumb') +
+    '<div class="nav-ptext"><span class="nav-pdir">' + (step > 0 ? 'Next' : 'Prev') + ' · <span class="nav-pkey">' + (step > 0 ? '→' : '←') + '</span></span>' +
+    '<span class="nav-pname">' + esc(it.name) + '</span></div>' + navSevHtml(it.sev);
+  wrap.appendChild(card);
+}
+function navHidePeek() {
+  clearTimeout(navUi.peekT); navUi.peekT = null;
+  for (const el of document.querySelectorAll('.nav-peek')) el.remove();
+}
+function wireNavTopbar() {
+  if (!navOn()) return;
+  for (const wrap of document.querySelectorAll('#nav-sw .nav-aw')) {
+    wrap.addEventListener('mouseenter', () => { clearTimeout(navUi.peekT); navUi.peekT = setTimeout(() => navShowPeek(wrap), 150); });
+    wrap.addEventListener('mouseleave', navHidePeek);
+  }
+  $('nav-prev').addEventListener('click', () => navStep(-1));
+  $('nav-next').addEventListener('click', () => navStep(1));
+  $('nav-name').addEventListener('click', () => navSetList(!navUi.list, true));
+  $('nav-list').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-chip]');
+    if (chip) { navUi.chip = chip.dataset.chip; navUi.hl = -1; $('nav-chips').innerHTML = navChipsHtml(); renderNavRows(); return; }
+    const row = e.target.closest('.nav-row[data-i]');
+    if (row) { const i = Number(row.dataset.i); if (i === page.nav.index) navSetList(false); else navGo(i); }
+  });
+  $('nav-open').addEventListener('click', () => navSetBar(!navUi.bar));
+}
+// The phone: the 44px header BECOMES the switcher (no new panel), under a 2px progress hairline.
+function renderNavBar() {
+  const bar = $('nav-bar');
+  const on = navOn() && toolbarOn() && navUi.bar;
+  bar.hidden = !on;
+  if (!on) { bar.innerHTML = ''; return; }
+  const n = page.nav, cur = n.items[n.index];
+  const arrow = (step, icon) => '<button type="button" class="nav-marr" data-step="' + step + '"' + (n.items[n.index + step] ? '' : ' disabled') + ' title="' + (step > 0 ? 'Next' : 'Previous') + '"><span class="msi" aria-hidden="true">' + icon + '</span></button>';
+  bar.innerHTML =
+    '<button type="button" class="nav-close" id="nav-close" title="Back to tools"><span class="msi" aria-hidden="true">close</span></button>' +
+    arrow(-1, 'chevron_left') +
+    // The position is its own node, as the comp's interpolation makes it: one run of text would
+    // read as one element where the comp draws two.
+    '<div class="nav-bmid"><span class="nav-bgrp">' + esc(n.label) + ' · <span>' + navPos(false) + '</span></span><span class="nav-bname">' + esc(cur.name) + '</span></div>' +
+    arrow(1, 'chevron_right') +
+    '<button type="button" class="nav-lbtn' + (navUi.sheet ? ' on' : '') + '" id="nav-sheet-btn" title="Item list"><span class="msi" aria-hidden="true">list</span></button>';
+}
+function renderNavSheet() {
+  const on = navOn() && toolbarOn() && navUi.sheet;
+  const sheet = $('nav-sheet');
+  sheet.hidden = !on; $('nav-sheet-scrim').hidden = !on;
+  sheet.classList.toggle('full', on && navUi.full);
+  if (!on) { sheet.innerHTML = ''; return; }
+  const n = page.nav;
+  if (!sheet.firstChild) {
+    sheet.innerHTML =
+      '<div class="nav-handle" id="nav-handle"><i></i></div>' +
+      '<div class="nav-shead" id="nav-shead"><span class="nav-stitle">' + esc(n.label) + '</span><span class="nav-ssub">' + n.items.length + ' items · Library order</span></div>' +
+      '<label class="nav-ssearch"><span class="msi" aria-hidden="true">search</span><input id="nav-sq" type="text" placeholder="Filter items…" autocomplete="off" aria-label="Filter items"><span class="nav-n" id="nav-sn"></span></label>' +
+      '<div class="nav-schips" id="nav-schips"></div><div class="nav-srows" id="nav-srows"></div>';
+    $('nav-sq').value = navUi.q;
+    $('nav-sq').addEventListener('input', (e) => { navUi.q = e.target.value; renderNavSheetRows(); });
+    wireNavSheetDrag();
+    renderNavSheetRows();
+    const cur = sheet.querySelector('.nav-row.cur');
+    if (cur) cur.scrollIntoView({ block: 'center' });
+    return;
+  }
+  renderNavSheetRows();
+}
+function renderNavSheetRows() {
+  const r = navRowsHtml(true);
+  $('nav-schips').innerHTML = navChipsHtml();
+  $('nav-srows').innerHTML = r.html;
+  $('nav-sn').textContent = String(r.count);
+}
+// Drag the handle up for the full height; down (or a tap on the scrim) dismisses.
+function wireNavSheetDrag() {
+  let y0 = null;
+  for (const el of [$('nav-handle'), $('nav-shead')]) {
+    el.addEventListener('pointerdown', (e) => { y0 = e.clientY; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointerup', (e) => {
+      if (y0 === null) return;
+      const dy = e.clientY - y0; y0 = null;
+      if (dy < -30) { navUi.full = true; renderNavSheet(); }
+      else if (dy > 50) { if (navUi.full) { navUi.full = false; renderNavSheet(); } else navSetSheet(false); }
+    });
+    el.addEventListener('pointercancel', () => { y0 = null; });
+  }
+}
+function navSetSheet(open) {
+  navUi.sheet = open; navUi.full = false;
+  if (!open) { navUi.q = ''; navUi.chip = 'all'; }
+  renderNavBar(); renderNavSheet();
+  navArmBar();
+}
+function navSetBar(open) {
+  if (!navOn()) return;
+  navUi.bar = open;
+  if (open) { if (state.vpOpen) setVpOpen(false); if (state.alignOpen) toggleAlignMenu(false); }
+  else { navUi.sheet = false; navUi.full = false; }
+  renderNavBar(); renderNavSheet();
+  navArmBar();
+}
+// The bar closes itself 4s after the last touch on it — never while its list is up.
+function navArmBar() {
+  clearTimeout(navUi.barT); navUi.barT = null;
+  if (navUi.bar && !navUi.sheet) navUi.barT = setTimeout(() => { if (!navUi.sheet) navSetBar(false); }, 4000);
+}
+function renderNavChrome() {
+  const on = navOn() && toolbarOn();
+  $('nav-progress').hidden = !on;
+  if (on) $('nav-progress-fill').style.width = ((page.nav.index + 1) / page.nav.items.length * 100) + '%';
+  renderNavBar(); renderNavSheet(); renderNavList(false);
+}
+function navGo(i) {
+  if (!navOn() || i === page.nav.index || i < 0 || i >= page.nav.items.length) return;
+  navPending = i > page.nav.index ? 1 : -1;
+  // A deliberate view rides over (the zoom and the pan); a fitted one fits the next item.
+  if (state.userMoved) carriedView = { z: state.view.z, tx: state.view.tx, ty: state.view.ty };
+  navHidePeek();
+  if (navUi.list) navSetList(false);
+  if (navUi.sheet) { navUi.sheet = false; navUi.full = false; navUi.q = ''; navUi.chip = 'all'; renderNavSheet(); }
+  page.nav.go(i, report.breakpoint ? report.breakpoint.viewport : null);
+}
+function navStep(d) { if (navOn()) navGo(page.nav.index + d); }
+function navToast(dir) {
+  const t = $('nav-toast'), it = page.nav.items[page.nav.index];
+  t.innerHTML = '<span class="msi" aria-hidden="true">' + (dir > 0 ? 'arrow_forward' : 'arrow_back') + '</span>' +
+    '<span class="nav-tname">' + esc(it.name) + '</span><span class="nav-tpos">· ' + navPos(false) + ' · zoom &amp; layers kept</span>';
+  t.hidden = false;
+  clearTimeout(navUi.toastT);
+  navUi.toastT = setTimeout(() => { t.hidden = true; }, 1600);
+}
+// The phone's two-finger swipe: the peek card at the edge the next item comes in from.
+function renderNavSwipe(o) {
+  const el = $('nav-swipe');
+  if (!o || !o.peek) { el.hidden = true; el.innerHTML = ''; return; }
+  const it = page.nav.items[page.nav.index + o.step];
+  el.className = 'nav-swipe ' + (o.step > 0 ? 'next' : 'prev');
+  el.innerHTML = '<span class="edge"></span><div class="nav-scard"><span class="nav-sdir">' + (o.step > 0 ? 'Next' : 'Prev') + '</span>' +
+    navThumbHtml(it, 'nav-sthumb') + '<span class="nav-sname">' + esc(it.name) + '</span>' + navSevHtml(it.sev) +
+    '<span class="nav-shint">release to open</span></div>';
+  el.hidden = false;
+}
+// A cancelled swipe eases the canvas back to where the gesture found it.
+function navSpringBack(side, to, userMoved) {
+  const from = viewOf(side), t0 = performance.now();
+  const frame = (t) => {
+    const k = Math.min(1, (t - t0) / 180), e = 1 - Math.pow(1 - k, 3);
+    setViewOf(side, { z: from.z + (to.z - from.z) * e, tx: from.tx + (to.tx - from.tx) * e, ty: from.ty + (to.ty - from.ty) * e });
+    applyView();
+    if (k < 1) requestAnimationFrame(frame); else state.userMoved = userMoved;
+  };
+  requestAnimationFrame(frame);
 }
 // A regression is a finding an earlier run had fixed and this one brought back — the loop's stop
 // signal, which the fix skill halts on. The strip is the one place it cannot be missed (gap 15).
@@ -2810,6 +3254,7 @@ const gest = {
   pts: new Map(),     // pointerId -> { x, y, side } for every pointer down over the canvas
   pinch: null,        // { side, at } while two or more are down
   pan: null,          // { id, side, pane } while one finger drags the canvas
+  swipe: null,        // the phone's two-finger item swipe: { side, at0, view0, moved0, o }
   swallowClick: false, // the click that ends a gesture that MOVED is not a tap on what it lands on
 };
 // How far from where it started a pointer may stray and still count as a tap (screen px, Manhattan
@@ -2855,11 +3300,18 @@ function wireCanvasGestures() {
   host.addEventListener('pointerdown', (e) => {
     const pane = gestPaneOfEvent(e);
     if (!gest.pts.size) gest.swallowClick = false;   // a fresh gesture: nothing owed from the last one
+    // A touch on the canvas puts the phone's switcher bar away (its list sheet keeps it up).
+    if (navUi.bar && !navUi.sheet) navSetBar(false);
     gest.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, side: pane ? pane.dataset.side : null });
     if (gest.pts.size >= 2) {
       gestCancelDrafts();
       const side = gestSide();
       gest.pinch = { side: side, at: gestPinchAt(side) };
+      // Two fingers on the phone may also be the item swipe: remember where the view started, so
+      // a switch keeps it and a cancelled swipe returns to it.
+      gest.swipe = gest.pts.size === 2 && toolbarOn() && navOn() && gest.pinch.at
+        ? { side: side, at0: gest.pinch.at, view0: Object.assign({}, viewOf(side)), moved0: state.userMoved, o: null }
+        : null;
       return;
     }
     if (!pane) return;   // a finger on the chrome over the canvas: it may join a pinch, nothing else
@@ -2892,6 +3344,11 @@ function wireCanvasGestures() {
       setViewOf(gest.pinch.side, pinchView(viewOf(gest.pinch.side), gest.pinch.at, at));
       gest.pinch.at = at;
       state.userMoved = true; applyView();
+      if (gest.swipe) {
+        const s = gest.swipe, n = page.nav;
+        s.o = n.swipe(at.x - s.at0.x, at.y - s.at0.y, s.at0.dist ? at.dist / s.at0.dist : 1, n.index > 0, n.index < n.items.length - 1);
+        renderNavSwipe(s.o);
+      }
       return;
     }
     const pane = gestPaneOf(e);
@@ -2919,6 +3376,15 @@ function wireCanvasGestures() {
       if (gest.pts.size >= 2) gest.pinch = { side: gest.pinch.side, at: gestPinchAt(gest.pinch.side) };
       else gest.pinch = null;
       gest.swallowClick = true;
+      // The item swipe resolves on the first finger up: past the threshold it switches with the
+      // view the gesture found; a swipe short of it, or at a group end, springs back.
+      const s = gest.swipe;
+      gest.swipe = null;
+      renderNavSwipe(null);
+      if (s && s.o && s.o.commit) {
+        setViewOf(s.side, s.view0); state.userMoved = s.moved0; applyView();
+        navStep(s.o.step);
+      } else if (s && s.o && s.o.swiping) navSpringBack(s.side, s.view0, s.moved0);
       return;
     }
     if (focusDrag && focusDrag.pointerId === e.pointerId) { focusEditUp(); return; }
@@ -3105,9 +3571,31 @@ function wire() {
     $('op-pct').textContent = state.labAmount[k] + '%';
     saveControls(); applyLab();
   });
+  // The item switcher's own surfaces: delegated, because renderNavBar / renderNavSheet rebuild them.
+  $('nav-bar').addEventListener('click', (e) => {
+    if (e.target.closest('#nav-close')) { navSetBar(false); return; }
+    if (e.target.closest('#nav-sheet-btn')) { navSetSheet(!navUi.sheet); return; }
+    const a = e.target.closest('.nav-marr[data-step]');
+    if (a && !a.disabled) { navStep(Number(a.dataset.step)); navArmBar(); }
+  });
+  $('nav-sheet').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-chip]');
+    if (chip) { navUi.chip = chip.dataset.chip; renderNavSheetRows(); return; }
+    const row = e.target.closest('.nav-row[data-i]');
+    if (row) { const i = Number(row.dataset.i); if (i === page.nav.index) navSetSheet(false); else navGo(i); }
+  });
+  $('nav-sheet-scrim').addEventListener('click', () => navSetSheet(false));
+  $('nav-scrim').addEventListener('click', () => navSetList(false));
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape' && e.target.id !== 'q') { e.target.blur(); } return; }
     const p = paneSize();
+    // Previous / next item. Not with a modifier: alt+arrow is the browser's own back and forward.
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.metaKey && !e.ctrlKey && navOn()) {
+      e.preventDefault(); navStep(e.key === 'ArrowRight' ? 1 : -1); return;
+    }
+    // With the item list open, / is ITS search; otherwise the finding filter's.
+    if (e.key === '/' && navUi.list) { e.preventDefault(); const q = $('nav-q'); if (q) q.focus(); return; }
+    if (e.key === 'Escape' && navUi.list) { navSetList(false); return; }
     // The text filter has no drawn home (gap 31): / opens it, Esc in it clears and closes it.
     if (e.key === '/') { e.preventDefault(); setTab('findings'); openSearch(); return; }
     if (e.key === '+' || e.key === '=') { setView(zoomAt(state.view, 1.25, p.w / 2, p.h / 2)); state.userMoved = true; applyView(); }
@@ -3594,6 +4082,11 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
   triage.unsaved = new Set(); triage.saveError = null; triage.noteDrafts = {}; focusSaveError = null;
   // A width switch carries its view over (a deliberate one, so nothing below re-fits it).
   if (carriedView) { setView(carriedView); state.userMoved = true; carriedView = null; } else { state.view = { z: 1, tx: 0, ty: 0 }; state.userMoved = false; }
+  // The switcher's list and hover card never outlive an open; its phone bar does only across a
+  // switch made from it — any other open (from the Library, a width) starts with the tools.
+  navUi.list = false; navUi.q = ''; navUi.chip = 'all'; navUi.hl = -1;
+  if (!navPending) { navUi.bar = false; navUi.sheet = false; navUi.full = false; }
+  navHidePeek();
   state.selected = null; state.q = ''; state.tab = 'findings';
   state.sev = { critical: true, major: true, minor: true };
   state.focus = null; state.focusLabel = ''; state.focusing = false; state.focusEdit = false; focusBand = null; focusDrag = null;
@@ -3642,6 +4135,8 @@ function openReport(reportData, annotationSet, pageData, sheetData) {
     setLab(state.lab);
     renderRail(); renderMarks(); renderAnnMarks(); renderFocusChip();
     if (state.userMoved) applyView(); else fit();
+    if (navPending && navOn()) { navToast(navPending); navArmBar(); }
+    navPending = 0;
   });
 }
 `

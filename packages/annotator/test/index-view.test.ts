@@ -89,29 +89,42 @@ describe("pairCard (desktop — the comp's thumbnail card)", () => {
   it("puts the verdict top-left and the run state top-right of the thumbnail band", () => {
     expect(html).toContain('<span class="verdict fail">Fail</span>')
     expect(html).toContain('<span class="state analyzed">Analyzed</span>')
-    const clean = pairCard(pair({ pass: true, critical: 0, major: 0, minor: 0, findings: 0 }), "#/x", "desktop", NOW)
+    const clean = pairCard(
+      pair({ pass: true, critical: 0, major: 0, minor: 0, findings: 0 }),
+      "#/x",
+      "desktop",
+      NOW,
+    )
     expect(clean).toContain('<span class="verdict pass">Pass</span>')
     expect(clean).toContain('<span class="state clean">Clean</span>')
     // A passing run that still found minor things is analyzed, not clean.
-    expect(pairCard(pair({ pass: true, critical: 0, major: 0, findings: 2 }), "#/x", "desktop", NOW)).toContain(
-      "Analyzed",
-    )
+    expect(
+      pairCard(pair({ pass: true, critical: 0, major: 0, findings: 2 }), "#/x", "desktop", NOW),
+    ).toContain("Analyzed")
   })
 
   it("shows the run's own impl screenshot, and the comp's plate when the capture has none (D6, gap 25)", () => {
     expect(html).toContain('<img class="shot" src="onboarding-document-step/impl.png"')
     const noShot = pairCard(pair({ implPng: undefined }), "#/x", "desktop", NOW)
     expect(noShot).not.toContain("<img")
-    expect(noShot).toContain('<div class="plate"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>')
+    expect(noShot).toContain(
+      '<div class="plate"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>',
+    )
   })
 
   it("names the design source, and the impl route in mono", () => {
     // The label in its own span, as the comp's runtime renders an interpolation — the chip border stays the chip's.
-    expect(html).toContain('<span class="src"><span class="msi" aria-hidden="true">design_services</span><span>Figma</span></span>')
+    expect(html).toContain(
+      '<span class="src"><span class="msi" aria-hidden="true">design_services</span><span>Figma</span></span>',
+    )
     expect(html).toContain('<span class="route mono">/onboarding/document</span>')
-    expect(pairCard(pair({ designSource: "dc-html" }), "#/x", "desktop", NOW)).toContain("auto_awesome</span><span>Claude Design</span>")
+    expect(pairCard(pair({ designSource: "dc-html" }), "#/x", "desktop", NOW)).toContain(
+      "auto_awesome</span><span>Claude Design</span>",
+    )
     // A source the comp never drew is still named, never hidden.
-    expect(pairCard(pair({ designSource: "sketch" }), "#/x", "desktop", NOW)).toContain("description</span><span>sketch</span>")
+    expect(pairCard(pair({ designSource: "sketch" }), "#/x", "desktop", NOW)).toContain(
+      "description</span><span>sketch</span>",
+    )
   })
 
   it("draws severity dot-badges only for non-zero counts, and the comment count always", () => {
@@ -119,18 +132,35 @@ describe("pairCard (desktop — the comp's thumbnail card)", () => {
     expect(html).toContain('<span class="badge major"><i class="dot"></i>Major 2</span>')
     expect(html).toContain('<span class="badge minor"><i class="dot"></i>Minor 2</span>')
     expect(html).toContain("chat_bubble</span>3</span>")
-    const quiet = pairCard(pair({ critical: 0, major: 0, minor: 0, findings: 0, notes: 0 }), "#/x", "desktop", NOW)
+    const quiet = pairCard(
+      pair({ critical: 0, major: 0, minor: 0, findings: 0, notes: 0 }),
+      "#/x",
+      "desktop",
+      NOW,
+    )
     expect(quiet).toContain('<span class="badge none">No findings</span>')
     expect(quiet).not.toContain("Critical 0")
     expect(quiet).toContain("chat_bubble</span>0</span>")
   })
 
   it("reads the delta as a direction (gap 1): diverging, converging, steady — or a first run", () => {
-    expect(html).toContain('<span class="trend diverging"><span class="msi" aria-hidden="true">trending_up</span>Diverging</span>')
+    expect(html).toContain(
+      '<span class="trend diverging"><span class="msi" aria-hidden="true">trending_up</span>Diverging</span>',
+    )
     expect(html).toContain('<span class="delta mono">+3 new / −1 resolved</span>')
-    const conv = pairCard(pair({ delta: { introduced: 1, resolved: 4, regressions: 0 } }), "#/x", "desktop", NOW)
+    const conv = pairCard(
+      pair({ delta: { introduced: 1, resolved: 4, regressions: 0 } }),
+      "#/x",
+      "desktop",
+      NOW,
+    )
     expect(conv).toContain("trending_down</span>Converging")
-    const steady = pairCard(pair({ delta: { introduced: 2, resolved: 2, regressions: 0 } }), "#/x", "desktop", NOW)
+    const steady = pairCard(
+      pair({ delta: { introduced: 2, resolved: 2, regressions: 0 } }),
+      "#/x",
+      "desktop",
+      NOW,
+    )
     expect(steady).toContain("trending_flat</span>Steady")
     // No previous run: say so, do not pretend +0 / −0.
     const first = pairCard(pair({ delta: undefined }), "#/x", "desktop", NOW)
@@ -143,8 +173,12 @@ describe("pairCard (desktop — the comp's thumbnail card)", () => {
   })
 
   it("warns under the confidence gate as a state, never as a number to rank by (gap 2)", () => {
-    expect(html).toContain('warning</span>Positions unreliable · <span class="pct">42%</span> anchor match</div>')
-    expect(pairCard(pair({ confidence: CONFIDENCE_GATE }), "#/x", "desktop", NOW)).not.toContain("Positions unreliable")
+    expect(html).toContain(
+      'warning</span>Positions unreliable · <span class="pct">42%</span> anchor match</div>',
+    )
+    expect(pairCard(pair({ confidence: CONFIDENCE_GATE }), "#/x", "desktop", NOW)).not.toContain(
+      "Positions unreliable",
+    )
     expect(html).not.toContain("0.42")
   })
 
@@ -168,7 +202,9 @@ describe("pairCard (mobile — the comp's row list)", () => {
 
   it("is a row: tile, then name + verdict, source + badges + comments, trend + delta", () => {
     expect(html).toContain('<img class="tile" src="onboarding-document-step/impl.png"')
-    expect(html).toContain('<div class="col"><div class="crow name-row"><span class="name">Onboarding — Document step</span><span class="verdict fail">Fail</span></div>')
+    expect(html).toContain(
+      '<div class="col"><div class="crow name-row"><span class="name">Onboarding — Document step</span><span class="verdict fail">Fail</span></div>',
+    )
     expect(html).toContain('<div class="crow cmeta"><span class="src">')
     expect(html).toContain("Diverging</span>")
     expect(html).toContain('Positions unreliable · <span class="pct">42%</span> anchor match')
@@ -181,7 +217,9 @@ describe("pairCard (mobile — the comp's row list)", () => {
   })
 
   it("uses the plate as the tile when there is no capture", () => {
-    expect(pairCard(pair({ implPng: undefined }), "#/x", "mobile", NOW)).toContain('class="tile plate"')
+    expect(pairCard(pair({ implPng: undefined }), "#/x", "mobile", NOW)).toContain(
+      'class="tile plate"',
+    )
   })
 })
 
@@ -192,7 +230,9 @@ describe("a pair whose findings.json could not be read", () => {
     expect(html).toContain("broken_image")
     expect(html).toContain("onboarding-liveness-step")
     expect(html).toContain("Couldn’t read this run")
-    expect(html).toContain('<span class="tech mono">findings.json · Unexpected end of JSON input</span>')
+    expect(html).toContain(
+      '<span class="tech mono">findings.json · Unexpected end of JSON input</span>',
+    )
     // Only the directory is known: no route line.
     expect(html).not.toContain('class="route')
     expect(isBroken(broken)).toBe(true)
@@ -219,7 +259,9 @@ describe("a pair whose findings.json could not be read", () => {
 
   it("is a dashed row on mobile with the same reason", () => {
     const html = pairCard(broken, "", "mobile", NOW)
-    expect(html).toContain('<div class="tile"><span class="msi" aria-hidden="true">broken_image</span></div>')
+    expect(html).toContain(
+      '<div class="tile"><span class="msi" aria-hidden="true">broken_image</span></div>',
+    )
     expect(html).toContain("findings.json · Unexpected end of JSON input")
   })
 
@@ -229,9 +271,16 @@ describe("a pair whose findings.json could not be read", () => {
   })
 
   it("keeps its place among the cards and counts toward the total", () => {
-    const html = pairCards([pair(), broken, pair({ dir: "b", pair: "b" })], (p) => "#/" + p.dir, "desktop", NOW)
+    const html = pairCards(
+      [pair(), broken, pair({ dir: "b", pair: "b" })],
+      (p) => "#/" + p.dir,
+      "desktop",
+      NOW,
+    )
     expect(html.match(/class="card( broken)?"/g)).toHaveLength(3)
-    expect(countMessage(filterEntries([pair(), broken], DEFAULT_FILTER).length, 2, 2, 2)).toBe("2 cells in 2 groups")
+    expect(countMessage(filterEntries([pair(), broken], DEFAULT_FILTER).length, 2, 2, 2)).toBe(
+      "2 cells in 2 groups",
+    )
   })
 })
 
@@ -291,8 +340,32 @@ describe("relativeWhen", () => {
 describe("the filter row", () => {
   const entries = [
     pair(),
-    pair({ dir: "button", pair: "Button", implRef: "ds/Button", designSource: "dc-html", pass: false, critical: 1, major: 0, minor: 1, confidence: 0.96, notes: 0, delta: { introduced: 1, resolved: 2, regressions: 0 } }),
-    pair({ dir: "stepper", pair: "Stepper", implRef: "ds/Stepper", pass: true, critical: 0, major: 0, minor: 0, findings: 0, confidence: 0.94, notes: 0, delta: { introduced: 0, resolved: 3, regressions: 0 } }),
+    pair({
+      dir: "button",
+      pair: "Button",
+      implRef: "ds/Button",
+      designSource: "dc-html",
+      pass: false,
+      critical: 1,
+      major: 0,
+      minor: 1,
+      confidence: 0.96,
+      notes: 0,
+      delta: { introduced: 1, resolved: 2, regressions: 0 },
+    }),
+    pair({
+      dir: "stepper",
+      pair: "Stepper",
+      implRef: "ds/Stepper",
+      pass: true,
+      critical: 0,
+      major: 0,
+      minor: 0,
+      findings: 0,
+      confidence: 0.94,
+      notes: 0,
+      delta: { introduced: 0, resolved: 3, regressions: 0 },
+    }),
     broken,
   ]
   const dirs = (f: Partial<typeof DEFAULT_FILTER>) =>
@@ -313,7 +386,12 @@ describe("the filter row", () => {
   })
 
   it("shows everything, the unreadable run included, under the defaults", () => {
-    expect(dirs({})).toEqual(["onboarding-document-step", "button", "stepper", "onboarding-liveness-step"])
+    expect(dirs({})).toEqual([
+      "onboarding-document-step",
+      "button",
+      "stepper",
+      "onboarding-liveness-step",
+    ])
   })
 
   it("filters by the design source", () => {
@@ -340,7 +418,11 @@ describe("the filter row", () => {
   it("filters by a fix come undone, not by a divergence", () => {
     const diverging = pair({ dir: "d", delta: { introduced: 3, resolved: 1, regressions: 0 } })
     const regressed = pair({ dir: "r", delta: { introduced: 3, resolved: 1, regressions: 2 } })
-    expect(filterEntries([diverging, regressed], { ...DEFAULT_FILTER, state: "regressed" }).map((e) => e.dir)).toEqual(["r"])
+    expect(
+      filterEntries([diverging, regressed], { ...DEFAULT_FILTER, state: "regressed" }).map(
+        (e) => e.dir,
+      ),
+    ).toEqual(["r"])
   })
 
   // `Stale cells` is NOT the retired `Low confidence`: it is a per-GROUP run
@@ -351,7 +433,9 @@ describe("the filter row", () => {
       cell("ds-alert--a", { run: 4, confidence: 0.1 }),
       cell("ds-alert--b", { run: 3, confidence: 0.99 }),
     ]
-    expect(filterEntries(entries, { ...DEFAULT_FILTER, state: "stale" }).map((e) => e.dir)).toEqual(["ds-alert--b"])
+    expect(filterEntries(entries, { ...DEFAULT_FILTER, state: "stale" }).map((e) => e.dir)).toEqual(
+      ["ds-alert--b"],
+    )
   })
 
   it("lists a broken run only under Any state — it has no state to filter by", () => {
@@ -362,7 +446,9 @@ describe("the filter row", () => {
   })
 
   it("treats a first run as not regressed — there is nothing to have come undone", () => {
-    expect(matchesFilter(pair({ delta: undefined }), { ...DEFAULT_FILTER, state: "regressed" })).toBe(false)
+    expect(
+      matchesFilter(pair({ delta: undefined }), { ...DEFAULT_FILTER, state: "regressed" }),
+    ).toBe(false)
   })
 })
 
@@ -417,21 +503,53 @@ describe("groupEntries", () => {
   // The order the LIBRARY lists in is alphabetical (repo owner, 2026-09-07): the
   // Library's job is to let a reader find a set, and an order that moved every
   // time a subset re-ran could not be scanned. What just finished is still
-  // findable by the Measured column. Cells INSIDE a group keep newest-first,
-  // because those are runs of one thing rather than things.
+  // findable by the Measured column. REVERSED for the cells on 2026-09-26 (repo
+  // owner): they used to keep newest-first as "runs of one thing", and a group of
+  // message states re-running a few at a time then read as sorted by update date.
+  // Cells are alphabetical now too, by the name the row shows.
   it("orders groups alphabetically, and never by which cell arrived first", () => {
     const at = (msAgo: number) => new Date(NOW - msAgo).toISOString()
     const sorted = sortEntries([
       cell("ds-alert--a", { createdAt: at(3 * 3_600_000) }),
-      cell("ds-checkbox--a", { createdAt: at(30 * 60_000) }),
+      cell("ds-checkbox--b", { createdAt: at(30 * 60_000) }),
       cell("ds-alert--b", { createdAt: at(3 * 3_600_000 + 1000) }),
-      cell("ds-checkbox--b", { createdAt: at(31 * 60_000) }),
+      cell("ds-checkbox--a", { createdAt: at(31 * 60_000) }),
     ])
     // ds-checkbox holds the newest run, so the retired ordering put it FIRST.
-    expect(sorted[0]?.dir).toBe("ds-checkbox--a")
+    expect(sorted[0]?.dir).toBe("ds-checkbox--b")
     expect(groupEntries(sorted).map((g) => g.id)).toEqual(["ds-alert", "ds-checkbox"])
-    // Cells keep the order they arrived in — newest first, within the group too.
-    expect(groupEntries(sorted)[1]?.cells.map((c) => c.dir)).toEqual(["ds-checkbox--a", "ds-checkbox--b"])
+    // The newest cell no longer leads its group: --b ran last, --a still comes first.
+    expect(groupEntries(sorted)[1]?.cells.map((c) => c.dir)).toEqual([
+      "ds-checkbox--a",
+      "ds-checkbox--b",
+    ])
+  })
+
+  it("orders a group's cells by the name the row SHOWS — the variant props when known", () => {
+    const cells = [
+      cell("ds-button--tone-primary", { pair: "ds-button--tone-primary" }),
+      cell("ds-button--tone-danger", { pair: "ds-button--tone-danger" }),
+      cell("ds-button--tone-secondary-10", { pair: "ds-button--tone-secondary-10" }),
+      cell("ds-button--tone-secondary-2", { pair: "ds-button--tone-secondary-2" }),
+    ]
+    // By the pair's name, numeric-aware: 2 before 10.
+    expect(groupEntries(cells)[0]?.cells.map((c) => c.dir)).toEqual([
+      "ds-button--tone-danger",
+      "ds-button--tone-primary",
+      "ds-button--tone-secondary-2",
+      "ds-button--tone-secondary-10",
+    ])
+    // With the set index's names, by those: "Brand" now leads although its dir sorts second.
+    const names = new Map([
+      ["ds-button--tone-danger", "Warning"],
+      ["ds-button--tone-primary", "Brand"],
+    ])
+    expect(groupEntries(cells, DEFAULT_FILTER, names)[0]?.cells.map((c) => c.dir)).toEqual([
+      "ds-button--tone-primary",
+      "ds-button--tone-secondary-2",
+      "ds-button--tone-secondary-10",
+      "ds-button--tone-danger",
+    ])
   })
 
   it("sorts numerically inside a name, and deterministically on a case-only difference", () => {
@@ -465,8 +583,18 @@ describe("groupEntries", () => {
 
   it("rolls up the severities of the cells it shows, and counts the cells whose fix came undone", () => {
     const groups = groupEntries([
-      cell("ds-alert--a", { critical: 1, major: 2, minor: 3, delta: { introduced: 1, resolved: 0, regressions: 1 } }),
-      cell("ds-alert--b", { critical: 0, major: 1, minor: 0, delta: { introduced: 4, resolved: 9, regressions: 2 } }),
+      cell("ds-alert--a", {
+        critical: 1,
+        major: 2,
+        minor: 3,
+        delta: { introduced: 1, resolved: 0, regressions: 1 },
+      }),
+      cell("ds-alert--b", {
+        critical: 0,
+        major: 1,
+        minor: 0,
+        delta: { introduced: 4, resolved: 9, regressions: 2 },
+      }),
       cell("ds-alert--c", { critical: 0, major: 0, minor: 0, delta: undefined }),
     ])
     expect(groups[0]?.roll).toEqual({ critical: 1, major: 3, minor: 3, regressed: 2, broken: 0 })
@@ -475,7 +603,9 @@ describe("groupEntries", () => {
   it("counts a regression, not a divergence: a diverging cell with no undone fix is not regressed", () => {
     // The `Diverging` chip's introduced > resolved — visible on the card's own
     // trend already. `regressed` is delta.regressions, which no card can show.
-    const groups = groupEntries([cell("ds-alert--a", { delta: { introduced: 9, resolved: 0, regressions: 0 } })])
+    const groups = groupEntries([
+      cell("ds-alert--a", { delta: { introduced: 9, resolved: 0, regressions: 0 } }),
+    ])
     expect(groups[0]?.roll.regressed).toBe(0)
   })
 
@@ -546,7 +676,10 @@ describe("the collapse decision (plan, open question 3: always collapsed)", () =
   })
 
   it("never offers a group of one to be toggled, whatever the reader clicked before", () => {
-    const t = { opened: new Set(["ds-chip", "onboarding-document-step"]), closed: new Set<string>() }
+    const t = {
+      opened: new Set(["ds-chip", "onboarding-document-step"]),
+      closed: new Set<string>(),
+    }
     expect(ids(openGroups(groups, DEFAULT_FILTER, t))).toEqual([])
   })
 
@@ -569,11 +702,24 @@ describe("groupWhen — the vintage span, in the cards' own words", () => {
   it("says one thing when a whole set ran in one go", () => {
     // Measured: one `compare` spreads its stamps over ~a minute (66s across
     // ds-checkbox's 45 cells), which is one bucket once an hour has passed.
-    expect(groupWhen([cell("a--1", { createdAt: at(3 * 3_600_000) }), cell("a--2", { createdAt: at(3 * 3_600_000 + 66_000) })], NOW)).toBe("3 h ago")
+    expect(
+      groupWhen(
+        [
+          cell("a--1", { createdAt: at(3 * 3_600_000) }),
+          cell("a--2", { createdAt: at(3 * 3_600_000 + 66_000) }),
+        ],
+        NOW,
+      ),
+    ).toBe("3 h ago")
   })
 
   it("shows oldest → newest when a subset re-run mixed vintages", () => {
-    expect(groupWhen([cell("a--1", { createdAt: at(4 * 3_600_000) }), cell("a--2", { createdAt: at(30_000) })], NOW)).toBe("4 h ago → just now")
+    expect(
+      groupWhen(
+        [cell("a--1", { createdAt: at(4 * 3_600_000) }), cell("a--2", { createdAt: at(30_000) })],
+        NOW,
+      ),
+    ).toBe("4 h ago → just now")
   })
 
   it("shows the span a fresh set really has while its cells straddle a minute", () => {
@@ -581,12 +727,30 @@ describe("groupWhen — the vintage span, in the cards' own words", () => {
     // and an hour later both read "1 h ago" and the span goes away by itself.
     // The alternative — a tolerance that calls a minute "one run" — needs a
     // number that a slower set breaks, and it fails toward hiding a mix.
-    expect(groupWhen([cell("a--1", { createdAt: at(12 * 60_000) }), cell("a--2", { createdAt: at(11 * 60_000) })], NOW)).toBe("12 min ago → 11 min ago")
-    expect(groupWhen([cell("a--1", { createdAt: at(72 * 60_000) }), cell("a--2", { createdAt: at(71 * 60_000) })], NOW)).toBe("1 h ago")
+    expect(
+      groupWhen(
+        [
+          cell("a--1", { createdAt: at(12 * 60_000) }),
+          cell("a--2", { createdAt: at(11 * 60_000) }),
+        ],
+        NOW,
+      ),
+    ).toBe("12 min ago → 11 min ago")
+    expect(
+      groupWhen(
+        [
+          cell("a--1", { createdAt: at(72 * 60_000) }),
+          cell("a--2", { createdAt: at(71 * 60_000) }),
+        ],
+        NOW,
+      ),
+    ).toBe("1 h ago")
   })
 
   it("ignores a stamp that cannot be read, and says nothing when none can", () => {
-    expect(groupWhen([cell("a--1", { createdAt: "?" }), cell("a--2", { createdAt: at(30_000) })], NOW)).toBe("just now")
+    expect(
+      groupWhen([cell("a--1", { createdAt: "?" }), cell("a--2", { createdAt: at(30_000) })], NOW),
+    ).toBe("just now")
     expect(groupWhen([cell("a--1", { createdAt: "?" })], NOW)).toBe("")
     expect(groupWhen([], NOW)).toBe("")
     expect(groupWhen([broken], NOW)).toBe("")
@@ -596,14 +760,32 @@ describe("groupWhen — the vintage span, in the cards' own words", () => {
 describe("commonIdPrefix / groupLabel — dropping a prefix that says nothing", () => {
   // The real DS root: every entry is ds-*, so `ds-` carries no information.
   const DS = [
-    "ds-alert", "ds-button-fill", "ds-button-ghost", "ds-button-icon", "ds-button-stroke",
-    "ds-checkbox", "ds-chip", "ds-date-field", "ds-dialog-header", "ds-dialog-starter-lg",
-    "ds-dialog-starter-md", "ds-dialog-starter-sm", "ds-select-field", "ds-text-field",
+    "ds-alert",
+    "ds-button-fill",
+    "ds-button-ghost",
+    "ds-button-icon",
+    "ds-button-stroke",
+    "ds-checkbox",
+    "ds-chip",
+    "ds-date-field",
+    "ds-dialog-header",
+    "ds-dialog-starter-lg",
+    "ds-dialog-starter-md",
+    "ds-dialog-starter-sm",
+    "ds-select-field",
+    "ds-text-field",
   ]
   // The real demo root: heterogeneous, and it holds BOTH `button` and `ds-button`.
   const DEMO = [
-    "button", "confirm-modal", "ds-button", "error-empty-states", "login",
-    "onboarding-document-step", "result-detail", "selection-card", "stepper",
+    "button",
+    "confirm-modal",
+    "ds-button",
+    "error-empty-states",
+    "login",
+    "onboarding-document-step",
+    "result-detail",
+    "selection-card",
+    "stepper",
   ]
 
   it("finds the segment every id shares", () => {
@@ -689,7 +871,11 @@ describe("commonIdPrefix / groupLabel — dropping a prefix that says nothing", 
 
 describe("groupRunSpan — the Measured column, computed WITHIN a group", () => {
   it("reports the range and how many cells are behind its top end", () => {
-    const span = groupRunSpan([cell("a--1", { run: 9 }), cell("a--2", { run: 10 }), cell("a--3", { run: 9 })])
+    const span = groupRunSpan([
+      cell("a--1", { run: 9 }),
+      cell("a--2", { run: 10 }),
+      cell("a--3", { run: 9 }),
+    ])
     expect(span).toEqual({ min: 9, max: 10, stale: 2, mixed: true })
   })
 
@@ -750,7 +936,9 @@ describe("groupRow — the comp's six columns", () => {
     expect(html).toContain('<div class="lcount mono">3 cells</div>')
     // dot + COUNT in the severity colour, which is what the comp draws — not
     // the card's "Critical 3" word-and-number badge.
-    expect(html).toContain('<span class="rb critical" title="Critical 3"><i class="dot"></i>3</span>')
+    expect(html).toContain(
+      '<span class="rb critical" title="Critical 3"><i class="dot"></i>3</span>',
+    )
     expect(html).toContain('<span class="rb major" title="Major 6"><i class="dot"></i>6</span>')
     expect(html).not.toContain('class="rb minor"')
     expect(html).toContain('<span class="lrun-flat mono">r10</span>')
@@ -758,7 +946,9 @@ describe("groupRow — the comp's six columns", () => {
 
   it("says Clean in the roll-up when a set has no findings at all", () => {
     const g = grp("ds-tabs", { critical: 0, major: 0, minor: 0, findings: 0, pass: true })
-    expect(groupRow(g, false, "desktop", NOW)).toContain('<span class="rb clean" title="No findings">Clean</span>')
+    expect(groupRow(g, false, "desktop", NOW)).toContain(
+      '<span class="rb clean" title="No findings">Clean</span>',
+    )
   })
 
   it("says how many of the set the filter left, not how many it holds", () => {
@@ -773,9 +963,14 @@ describe("groupRow — the comp's six columns", () => {
   })
 
   it("draws the span with a history glyph on the older end when the group mixes vintages", () => {
-    const g = groupEntries([cell("ds-x--a", { run: 45 }), cell("ds-x--b", { run: 47 })])[0] as LibraryGroup
+    const g = groupEntries([
+      cell("ds-x--a", { run: 45 }),
+      cell("ds-x--b", { run: 47 }),
+    ])[0] as LibraryGroup
     const html = groupRow(g, false, "desktop", NOW)
-    expect(html).toContain('<span class="lrun old"><span class="msi" aria-hidden="true">history</span>r45</span>')
+    expect(html).toContain(
+      '<span class="lrun old"><span class="msi" aria-hidden="true">history</span>r45</span>',
+    )
     expect(html).toContain("arrow_right_alt")
     expect(html).toContain('<span class="lrun new">r47</span>')
     expect(html).toContain("1 stale")
@@ -796,7 +991,9 @@ describe("groupRow — the comp's six columns", () => {
   // of the row's six columns, so the row cannot be a button at all.
   it("is a div with role=button, so the Open-sheet anchor can nest legally", () => {
     const html = groupRow(grp("ds-button-fill"), true, "desktop", NOW)
-    expect(html).toContain('<div class="lrow open" data-group="ds-button-fill" role="button" tabindex="0" aria-expanded="true"')
+    expect(html).toContain(
+      '<div class="lrow open" data-group="ds-button-fill" role="button" tabindex="0" aria-expanded="true"',
+    )
     expect(html).not.toContain("<button")
     const row = html.slice(html.indexOf('class="lrow'))
     expect(row.indexOf('class="lsheet"')).toBeGreaterThan(-1)
@@ -804,9 +1001,13 @@ describe("groupRow — the comp's six columns", () => {
   })
 
   it("routes the sheet button to the entry's sheet, encoded, and names it for a screen reader", () => {
-    expect(groupRow(grp("ds-button-fill"), false, "desktop", NOW)).toContain('href="#/set/ds-button-fill"')
+    expect(groupRow(grp("ds-button-fill"), false, "desktop", NOW)).toContain(
+      'href="#/set/ds-button-fill"',
+    )
     expect(groupRow(grp("a/b c"), false, "desktop", NOW)).toContain('href="#/set/a%2Fb%20c"')
-    expect(groupRow(grp("ds-chip"), false, "desktop", NOW)).toContain('aria-label="Open ds-chip as a variant sheet"')
+    expect(groupRow(grp("ds-chip"), false, "desktop", NOW)).toContain(
+      'aria-label="Open ds-chip as a variant sheet"',
+    )
   })
 
   // A lone item is one comparison that happens to sit in the same table. It is
@@ -815,7 +1016,7 @@ describe("groupRow — the comp's six columns", () => {
     const g = groupEntries([cell("refdiff-library-desktop")])[0] as LibraryGroup
     const html = groupRow(g, false, "desktop", NOW)
     expect(html).not.toContain("lsheet")
-    expect(html).not.toContain("role=\"button\"")
+    expect(html).not.toContain('role="button"')
     expect(html).toContain('class="lrow flat"')
     expect(html).toContain('class="caret-gap"')
   })
@@ -826,7 +1027,14 @@ describe("groupRow — the comp's six columns", () => {
   // four-pair root: four rows, zero hrefs, no way into a single comparison.
   it("makes a lone item's WHOLE row the link to its comparison", () => {
     const g = groupEntries([cell("refdiff-library-desktop")])[0] as LibraryGroup
-    const html = groupRow(g, false, "desktop", NOW, "refdiff-library-desktop", "#/pair/refdiff-library-desktop")
+    const html = groupRow(
+      g,
+      false,
+      "desktop",
+      NOW,
+      "refdiff-library-desktop",
+      "#/pair/refdiff-library-desktop",
+    )
     expect(html).toMatch(/^<a class="lrow flat lrow-link"/)
     expect(html).toContain('href="#/pair/refdiff-library-desktop"')
     expect(html).toContain("Compare")
@@ -841,13 +1049,20 @@ describe("groupRow — the comp's six columns", () => {
     const html = groupRow(g, false, "desktop", NOW, "solo", "#/pair/solo")
     expect(html.match(/<a /g)).toHaveLength(1)
     expect(html).toContain('<span class="lsheet">')
-    expect(html).not.toContain("role=\"button\"")
+    expect(html).not.toContain('role="button"')
   })
 
   // A foldable group's row still TOGGLES, so it stays a div — the Open-sheet
   // anchor nests inside it legally, exactly as the comp draws it.
   it("leaves a set's row a toggling div, never a link", () => {
-    const html = groupRow(grp("ds-button-fill"), false, "desktop", NOW, "ds-button-fill", "#/pair/x")
+    const html = groupRow(
+      grp("ds-button-fill"),
+      false,
+      "desktop",
+      NOW,
+      "ds-button-fill",
+      "#/pair/x",
+    )
     expect(html).not.toContain("lrow-link")
     expect(html).toContain('role="button"')
     expect(html).toContain('href="#/set/ds-button-fill"')
@@ -856,8 +1071,12 @@ describe("groupRow — the comp's six columns", () => {
   // Chunk 1 rotated ONE glyph because chevron_right was not in the icon subset;
   // re-running icon-subset.mjs for these comps put it there (101 -> 112).
   it("swaps the caret GLYPH rather than rotating one", () => {
-    expect(groupRow(grp("a"), true, "desktop", NOW)).toContain('<span class="msi caret" aria-hidden="true">expand_more</span>')
-    expect(groupRow(grp("a"), false, "desktop", NOW)).toContain('<span class="msi caret" aria-hidden="true">chevron_right</span>')
+    expect(groupRow(grp("a"), true, "desktop", NOW)).toContain(
+      '<span class="msi caret" aria-hidden="true">expand_more</span>',
+    )
+    expect(groupRow(grp("a"), false, "desktop", NOW)).toContain(
+      '<span class="msi caret" aria-hidden="true">chevron_right</span>',
+    )
   })
 
   it("escapes the entry id — it comes from a directory on disk", () => {
@@ -871,7 +1090,13 @@ describe("cellRow — the sub-rows are CELLS, not chunk 1's cards", () => {
   const span = { min: 45, max: 47, stale: 1, mixed: true }
 
   it("draws a verdict dot, the capture at 34x24, the name, its badge and Compare", () => {
-    const html = cellRow(cell("ds-x--a", { run: 47, critical: 1 }), "#/ds-x--a", span, "desktop", NOW)
+    const html = cellRow(
+      cell("ds-x--a", { run: 47, critical: 1 }),
+      "#/ds-x--a",
+      span,
+      "desktop",
+      NOW,
+    )
     expect(html).toContain('<i class="vdot critical" aria-hidden="true"></i>')
     expect(html).toContain('<div class="lcthumb"><img src="onboarding-document-step/impl.png"')
     expect(html).toContain('<span class="cb critical">Critical</span>')
@@ -889,7 +1114,9 @@ describe("cellRow — the sub-rows are CELLS, not chunk 1's cards", () => {
 
   // The comp names a cell by its VARIANT PROPS, which only the set index knows.
   it("names a cell by its variant props when the set index is loaded, and by the pair id when it is not", () => {
-    const c = cell("ds-button--tone-primary_size-sm_state-default", { pair: "ds-button — tone=Primary" })
+    const c = cell("ds-button--tone-primary_size-sm_state-default", {
+      pair: "ds-button — tone=Primary",
+    })
     const names = new Map([[c.dir, "Primary · sm · Default"]])
     expect(cellRow(c, "#", span, "desktop", NOW, names)).toContain(">Primary · sm · Default<")
     expect(cellRow(c, "#", span, "desktop", NOW)).toContain("ds-button — tone=Primary")
@@ -900,7 +1127,9 @@ describe("cellRow — the sub-rows are CELLS, not chunk 1's cards", () => {
     expect(behind).toContain('class="lrun old"')
     expect(behind).toContain("Measured in run r45")
     expect(behind).toContain("2 runs behind")
-    expect(cellRow(cell("ds-x--b", { run: 47 }), "#", span, "desktop", NOW)).toContain('class="lrun new"')
+    expect(cellRow(cell("ds-x--b", { run: 47 }), "#", span, "desktop", NOW)).toContain(
+      'class="lrun new"',
+    )
   })
 
   it("lists an unreadable cell with its reason and nothing to open", () => {
@@ -934,11 +1163,9 @@ describe("libraryTable", () => {
   it("gives every lone item a way into its own comparison", () => {
     const groups = groupEntries(["a-desktop", "a-mobile", "b-desktop"].map((d) => cell(d)))
     const html = libraryTable(groups, href, "desktop", NOW)
-    expect([...html.matchAll(/<a class="lrow[^"]*"[^>]*href="([^"]+)"/g)].map((m) => m[1])).toEqual([
-      "#/a-desktop",
-      "#/a-mobile",
-      "#/b-desktop",
-    ])
+    expect([...html.matchAll(/<a class="lrow[^"]*"[^>]*href="([^"]+)"/g)].map((m) => m[1])).toEqual(
+      ["#/a-desktop", "#/a-mobile", "#/b-desktop"],
+    )
   })
 
   // A broken cell has no report to open, so its row stays a plain div rather
@@ -967,7 +1194,14 @@ describe("libraryTable", () => {
     expect(ROW_CAP).toBe(10)
     expect(html.match(/class="lcell"/g)).toHaveLength(10)
     expect(html).toContain("Show 35 more")
-    const all = libraryTable([g], href, "desktop", NOW, new Set(["ds-checkbox"]), new Set(["ds-checkbox"]))
+    const all = libraryTable(
+      [g],
+      href,
+      "desktop",
+      NOW,
+      new Set(["ds-checkbox"]),
+      new Set(["ds-checkbox"]),
+    )
     expect(all.match(/class="lcell"/g)).toHaveLength(45)
     expect(all).not.toContain("Show ")
   })
@@ -984,7 +1218,13 @@ describe("libraryTable", () => {
   })
 
   it("never expands a group of one, whatever the caller passed", () => {
-    const html = libraryTable(groupEntries([cell("stepper")]), href, "desktop", NOW, new Set(["stepper"]))
+    const html = libraryTable(
+      groupEntries([cell("stepper")]),
+      href,
+      "desktop",
+      NOW,
+      new Set(["stepper"]),
+    )
     expect(html).not.toContain('class="lcell"')
   })
 
@@ -1044,7 +1284,9 @@ describe("the list-load error box (plan, section C)", () => {
     expect(html).toContain("content_copy</span>Copy restart command")
     expect(html).toContain('id="lib-retry"')
     expect(html).toContain("Retried 3× · next attempt in 30s")
-    expect(errorCopyText(err())).toBe("refdiff-annotator /root/refdiff/fixtures/demo-root --serve --port 7379")
+    expect(errorCopyText(err())).toBe(
+      "refdiff-annotator /root/refdiff/fixtures/demo-root --serve --port 7379",
+    )
   })
 
   it("endpoint errored: a different headline, and the out root path to copy", () => {
@@ -1074,16 +1316,45 @@ describe("the list-load error box (plan, section C)", () => {
 })
 
 describe("collapseBreakpoints — one Library item per screen", () => {
-  const w = (dir: string, entry: string, viewport: string, width: number, pass = true): PairSummary => ({
-    dir, pair: dir, pass, critical: 0, major: 0, minor: 0, findings: 0, suppressed: 0, confidence: 1, createdAt: "2026-09-17T10:00:00Z",
-    frame: { w: width, h: 800 }, designSource: "dc-html", implSource: "live-url", implRef: "/", openNotes: 0, notes: 0,
+  const w = (
+    dir: string,
+    entry: string,
+    viewport: string,
+    width: number,
+    pass = true,
+  ): PairSummary => ({
+    dir,
+    pair: dir,
+    pass,
+    critical: 0,
+    major: 0,
+    minor: 0,
+    findings: 0,
+    suppressed: 0,
+    confidence: 1,
+    createdAt: "2026-09-17T10:00:00Z",
+    frame: { w: width, h: 800 },
+    designSource: "dc-html",
+    implSource: "live-url",
+    implRef: "/",
+    openNotes: 0,
+    notes: 0,
     breakpoint: { entry, viewport, width, height: 800 },
   })
-  const single: PairSummary = { ...w("button", "x", "desktop", 1000), breakpoint: undefined } as PairSummary
+  const single: PairSummary = {
+    ...w("button", "x", "desktop", 1000),
+    breakpoint: undefined,
+  } as PairSummary
   const broken: BrokenPair = { dir: "liveness", broken: true, reason: "truncated" }
 
   it("keeps the widest width of an entry, in the first sibling's place, with every width on it", () => {
-    const out = collapseBreakpoints([w("wb-laptop", "wb", "laptop", 1280), single, w("wb-desktop", "wb", "desktop", 1440), broken, w("wb-phone", "wb", "phone", 390)])
+    const out = collapseBreakpoints([
+      w("wb-laptop", "wb", "laptop", 1280),
+      single,
+      w("wb-desktop", "wb", "desktop", 1440),
+      broken,
+      w("wb-phone", "wb", "phone", 390),
+    ])
     expect(out.map((e) => e.dir)).toEqual(["wb-desktop", "button", "liveness"])
     expect((out[0] as PairSummary).widths).toEqual([
       { viewport: "desktop", width: 1440, height: 800, dir: "wb-desktop" },
@@ -1102,12 +1373,34 @@ describe("collapseBreakpoints — one Library item per screen", () => {
 
 describe("the pair route — #/<library item>?vp=<width>", () => {
   const w = (dir: string, entry: string, viewport: string, width: number): PairSummary => ({
-    dir, pair: dir, pass: true, critical: 0, major: 0, minor: 0, findings: 0, suppressed: 0, confidence: 1, createdAt: "2026-09-17T10:00:00Z",
-    frame: { w: width, h: 800 }, designSource: "dc-html", implSource: "live-url", implRef: "/", openNotes: 0, notes: 0,
+    dir,
+    pair: dir,
+    pass: true,
+    critical: 0,
+    major: 0,
+    minor: 0,
+    findings: 0,
+    suppressed: 0,
+    confidence: 1,
+    createdAt: "2026-09-17T10:00:00Z",
+    frame: { w: width, h: 800 },
+    designSource: "dc-html",
+    implSource: "live-url",
+    implRef: "/",
+    openNotes: 0,
+    notes: 0,
     breakpoint: { entry, viewport, width, height: 800 },
   })
-  const plain: PairSummary = { ...w("button", "x", "desktop", 1000), breakpoint: undefined } as PairSummary
-  const list = [w("wb-laptop", "wb", "laptop", 1280), w("wb-desktop", "wb", "desktop", 1440), plain, { dir: "liveness", broken: true, reason: "truncated" } as BrokenPair]
+  const plain: PairSummary = {
+    ...w("button", "x", "desktop", 1000),
+    breakpoint: undefined,
+  } as PairSummary
+  const list = [
+    w("wb-laptop", "wb", "laptop", 1280),
+    w("wb-desktop", "wb", "desktop", 1440),
+    plain,
+    { dir: "liveness", broken: true, reason: "truncated" } as BrokenPair,
+  ]
 
   it("parses the id and the width, and the index as null", () => {
     expect(parsePairRoute("#/wb?vp=laptop")).toEqual({ id: "wb", vp: "laptop" })
@@ -1118,15 +1411,30 @@ describe("the pair route — #/<library item>?vp=<width>", () => {
   })
 
   it("resolves an item to its width's dir — the asked one, else the widest — and names the canonical hash", () => {
-    expect(resolvePairRoute(list, "wb", "laptop")).toEqual({ dir: "wb-laptop", hash: "#/wb?vp=laptop" })
-    expect(resolvePairRoute(list, "wb", null)).toEqual({ dir: "wb-desktop", hash: "#/wb?vp=desktop" })
-    expect(resolvePairRoute(list, "wb", "phone")).toEqual({ dir: "wb-desktop", hash: "#/wb?vp=desktop" })
+    expect(resolvePairRoute(list, "wb", "laptop")).toEqual({
+      dir: "wb-laptop",
+      hash: "#/wb?vp=laptop",
+    })
+    expect(resolvePairRoute(list, "wb", null)).toEqual({
+      dir: "wb-desktop",
+      hash: "#/wb?vp=desktop",
+    })
+    expect(resolvePairRoute(list, "wb", "phone")).toEqual({
+      dir: "wb-desktop",
+      hash: "#/wb?vp=desktop",
+    })
   })
 
   it("still opens a width's dir named outright, rewritten to the item form; a plain dir and a broken one keep theirs", () => {
-    expect(resolvePairRoute(list, "wb-laptop", null)).toEqual({ dir: "wb-laptop", hash: "#/wb?vp=laptop" })
+    expect(resolvePairRoute(list, "wb-laptop", null)).toEqual({
+      dir: "wb-laptop",
+      hash: "#/wb?vp=laptop",
+    })
     expect(resolvePairRoute(list, "button", null)).toEqual({ dir: "button", hash: "#/button" })
-    expect(resolvePairRoute(list, "liveness", null)).toEqual({ dir: "liveness", hash: "#/liveness" })
+    expect(resolvePairRoute(list, "liveness", null)).toEqual({
+      dir: "liveness",
+      hash: "#/liveness",
+    })
     expect(resolvePairRoute(list, "nothing", null)).toBeNull()
   })
 

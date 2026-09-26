@@ -72,8 +72,10 @@ ${VIEWPORT_META}
     <span class="brand" aria-hidden="true"></span>
     <span class="brand-name">RefDiff</span>
     <span class="spacer"></span>
+    <a class="lib-jump" id="lib-jump" href="#/" hidden><span class="msi" aria-hidden="true">my_location</span>Jump to just visited</a>
     <button type="button" class="theme-toggle" id="index-theme-toggle" title="Toggle chrome theme"><span class="msi" aria-hidden="true">light_mode</span></button>
   </header>
+  <div class="lib-jump-m" id="lib-jump-m" hidden><a class="lib-jump-mb" id="lib-jump-mb" href="#/"><span class="msi" aria-hidden="true">my_location</span><span class="ljm-text">Just visited <b id="lib-jump-name"></b></span><span class="ljm-go">Jump</span></a></div>
   <div class="lib">
     <div class="lib-head">
       <h1>Library</h1>
@@ -144,7 +146,7 @@ const RETRY_SECS = 30;
 // survives an active filter expanded), so a hand toggle survives a re-render
 // and a filter change without either overriding the other. (No backticks in
 // here: this whole boot script is a template literal and one would close it.)
-const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null, opened: new Set(), closed: new Set(), more: new Set(), names: new Map() };
+const lib = { filter: Object.assign({}, DEFAULT_FILTER), narrow: false, error: null, retries: 0, secs: RETRY_SECS, timer: null, copyTimer: null, opened: new Set(), closed: new Set(), more: new Set(), names: new Map(), mark: null, markLabel: '', revealVisited: false };
 // Which set indexes have been asked for. A group's variant props come from
 // <entryId>.set.json (/api/pairs carries none), so the fetch is LAZY: only a
 // group the reader has opened needs them, and 14 eager fetches on the DS root
@@ -194,25 +196,118 @@ async function loadSetNames(groups, open) {
   const want = groups.filter((g) => g.set && open.has(g.id) && !setNamesAsked.has(g.id));
   if (!want.length) return;
   let added = false;
-  for (const g of want) {
-    setNamesAsked.add(g.id);
-    try {
-      const res = await fetch(encodeURIComponent(g.id) + '.set.json');
-      if (!res.ok) continue;
-      const idx = await res.json();
-      const order = Object.keys((idx.axes && idx.axes.properties) || {});
-      for (const entry of (idx.pairs || [])) {
-        const props = entry.props || {};
-        const keys = order.length ? order : Object.keys(props);
-        const label = keys.map((k) => props[k]).filter(Boolean).join(' \u00b7 ');
-        if (entry.dir && label) { lib.names.set(entry.dir, label); added = true; }
-      }
-    } catch (err) {
-      // No set index in this root, or it is not JSON. The rows keep the pair id
-      // (cellName's fallback) and nothing is retried.
-    }
-  }
+  for (const g of want) if (await fetchSetNames(g.id)) added = true;
   if (added) renderIndexView();
+}
+// One set's variant names into lib.names; true when it added any. The comparator's item switcher
+// asks for them too \u2014 a deep link into a cell arrives with no group ever opened in the Library.
+async function fetchSetNames(id) {
+  if (setNamesAsked.has(id)) return false;
+  setNamesAsked.add(id);
+  let added = false;
+  try {
+    const res = await fetch(encodeURIComponent(id) + '.set.json');
+    if (!res.ok) return false;
+    const idx = await res.json();
+    const order = Object.keys((idx.axes && idx.axes.properties) || {});
+    for (const entry of (idx.pairs || [])) {
+      const props = entry.props || {};
+      const keys = order.length ? order : Object.keys(props);
+      const label = keys.map((k) => props[k]).filter(Boolean).join(' \u00b7 ');
+      if (entry.dir && label) { lib.names.set(entry.dir, label); added = true; }
+    }
+  } catch (err) {
+    // No set index in this root, or it is not JSON. The rows keep the pair id
+    // (cellName's fallback) and nothing is retried.
+  }
+  return added;
+}
+
+// ---- the just-visited trail (RefDiff Library Groups comps, visit-cell) ----
+// Per served root, in this browser only: a reading aid, not project state.
+function libRoot() { return $('view-index').dataset.root || ''; }
+function readLastVisited() {
+  try { return parseLastVisited(localStorage.getItem(lastVisitedKey(libRoot()))); } catch (e) { return null; }
+}
+function writeLastVisited(groupId, itemId) {
+  try { localStorage.setItem(lastVisitedKey(libRoot()), JSON.stringify({ groupId: groupId, itemId: itemId, at: Date.now() })); } catch (e) { /* private mode: no trail */ }
+}
+// Entering the Library with a trail opens its group \u2014 over a hand collapse too, other groups keep
+// theirs \u2014 and asks the next render to bring the row into view.
+function applyTrailOnMount() {
+  const lv = readLastVisited();
+  if (!lv) return;
+  lib.closed.delete(lv.groupId);
+  lib.opened.add(lv.groupId);
+  lib.revealVisited = true;
+}
+function visitedRowEl() {
+  if (!lib.mark || !lib.mark.itemId) return null;
+  return document.querySelector('#cards [data-pair="' + CSS.escape(lib.mark.itemId) + '"]');
+}
+// Centre the marked row under the sticky topbar. Instant on the way in (the page must not glide
+// on its first paint), smooth from the Jump control.
+function revealVisited(smooth) {
+  const row = visitedRowEl();
+  if (!row) return;
+  const r = row.getBoundingClientRect();
+  const top = window.scrollY + r.top - (window.innerHeight + LIB_TOP_H) / 2 + r.height / 2;
+  window.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+}
+// Jump shows only while the marked row is out of view \u2014 and never for a trail whose item is gone.
+function updateJump() {
+  const row = document.body.classList.contains('route-index') ? visitedRowEl() : null;
+  let away = false;
+  if (row) {
+    const r = row.getBoundingClientRect();
+    away = r.bottom < LIB_TOP_H + 4 || r.top > window.innerHeight - 4;
+  }
+  const mobile = libMobile();
+  $('lib-jump').hidden = !(away && !mobile);
+  $('lib-jump-m').hidden = !(away && mobile);
+  if (away && mobile) $('lib-jump-name').textContent = lib.markLabel || '';
+}
+function jumpToVisited(e) {
+  e.preventDefault();
+  const lv = readLastVisited();
+  if (!lv) return;
+  lib.closed.delete(lv.groupId);
+  lib.opened.add(lv.groupId);
+  if (lib.mark && lib.mark.position >= ROW_CAP) lib.more.add(lv.groupId);
+  renderIndexView();
+  revealVisited(true);
+}
+const LIB_TOP_H = 47;
+
+// ---- the comparator's item switcher: which items it steps through ----
+// Captured when the comparator opens FROM the Library \u2014 its filter and its order at that moment,
+// so "next" is the next row the reader would have tapped \u2014 and kept while they switch inside it.
+// Cleared on the way back, so the next open reads the Library as it is then.
+let navCtx = null;
+function libPrefix() { return commonIdPrefix([...new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir))]); }
+function navContextFor(dir) {
+  if (navCtx) {
+    const kept = navRetarget(navCtx, dir);
+    if (kept) return kept;
+  }
+  const prefix = libPrefix();
+  // A deep link (or a filter that hides the open item) falls back to the unfiltered Library.
+  return navGroupOf(groupEntries(pairs, lib.filter, lib.names), dir, prefix, lib.names)
+    || navGroupOf(groupEntries(pairs, DEFAULT_FILTER, lib.names), dir, prefix, lib.names);
+}
+// What the comparator (CLIENT) gets as page.nav. The pure helpers ride along as functions so the
+// client never names an index-view export: an emitted report.html embeds no index-view.js, and
+// sets no page.nav, so nothing there can reach them.
+function navPage(ctx) {
+  if (!ctx || ctx.index < 0) return null;
+  return {
+    label: ctx.label, set: ctx.set, items: ctx.items, index: ctx.index,
+    go: (i, vp) => {
+      const it = ctx.items[i];
+      if (it) location.hash = it.href + (vp && it.vps.includes(vp) ? '?vp=' + encodeURIComponent(vp) : '');
+    },
+    filter: navFilter, counts: navCounts, section: navSection, swipe: swipeOutcome,
+  };
 }
 
 function renderIndexView() {
@@ -236,7 +331,7 @@ function renderIndexView() {
   err.hidden = true;
   err.innerHTML = '';
   $('lib-filters').hidden = false;
-  const groups = groupEntries(pairs, lib.filter);
+  const groups = groupEntries(pairs, lib.filter, lib.names);
   const shown = cellsShown(groups);
   // Every group id in the ROOT, derived the way groupEntries derives them so the
   // two can never disagree about what a group is. Two consumers: the head-row
@@ -253,11 +348,25 @@ function renderIndexView() {
   if (clear) clear.addEventListener('click', clearFilters);
   const cards = $('cards');
   const open = openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed });
-  cards.innerHTML = libraryTable(groups, pairHref, mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names, idPrefix);
+  const mark = visitedMark(groups, readLastVisited(), Date.now());
+  // The row has to EXIST to be scrolled to: an item past the ten-row cap lifts it for its group.
+  if (mark && lib.revealVisited && mark.position >= ROW_CAP) lib.more.add(mark.groupId);
+  lib.mark = mark;
+  lib.markLabel = mark && mark.itemId ? trailLabel(mark, idPrefix) : '';
+  cards.innerHTML = libraryTable(groups, pairHref, mobile ? 'mobile' : 'desktop', Date.now(), open, lib.more, lib.names, idPrefix, mark);
   void loadSetNames(groups, open);
+  if (lib.revealVisited && pairs.length) { lib.revealVisited = false; revealVisited(false); }
+  updateJump();
   const empty = $('index-empty');
   empty.hidden = !(shown === 0 && pairs.length > 0);
   empty.textContent = empty.hidden ? '' : 'Nothing matches your search or filter.';
+}
+
+// The phone banner names the item: "Button / Primary · md · Hover", or a lone item's own name.
+function trailLabel(mark, prefix) {
+  const p = pairs.find((x) => x.dir === mark.itemId);
+  const name = lib.names.get(mark.itemId) || (p && p.pair) || mark.itemId;
+  return mark.groupId === mark.itemId ? name : groupLabel(mark.groupId, prefix) + ' / ' + name;
 }
 
 // ---- the typed list-load failure (plan, section C) -------------------------
@@ -494,6 +603,11 @@ async function openPair(dir) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const reportData = await res.json();
     currentPair = dir;
+    const ctx = navContextFor(dir);
+    navCtx = ctx;
+    // Every open writes the trail — a switch inside the comparator included.
+    const item = ctx && ctx.index >= 0 ? ctx.items[ctx.index] : null;
+    writeLastVisited(ctx ? ctx.rowId : (entryIdOf(dir) || dir), item ? item.dir : dir);
     await openReport(reportData, null, {
       indexHref: '#/',
       base: base,
@@ -501,7 +615,21 @@ async function openPair(dir) {
       triageUrl: 'api/pairs/' + encodeURIComponent(dir) + '/triage',
       focusUrl: 'api/pairs/' + encodeURIComponent(dir) + '/focus',
       readOnly: serverReadOnly,
+      nav: navPage(ctx),
     });
+    // A set's items are named — and ORDERED, the Library sorting cells by what they are called — by
+    // their variant props, which only its set index knows; a deep link arrives with none loaded, so
+    // the group is rebuilt from the Library once they are, and the switcher redrawn.
+    if (ctx && ctx.set) {
+      void fetchSetNames(ctx.rowId).then((added) => {
+        if (!added || navCtx !== ctx || currentPair !== dir) return;
+        navCtx = null;
+        const named = navContextFor(dir);
+        navCtx = named;
+        page.nav = navPage(named);
+        renderTopbar();
+      });
+    }
   } catch (e) {
     currentPair = null;
     location.hash = '';
@@ -531,6 +659,8 @@ async function route() {
   currentSet = null;
   if (!pr) {
     currentPair = null;
+    navCtx = null;
+    applyTrailOnMount();
     document.title = 'refdiff';
     // The list is cheap and reflects runs finished since load — refresh it.
     void loadPairs();
@@ -550,6 +680,13 @@ function measureNarrow() {
 lib.narrow = window.innerWidth < MOBILE_BREAKPOINT;
 window.addEventListener('resize', measureNarrow);
 $('pair-q').addEventListener('input', () => { lib.filter.query = $('pair-q').value; renderIndexView(); });
+$('lib-jump').addEventListener('click', jumpToVisited);
+$('lib-jump-mb').addEventListener('click', jumpToVisited);
+let jumpFrame = 0;
+window.addEventListener('scroll', () => {
+  if (jumpFrame) return;
+  jumpFrame = requestAnimationFrame(() => { jumpFrame = 0; updateJump(); });
+}, { passive: true });
 window.addEventListener('hashchange', route);
 // The back link is an in-page route, not a document load.
 document.addEventListener('click', (e) => {
@@ -757,6 +894,34 @@ a.lcell:hover { background:var(--bg2); }
   border:none; border-bottom:1px solid var(--line); background:var(--bg0); color:var(--acc); font:inherit; font-size:12px;
   font-weight:600; cursor:pointer; text-align:left; }
 .lmore .msi { font-size:16px; }
+/* ---- the just-visited trail (RefDiff Library Groups comps, their visit-cell state): the group
+   row gets a bar, bg2 and a TINTED tag; the item row a bar, the --vis tint, a FILLED tag with its
+   age and Reopen for Compare. A lone row is its own item, so it takes the item treatment. */
+.lnline { display:flex; align-items:center; gap:8px; min-width:0; }
+.lvis-group, .lvis-item { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; letter-spacing:.05em;
+  text-transform:uppercase; padding:2px 7px 2px 5px; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+.lvis-group .msi, .lvis-item .msi { font-size:12px; }
+.lvis-group { background:var(--vis); color:var(--acc); }
+.lvis-item { background:var(--acc); color:#fff; }
+.lrow.visited { background:var(--bg2); box-shadow:inset 3px 0 0 var(--acc); }
+.lcell.visited, .lrow.visited-item { background:var(--vis); box-shadow:inset 3px 0 0 var(--acc); }
+body.lib-mobile .lgcard.visited { border-color:var(--acc); }
+body.lib-mobile .lvis-item { font-size:9.5px; padding:1px 6px 1px 4px; }
+body.lib-mobile .lvis-item .msi { font-size:11px; }
+body.lib-mobile .lcell.visited .go, body.lib-mobile .lrow.visited-item .lsheet .msi { color:var(--acc); }
+/* Jump shows only while the marked row is out of view (updateJump). Desktop: a link in the sticky
+   topbar; phone: an OVERLAY pinned under it — a zero-height sticky wrapper, so nothing in the flow
+   moves as it comes and goes (the comp's decision for its mobile banner). */
+.lib-jump { display:flex; align-items:center; gap:6px; height:calc(30px + 2px); padding:0 10px; border-radius:8px; border:1px solid var(--acc);
+  background:var(--vis); font-size:12px; font-weight:600; color:var(--acc); white-space:nowrap; text-decoration:none; }
+.lib-jump .msi { font-size:15px; }
+.lib-jump[hidden], .lib-jump-m[hidden] { display:none; }
+.lib-jump-m { position:sticky; top:46px; z-index:9; height:0; overflow:visible; }
+.lib-jump-mb { position:absolute; left:12px; right:12px; top:8px; display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:9px;
+  background:var(--bg1); border:1px solid var(--acc); box-shadow:0 6px 20px rgba(0,0,0,.35); font-size:12px; color:var(--txt); text-decoration:none; }
+.lib-jump-mb .msi { font-size:16px; color:var(--acc); }
+.ljm-text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ljm-go { font-size:11.5px; font-weight:600; color:var(--acc); }
 /* The filter-semantics explainer, shown only while a filter is active. */
 .lfx { display:flex; align-items:center; gap:8px; margin:-6px 0 12px; font-size:12px; color:var(--txt2); }
 .lfx .msi { font-size:15px; }

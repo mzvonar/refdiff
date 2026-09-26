@@ -89,25 +89,29 @@ describe("renderAppShell", () => {
   it("switches layouts by width or by the topbar toggle, re-rendering the cards for the layout", () => {
     // The comp's computer/smartphone button is its design-preview switch, not a
     // product control (removed 2026-08-28): the width alone picks the layout.
-    expect(html).not.toContain('layout-toggle')
-    expect(html).not.toContain('forceMobile')
+    expect(html).not.toContain("layout-toggle")
+    expect(html).not.toContain("forceMobile")
     expect(html).toContain("window.innerWidth < MOBILE_BREAKPOINT")
     expect(html).toContain("mobile ? 'mobile' : 'desktop'")
   })
 
   it("draws the Library as the comp's TABLE, and counts cells and the groups they sit in", () => {
-    expect(html).toContain("const groups = groupEntries(pairs, lib.filter);")
+    expect(html).toContain("const groups = groupEntries(pairs, lib.filter, lib.names);")
     expect(html).toContain("const shown = cellsShown(groups);")
     expect(html).toContain("countMessage(shown, pairs.length, groups.length, totalGroups)")
     // The denominator is derived the way groupEntries derives groups, so the
     // two can never disagree about what a group is.
-    expect(html).toContain("const allGroupIds = [...new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir))];")
+    expect(html).toContain(
+      "const allGroupIds = [...new Set(pairs.map((p) => entryIdOf(p.dir) || p.dir))];",
+    )
     expect(html).toContain("const totalGroups = allGroupIds.length;")
     // The prefix is derived from the ROOT, not from the filtered groups — a
     // label computed from those would rename a row as the reader narrowed.
     expect(html).toContain("const idPrefix = commonIdPrefix(allGroupIds);")
-    expect(html).toContain("lib.names, idPrefix);")
-    expect(html).toContain("openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed })")
+    expect(html).toContain("lib.names, idPrefix, mark);")
+    expect(html).toContain(
+      "openGroups(groups, lib.filter, { opened: lib.opened, closed: lib.closed })",
+    )
     expect(html).toContain("cards.innerHTML = libraryTable(groups,")
     expect(html).not.toContain("libraryList(")
     // The empty state is still about cells: a filter that matches nothing
@@ -142,16 +146,22 @@ describe("renderAppShell", () => {
   // The variant-props join: /api/pairs carries none, so a sub-row's name comes
   // from <entryId>.set.json — fetched only for a group the reader has OPENED.
   it("fetches a set index lazily, once per group, and never retries a root that has none", () => {
-    expect(html).toContain("fetch(encodeURIComponent(g.id) + '.set.json')")
+    expect(html).toContain("fetch(encodeURIComponent(id) + '.set.json')")
     expect(html).toContain("g.set && open.has(g.id) && !setNamesAsked.has(g.id)")
-    expect(html).toContain("setNamesAsked.add(g.id);")
+    // Recorded on the ATTEMPT, before the fetch — in the one helper the Library and the
+    // comparator's switcher share, so neither can ask twice.
+    expect(html).toContain("if (setNamesAsked.has(id)) return false;\n  setNamesAsked.add(id);")
     expect(html).toContain("const order = Object.keys((idx.axes && idx.axes.properties) || {});")
   })
 
   it("styles the table with the comp's own column template, row metric and header", () => {
-    expect(html).toContain("grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;")
+    expect(html).toContain(
+      "grid-template-columns:minmax(230px,1.5fr) 118px 96px minmax(210px,1fr) 208px 128px;",
+    )
     expect(html).toContain("gap:12px; min-width:1064px; box-sizing:border-box; }")
-    expect(html).toContain("font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase")
+    expect(html).toContain(
+      "font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase",
+    )
     expect(html).toContain(".lrow { align-items:center; padding:8px 14px; min-height:54px;")
     expect(html).toContain(".lcell { align-items:center; padding:0 14px; min-height:40px;")
     // The card grid and chunk 1's group sections are gone with the renderers.
@@ -180,8 +190,12 @@ describe("the gallery route", () => {
   // Three routes, three explicit rules. A :not() chain over three states is
   // where the next route silently shows two sections at once.
   it("hides the sheet on the other two routes, and both of them on the sheet", () => {
-    expect(html).toContain("body.route-index #view-gallery, body.route-report #view-gallery { display:none; }")
-    expect(html).toContain("body.route-gallery #view-index, body.route-gallery #view-report { display:none; }")
+    expect(html).toContain(
+      "body.route-index #view-gallery, body.route-report #view-gallery { display:none; }",
+    )
+    expect(html).toContain(
+      "body.route-gallery #view-index, body.route-gallery #view-report { display:none; }",
+    )
   })
 
   // Those same two rules make the route classes MUTUALLY EXCLUSIVE: a body wearing

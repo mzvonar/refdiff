@@ -5,6 +5,25 @@ Transient, append-only buffer for durable lessons captured during ad-hoc work. T
 Capture trigger + routing rules live in the `/lessons` skill. **Newest entries go at the top of the log, directly under the marker below.**
 
 <!-- LESSONS-LOG -->
+
+## 2026-09-26 — a hash-only navigation does not reload the app you are verifying
+
+Driving the annotator after a rebuild + `svc restart`, `browser_navigate` to
+`http://…:7379/#/<pair>` from a tab already on that origin changed only the hash: no reload, so
+the tab kept running the PREVIOUS build's script, and a fix that was live on the server read as
+"still broken" (the trail still named the old row). The tell was the page title before the
+navigate — it named the pair the tab had been on. Add a query (`/?r=2#/…`) or reload before
+trusting a live check after a restart. The server-freshness pre-flight cannot catch this: the
+server was fresh, the browser was not.
+
+## 2026-09-26 — a comp's own "it fits" note is a claim; measure it
+
+The Mobile comp's header carried a note saying its tightened spacing fits the new counter
+("Total ≈ 375px of 390"). refdiff measured the theme button's right edge at 392 in a 390 frame:
+its two `flex:1` spacers keep `min-width:4px`, so it still overflows by 8px. Had the note been
+taken at its word, the existing "comp header overflows" explanation would have been deleted as
+stale and eight findings would have been blamed on the app. Candidate home: `reconcile.md` /
+`polish.md` §2 — a designer's annotation is a hypothesis, the same as a sibling precedent.
 ## 2026-09-25 — "visible" had two meanings and the extractor only implemented one
 
 The DOM extractor's visibility gate was `display:none || visibility:hidden || opacity:0` — an

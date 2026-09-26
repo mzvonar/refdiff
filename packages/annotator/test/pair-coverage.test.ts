@@ -1,6 +1,5 @@
 import { readdir } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
-
 import { describe, expect, it } from "vitest"
 
 /**
@@ -51,6 +50,15 @@ const UNPAIRED_BY_DESIGN = new Map<string, string>([
   // direction (a waiver whose FILE is gone); nothing but this discipline catches
   // a waiver whose file gained a pair, because the map is consulted only for
   // comps with no pair.
+  [
+    "RefDiff Navigation.dc.html",
+    // Notes only since 2026-09-26: the design project moved every navigation STATE into the four
+    // measured comps (switcher, list, phone bar and sheet into the Comparison Tool and Mobile
+    // comps; the just-visited trail into both Library Groups comps) and left this file as the
+    // written spec with no screens, so the two drawings cannot drift. There is no frame to pair.
+    // If screens come back here, this waiver becomes a false statement — pair them instead.
+    "the item-navigation spec as prose, no frames; its states are drawn in the four measured comps",
+  ],
 ])
 
 export interface PairCoverage {
@@ -136,7 +144,9 @@ describe("pairCoverage", () => {
   // A disabled pair keeps its comp OUT of `unpaired` — the declaration is still
   // there — and puts it in `unmeasured`, which is the honest description.
   it("calls a comp whose only pair is disabled unmeasured, not unpaired", () => {
-    const r = pairCoverage(["A.dc.html", "B.dc.html"], ["A.dc.html", "B.dc.html"], new Set(), ["A.dc.html"])
+    const r = pairCoverage(["A.dc.html", "B.dc.html"], ["A.dc.html", "B.dc.html"], new Set(), [
+      "A.dc.html",
+    ])
     expect(r.unpaired).toEqual([])
     expect(r.missing).toEqual([])
     expect(r.unmeasured).toEqual(["B.dc.html"])
@@ -165,13 +175,23 @@ describe("the real design dir", () => {
     expect(named.length).toBeGreaterThan(0)
 
     const r = pairCoverage(comps, named, new Set(UNPAIRED_BY_DESIGN.keys()), enabled)
-    expect(r.unpaired, "comps with no pair — add one to design/refdiff.manifest.mjs, or waive it in UNPAIRED_BY_DESIGN with the reason").toEqual([])
-    expect(r.missing, "pairs naming a comp that is not on disk — re-fetch it with DesignSync, or drop the pair").toEqual([])
-    expect(r.staleWaivers, "UNPAIRED_BY_DESIGN entries whose comp is gone — drop the waiver").toEqual([])
+    expect(
+      r.unpaired,
+      "comps with no pair — add one to design/refdiff.manifest.mjs, or waive it in UNPAIRED_BY_DESIGN with the reason",
+    ).toEqual([])
+    expect(
+      r.missing,
+      "pairs naming a comp that is not on disk — re-fetch it with DesignSync, or drop the pair",
+    ).toEqual([])
+    expect(
+      r.staleWaivers,
+      "UNPAIRED_BY_DESIGN entries whose comp is gone — drop the waiver",
+    ).toEqual([])
     // EXACT, never `contains`: an empty list is indistinguishable from a clean
     // tree, so disabling or re-enabling a pair has to be an edit here.
-    expect(r.unmeasured, "comps whose every pair is disabled — re-enable one, or retire the comp").toEqual(
-      DISABLED_COMPS,
-    )
+    expect(
+      r.unmeasured,
+      "comps whose every pair is disabled — re-enable one, or retire the comp",
+    ).toEqual(DISABLED_COMPS)
   })
 })

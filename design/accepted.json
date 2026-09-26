@@ -50,6 +50,23 @@
         "key": "size|surface|[[\"h\",36],[\"w\",142]]|[[\"h\",36],[\"w\",172]]",
         "decidedAt": "2026-09-17T09:21:42.417Z"
       }
+    ],
+    "refdiff-compare-mobile-toolbar-nav": [
+      {
+        "type": "size",
+        "role": "surface",
+        "expected": {
+          "w": 216,
+          "h": 36
+        },
+        "actual": {
+          "w": 245,
+          "h": 36
+        },
+        "reason": "the phone tool row grew by the Fill button: 216 -> 245, the same measurement accepted on refdiff-compare-mobile-toolbar (2026-09-17); this pair is that layout with the switcher bar up, and the comps do not draw Fill yet",
+        "key": "size|surface|[[\"h\",36],[\"w\",216]]|[[\"h\",36],[\"w\",245]]",
+        "decidedAt": "2026-09-26T21:07:43.011Z"
+      }
     ]
   }
 }

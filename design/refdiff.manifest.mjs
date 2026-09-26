@@ -1,6 +1,8 @@
 // refdiff manifest for DOGFOODING: the RefDiff redesign of the annotator
-// (Claude Design project 5a1a95c3-beee-457a-815b-ef6f6bf3e06a, fetched into
-// design/refdiff/) against the annotator app itself, serving the COMMITTED
+// (Claude Design project f407c522-e2e8-4b51-bbb3-13ad898d7f94, fetched into
+// design/refdiff/ — re-created 2026-09-26 from this directory after the original
+// 5a1a95c3-… was lost, so every `design.file` below is also the comp's path in
+// the project, verbatim) against the annotator app itself, serving the COMMITTED
 // demo root: `refdiff-annotator fixtures/demo-root --serve` (port 7378, or
 // whatever `svc` allocated — see refdiff.bindings.md). The demo root mirrors
 // the comps' fixture data (regenerate: `node fixtures/make-demo-root.ts`), so
@@ -28,14 +30,14 @@
 //   - `RefDiff Mobile Minimal.dc.html` was DELETED (deliberate, confirmed).
 //     Its pair `refdiff-compare-mobile-minimal` is retired here, and
 //     MINIMAL_IGNORE with it.
-//   - Four comps arrived that have no pair yet: `RefDiff Library Groups.dc.html`
-//     + `… Mobile` (frames `Library — grouped` / `Library — grouped (mobile)`)
-//     and `RefDiff Gallery.dc.html` + `… Mobile` (frames
-//     `Gallery — Button variant sheet` / `RefDiff gallery mobile`). The Gallery
-//     pair waits on chunk 3 — there is no impl surface to capture yet, and a
-//     route that does not exist compares "fine" against the wrong comp. The
-//     Library Groups comps are a REBUILD of the Library, not a delta against
-//     what chunk 1 shipped: see docs/handoff-gallery-groups.md.
+//   - Four comps arrived: `RefDiff Library Groups.dc.html` + `… Mobile`
+//     (frames `Library — grouped` / `Library — grouped (mobile)`) and
+//     `RefDiff Gallery.dc.html` + `… Mobile` (frames
+//     `Gallery — Button variant sheet` / `RefDiff gallery mobile`). All four
+//     are paired below: the Gallery pairs since chunk 3 stubbed the sheet, the
+//     Library Groups pairs since chunk 5 rebuilt the Library as the table they
+//     draw (a REBUILD, not a delta — see docs/handoff-gallery-groups.md). That
+//     rebuild is why the two `refdiff-library-*` pairs are `disabled`.
 //   - The MOBILE comps are separate FILES with their own phone frames, not the
 //     responsive-at-a-narrow-viewport shape the Library pairs use, so each needs
 //     `scope: ".cc-theme-dark"` like the pair below.
@@ -372,11 +374,19 @@ const PHONE_SHEET_EXPLAIN = {
 // icons sit 6.6px further right than an 8px padding allows (theme icon x 363.1, right edge 388.6
 // in a 390 frame). The app keeps its padding and its icons land 6.6px left of the comp's. A
 // design ask (narrow the segment or drop a gap), not a layout to copy.
+//
+// RE-MEASURED 2026-09-26, when the item switcher put an n/total counter beside the brand. The
+// comp's own fit decision (gap 7 -> 4, padding 8 -> 6, header segment buttons 9 -> 7px, noted on
+// the header as "Total ≈ 375px of 390") does NOT fit as drawn: its two flex:1 spacers either side
+// of the segment keep min-width 4px, so it still overflows — by 8px now. Measured: desktop_windows
+// x 330.5 against the app's 322.5, light_mode 366.5 against 358.5, the theme button's right edge
+// at 392 in a 390 frame. Still a design ask (drop the spacers' min-width, or one gap), still not a
+// layout to copy. The cause's name keeps its old number so the explained counts stay comparable.
 const TOOLBAR_HEADER_OVERFLOW = {
   types: ["position", "spacing", "pixel-region"],
   region: { x: 0, y: 0, w: 390, h: 44 },
   cause: "mobile comp header overflows by 6.6px",
-  reason: "the comp's toolbar header content is 380px wide in a 374px box with nothing allowed to shrink; its viewport and theme icons overflow the right padding by 6.6px (measured: desktop_windows and light_mode offset -6.6, 0 on the app side)",
+  reason: "the comp's toolbar header content is wider than its padded box with nothing allowed to shrink — 6.6px before the item switcher's counter, 8px after it (its spacers keep min-width 4px); its viewport and theme icons overflow the right padding by that much (measured 2026-09-26: desktop_windows and light_mode offset -8, 0 on the app side)",
 }
 // The Fill button (2026-09-17) widens the phone tool row by one 28px tool, so the row's gap to the
 // pane-swap button beside it closes: 3.1px against the comp's. The row's own size and the button
@@ -606,8 +616,97 @@ export const manifest = [
         ...TOOLBAR_IGNORE.explain,
         { types: ["position", "spacing"], region: { x: 0, y: 44, w: 390, h: 300 }, cause: "mobile comp header overflows by 6.6px",
           reason: "the menu is right-aligned to the viewport button, so it sits 6.6px left of the comp's with it (measured: the menu surface to the strip's close 22px against 15.4)" },
+        // Since the switcher's counter the overflow is 8px, and the menu's left edge now covers
+        // the last 7px of the floating Show pill's "Comments", which the extractor then drops as
+        // occluded (measured 2026-09-26: the label at x 81.75..135.75, the menu from x 128).
+        { types: ["missing-element"], text: "^Comments$", region: { x: 0, y: 44, w: 390, h: 300 }, cause: "mobile comp header overflows by 6.6px",
+          reason: "the open menu sits 8px left of the comp's with the overflow and covers the Show pill's 'Comments' label, so the label reads as missing on the app side only" },
       ],
     },
+  },
+  // ITEM NAVIGATION (2026-09-26; the written spec is `RefDiff Navigation.dc.html`, which draws no
+  // screens). The RESTING switcher — the desktop pill, the phone's n/total counter and hairline —
+  // is in the comps' default state, so the two plain compare pairs above measure it. These measure
+  // the states behind a click, reached on both sides by stable hooks: the comps' data-vc-step
+  // (added at our ask), the app's ids. The comps' demo group is the demo root's eleven items that
+  // belong to no set, in Library order, with `Onboarding — Document step` fifth.
+  {
+    id: "refdiff-compare-desktop-navlist",
+    title: "RefDiff · Comparison tool (desktop) — item list open",
+    design: { file: "RefDiff Comparison Tool.dc.html", frame: "RefDiff comparison tool", steps: [{ click: "[data-vc-step=nav-list]" }, { wait: 300 }] },
+    app: { source: "live", route: COMPARE_ROUTE, viewport: desktop, waitFor: "#panes", steps: [{ click: "#nav-name" }, { wait: 300 }] },
+    ignore: COMPARE_IGNORE,
+  },
+  {
+    // The header BECOMES the switcher. Captured inside its 4s auto-close on both sides.
+    id: "refdiff-compare-mobile-toolbar-nav",
+    title: "RefDiff · Comparison tool (mobile, toolbar layout) — header in switcher mode",
+    design: { file: "RefDiff Mobile.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark", steps: [{ click: "[data-vc-step=nav-open]" }, { wait: 300 }] },
+    app: { source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes", steps: [{ click: "#nav-open" }, { wait: 300 }] },
+    ignore: TOOLBAR_IGNORE,
+  },
+  {
+    id: "refdiff-compare-mobile-toolbar-navsheet",
+    title: "RefDiff · Comparison tool (mobile, toolbar layout) — item list sheet",
+    design: {
+      file: "RefDiff Mobile.dc.html", frame: "RefDiff mobile toolbar", scope: ".cc-theme-dark",
+      steps: [{ click: "[data-vc-step=nav-open]" }, { wait: 300 }, { click: "[data-vc-step=nav-sheet]" }, { wait: 400 }],
+    },
+    app: {
+      source: "live", route: "/?layout=toolbar" + COMPARE_ROUTE.slice(1), viewport: mobile, waitFor: "#panes",
+      steps: [{ click: "#nav-open" }, { wait: 300 }, { click: "#nav-sheet-btn" }, { wait: 400 }],
+    },
+    // Decision D6 in the sheet's rows: a thumbnail is the run's own impl.png, and a plain plate for
+    // a run that has none (ten of the eleven demo items). The comp draws a 20×8 indigo bar in every
+    // one — the designer's stand-in for a capture. Scoped to the thumbnail COLUMN (x 34, 34px wide,
+    // under the sheet's header) and to what a missing picture can produce: an absent box and the
+    // pixels it would have painted. A row's text, colours, sizes and the thumbnail plate itself stay
+    // compared.
+    ignore: {
+      ...TOOLBAR_IGNORE,
+      explain: [
+        ...TOOLBAR_IGNORE.explain,
+        { types: ["missing-element", "pixel-region"], region: { x: 30, y: 440, w: 42, h: 600 }, cause: "decision D6: row thumbnails are captures",
+          reason: "the sheet's row thumbnail is the run's own impl.png or an empty plate; the comp's 20×8 indigo bar is a stand-in for a capture (measured 2026-09-26: six missing 20×8 boxes and eight thumbnail pixel regions, all in the x 34 column)" },
+      ],
+    },
+  },
+  {
+    // The just-visited trail, reached the way a reader reaches it. The comp's `visit-cell` click
+    // stands for "opened that cell and came back"; the app really does it — expand the set, open
+    // its Primary · md · Hover cell, press back — and the Library then marks and centres the row.
+    id: "refdiff-library-groups-desktop-visited",
+    title: "RefDiff · Library with groups (desktop) — just visited",
+    design: { file: "RefDiff Library Groups.dc.html", frame: "Library — grouped", steps: [{ click: "[data-vc-step=visit-cell]" }, { wait: 900 }] },
+    app: {
+      source: "live", route: "/", viewport: { width: 1240, height: 860 }, waitFor: "#cards .lrow",
+      steps: [
+        // The demo root lists this cell 17th (newest-first, then dir order), past the ten-row
+        // cap the comp's own order never reaches — so the reader's "Show N more" comes first.
+        { click: '.lrow[data-group="ds-button"]' }, { wait: 400 },
+        { click: '.lmore[data-more="ds-button"]' }, { wait: 300 },
+        { click: '.lcell[data-pair="ds-button--tone-primary_size-md_state-hover"]' }, { wait: 900 },
+        { click: "#hdr-left .back" }, { wait: 900 },
+      ],
+    },
+    ignore: LIBRARY_GROUPS_IGNORE,
+  },
+  {
+    id: "refdiff-library-groups-mobile-visited",
+    title: "RefDiff · Library with groups (mobile) — just visited",
+    design: { file: "RefDiff Library Groups Mobile.dc.html", frame: "Library — grouped (mobile)", steps: [{ click: "[data-vc-step=visit-cell]" }, { wait: 900 }] },
+    app: {
+      source: "live", route: "/", viewport: mobile, waitFor: "#cards .lrow",
+      steps: [
+        // The demo root lists this cell 17th (newest-first, then dir order), past the ten-row
+        // cap the comp's own order never reaches — so the reader's "Show N more" comes first.
+        { click: '.lrow[data-group="ds-button"]' }, { wait: 400 },
+        { click: '.lmore[data-more="ds-button"]' }, { wait: 300 },
+        { click: '.lcell[data-pair="ds-button--tone-primary_size-md_state-hover"]' }, { wait: 900 },
+        { click: "#hdr-left .back" }, { wait: 900 },
+      ],
+    },
+    ignore: LIBRARY_GROUPS_IGNORE,
   },
   {
     // The GHOST language (2026-09-02), and the first pair that measures a state

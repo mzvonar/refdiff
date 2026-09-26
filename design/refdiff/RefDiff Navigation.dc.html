@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>html,body{margin:0;padding:0;background:#1d1e21}a{color:#5b8def;text-decoration:none}a:hover{color:#7da4f2}</style>
+</helmet>
+<div style="min-height:100vh;background:#1d1e21;color:#e7e9ec;font-family:'IBM Plex Sans',system-ui,sans-serif;padding:48px 24px;box-sizing:border-box">
+  <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:28px;font-size:14px;line-height:1.6">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:24px;font-weight:700;letter-spacing:-0.01em">RefDiff — item navigation spec</span>
+      <span style="font-size:13px;color:#a6abb3">No screens here on purpose: every state lives in the measured comps so the two drawings can't drift. Reach the states by clicking the <code style="font-family:'IBM Plex Mono',monospace">data-vc-step</code> triggers listed below.</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:16px;font-weight:700">Where each state lives</span>
+      <ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:#c9cdd3">
+        <li><a href="./RefDiff Comparison Tool.dc.html">RefDiff Comparison Tool</a> — frame “RefDiff comparison tool”. Switcher pill in the header (resting). <code style="font-family:'IBM Plex Mono',monospace">nav-list</code> = click the item name → item-list popover. Hover the next arrow → preview card (hover-only, not measured).</li>
+        <li><a href="./RefDiff Mobile.dc.html">RefDiff Mobile</a> — frame “RefDiff mobile toolbar”. Resting: 5/11 counter beside the brand square + 2 px progress hairline under the header. <code style="font-family:'IBM Plex Mono',monospace">nav-open</code> = tap brand/counter → header in switcher mode. <code style="font-family:'IBM Plex Mono',monospace">nav-sheet</code> = tap the list icon in switcher mode → bottom sheet.</li>
+        <li><a href="./RefDiff Library Groups.dc.html">RefDiff Library Groups</a> — frame “Library — grouped”. Button group is open by default; <code style="font-family:'IBM Plex Mono',monospace">visit-cell</code> = click the cell “Primary · md · Hover” → returned-from-comparator state (group + item marked, row scrolled into view).</li>
+        <li><a href="./RefDiff Library Groups Mobile.dc.html">RefDiff Library Groups Mobile</a> — frame “Library — grouped (mobile)”. Same <code style="font-family:'IBM Plex Mono',monospace">visit-cell</code> trigger.</li>
+      </ul>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:16px;font-weight:700">A · Just-visited trail (Library)</span>
+      <p style="margin:0;color:#c9cdd3">State <code style="font-family:'IBM Plex Mono',monospace">lastVisited = { groupId, itemId, timestamp }</code>, persisted per project; written whenever the comparator opens an item (including prev/next and list switches). Only overwritten by another open; survives filters, reloads, theme.</p>
+      <p style="margin:0;color:#c9cdd3">On Library mount with a trail: expand the group (other groups keep their state); scroll the item row into view (centred, no animation on first paint); group row → 3 px accent bar on the left edge, bg2 background, tinted pill “Just visited” (vis bg, acc text, my_location icon) right of the name — mobile group card also gets a 1 px acc outline; item row → 3 px accent bar, vis background, filled acc pill “Just visited · {relative age}” after the name, CTA “Compare” → “Reopen” (mobile: chevron → replay icon in acc).</p>
+      <p style="margin:0;color:#c9cdd3">“Jump to just visited” appears only while the marked row is out of view. <b>Decision:</b> desktop draws it as a link in the sticky topbar (left of the theme toggle); mobile draws it as an <b>overlay</b> pinned under the sticky topbar (zero-height sticky wrapper, so nothing in the flow shifts as it appears/disappears). Both are reachable in the comps by triggering visit-cell and scrolling away. If the item no longer exists, mark the group only and hide Jump.</p>
+      <p style="margin:0;color:#c9cdd3">Token note: <code style="font-family:'IBM Plex Mono',monospace">--vis</code> is the accent at 14 % (dark) / 12 % (light) alpha — a tint of the existing acc, added to all four comps’ theme classes.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:16px;font-weight:700">B · Prev / next item (comparator)</span>
+      <p style="margin:0;color:#c9cdd3"><b>Order.</b> The Library list as currently filtered, captured when the comparator opens. Items outside a component set form one group “Library” in Library (alphabetical) order; unreadable runs are excluded. Never crosses group boundaries; arrows disable at the ends. Position label “n / total”, 1-based. Demo root: 11 items, current = “Onboarding — Document step” = 5 / 11; prev Login, next Onboarding — Review step; chips All / Critical 4 / Major 3 / Minor 0 / Clean 4. A component set groups its rows by tone · size with uppercase section headers (“PRIMARY · MD”); the Library group is flat.</p>
+      <p style="margin:0;color:#c9cdd3"><b>Switching.</b> Swap only the artboards and findings. Keep zoom, pan, layer (Findings/Comments/All/Clean), variant (Off/Wipe/Onion/Blink/Diff), Split/Full, viewport, align-lock. Update URL and lastVisited. 1.6 s centre-top toast: arrow icon · item name · n / total · “zoom &amp; layers kept” (transient, not drawn in comps).</p>
+      <p style="margin:0;color:#c9cdd3"><b>Keyboard (desktop).</b> ← → and K J prev/next; / focuses list search; ↑ ↓ ⏎ in the list; Esc closes. Ignored while focus is in an input.</p>
+      <p style="margin:0;color:#c9cdd3"><b>Desktop header.</b> Switcher replaces the static pair title: [‹] [Library / name  n / total ⌄] [›], 32 px tall, bg2, 1 px line, radius 9; arrows 26×26, disabled = line colour, no pointer. Left header group is content-sized (flex 0 0 auto); the theme group on the right is the flexible spacer, so the Split/Full, variant and layer segments follow the switcher. Hover an arrow ≥150 ms → preview card (thumbnail, “Next · →”, name, severity). Click the name → 340 px popover under it, same pattern as the Viewport menu: search (autofocus, “/” hint, count), single-select severity chips, rows = dot · mono name · severity · check on current (current tinted vis), footer “↑ ↓ move · ⏎ open” + “n more below” when overflowing, scrim over the canvas closes it.</p>
+      <p style="margin:0;color:#c9cdd3"><b>Mobile — no new panel.</b> (1) Resting: mono counter “5/11” (11 px, txt2, padding 0 5 0 4) beside the brand square; 2 px hairline under the header, bg3 track, acc fill at n/total (0.25 s). <b>Fit decision:</b> header gap 7→4, padding 8→6, and the header variant segment’s button padding 9→7 px — Diff stays; the floating Findings pill and align pill are unchanged. (2) Tap brand/counter → header morphs: [✕] [‹ 44×36] [“Library · n / total” over the name, centred, ellipsised] [› 44×36] [list]; bottom border turns acc; auto-closes 4 s after the last interaction or on canvas tap; ✕ closes now. (3) List icon → bottom sheet at 62 % over a 35 % black scrim: handle, “Library · 11 items · Library order”, 36 px search, horizontally scrolling chips, 44 px rows (dot · thumb · mono name · severity · check), current row scrolled into view; tap a row = switch + sheet closes, header stays in switcher mode; drag handle up = full height; swipe down / scrim = dismiss. (4) Two-finger horizontal swipe on the canvas: artboard follows, peek card past 40 px (NEXT/PREV, thumb, name, severity, “release to open”), switch past ~80 px, else spring back; rubber-band only at group ends. Transient, not drawn.</p>
+      <p style="margin:0;color:#c9cdd3"><b>Hover preview setting.</b> <code style="font-family:'IBM Plex Mono',monospace">showHoverPreview</code> is a stored preference (default on) with <b>no UI</b> in the desktop comparator; it exists so the implementation can disable the card for users who find it noisy. Exposed in the comp as a Tweaks prop only.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:16px;font-weight:700">data-vc-step names</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#c9cdd3">nav-list · nav-open · nav-sheet · visit-cell</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

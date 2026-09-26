@@ -14,16 +14,16 @@ html,body{margin:0;padding:0;overscroll-behavior:none}
 a{color:#5b8def}a:hover{color:#7da4f2}
 input{outline:none}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,132,140,.4);border-radius:4px}::-webkit-scrollbar-track{background:transparent}
-.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--canvas:#232427}
-.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--canvas:#c6c9ce}
+.cc-theme-dark{--bg0:#2a2b2e;--bg1:#333438;--bg2:#3c3d42;--bg3:#46474d;--line:#4c4d54;--txt:#e7e9ec;--txt2:#a6abb3;--acc:#5b8def;--vis:rgba(91,141,239,0.14);--canvas:#232427}
+.cc-theme-light{--bg0:#dfe1e4;--bg1:#f2f3f5;--bg2:#ffffff;--bg3:#e3e5e9;--line:#cfd3d8;--txt:#22262b;--txt2:#697079;--acc:#2f6fed;--vis:rgba(47,111,237,0.12);--canvas:#c6c9ce}
 .msi{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20}
 </style>
 </helmet>
 <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0f1012;padding:24px;box-sizing:border-box;font-family:'IBM Plex Sans',system-ui,sans-serif" data-screen-label="RefDiff mobile toolbar">
   <div class="cc-theme-dark {{themeClass}}" style="position:relative;width:390px;height:844px;transform:translateZ(0);overflow:hidden;background:var(--bg0);color:var(--txt);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;user-select:none">
-    <div style="display:flex;align-items:center;gap:7px;padding:0 8px;height:44px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:30">
+    <div data-note="Fit decision: with the 5/11 counter added, the header keeps Diff by tightening gap 7→4, padding 8→6 and the variant segment’s button padding 9→7px (header only; floating pills unchanged). Total ≈ 375px of 390." style="display:flex;align-items:center;gap:4px;padding:0 6px;height:44px;background:var(--bg1);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:30">
       <a href="./RefDiff Library.dc.html" title="Library" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--txt2);text-decoration:none;flex-shrink:0" style-hover="background:var(--bg3);color:var(--txt)"><span class="msi" style="font-size:19px">arrow_back</span></a>
-      <div style="width:16px;height:16px;border-radius:5px;background:var(--acc);flex-shrink:0"></div>
+      <div data-vc-step="nav-open" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 5px 0 4px;border-radius:7px;cursor:pointer;flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{navOpen}}" title="Switch item"><div style="width:16px;height:16px;border-radius:5px;background:var(--acc);flex-shrink:0"></div><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{navPosShort}}</span></div>
       <div style="flex:1;min-width:4px"></div>
       <div style="{{grpStyle}}">
         <sc-for list="{{variantBtns}}" as="b" hint-placeholder-count="5"><div style="{{b.style}}" onClick="{{b.onClick}}" title="{{b.title}}">{{b.label}}</div></sc-for>
@@ -59,6 +59,29 @@ input{outline:none}
       </div>
       <div style="{{setBtnStyle}}" onClick="{{themeToggle}}" title="{{themeTip}}"><span class="msi" style="font-size:19px">{{themeIcon}}</span></div>
     </div>
+    <div style="height:2px;background:var(--bg3);flex-shrink:0;position:relative;z-index:30" title="Position in the Library list"><div style="{{navProgressStyle}}"></div></div>
+    <sc-if value="{{navOn}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;left:0;right:0;top:0;height:45px;z-index:31;display:flex;align-items:center;gap:4px;padding:0 6px;background:var(--bg1);border-bottom:1px solid var(--acc);box-sizing:border-box">
+        <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--txt2);cursor:pointer;flex-shrink:0" style-hover="background:var(--bg3)" onClick="{{navClose}}" title="Back to tools"><span class="msi" style="font-size:19px">close</span></div>
+        <div style="{{navPrevStyle}}" onClick="{{navPrev}}"><span class="msi" style="font-size:22px">chevron_left</span></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px">
+          <span style="font-size:10.5px;color:var(--txt2);white-space:nowrap">Library · {{navPos}}</span>
+          <span style="font-size:12.5px;font-weight:600;font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">{{navCurName}}</span>
+        </div>
+        <div style="{{navNextStyle}}" onClick="{{navNext}}"><span class="msi" style="font-size:22px">chevron_right</span></div>
+        <div data-vc-step="nav-sheet" style="{{navSheetBtnStyle}}" onClick="{{navSheetOpen}}" title="Item list"><span class="msi" style="font-size:19px">list</span></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{navSheet}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;left:0;right:0;top:45px;bottom:0;background:rgba(0,0,0,0.35);z-index:32" onClick="{{navSheetClose}}"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:62%;z-index:33;background:var(--bg1);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,0.4);display:flex;flex-direction:column;box-sizing:border-box">
+        <div style="display:flex;justify-content:center;padding:8px 0 4px"><div style="width:36px;height:4px;border-radius:2px;background:var(--bg3)"></div></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:2px 14px 8px"><span style="font-size:13.5px;font-weight:700">Library</span><span style="font-size:11.5px;color:var(--txt2)">11 items · Library order</span></div>
+        <div style="margin:0 12px;display:flex;align-items:center;gap:7px;padding:0 10px;height:36px;border-radius:9px;background:var(--bg0);border:1px solid var(--line)"><span class="msi" style="font-size:17px;color:var(--txt2)">search</span><input style="flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--txt);font-size:12.5px;font-family:'IBM Plex Sans',sans-serif" placeholder="Filter items…" value="{{navQuery}}" onChange="{{navOnQuery}}"><span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--txt2)">{{navCount}}</span></div>
+        <div style="display:flex;gap:6px;padding:10px 12px 6px;overflow-x:auto;flex-shrink:0"><sc-for list="{{navChips}}" as="c" hint-placeholder-count="5"><span style="{{c.style}}" onClick="{{c.onClick}}">{{c.label}}</span></sc-for></div>
+        <div style="flex:1;overflow:auto;padding:4px 8px 12px;display:flex;flex-direction:column"><sc-for list="{{navRows}}" as="r" hint-placeholder-count="6"><div style="{{r.style}}" onClick="{{r.onClick}}"><span style="{{r.dot}}"></span><div style="width:34px;height:24px;border-radius:4px;background:#f4f5f7;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="width:20px;height:8px;border-radius:2px;background:#4F46E5"></span></div><span style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.name}}</span><span style="{{r.sevStyle}}">{{r.sev}}</span><sc-if value="{{r.cur}}" hint-placeholder-val="{{false}}"><span class="msi" style="font-size:18px;color:var(--acc)">check</span></sc-if></div></sc-for></div>
+      </div>
+    </sc-if>
     <sc-if value="{{deltaShow}}" hint-placeholder-val="{{true}}">
       <div style="{{deltaStyle}}">
         <span class="msi" style="{{deltaIconStyle}}">{{deltaIcon}}</span>
@@ -360,6 +383,8 @@ const ALIGN = {
   'top-right': { label: 'Top right', icon: 'north_east', desc: 'Locks views by the top-right corner \u2014 useful for right-aligned or RTL layouts.' }
 };
 const STL = { open: 'Open', implemented: 'Implemented', done: 'Done' };
+const NAV_ITEMS = [['Button', 'critical'], ['Confirm modal', null], ['Error & empty states', 'major'], ['Login', null], ['Onboarding \u2014 Document step', 'critical'], ['Onboarding \u2014 Review step', null], ['Onboarding \u2014 Selfie step', 'critical'], ['Result detail', 'critical'], ['Selection card', 'major'], ['Stepper', null], ['Verification dashboard', 'major']];
+const NAV_SEV = { critical: '#e5484d', major: '#f5a623', minor: '#4c9aff' }, NAV_SEVL = { critical: 'Critical', major: 'Major', minor: 'Minor' };
 const VPS = [
   { id: 'desktop', label: 'Desktop', icon: 'desktop_windows', w: 1440, h: 900 },
   { id: 'tablet', label: 'Tablet', icon: 'tablet_mac', w: 768, h: 1024, stale: 45 },
@@ -372,7 +397,7 @@ class Component extends DCLogic {
     this.refA = React.createRef(); this.refB = React.createRef();
     this._drag = null; this._wh = null; this._bt = null;
     this.state = {
-      theme: null, layout: null, pane: 'design', variant: 'none', blinkOn: true, vp: 'desktop', vpOpen: false,
+      theme: null, navIdx: 4, navOn: false, navSheet: false, navChip: 'all', navQuery: '', layout: null, pane: 'design', variant: 'none', blinkOn: true, vp: 'desktop', vpOpen: false,
       layer: 'all', railTab: 'findings', railOpen: false, panelOpen: false, settingsOpen: false,
       strobe: false, ovlOp: { onion: 0.55, diff: 1 },
       tool: 'pan', lockstep: true, alignMode: 'anchors', alignOpen: false, highlight: false, dim: false, wipeX: 340,
@@ -507,9 +532,21 @@ class Component extends DCLogic {
     });
   }
   inter(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  navGo(i) { if (i < 0 || i >= NAV_ITEMS.length || i === this.state.navIdx) return; this.setState({ navIdx: i, navListOpen: false, navSheet: false }); }
+  navArm() { clearTimeout(this._navT); this._navT = setTimeout(() => { if (!this.state.navSheet) this.setState({ navOn: false }); }, 4000); }
   renderVals() {
     const S = this.state, th = this.theme(), light = th === 'light';
     const isMin = true, isDef = false;
+    const navIdx = S.navIdx, navCur = NAV_ITEMS[navIdx], navNextIt = NAV_ITEMS[navIdx + 1], navPrevIt = NAV_ITEMS[navIdx - 1];
+    const navSevChip = sv => sv ? { fontSize: 11, fontWeight: 600, color: NAV_SEV[sv], whiteSpace: 'nowrap' } : { fontSize: 11, color: 'var(--txt2)', whiteSpace: 'nowrap' };
+    const navDot = sv => ({ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: sv ? NAV_SEV[sv] : 'transparent', border: sv ? 'none' : '1.5px solid #46a758', boxSizing: 'border-box' });
+    const navCnt = { critical: 0, major: 0, minor: 0, clean: 0 }; NAV_ITEMS.forEach(([, sv]) => navCnt[sv || 'clean']++);
+    const navChips = [['all', 'All'], ['critical', 'Critical ' + navCnt.critical], ['major', 'Major ' + navCnt.major], ['minor', 'Minor ' + navCnt.minor], ['clean', 'Clean ' + navCnt.clean]].map(([id, label]) => ({ label, onClick: e => { e.stopPropagation(); this.setState({ navChip: id }); }, style: { padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid ' + (S.navChip === id ? 'var(--acc)' : 'var(--line)'), color: S.navChip === id ? 'var(--acc)' : 'var(--txt2)' } }));
+    const navQ = (S.navQuery || '').trim().toLowerCase();
+    const navFiltered = NAV_ITEMS.map((it, i) => ({ it, i })).filter(({ it }) => (S.navChip === 'all' || (it[1] || 'clean') === S.navChip) && (!navQ || it[0].toLowerCase().includes(navQ)));
+    const navRows = navFiltered.map(({ it: [name, sv], i }) => ({ name, cur: i === navIdx, sev: sv ? NAV_SEVL[sv] : 'Clean', sevStyle: navSevChip(sv), dot: navDot(sv), onClick: e => { e.stopPropagation(); this.navGo(i); }, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '0 8px', height: 44, borderRadius: 9, cursor: 'pointer', flexShrink: 0, background: i === navIdx ? 'var(--vis)' : 'transparent', color: 'var(--txt)' } }));
+    const navArrow = (on, w, h) => ({ width: w, height: h, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box', color: on ? 'var(--txt)' : 'var(--line)', cursor: on ? 'pointer' : 'default', background: on ? 'var(--bg2)' : 'transparent', border: '1px solid ' + (on ? 'var(--line)' : 'transparent') });
+
     const V = S.variant;
     const inFocus = f => !S.focusRect || this.inter(f.rect, S.focusRect) || (f.inst || []).some(r => this.inter(r, S.focusRect));
     const inVp = f => !f.vps || f.vps.includes(S.vp);
@@ -524,7 +561,7 @@ class Component extends DCLogic {
     const showF = S.layer === 'all' || S.layer === 'findings', showI = S.layer === 'all' || S.layer === 'items';
     const segBtnSm = act => ({ padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: act ? 600 : 500, cursor: 'pointer', color: act ? 'var(--txt)' : 'var(--txt2)', background: act ? 'var(--bg3)' : 'transparent', whiteSpace: 'nowrap', lineHeight: '15px' });
     const grp = { display: 'flex', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 };
-    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: segBtnSm(V === id), onClick: () => this.setVariant(id) }));
+    const variantBtns = [['none', 'Off', 'No comparison overlay'], ['wipe', 'Wipe', 'Wipe slider between refs'], ['onion', 'Onion', 'Onion-skin: other ref at 55%'], ['blink', 'Blink', 'Alternate refs'], ['diff', 'Diff', 'Pixel difference blend']].map(([id, label, title]) => ({ id, label, title, style: { ...segBtnSm(V === id), padding: '3px 7px' }, onClick: () => this.setVariant(id) }));
     const layerBtns = [['findings', 'Findings'], ['items', 'Comments'], ['all', 'All'], ['none', 'Clean']].map(([id, label]) => ({ id, label, style: segBtnSm(S.layer === id), onClick: () => this.setState({ layer: id }) }));
     const themeBtns = [['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => ({ id, label, style: { ...segBtnSm(th === id), flex: 1, textAlign: 'center' }, onClick: () => this.setState({ theme: id }) }));
     const toolBtn = act => ({ width: isMin ? 28 : 32, height: isMin ? 28 : 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: act ? '#fff' : 'var(--txt2)', background: act ? 'var(--acc)' : 'transparent', flexShrink: 0 });
@@ -655,6 +692,14 @@ class Component extends DCLogic {
       setBtnStyle: hdrBtn(false),
       themeToggle: () => this.setState({ theme: light ? 'dark' : 'light' }),
       themeIcon: light ? 'dark_mode' : 'light_mode',
+      navCurName: navCur[0], navPos: (navIdx + 1) + ' / ' + NAV_ITEMS.length, navPosShort: (navIdx + 1) + '/' + NAV_ITEMS.length,
+      navProgressStyle: { position: 'absolute', left: 0, top: 0, bottom: 0, width: ((navIdx + 1) / NAV_ITEMS.length * 100) + '%', background: 'var(--acc)', transition: 'width 0.25s' },
+      navOn: !!S.navOn, navOpen: () => { this.setState({ navOn: true, vpOpen: false, settingsOpen: false, alignOpen: false, panelOpen: false }); this.navArm(); }, navClose: () => { clearTimeout(this._navT); this.setState({ navOn: false, navSheet: false }); },
+      navPrevStyle: navArrow(!!navPrevIt, 44, 36), navNextStyle: navArrow(!!navNextIt, 44, 36),
+      navPrev: e => { e.stopPropagation(); this.navGo(navIdx - 1); this.navArm(); }, navNext: e => { e.stopPropagation(); this.navGo(navIdx + 1); this.navArm(); },
+      navSheet: !!S.navSheet, navSheetOpen: e => { e.stopPropagation(); clearTimeout(this._navT); this.setState({ navSheet: true }); }, navSheetClose: () => { this.setState({ navSheet: false }); this.navArm(); },
+      navSheetBtnStyle: { width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: S.navSheet ? 'var(--acc)' : 'var(--txt2)', background: S.navSheet ? 'var(--vis)' : 'transparent' },
+      navQuery: S.navQuery || '', navOnQuery: e => this.setState({ navQuery: e.target.value }), navChips, navRows, navCount: String(navFiltered.length),
       themeTip: light ? 'Switch to dark theme' : 'Switch to light theme',
       panelOpen: S.panelOpen, settingsOpen: S.settingsOpen,
       scrimShow: S.settingsOpen || S.alignOpen || S.vpOpen,
