@@ -169,6 +169,29 @@ machine and is idempotent.
 
 Do not commit unless asked.
 
+## Releasing — two pushes, in two repos
+
+A release ("ship it", a version bump) is not done until BOTH halves are pushed. This repo is listed
+in the `claude-skills-public` marketplace, which keeps its own copy of the version, and nothing in
+this repo ever looks at it: 1.8.0 shipped from here alone, and the listing sat at 1.7.3 until
+someone asked.
+
+1. **Here:** bump `.claude-plugin/plugin.json` (patch fix · minor feature · major breaking) and push
+   `main` with the change. This is the version `claude plugin update` compares — the push that ships.
+2. **Marketplace** (`../claude-skills-public`; check it is on `main` first): set the `refdiff`
+   entry's `"version"` in `.claude-plugin/marketplace.json` to match, run `bash scripts/check-all.sh`
+   (what its CI runs), commit `chore: refdiff <version> in the listing`, push `main`, and **watch
+   the CI run it started** until green — `gh run watch <id> --exit-status`, recipe in its
+   `update-skill` skill, §4. A red run there is an unshipped release, not an e-mail to ignore.
+3. **Verify the pair from here**, after both pushes:
+
+   ```bash
+   bash ../claude-skills-public/scripts/check-listing.sh . --published   # 0 = the published listing agrees
+   ```
+
+   Exit 1 prints both versions and the fix; exit 2 means it could not tell, which is not a pass.
+   Without `--published` it reads the marketplace's working tree — the check to run before pushing.
+
 ---
 
 ## Lessons capture (ad-hoc work) — append, process later
