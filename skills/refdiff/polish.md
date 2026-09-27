@@ -33,6 +33,28 @@ something is covering the page that should not be — a dialog that failed to
 close, a scrim left mounted. `--include-occluded` compares them anyway, which is
 how you find out what they are.
 
+**And the case that does not look like this line at all: a count that CHANGES
+between runs of the SAME code.** Judge an `excluded …` line by whether it
+REPEATS, not by whether it exists — a stable count is a real, permanent
+occlusion and needs nothing. A count that moves means something intermittent is
+painting over the page, and because the dropped elements never reach the
+matcher, what you SEE is not this line: it is a handful of findings appearing,
+vanishing and MIGRATING between neighbours in one region, with no cause anywhere
+in your diff. That reads as a regression. §4's "a delta you cannot explain" has
+the three commands that name it.
+
+The likeliest culprit on a live-page pair is the dev server's own UI. A
+framework error / HMR indicator is a fixed overlay in a corner, it appears only
+when something errors, and whether it is up when the screenshot fires is a race
+— so it hits some runs and not others. **Capture against a PRODUCTION build**,
+where such overlays do not exist at all; a built server is also far lighter per
+page, which decides whether a long set finishes. Measured on a Next.js consumer
+2026-09-27: a failed WebSocket raised a „1 Issue" pill over the bottom-left of a
+phone frame, the two nav elements under it were dropped, five findings moved,
+and a 22-pair batch went from five capture failures to `+0/−0` on every pair
+once the harness served a build. Note that a framework's "hide the dev
+indicator" switch may not cover its ERROR overlay — that one did not.
+
 **Its blind spot, which the line cannot show you:** an element whose sample
 points fall outside the viewport gets no answer and is KEPT — `occluded` absent,
 never `false`, because absent means "could not tell" (the same contract
@@ -406,6 +428,32 @@ itself, stated as two numbers. (Same session: a page header's identity block was
 across a client-detail family of seven routes on the strength of one Messages pair, and what settled
 it was header 103px at 1440 against 0px at 390 — a fact about the shell, which those pairs could not
 have produced.)
+
+**A delta you cannot explain — including a `REGRESSION` — is a CAPTURE difference until you have
+shown otherwise. Do not label it; diff the ARTIFACTS.** The matcher is deterministic: identical
+inputs give identical output, so if the numbers moved and your diff cannot account for it, an INPUT
+moved. Four commands, in this order, and each one can end it:
+
+```bash
+md5sum <runA>/design.png <runB>/design.png <runA>/impl.png <runB>/impl.png   # which SIDE moved?
+grep -E 'leaf elements|excluded .* painted over' <runA>.log <runB>.log       # same DOM, different filter?
+# diff the impl arrays of the two elements.json — which element appeared, vanished or moved?
+# if pixels differ but no element does: CROP the differing box from both PNGs and LOOK at it
+```
+
+Read them as a funnel. `design.png` identical across runs and `impl.png` not ⇒ the comp side is
+fine, stop looking there. Equal `leaf elements` with a differing `excluded …` line ⇒ the page
+rendered the same and the FILTER differed (§1a-o). An element present in one run and absent in the
+other, with **nothing moved**, ⇒ that one element re-paired its whole neighbourhood; expect a
+`position` finding to have migrated between two siblings, which is what made the list look random.
+And when the pixels differ while the element model does not, only the crop can tell you what
+painted — that last step is the one that ends the guessing, because everything before it says
+*that* something changed and never *what*.
+
+Do this BEFORE theorising from source. Measured 2026-09-27: the same delta was diagnosed twice from
+reading application code — "the matcher is flaky", then "a cached badge streams in late" — and both
+died to these commands, which took under a minute and produced a red dev-error overlay nobody had
+considered. A cause you reasoned out of a file is a hypothesis; a cropped pixel box is the thing.
 
 Then mark the notes you acted on:
 

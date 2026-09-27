@@ -292,6 +292,11 @@ per-repo environment traps that make a capture fail in ways that read as product
    first (`setup.md` holds the traps that impersonate product bugs). Before
    trusting a first run, look at `impl.png` once: an empty state, a 404 page
    or a login form compares "fine" and lies.
+   **A live-page pair should be served by a PRODUCTION build, not a dev server**
+   — a dev server paints error and HMR overlays the app does not have, and an
+   overlay that is up for some captures and not others makes findings move with
+   no code change (`polish.md` §1a-o). A delta you cannot explain is a capture
+   difference until the artifacts say otherwise: `polish.md` §4 has the commands.
 7. **Small, reversible, local fixes.** Change the story fixture, the
    component under test, its tokens. Do not refactor around a finding; do
    not touch files the pair does not render. Leave the consuming repo's

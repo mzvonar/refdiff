@@ -91,6 +91,24 @@ failure shapes that recur everywhere and impersonate product bugs.
   run dir can mislead nobody. General shape: **exit code and artifact are two
   different channels, and only one of them is where you read the result.**
 
+- **A DEV server is not a capture environment.** It paints UI the application
+  does not have — an error overlay, an HMR indicator, a route/build badge — and
+  those are fixed to a corner, so they land ON the frame. Three consequences,
+  each of which looks like something else: the occlusion filter correctly drops
+  whatever the overlay covers, so elements go MISSING from the element model;
+  the pairing around them shifts, so findings appear and MIGRATE between
+  siblings with no code change; and it only happens when something errored, so
+  it hits some runs and not others. Serve a **production build** instead. It is
+  also much lighter — measured on one 8 GB box, a dev server grew ~150–250 MB
+  per captured page and began failing captures around 3 GB as
+  `navigation-failed` and `selector-not-found`, with no OOM kill in `dmesg` to
+  name the cause, while the built server stayed near 0.5 GB and served a 22-pair
+  batch with no failures at all. Two things to get right when you switch: any
+  BUILD-time-inlined public env (`NEXT_PUBLIC_*` and its equivalents) must be
+  set for the BUILD and not only for the server, or the bundle disagrees with
+  what you are running; and give the build its OWN output directory, so a
+  capture build cannot invalidate the one a test run is serving.
+
 - **A harness that authenticates by POSTing a session can EDIT the fixture it is
   measuring.** `--auth-post` sends a display name (`refdiff {role}` by default);
   an endpoint that upserts onto a SEEDED user applies it, renaming them. The
